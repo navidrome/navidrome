@@ -1203,6 +1203,73 @@ var _ = Describe("MediaRepository", func() {
 		})
 	})
 
+	Describe("FindRecentFilesByProperties", func() {
+		var adminCtx context.Context
+		var otherLib model.Library
+		var missing model.MediaFile
+		var since time.Time
+
+		BeforeEach(func() {
+			adminCtx, otherLib, _ = restrictedFixture("moved")
+			since = time.Now().Add(-time.Hour)
+			missing = model.MediaFile{
+				LibraryID: 1, Title: "Moved Song", Album: "Moved Album", Size: 1234,
+				Suffix: "flac", DiscNumber: 1, TrackNumber: 3,
+			}
+		})
+
+		candidate := func(id string, change func(*model.MediaFile)) {
+			mf := missing
+			mf.ID, mf.LibraryID, mf.Path, mf.CreatedAt = id, otherLib.ID, id+".flac", since.Add(time.Minute)
+			if change != nil {
+				change(&mf)
+			}
+			Expect(mr.Put(adminCtx, &mf)).To(Succeed())
+			DeferCleanup(func() { _ = mr.Delete(adminCtx, mf.ID) })
+		}
+
+		It("returns only recent, present, untagged copies from other libraries", func() {
+			candidate("moved-match", nil)
+			candidate("moved-same-lib", func(mf *model.MediaFile) { mf.LibraryID = 1 })
+			candidate("moved-tagged", func(mf *model.MediaFile) { mf.MbzReleaseTrackID = "some-mbid" })
+			candidate("moved-older", func(mf *model.MediaFile) { mf.CreatedAt = since.Add(-time.Minute) })
+			candidate("moved-missing", func(mf *model.MediaFile) { mf.Missing = true })
+			candidate("moved-other-title", func(mf *model.MediaFile) { mf.Title = "Another Song" })
+
+			results, err := mr.FindRecentFilesByProperties(adminCtx, missing, since)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(slice.Map(results, func(mf model.MediaFile) string { return mf.ID })).To(ConsistOf("moved-match"))
+			Expect(results[0].LibraryPath).To(Equal(otherLib.Path))
+		})
+
+		It("searches by title even when stats make the MBZ track ID index look more selective", func() {
+			conn := GetDBXBuilder().DB()
+			tx, err := conn.BeginTx(adminCtx, nil)
+			Expect(err).ToNot(HaveOccurred())
+			// The schema, and so the loaded stats, are shared by every connection to the in-memory DB
+			DeferCleanup(func() {
+				Expect(tx.Rollback()).To(Succeed())
+				_, err := conn.Exec("ANALYZE sqlite_schema")
+				Expect(err).ToNot(HaveOccurred())
+			})
+			for _, stmt := range []string{
+				"ANALYZE media_file_title",
+				"DELETE FROM sqlite_stat1 WHERE tbl = 'media_file'",
+				"INSERT INTO sqlite_stat1 VALUES ('media_file', 'media_file_title', '40000 2'), ('media_file', 'media_file_mbz_release_track_id', '40000 1'), ('media_file', 'media_file_created_at', '40000 1')",
+				"ANALYZE sqlite_schema",
+			} {
+				_, err := tx.Exec(stmt)
+				Expect(err).ToNot(HaveOccurred(), stmt)
+			}
+
+			query, args, err := recentFilesByPropertiesQuery(missing, since).ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			plan, err := queryPlan(tx, query, args...)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plan).To(ContainElement(ContainSubstring("USING INDEX media_file_title")))
+		})
+	})
+
 	Describe("dbMediaFile.String", func() {
 		It("does not dereference a nil MediaFile", func() {
 			Expect(fmt.Sprint(dbMediaFile{})).To(Equal("<nil>"))

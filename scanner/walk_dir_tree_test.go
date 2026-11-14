@@ -27,8 +27,26 @@ var _ = Describe("walk_dir_tree", func() {
 			ctx  context.Context
 		)
 
+		// Helper function to call walkDirTree and collect folders from the results channel
+		getFolders := func(targets ...string) map[string]*folderEntry {
+			results, err := walkDirTree(ctx, job, targets...)
+			Expect(err).ToNot(HaveOccurred())
+
+			folders := map[string]*folderEntry{}
+			g := errgroup.Group{}
+			g.Go(func() error {
+				for folder := range results {
+					folders[folder.path] = folder
+				}
+				return nil
+			})
+			_ = g.Wait()
+			return folders
+		}
+
 		Context("full library", func() {
 			BeforeEach(func() {
+				conf.Update(func(c *conf.Options) { c.Scanner.RespectNoMedia = true })
 				ctx = GinkgoT().Context()
 				fsys = &mockMusicFS{
 					FS: fstest.MapFS{
@@ -53,6 +71,9 @@ var _ = Describe("walk_dir_tree", func() {
 						"root/h/.hidden.mp3":                              {},
 						"root/i/.git/config":                              {},
 						"root/i/.streams/stream.mp3":                      {},
+						"root/j/.nomedia":                                 {},
+						"root/j/f1.mp3":                                   {},
+						"root/j/sub/f2.mp3":                               {},
 					},
 				}
 				job = &scanJob{
@@ -60,23 +81,6 @@ var _ = Describe("walk_dir_tree", func() {
 					lib: model.Library{Path: "/music"},
 				}
 			})
-
-			// Helper function to call walkDirTree and collect folders from the results channel
-			getFolders := func() map[string]*folderEntry {
-				results, err := walkDirTree(ctx, job)
-				Expect(err).ToNot(HaveOccurred())
-
-				folders := map[string]*folderEntry{}
-				g := errgroup.Group{}
-				g.Go(func() error {
-					for folder := range results {
-						folders[folder.path] = folder
-					}
-					return nil
-				})
-				_ = g.Wait()
-				return folders
-			}
 
 			DescribeTable("symlink handling",
 				func(followSymlinks bool, expectedFolderCount int) {
@@ -100,6 +104,8 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(folders["root/c"].audioFiles).To(BeEmpty())
 					Expect(folders["root/c"].imageFiles).To(BeEmpty())
 					Expect(folders).ToNot(HaveKey("root/d"))
+					Expect(folders["root/j"].audioFiles).To(BeEmpty())
+					Expect(folders).ToNot(HaveKey("root/j/sub"))
 
 					// By default (Scanner.IgnoreDotFolders == true), dot-prefixed
 					// folders are skipped, dot-prefixed files are not indexed, and
@@ -122,8 +128,8 @@ var _ = Describe("walk_dir_tree", func() {
 						Expect(folders["root/f"].audioFiles).ToNot(HaveKey("evil.mp3"))
 					}
 				},
-				Entry("with symlinks enabled", true, 11),
-				Entry("with symlinks disabled", false, 10),
+				Entry("with symlinks enabled", true, 12),
+				Entry("with symlinks disabled", false, 11),
 			)
 
 			DescribeTable("dot-prefixed folders with IgnoreDotFolders disabled",
@@ -149,6 +155,37 @@ var _ = Describe("walk_dir_tree", func() {
 				},
 				Entry("with symlinks enabled", true),
 				Entry("with symlinks disabled", false),
+			)
+
+			It("scans folders containing a .nomedia file when RespectNoMedia is disabled", func() {
+				conf.Update(func(c *conf.Options) { c.Scanner.RespectNoMedia = false })
+				folders := getFolders()
+
+				Expect(folders["root/j"].audioFiles).To(HaveKey("f1.mp3"))
+				Expect(folders["root/j/sub"].audioFiles).To(HaveKey("f2.mp3"))
+			})
+		})
+
+		Context("targeted scans", func() {
+			BeforeEach(func() {
+				conf.Update(func(c *conf.Options) { c.Scanner.RespectNoMedia = true })
+				ctx = GinkgoT().Context()
+			})
+
+			DescribeTable("skips a folder ignored by its parent, even if it re-includes files",
+				func(targets []string) {
+					job = &scanJob{fs: &mockMusicFS{FS: fstest.MapFS{
+						"a/.nomedia":     {},
+						"a/b/.ndignore":  {Data: []byte("!song.mp3\n!c")},
+						"a/b/song.mp3":   {},
+						"a/b/c/song.mp3": {},
+					}}, lib: model.Library{Path: "/music"}}
+
+					Expect(getFolders(targets...)).ToNot(SatisfyAny(HaveKey("a/b"), HaveKey("a/b/c")))
+				},
+				Entry("full scan", nil),
+				Entry("targeted scan", []string{"a/b"}),
+				Entry("targeted scan of a deeper folder", []string{"a/b/c"}),
 			)
 		})
 

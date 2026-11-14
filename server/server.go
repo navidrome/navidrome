@@ -37,7 +37,9 @@ type Server struct {
 
 func New(ds model.DataStore, broker events.Broker, insights metrics.Insights) *Server {
 	s := &Server{ds: ds, broker: broker, insights: insights}
-	initialSetup(ds)
+	if err := initialSetup(context.TODO(), ds); err != nil {
+		log.Fatal("Error running initial setup", err)
+	}
 	auth.Init(s.ds)
 	s.initRoutes()
 	s.mountAuthenticationRoutes()
