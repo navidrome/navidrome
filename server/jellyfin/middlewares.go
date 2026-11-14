@@ -205,7 +205,11 @@ func (api *Router) withPlayer(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+		// RemoteAddr is a bare IP, without port, when realIPMiddleware took it from a trusted proxy
+		ip := r.RemoteAddr
+		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			ip = host
+		}
 		player, trc, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
 		if err != nil {
 			// Fail open, like Subsonic's getPlayer: proceed without a player; reporting handlers

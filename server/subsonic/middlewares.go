@@ -294,7 +294,11 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			ctx := r.Context()
 			userName, _ := request.UsernameFrom(ctx)
 			client, _ := request.ClientFrom(ctx)
-			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			// RemoteAddr is a bare IP, without port, when realIPMiddleware took it from a trusted proxy
+			ip := r.RemoteAddr
+			if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+				ip = host
+			}
 			userAgent := canonicalUserAgent(r)
 
 			var player *model.Player

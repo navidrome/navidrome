@@ -664,6 +664,22 @@ var _ = Describe("Middlewares", func() {
 			Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone")))
 		})
 
+		It("registers the player with the client IP from RemoteAddr", func() {
+			r.RemoteAddr = "192.0.2.10:54321"
+			gp := getPlayer(mockedPlayers)(next)
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
+		It("keeps the client IP when RemoteAddr has no port, as set behind a trusted proxy", func() {
+			r.RemoteAddr = "192.0.2.10"
+			gp := getPlayer(mockedPlayers)(next)
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
 		It("does not add the cookie if there was an error", func() {
 			ctx := request.WithClient(r.Context(), "error")
 			r = r.WithContext(ctx)
@@ -872,10 +888,12 @@ type mockPlayers struct {
 	core.Players
 	transcoding *model.Transcoding
 	touched     bool
+	ip          string
 }
 
-func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, _ string) (*model.Player, *model.Transcoding, error) {
+func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, ip string) (*model.Player, *model.Transcoding, error) {
 	mp.touched = true
+	mp.ip = ip
 	return &plr, mp.transcoding, nil
 }
 
@@ -884,6 +902,7 @@ func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player,
 }
 
 func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, *model.Transcoding, error) {
+	mp.ip = ip
 	if client == "error" {
 		return nil, nil, errors.New(client)
 	}
