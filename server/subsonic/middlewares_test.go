@@ -680,6 +680,14 @@ var _ = Describe("Middlewares", func() {
 			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
 		})
 
+		It("does not take a unix socket peer for an IP", func() {
+			r.RemoteAddr = "@"
+			gp := getPlayer(mockedPlayers)(next)
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(BeEmpty())
+		})
+
 		It("does not add the cookie if there was an error", func() {
 			ctx := request.WithClient(r.Context(), "error")
 			r = r.WithContext(ctx)

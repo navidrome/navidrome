@@ -205,10 +205,13 @@ func (api *Router) withPlayer(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// RemoteAddr is a bare IP, without port, when realIPMiddleware took it from a trusted proxy
-		ip := r.RemoteAddr
+		// RemoteAddr is a bare IP, without port, when realIPMiddleware took it from a trusted proxy.
+		// Anything else that has no port, such as "@" on a unix socket, is no address.
+		var ip string
 		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 			ip = host
+		} else if net.ParseIP(r.RemoteAddr) != nil {
+			ip = r.RemoteAddr
 		}
 		player, trc, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
 		if err != nil {
