@@ -685,4 +685,60 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Entry("comment", "comment"),
 		)
 	})
+
+	Describe("Removing songs when the playlist has a missing track (issue #6461)", Ordered, func() {
+		var playlistID string
+		var songs model.MediaFiles
+
+		BeforeAll(func() {
+			setupTestDB()
+
+			var err error
+			songs, err = ds.MediaFile().GetAll(ctx, model.QueryOptions{Sort: "title", Max: 3})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(3))
+
+			resp := doReq("createPlaylist", "name", "Missing Track Playlist",
+				"songId", songs[0].ID, "songId", songs[1].ID, "songId", songs[2].ID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			playlistID = resp.Playlist.Id
+
+			// The middle song's file disappears from the library
+			Expect(ds.MediaFile().MarkMissing(ctx, true, &songs[1])).To(Succeed())
+		})
+
+		It("getPlaylist hides the missing track", func() {
+			resp := doReq("getPlaylist", "id", playlistID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.Playlist.Entry).To(HaveLen(2))
+			Expect(resp.Playlist.Entry[0].Id).To(Equal(songs[0].ID))
+			Expect(resp.Playlist.Entry[1].Id).To(Equal(songs[2].ID))
+		})
+
+		It("songIndexToRemove counts only the tracks getPlaylist returns", func() {
+			// Index 1 is the third song, as the client sees it
+			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "1")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			resp = doReq("getPlaylist", "id", playlistID)
+			Expect(resp.Playlist.Entry).To(HaveLen(1))
+			Expect(resp.Playlist.Entry[0].Id).To(Equal(songs[0].ID))
+
+			// The hidden missing track must still be stored
+			ids, err := ds.Playlist().Tracks(ctx, playlistID, false).
+				GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(Equal([]string{songs[0].ID, songs[1].ID}))
+		})
+
+		It("ignores an index past the end of the visible list", func() {
+			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "1")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			ids, err := ds.Playlist().Tracks(ctx, playlistID, false).
+				GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(Equal([]string{songs[0].ID, songs[1].ID}))
+		})
+	})
 })

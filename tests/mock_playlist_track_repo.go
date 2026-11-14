@@ -84,6 +84,13 @@ func (m *MockPlaylistTrackRepo) GetMediaFileIDs(_ context.Context, options ...mo
 	return slice.Map(m.page(options...), func(t model.PlaylistTrack) string { return t.MediaFileID }), nil
 }
 
+func (m *MockPlaylistTrackRepo) GetPositionIDs(_ context.Context, options ...model.QueryOptions) ([]string, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	return slice.Map(m.page(options...), func(t model.PlaylistTrack) string { return t.ID }), nil
+}
+
 func (m *MockPlaylistTrackRepo) Add(_ context.Context, ids []string) (int, error) {
 	m.AddedIds = append(m.AddedIds, ids...)
 	if m.Err != nil {

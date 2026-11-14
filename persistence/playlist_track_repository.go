@@ -155,6 +155,20 @@ func (r *playlistTrackRepository) GetMediaFileIDs(ctx context.Context, options .
 	return ids, nil
 }
 
+// GetPositionIDs returns the tracks' position ids (playlist_tracks.id), for callers that need to map
+// client indexes onto stored rows but no track data.
+func (r *playlistTrackRepository) GetPositionIDs(ctx context.Context, options ...model.QueryOptions) ([]string, error) {
+	query := r.newSelect(ctx, options...).Columns("playlist_tracks.id").
+		Join("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(ctx, query, "f")
+	var ids []string
+	if err := r.queryAllSlice(ctx, query, &ids); err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 func (r *playlistTrackRepository) GetAlbumIDs(ctx context.Context, options ...model.QueryOptions) ([]string, error) {
 	query := r.newSelect(ctx, options...).Columns("distinct mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").

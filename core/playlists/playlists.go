@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
@@ -190,11 +190,18 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 
 		if len(idxToRemove) > 0 {
 			tracksRepo := repo.Tracks(ctx, playlistID, false)
-			// Convert 0-based indices to 1-based position IDs and delete them directly,
-			// avoiding the need to load all tracks into memory.
-			positions := make([]string, len(idxToRemove))
-			for i, idx := range idxToRemove {
-				positions[i] = strconv.Itoa(idx + 1)
+			// Indices refer to the list GetWithTracks returns, which hides missing tracks and tracks
+			// from libraries the user can't access, so map them onto that list's position ids
+			// (loading ids only, not track data). Out-of-range indices are ignored.
+			visible, err := tracksRepo.GetPositionIDs(ctx, model.QueryOptions{Sort: "id", Filters: squirrel.Eq{"missing": false}})
+			if err != nil {
+				return err
+			}
+			positions := make([]string, 0, len(idxToRemove))
+			for _, idx := range idxToRemove {
+				if idx >= 0 && idx < len(visible) {
+					positions = append(positions, visible[idx])
+				}
 			}
 			if err := tracksRepo.Delete(ctx, positions...); err != nil {
 				return err

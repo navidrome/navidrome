@@ -81,6 +81,17 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		})
 	})
 
+	Describe("GetPositionIDs", func() {
+		It("returns the position ids of the same rows GetAll returns", func() {
+			tracks, err := repo.GetAll(ctx, model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(tracks).To(HaveLen(2))
+
+			Expect(repo.GetPositionIDs(ctx, model.QueryOptions{Sort: "id"})).
+				To(Equal([]string{tracks[0].ID, tracks[1].ID}))
+		})
+	})
+
 	Describe("Insert", func() {
 		var tracks model.PlaylistTrackRepository
 		var plsID string
