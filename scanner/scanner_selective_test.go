@@ -2,6 +2,7 @@ package scanner_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing/fstest"
 	"time"
@@ -34,9 +35,12 @@ var _ = Describe("ScanFolders", Ordered, func() {
 	var fsys storagetest.FakeFS
 
 	BeforeAll(func() {
-		tests.SkipOnWindows("SQLite file lock blocks TempDir cleanup (#TBD-path-sep-scanner)")
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		tmpDir := GinkgoT().TempDir()
+		// db.Db() is a process-wide singleton, so this dir may hold the open DB until
+		// the suite ends, and Windows can't delete an open file
+		tmpDir, err := os.MkdirTemp("", "scanner-test")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
 		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL") })
 		log.Warn("Using DB at " + conf.Server().DbPath)
