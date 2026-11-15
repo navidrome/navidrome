@@ -16,11 +16,27 @@ import (
 
 // fakeLyricsService returns canned lyrics per media-file ID.
 type fakeLyricsService struct {
-	lyrics map[string]model.LyricList
-	err    error
+	lyrics   map[string]model.LyricList
+	err      error
+	panicVal any
+	blockCh  <-chan struct{}
+	doneCh   chan<- struct{}
 }
 
-func (f *fakeLyricsService) GetLyrics(_ context.Context, mf *model.MediaFile) (model.LyricList, error) {
+func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+	if f.doneCh != nil {
+		defer close(f.doneCh)
+	}
+	if f.blockCh != nil {
+		select {
+		case <-f.blockCh:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	if f.panicVal != nil {
+		panic(f.panicVal)
+	}
 	if f.err != nil {
 		return nil, f.err
 	}
