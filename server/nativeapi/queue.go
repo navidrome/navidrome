@@ -55,8 +55,7 @@ func storedIndex(stored, visible model.MediaFiles, i int) int {
 	return i
 }
 
-// fallbackCurrent returns the stored index of the track GET shows instead of a stored current track the user
-// can't see, so a new position is saved for that track. The cheap Exists check keeps the common case light.
+// fallbackCurrent returns the stored index of the track GET shows in place of a stored current track the user can't see.
 func fallbackCurrent(ctx context.Context, w http.ResponseWriter, ds model.DataStore, userID string) (int, bool, bool) {
 	repo := ds.PlayQueue()
 	stored, ok := retrieveQueue(ctx, w, userID, repo.Retrieve)
