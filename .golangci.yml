@@ -72,7 +72,7 @@ linters:
         linters:
           - forbidigo
         text: "in migrations"
-      - path-except: '_test\.go'
+      - path-except: '(_test\.go|^tests/)'
         linters:
           - forbidigo
         text: "in tests use"

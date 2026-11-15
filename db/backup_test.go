@@ -166,7 +166,7 @@ var _ = Describe("database backups", func() {
 			path, err := Backup(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = tests.ClearDB()
+			err = tests.ClearDB(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(IsSchemaEmpty(ctx, Db())).To(BeTrue())
 
@@ -220,7 +220,7 @@ var _ = Describe("database backups", func() {
 			Expect(err).ToNot(HaveOccurred())
 			singleton.DeleteInstance[*sql.DB]()
 
-			err = tests.ClearDB()
+			err = tests.ClearDB(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("restoring the backup")

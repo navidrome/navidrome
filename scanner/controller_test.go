@@ -30,7 +30,7 @@ var _ = Describe("Controller", func() {
 	Describe("Status", func() {
 		BeforeEach(func() {
 			db.Init(ctx)
-			DeferCleanup(func() { Expect(tests.ClearDB()).To(Succeed()) })
+			DeferCleanup(func() { Expect(tests.ClearDB(ctx)).To(Succeed()) })
 			ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 			ds.MockedProperty = &tests.MockedPropertyRepo{}
 			ctrl = scanner.New(ctx, ds, events.NoopBroker(), playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
