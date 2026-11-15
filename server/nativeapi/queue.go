@@ -86,7 +86,7 @@ func getQueue(ds model.DataStore) http.HandlerFunc {
 		user, _ := request.UserFrom(ctx)
 		repo := ds.PlayQueue()
 		pq, err := repo.RetrieveWithMediaFiles(ctx, user.ID)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
+		if err != nil && !errors.Is(err, model.ErrNotFound) && !errors.Is(err, model.ErrIncompleteQueue) {
 			log.Error(ctx, "Error retrieving queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

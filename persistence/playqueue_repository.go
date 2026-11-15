@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -83,6 +84,9 @@ func (r *playQueueRepository) RetrieveWithMediaFiles(ctx context.Context, userId
 	stored := q.Items
 	var loadErr error
 	q.Items, loadErr = r.loadTracks(ctx, stored)
+	if loadErr != nil && err == nil {
+		err = fmt.Errorf("%w: %w", model.ErrIncompleteQueue, loadErr)
+	}
 	if loadErr == nil && len(q.Items) < len(stored) {
 		q.Current, q.Position = remapCurrent(stored, q.Items, q.Current, q.Position)
 	}

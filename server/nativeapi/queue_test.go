@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
@@ -151,6 +152,20 @@ var _ = Describe("Queue Endpoints", func() {
 			Expect(resp.Position).To(Equal(int64(0)))
 		})
 
+		It("returns the loaded tracks when some of them fail to load", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "track1"}}}
+			repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
+			req := httptest.NewRequest("GET", "/queue", nil)
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			getQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var resp model.PlayQueue
+			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Items).To(HaveLen(1))
+		})
+
 		It("returns internal server error when retrieve fails", func() {
 			repo.Err = true
 			req := httptest.NewRequest("GET", "/queue", nil)
@@ -221,6 +236,13 @@ var _ = Describe("Queue Endpoints", func() {
 
 			It("rejects a current that is only valid for the stored queue", func() {
 				Expect(put(updateQueuePayload{Current: new(2)})).To(Equal(http.StatusBadRequest))
+			})
+
+			It("refuses to update current when the tracks fail to load", func() {
+				repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
+				Expect(put(updateQueuePayload{Current: new(0)})).To(Equal(http.StatusInternalServerError))
+				Expect(repo.LastCols).To(BeNil())
+				Expect(repo.Queue.Current).To(Equal(2))
 			})
 
 			It("keeps the current track and position the client saw when only ids change", func() {

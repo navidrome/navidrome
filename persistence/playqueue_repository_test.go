@@ -309,6 +309,21 @@ var _ = Describe("PlayQueueRepository", func() {
 			AssertPlayQueue(expected, actual)
 		})
 
+		It("returns ErrIncompleteQueue with the queue as stored when the tracks fail to load", func() {
+			Expect(repo.Store(ctx, aPlayQueue("userid", 1, 45, songComeTogether, songDayInALife))).To(Succeed())
+			tx, err := GetDBXBuilder().Begin()
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = tx.Rollback() })
+			_, err = tx.NewQuery("ALTER TABLE media_file RENAME TO media_file_unavailable").Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			actual, err := NewPlayQueueRepository(tx).RetrieveWithMediaFiles(ctx, "userid")
+			Expect(err).To(MatchError(model.ErrIncompleteQueue))
+			Expect(actual.Items).To(BeEmpty())
+			Expect(actual.Current).To(Equal(1))
+			Expect(actual.Position).To(Equal(int64(45)))
+		})
+
 		Context("when tracks are no longer in the library", func() {
 			var mfRepo model.MediaFileRepository
 			gone := songRadioactivity

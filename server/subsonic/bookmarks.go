@@ -82,7 +82,7 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 
 	repo := api.ds.PlayQueue()
 	pq, err := repo.RetrieveWithMediaFiles(r.Context(), user.ID)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
+	if err != nil && !errors.Is(err, model.ErrNotFound) && !errors.Is(err, model.ErrIncompleteQueue) {
 		return nil, err
 	}
 	if pq == nil || len(pq.Items) == 0 {
@@ -153,7 +153,7 @@ func (api *Router) GetPlayQueueByIndex(r *http.Request) (*responses.Subsonic, er
 
 	repo := api.ds.PlayQueue()
 	pq, err := repo.RetrieveWithMediaFiles(r.Context(), user.ID)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
+	if err != nil && !errors.Is(err, model.ErrNotFound) && !errors.Is(err, model.ErrIncompleteQueue) {
 		return nil, err
 	}
 	if pq == nil || len(pq.Items) == 0 {

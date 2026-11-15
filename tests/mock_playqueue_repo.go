@@ -12,8 +12,10 @@ type MockPlayQueueRepo struct {
 	Queue *model.PlayQueue
 	// QueueWithMediaFiles, when set, is what RetrieveWithMediaFiles returns, to simulate tracks the user can't see
 	QueueWithMediaFiles *model.PlayQueue
-	Err                 bool
-	LastCols            []string
+	// WithMediaFilesErr is returned by RetrieveWithMediaFiles together with the queue
+	WithMediaFilesErr error
+	Err               bool
+	LastCols          []string
 }
 
 func (m *MockPlayQueueRepo) Store(_ context.Context, q *model.PlayQueue, cols ...string) error {
@@ -44,7 +46,7 @@ func (m *MockPlayQueueRepo) RetrieveWithMediaFiles(_ context.Context, userId str
 	copy(copyItems, src.Items)
 	qCopy := *src
 	qCopy.Items = copyItems
-	return &qCopy, nil
+	return &qCopy, m.WithMediaFilesErr
 }
 
 func (m *MockPlayQueueRepo) Retrieve(_ context.Context, userId string) (*model.PlayQueue, error) {
