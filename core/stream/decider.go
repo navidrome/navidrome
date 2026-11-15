@@ -180,7 +180,6 @@ func applyServerOverride(ctx context.Context, original *ClientInfo, trc *model.T
 		TranscodingProfiles: []Profile{
 			{Container: trc.TargetFormat, AudioCodec: trc.TargetFormat, Protocol: ProtocolHTTP},
 		},
-		AllowLossyToLossless: true,
 	}
 }
 

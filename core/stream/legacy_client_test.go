@@ -285,15 +285,14 @@ var _ = Describe("ResolveRequest", func() {
 			Expect(req.BitRate).To(Equal(160))
 		})
 
-		It("transcodes a lossy source when the override targets a lossless format", func() {
+		It("serves a lossy source raw when the override targets a lossless format", func() {
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
 			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "flac", DefaultBitRate: 0})
 
 			decider := svc.(*deciderService)
 			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
 
-			Expect(req.Format).To(Equal("flac"))
-			Expect(req.BitRate).To(BeZero())
+			Expect(req.Format).To(Equal("raw"))
 		})
 
 		It("does not apply override when no transcoding is in context", func() {
