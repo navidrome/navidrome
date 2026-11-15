@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockNotify = vi.fn()
 const mockRefresh = vi.fn()
+const mockRescanPlugins = vi.fn()
 
 // Mock react-admin hooks
 vi.mock('react-admin', async () => {
@@ -19,6 +20,7 @@ vi.mock('react-admin', async () => {
     useUpdate: vi.fn(() => [vi.fn(), { loading: false }]),
     useNotify: vi.fn(() => mockNotify),
     useRefresh: vi.fn(() => mockRefresh),
+    useDataProvider: vi.fn(() => ({ rescanPlugins: mockRescanPlugins })),
     useTranslate: vi.fn(() => (key) => key),
     useResourceContext: vi.fn(() => 'plugin'),
     useRecordContext: vi.fn(() => ({
@@ -78,18 +80,12 @@ vi.mock('./ToggleEnabledSwitch', () => ({
   default: () => <span data-testid="toggle-switch" />,
 }))
 
-// Mock httpClient
-const mockHttpClient = vi.fn()
-vi.mock('../dataProvider', () => ({
-  httpClient: (...args) => mockHttpClient(...args),
-}))
-
 import PluginList from './PluginList'
 
 describe('PluginList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHttpClient.mockResolvedValue({})
+    mockRescanPlugins.mockResolvedValue({ data: {} })
   })
 
   it('renders the list component', () => {
@@ -116,9 +112,7 @@ describe('PluginList', () => {
     fireEvent.click(rescanButton)
 
     await waitFor(() => {
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/plugin/rescan', {
-        method: 'POST',
-      })
+      expect(mockRescanPlugins).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -135,7 +129,7 @@ describe('PluginList', () => {
   })
 
   it('shows error notification on rescan failure', async () => {
-    mockHttpClient.mockRejectedValue(new Error('Network error'))
+    mockRescanPlugins.mockRejectedValue(new Error('Network error'))
 
     render(<PluginList />)
     const toolbar = screen.getByTestId('top-toolbar')
@@ -165,9 +159,7 @@ describe('PluginList', () => {
     fireEvent.click(rescanButton)
 
     await waitFor(() => {
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/plugin/rescan', {
-        method: 'POST',
-      })
+      expect(mockRescanPlugins).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -1,6 +1,6 @@
 import jsonServerProvider from 'ra-data-json-server'
 import httpClient from './httpClient'
-import { REST_URL } from '../consts'
+import { M3U_MIME_TYPE, REST_URL } from '../consts'
 
 const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
@@ -247,6 +247,51 @@ const wrapperDataProvider = {
     httpClient(`${REST_URL}/metadata/${REFRESH_KIND[resource]}/${id}/refresh`, {
       method: 'POST',
     }).then(() => ({ data: { id } })),
+  // useDataProvider forwards only two arguments when the first is a string, so id and file share one.
+  uploadImage: (resource, { id, file }) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    return httpClient(`${REST_URL}/${resource}/${id}/image`, {
+      method: 'POST',
+      headers: new Headers({}),
+      body: formData,
+    }).then(({ json }) => ({ data: json }))
+  },
+  deleteImage: (resource, id) =>
+    httpClient(`${REST_URL}/${resource}/${id}/image`, {
+      method: 'DELETE',
+    }).then(({ json }) => ({ data: json })),
+  getPlaylistTracks: (playlistId) =>
+    httpClient(`${REST_URL}/playlist/${playlistId}/tracks`).then(
+      ({ json }) => ({ data: json }),
+    ),
+  exportPlaylist: (playlistId) =>
+    httpClient(`${REST_URL}/playlist/${playlistId}/tracks`, {
+      headers: new Headers({ Accept: M3U_MIME_TYPE }),
+    }).then(({ body }) => ({ data: body })),
+  getLastfmLink: () =>
+    httpClient(`${REST_URL}/lastfm/link`).then(({ json }) => ({ data: json })),
+  unlinkLastfm: () =>
+    httpClient(`${REST_URL}/lastfm/link`, { method: 'DELETE' }).then(
+      ({ json }) => ({ data: json }),
+    ),
+  getListenBrainzLink: () =>
+    httpClient(`${REST_URL}/listenbrainz/link`).then(({ json }) => ({
+      data: json,
+    })),
+  linkListenBrainz: (token) =>
+    httpClient(`${REST_URL}/listenbrainz/link`, {
+      method: 'PUT',
+      body: JSON.stringify({ token }),
+    }).then(({ json }) => ({ data: json })),
+  unlinkListenBrainz: () =>
+    httpClient(`${REST_URL}/listenbrainz/link`, { method: 'DELETE' }).then(
+      ({ json }) => ({ data: json }),
+    ),
+  rescanPlugins: () =>
+    httpClient(`${REST_URL}/plugin/rescan`, { method: 'POST' }).then(
+      ({ json }) => ({ data: json }),
+    ),
 }
 
 export default wrapperDataProvider

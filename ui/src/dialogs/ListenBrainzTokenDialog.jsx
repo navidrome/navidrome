@@ -10,14 +10,14 @@ import {
   Link,
   TextField,
 } from '@material-ui/core'
-import { useNotify, useTranslate } from 'react-admin'
+import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch, useSelector } from 'react-redux'
 import { closeListenBrainzTokenDialog } from '../actions'
-import { httpClient } from '../dataProvider'
 
 export const ListenBrainzTokenDialog = ({ setLinked }) => {
   const dispatch = useDispatch()
   const notify = useNotify()
+  const dataProvider = useDataProvider()
   const translate = useTranslate()
   const { open } = useSelector((state) => state.listenBrainzTokenDialog)
   const [token, setToken] = useState('')
@@ -35,13 +35,11 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
   const handleSave = useCallback(
     (event) => {
       setChecking(true)
-      httpClient('/api/listenbrainz/link', {
-        method: 'PUT',
-        body: JSON.stringify({ token: token }),
-      })
+      dataProvider
+        .linkListenBrainz(token)
         .then((response) => {
           notify('message.listenBrainzLinkSuccess', 'success', {
-            user: response.json.user,
+            user: response.data.user,
           })
           setLinked(true)
           setToken('')
@@ -58,7 +56,7 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
           event.stopPropagation()
         })
     },
-    [dispatch, notify, setLinked, token],
+    [dataProvider, dispatch, notify, setLinked, token],
   )
 
   const handleClickClose = (event) => {

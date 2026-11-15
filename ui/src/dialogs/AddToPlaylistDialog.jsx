@@ -21,8 +21,6 @@ import {
 } from '../actions'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
 import DuplicateSongDialog from './DuplicateSongDialog'
-import { httpClient } from '../dataProvider'
-import { REST_URL } from '../consts'
 
 const useStyles = makeStyles({
   dialogPaper: {
@@ -86,9 +84,10 @@ export const AddToPlaylistDialog = () => {
   }
 
   const checkDuplicateSong = (playlistObject) => {
-    httpClient(`${REST_URL}/playlist/${playlistObject.id}/tracks`)
+    dataProvider
+      .getPlaylistTracks(playlistObject.id)
       .then((res) => {
-        const tracks = res.json
+        const tracks = res.data
         if (tracks) {
           const dupSng = tracks.filter((song) =>
             selectedIds.some((id) => id === song.mediaFileId),
