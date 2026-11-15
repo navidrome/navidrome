@@ -1,0 +1,16 @@
+get:
+  operationId: getCapabilities
+  x-module: core
+  x-stability-level: alpha
+  tags: [server]
+  summary: List implemented capability modules
+  description: The capability modules this server implements. Any valid grant may read it, whatever its scopes.
+  security: [{bearerAuth: []}]
+  responses:
+    '200':
+      description: Implemented modules.
+      content:
+        application/json:
+          schema: {$ref: ../components/schemas/Capabilities.yaml}
+    '401': {$ref: ../components/responses/Unauthorized.yaml}
+    '500': {$ref: ../components/responses/InternalError.yaml}

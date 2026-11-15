@@ -72,7 +72,10 @@ const (
 
 type contextKey string
 
-const loggerCtxKey = contextKey("logger")
+const (
+	loggerCtxKey  = contextKey("logger")
+	secretsCtxKey = contextKey("secrets")
+)
 
 type levelPath struct {
 	path  string
@@ -188,6 +191,34 @@ func NewContext(ctx context.Context, keyValuePairs ...any) context.Context {
 	return ctx
 }
 
+// Shorter values could match unrelated log text, or the [REDACTED] marker itself.
+const minSecretLen = 8
+
+// WithSecrets returns a context whose log entries have every occurrence of values replaced by
+// [REDACTED], when redacting is enabled. Values shorter than minSecretLen are ignored.
+func WithSecrets(ctx context.Context, values ...string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	secrets := slices.Clone(secretsFrom(ctx))
+	for _, v := range values {
+		if len(v) >= minSecretLen {
+			secrets = append(secrets, v)
+		}
+	}
+	// Longest first, so a secret containing another is not left partly visible.
+	slices.SortStableFunc(secrets, func(a, b string) int { return cmp.Compare(len(b), len(a)) })
+	return context.WithValue(ctx, secretsCtxKey, secrets)
+}
+
+func secretsFrom(ctx context.Context) []string {
+	if ctx == nil {
+		return nil
+	}
+	secrets, _ := ctx.Value(secretsCtxKey).([]string)
+	return secrets
+}
+
 // SetDefaultLogger swaps the process-wide logger and returns the previous one,
 // so tests can restore the original (with its hooks and formatter) on cleanup.
 func SetDefaultLogger(l *logrus.Logger) *logrus.Logger {
@@ -289,6 +320,12 @@ func parseArgs(args []any) (*logrus.Entry, string) {
 		if err != nil {
 			l = createNewLogger()
 		} else {
+			switch ctx := args[0].(type) {
+			case context.Context:
+				l = l.WithContext(ctx)
+			case *http.Request:
+				l = l.WithContext(ctx.Context())
+			}
 			args = args[1:]
 		}
 	}

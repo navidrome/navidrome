@@ -1,11 +1,14 @@
 package log
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 
@@ -93,9 +96,9 @@ var _ = Describe("Logger", func() {
 
 		It("logs source file and line number, if requested", func() {
 			SetLogSourceLine(true)
+			_, _, line, _ := runtime.Caller(0)
 			Error("A crash happened")
-			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:96"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring(fmt.Sprintf("/log/log_test.go:%d", line+1)))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
@@ -108,6 +111,26 @@ var _ = Describe("Logger", func() {
 			var t *time.Time
 			Error("Simple Message", "key1", t)
 			Expect(hook.LastEntry().Data["key1"]).To(Equal("nil"))
+		})
+
+		It("passes the call's context to hooks", func() {
+			ctx := WithSecrets(GinkgoT().Context(), "s3cr3t-value")
+			Error(ctx, "Simple Message")
+			Expect(hook.LastEntry().Context).To(Equal(ctx))
+
+			Error(httptest.NewRequest("get", "/", nil).WithContext(ctx), "Simple Message")
+			Expect(hook.LastEntry().Context).To(Equal(ctx))
+		})
+
+		It("redacts the context's secrets when redacting is on", func() {
+			l.AddHook(redacted)
+			ctx := WithSecrets(NewContext(GinkgoT().Context(), "user", "admin"), "s3cr3t-value")
+
+			var buf bytes.Buffer
+			l.SetOutput(&buf)
+			Error(ctx, "Saving s3cr3t-value", "args", map[string]any{"value": "s3cr3t-value"})
+			Expect(buf.String()).ToNot(ContainSubstring("s3cr3t-value"))
+			Expect(buf.String()).To(ContainSubstring("user=admin"))
 		})
 	})
 
