@@ -90,7 +90,9 @@ func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, plu
 		defer cancel()
 		lyricsList, err := provider.GetLyrics(loadCtx, mf)
 		if err != nil {
-			return nil, 0, err
+			// Cached as a miss: some plugins report "no lyrics" as an error.
+			log.Error(ctx, "Error getting lyrics from plugin", "plugin", pluginName, err)
+			return nil, 0, nil
 		}
 		if len(lyricsList) > 0 {
 			log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))

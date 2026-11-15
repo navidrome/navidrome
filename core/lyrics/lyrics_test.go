@@ -396,6 +396,16 @@ var _ = Describe("Lyrics", func() {
 			Expect(mockLoader.calls).To(Equal(1))
 		})
 
+		It("caches a plugin error as a miss, since some plugins report no lyrics as an error", func() {
+			mockLoader.err = fmt.Errorf("no lyrics found from any provider")
+			for range 2 {
+				list, err := svc.GetLyrics(ctx, &mf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(list).To(BeEmpty())
+			}
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
 		It("looks up each track separately", func() {
 			other := mf
 			other.ID = "mf-2"
