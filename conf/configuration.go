@@ -184,6 +184,7 @@ type transcodingOptions struct {
 	MaxConcurrent        int
 	MaxConcurrentPerUser int
 	EnableCancellation   bool
+	AllowLossyToLossless bool
 }
 
 type subsonicOptions struct {
@@ -1067,6 +1068,7 @@ func setViperDefaults() {
 	viper.SetDefault("transcoding.maxconcurrent", 0)
 	viper.SetDefault("transcoding.maxconcurrentperuser", 0)
 	viper.SetDefault("transcoding.enablecancellation", false)
+	viper.SetDefault("transcoding.allowlossytolossless", false)
 	viper.SetDefault("agents", "deezer,lastfm,listenbrainz")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", consts.DefaultInfoLanguage)

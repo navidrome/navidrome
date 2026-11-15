@@ -185,6 +185,29 @@ var _ = Describe("ResolveRequest", func() {
 		Expect(req.Format).To(Equal("opus"))
 	})
 
+	It("transcodes ogg to flac when Transcoding.AllowLossyToLossless is set", func() {
+		conf.Update(func(c *conf.Options) { c.Transcoding.AllowLossyToLossless = true })
+
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", BitRate: 192, Channels: 2, SampleRate: 44100})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "flac", 0, 0)
+
+		Expect(req.Format).To(Equal("flac"))
+		Expect(req.BitRate).To(BeZero())
+	})
+
+	It("does not select flac for ogg when Transcoding.AllowLossyToLossless is unset", func() {
+		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "" })
+
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", BitRate: 192, Channels: 2, SampleRate: 44100})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "flac", 0, 0)
+
+		Expect(req.Format).To(Equal("raw"))
+	})
+
 	It("transcodes to requested format with bitrate limit", func() {
 		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 

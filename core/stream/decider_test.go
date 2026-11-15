@@ -277,6 +277,71 @@ var _ = Describe("Decider", func() {
 				Expect(decision.CanTranscode).To(BeFalse())
 			})
 
+			It("allows lossy to lossless transcoding when Transcoding.AllowLossyToLossless is set", func() {
+				conf.Update(func(c *conf.Options) { c.Transcoding.AllowLossyToLossless = true })
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("flac"))
+				Expect(decision.TargetBitrate).To(BeZero())
+			})
+
+			It("rejects a lossy-to-lossless target when the source exceeds MaxAudioBitrate", func() {
+				conf.Update(func(c *conf.Options) { c.Transcoding.AllowLossyToLossless = true })
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2})
+				ci := &ClientInfo{
+					MaxAudioBitrate: 256,
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeFalse())
+			})
+
+			It("gives a lossy-to-lossless target a 16-bit depth", func() {
+				conf.Update(func(c *conf.Options) { c.Transcoding.AllowLossyToLossless = true })
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(16))
+			})
+
+			It("rejects a lossy-to-lossless profile that requires more than 16 bits", func() {
+				conf.Update(func(c *conf.Options) { c.Transcoding.AllowLossyToLossless = true })
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "flac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioBitdepth, Comparison: ComparisonGreaterThanEqual, Values: []string{"24"}, Required: true},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeFalse())
+			})
+
 			It("uses default bitrate when client doesn't specify", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, BitDepth: new(16)})
 				ci := &ClientInfo{
