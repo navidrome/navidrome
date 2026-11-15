@@ -67,6 +67,7 @@ linters:
       - path: _test\.go
         linters:
           - containedctx
+      # forbidigo rules are scoped by their msg: "in migrations" or "in tests use"
       - path-except: 'db/migrations/'
         linters:
           - forbidigo

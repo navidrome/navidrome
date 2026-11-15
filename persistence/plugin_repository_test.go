@@ -208,12 +208,12 @@ var _ = Describe("PluginRepository", func() {
 
 			It("does not need the write lock when no plugins have errors", func() {
 				_ = repo.Put(ctx, &model.Plugin{ID: "clean-plugin", Path: "/plugins/c.wasm", Manifest: "{}", SHA256: "h1"})
-				conn, err := db.Db().Conn(GinkgoT().Context())
+				conn, err := db.Db().Conn(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(conn.Close)
-				_, err = conn.ExecContext(GinkgoT().Context(), "BEGIN IMMEDIATE")
+				_, err = conn.ExecContext(ctx, "BEGIN IMMEDIATE")
 				Expect(err).ToNot(HaveOccurred())
-				DeferCleanup(func() { _, _ = conn.ExecContext(ctx, "ROLLBACK") })
+				DeferCleanup(func() { _, _ = conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK") })
 
 				Expect(repo.ClearErrors(ctx)).To(Succeed())
 			})

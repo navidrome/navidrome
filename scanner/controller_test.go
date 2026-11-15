@@ -108,7 +108,7 @@ var _ = Describe("GetInstance", func() {
 	It("returns the same controller to every caller", func() {
 		ds := &tests.MockDataStore{}
 		pls := playlists.NewPlaylists(ds, artwork.NewUploader(ds))
-		ctx := GinkgoT().Context()
+		ctx := context.WithoutCancel(GinkgoT().Context())
 		a := scanner.GetInstance(ctx, ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
 		b := scanner.GetInstance(ctx, ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
 		Expect(a).To(BeIdenticalTo(b))

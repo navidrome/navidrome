@@ -176,7 +176,7 @@ var _ = Describe("LibraryRepository", func() {
 			DeferCleanup(lockConn.Close)
 			_, err = lockConn.ExecContext(ctx, "BEGIN IMMEDIATE")
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _, _ = lockConn.ExecContext(ctx, "ROLLBACK") })
+			DeferCleanup(func() { _, _ = lockConn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK") })
 
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 		})
