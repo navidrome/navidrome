@@ -65,7 +65,7 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 	}
 
 	type authResponse struct {
-		JWT string `json:"jwt"` //nolint:gosec
+		JWT string `json:"jwt"`
 	}
 
 	var result authResponse

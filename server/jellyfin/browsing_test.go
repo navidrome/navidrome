@@ -15,18 +15,20 @@ import (
 )
 
 var _ = Describe("Browsing", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	ctxUser := func(libs model.Libraries) context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
+		return request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
 	}
 
 	// admin has no explicit Libraries; access is granted via the IsAdmin bypass, not membership.
 	ctxAdmin := func() context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("admin"), IsAdmin: true, Libraries: nil})
+		return request.WithUser(ctx, model.User{ID: testID("admin"), IsAdmin: true, Libraries: nil})
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		api = &Router{ds: ds}
 	})

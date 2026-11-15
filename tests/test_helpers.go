@@ -49,8 +49,8 @@ func TempFile(t testingT, prefix, suffix string) (*os.File, string, error) {
 
 // ClearDB deletes all tables and data from the database
 // https://stackoverflow.com/questions/525512/drop-all-tables-command
-func ClearDB() error {
-	_, err := db.Db().ExecContext(context.Background(), `
+func ClearDB(ctx context.Context) error {
+	_, err := db.Db().ExecContext(ctx, `
 			PRAGMA writable_schema = 1;
 			DELETE FROM sqlite_master;
 			PRAGMA writable_schema = 0;

@@ -10,13 +10,14 @@ import (
 )
 
 var _ = Describe("IgnoreChecker", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("loadPatternsFromFolder", func() {
 		var ic *IgnoreChecker
-		var ctx context.Context
-
-		BeforeEach(func() {
-			ctx = context.Background()
-		})
 
 		Context("when .ndignore file does not exist", func() {
 			It("should return empty patterns", func() {
@@ -87,10 +88,8 @@ var _ = Describe("IgnoreChecker", func() {
 	Describe("Push and Pop", func() {
 		var ic *IgnoreChecker
 		var fsys fstest.MapFS
-		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = context.Background()
 			fsys = fstest.MapFS{
 				".ndignore":         &fstest.MapFile{Data: []byte("*.txt")},
 				"folder1/.ndignore": &fstest.MapFile{Data: []byte("*.mp3")},
@@ -194,10 +193,8 @@ var _ = Describe("IgnoreChecker", func() {
 
 	Describe("PushAllParents", func() {
 		var ic *IgnoreChecker
-		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = context.Background()
 			fsys := fstest.MapFS{
 				".ndignore":                         &fstest.MapFile{Data: []byte("root.txt")},
 				"folder1/.ndignore":                 &fstest.MapFile{Data: []byte("level1.txt")},
@@ -254,11 +251,6 @@ var _ = Describe("IgnoreChecker", func() {
 
 	Describe("ShouldIgnore", func() {
 		var ic *IgnoreChecker
-		var ctx context.Context
-
-		BeforeEach(func() {
-			ctx = context.Background()
-		})
 
 		Context("with no patterns loaded", func() {
 			It("should not ignore any path", func() {

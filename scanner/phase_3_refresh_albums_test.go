@@ -21,7 +21,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		albumRepo = tests.CreateMockAlbumRepo()
 		mfRepo = tests.CreateMockMediaFileRepo()
 		ds = &tests.MockDataStore{

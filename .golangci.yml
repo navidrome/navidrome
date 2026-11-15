@@ -22,6 +22,7 @@ linters:
     - misspell
     - nakedret
     - nilerr
+    - nolintlint
     - rowserrcheck
     - unconvert
     - whitespace
@@ -49,6 +50,11 @@ linters:
           msg: "use tx.QueryContext(ctx, ...) in migrations to propagate context"
         - pattern: 'tx\.QueryRow$'
           msg: "use tx.QueryRowContext(ctx, ...) in migrations to propagate context"
+        - pattern: '^context\.(Background|TODO)$'
+          msg: "in tests use the spec's ctx (from GinkgoT().Context()), t.Context() or b.Context()"
+    nolintlint:
+      require-specific: true
+      allow-unused: false
     govet:
       enable:
         - nilness
@@ -61,9 +67,15 @@ linters:
       - path: _test\.go
         linters:
           - containedctx
+      # forbidigo rules are scoped by their msg: "in migrations" or "in tests use"
       - path-except: 'db/migrations/'
         linters:
           - forbidigo
+        text: "in migrations"
+      - path-except: '(_test\.go|^tests/)'
+        linters:
+          - forbidigo
+        text: "in tests use"
     generated: lax
     presets:
       - comments

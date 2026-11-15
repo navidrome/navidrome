@@ -20,11 +20,13 @@ import (
 
 var _ = Describe("MPV", func() {
 	var (
+		ctx        context.Context
 		testScript string
 		tempDir    string
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 
 		// Reset MPV cache
 		mpvOnce = sync.Once{}
@@ -213,7 +215,7 @@ var _ = Describe("MPV", func() {
 
 		It("executes MPV command and captures arguments correctly", func() {
 			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
 			deviceName := "auto"
@@ -241,7 +243,7 @@ var _ = Describe("MPV", func() {
 
 		It("handles file paths with spaces", func() {
 			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
 			deviceName := "auto"
@@ -271,7 +273,7 @@ var _ = Describe("MPV", func() {
 
 			It("passes all snapcast arguments correctly", func() {
 				tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 				defer cancel()
 
 				deviceName := "auto"
@@ -304,7 +306,7 @@ var _ = Describe("MPV", func() {
 
 		Context("with nil args", func() {
 			It("returns error when args is nil", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 				defer cancel()
 
 				_, err := start(ctx, nil)
@@ -313,7 +315,7 @@ var _ = Describe("MPV", func() {
 			})
 
 			It("returns error when args is empty", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 				defer cancel()
 
 				_, err := start(ctx, []string{})
@@ -361,7 +363,7 @@ var _ = Describe("MPV", func() {
 			})
 
 			It("returns error when createMPVCommand fails", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 				defer cancel()
 
 				playbackDone := make(chan bool, 1)
@@ -400,7 +402,7 @@ done
 	}
 
 	scriptPath := filepath.Join(tempDir, "mock_mpv"+scriptExt)
-	err := os.WriteFile(scriptPath, []byte(scriptContent), 0755) // nolint:gosec
+	err := os.WriteFile(scriptPath, []byte(scriptContent), 0755) //nolint:gosec
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create mock script: %v", err))
 	}

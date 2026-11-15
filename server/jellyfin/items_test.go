@@ -31,21 +31,23 @@ func withChiURLParam(r *http.Request, kv ...string) *http.Request {
 }
 
 var _ = Describe("Items", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	var fp *fakePlaylists
 	// alice has access to library 1 only; used by tests that don't care about scoping.
 	ctxUser := func() context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
+		return request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
 	}
 	ctxUserWithLibraries := func(libs model.Libraries) context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
+		return request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
 	}
 	// admin has no explicit Libraries; access is granted via the IsAdmin bypass, not membership.
 	ctxAdmin := func() context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("admin"), IsAdmin: true, Libraries: nil})
+		return request.WithUser(ctx, model.User{ID: testID("admin"), IsAdmin: true, Libraries: nil})
 	}
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		fp = &fakePlaylists{}
 		api = &Router{ds: ds, playlists: fp}

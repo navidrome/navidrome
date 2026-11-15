@@ -29,6 +29,7 @@ const (
 
 var _ = Describe("Tag Library Filtering", func() {
 	var (
+		ctx       context.Context
 		tagRockID = id.NewTagID(tagNameGenre, tagValueRock)
 		tagPopID  = id.NewTagID(tagNameGenre, tagValuePop)
 		tagJazzID = id.NewTagID(tagNameGenre, tagValueJazz)
@@ -43,6 +44,7 @@ var _ = Describe("Tag Library Filtering", func() {
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 
 		// Generate unique path suffix to avoid conflicts with other tests
 		uniqueSuffix := time.Now().Format("20060102150405.000")
@@ -75,7 +77,7 @@ var _ = Describe("Tag Library Filtering", func() {
 		}
 
 		// Create test tags
-		adminCtx := request.WithUser(log.NewContext(context.TODO()), adminUser)
+		adminCtx := request.WithUser(log.NewContext(ctx), adminUser)
 		tagRepo := NewTagRepository(GetDBXBuilder())
 
 		createTag := func(libraryID int, name, value string) {
@@ -110,11 +112,9 @@ var _ = Describe("Tag Library Filtering", func() {
 	Describe("TagRepository Library Filtering", func() {
 		// Helper to create repository and read all tags
 		readAllTags := func(user *model.User, filters ...rest.QueryOptions) model.TagList {
-			var ctx context.Context
+			userCtx := ctx
 			if user != nil {
-				ctx = request.WithUser(log.NewContext(context.TODO()), *user)
-			} else {
-				ctx = context.Background() // Headless context
+				userCtx = request.WithUser(log.NewContext(ctx), *user)
 			}
 
 			repo := NewTagRepository(GetDBXBuilder())
@@ -124,23 +124,21 @@ var _ = Describe("Tag Library Filtering", func() {
 				opts = filters[0]
 			}
 
-			tags, err := repo.ReadAll(ctx, opts)
+			tags, err := repo.ReadAll(userCtx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			return tags
 		}
 
 		// Helper to count tags
 		countTags := func(user *model.User) int64 {
-			var ctx context.Context
+			userCtx := ctx
 			if user != nil {
-				ctx = request.WithUser(log.NewContext(context.TODO()), *user)
-			} else {
-				ctx = context.Background()
+				userCtx = request.WithUser(log.NewContext(ctx), *user)
 			}
 
 			repo := NewTagRepository(GetDBXBuilder())
 
-			count, err := repo.Count(ctx)
+			count, err := repo.Count(userCtx)
 			Expect(err).ToNot(HaveOccurred())
 			return count
 		}

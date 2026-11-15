@@ -12,7 +12,11 @@ import (
 )
 
 var _ = Describe("TranscodeLimiter", func() {
-	ctx := log.NewContext(context.TODO())
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = log.NewContext(GinkgoT().Context())
+	})
 
 	Describe("Disabled (both caps <= 0)", func() {
 		It("never blocks and never returns ErrTooManyTranscodes", func() {

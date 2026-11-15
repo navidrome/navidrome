@@ -18,7 +18,7 @@ var _ = Describe("PlayQueueRepository", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = log.NewContext(context.TODO())
+		ctx = log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlayQueueRepository(GetDBXBuilder())
 	})

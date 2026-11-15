@@ -246,7 +246,7 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 // It provides detailed error messages for common issues like encrypted private keys.
 func validateTLSCertificates(certFile, keyFile string) error {
 	// Read the key file to check for encryption
-	keyData, err := os.ReadFile(keyFile) //nolint:gosec
+	keyData, err := os.ReadFile(keyFile)
 	if err != nil {
 		return fmt.Errorf("reading TLS key file: %w", err)
 	}

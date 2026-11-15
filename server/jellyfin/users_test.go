@@ -26,8 +26,7 @@ var _ = Describe("Users", func() {
 		for i, lib := range libs {
 			stripped[i] = model.Library{ID: lib.ID, Name: lib.Name}
 		}
-		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped})
-		return r.WithContext(ctx)
+		return r.WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped}))
 	}
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()

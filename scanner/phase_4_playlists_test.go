@@ -31,8 +31,8 @@ var _ = Describe("phasePlaylists", func() {
 	var propRepo *tests.MockedPropertyRepo
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.AutoImportPlaylists = true })
-		ctx = context.Background()
 		folderRepo = &mockFolderRepository{}
 		userRepo = tests.CreateMockUserRepo()
 		// An admin user exists by default, so playlist import proceeds.

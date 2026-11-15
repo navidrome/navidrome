@@ -103,7 +103,7 @@ func newTaskQueueService(ctx context.Context, pluginName string, manager *Manage
 		return nil, fmt.Errorf("creating taskqueue schema: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // cancel is stored in struct and called in Close()
+	ctx, cancel := context.WithCancel(ctx)
 
 	s := &taskQueueServiceImpl{
 		pluginName:     pluginName,
