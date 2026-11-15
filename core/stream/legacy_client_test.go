@@ -461,7 +461,7 @@ var _ = Describe("ValidateLegacyRequest", func() {
 		func(mf *model.MediaFile, format string, bitRate int, rejected bool) {
 			err := ValidateLegacyRequest(ctx, mf, format, bitRate)
 			if rejected {
-				Expect(err).To(MatchError(ErrLosslessBitRateLimit))
+				Expect(err).To(MatchError(errLosslessBitRateLimit))
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}

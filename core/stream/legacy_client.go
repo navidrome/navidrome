@@ -58,16 +58,16 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 	return ci
 }
 
-var ErrLosslessBitRateLimit = errors.New("cannot limit the bitrate of a lossless format transcoded from a lossy source")
+var errLosslessBitRateLimit = errors.New("cannot limit the bitrate of a lossless format transcoded from a lossy source")
 
 // ValidateLegacyRequest rejects legacy stream parameters that cannot be honored together,
 // instead of silently serving a different format than the one requested.
 func ValidateLegacyRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) error {
-	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
+	if _, ok := serverOverride(ctx); ok {
 		return nil
 	}
-	if reqBitRate > 0 && isLosslessFormat(reqFormat) && !buildSourceStream(mf, nil).IsLossless {
-		return ErrLosslessBitRateLimit
+	if blocksLossyToLossless(buildSourceStream(mf, nil).IsLossless, isLosslessFormat(reqFormat), true, reqBitRate) {
+		return errLosslessBitRateLimit
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func (s *deciderService) ResolveClientRequest(ctx context.Context, mf *model.Med
 // Request. ok is false when no profile fits.
 func (s *deciderService) resolve(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, offset int) (Request, bool) {
 	req := Request{Offset: offset}
-	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
+	if trc, ok := serverOverride(ctx); ok {
 		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
 	} else if player, ok := request.PlayerFrom(ctx); ok {
 		modified := *clientInfo
