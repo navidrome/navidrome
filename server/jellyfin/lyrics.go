@@ -11,9 +11,7 @@ import (
 )
 
 // playbackInfoLyricsTimeout bounds how long getPlaybackInfo waits for lyrics before
-// returning without the Lyric MediaStream, so a slow cold plugin lookup does not stall
-// playback start. The plugin load is detached and cached in core/lyrics, so a lookup
-// that finishes after the deadline still warms the cache for subsequent calls.
+// returning without the Lyric MediaStream; slow plugin lookups finish warming the cache in core/lyrics.
 var playbackInfoLyricsTimeout = 100 * time.Millisecond
 
 // playbackLyrics resolves lyrics for getPlaybackInfo within playbackInfoLyricsTimeout.
