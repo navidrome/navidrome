@@ -89,3 +89,10 @@ func writeUpload(entityType, name, srcFixture string) string {
 	Expect(os.WriteFile(dst, readFixture(srcFixture), 0o600)).To(Succeed())
 	return name
 }
+
+func mustParseArtworkID(id string) model.ArtworkID {
+	GinkgoHelper()
+	artID, err := model.ParseArtworkID(id)
+	Expect(err).ToNot(HaveOccurred())
+	return artID
+}

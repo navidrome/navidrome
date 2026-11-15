@@ -206,7 +206,7 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 			return 0, fmt.Errorf("sending transcoded file: %w", err)
 		}
 		// The 200 is already sent, so dropping the connection is the only way to say "truncated".
-		panic(http.ErrAbortHandler)
+		panic(http.ErrAbortHandler) //nolint:forbidigo
 	}
 	if c == 0 {
 		// Nothing is sent yet, so drop the estimate instead of padding a body that holds no audio.

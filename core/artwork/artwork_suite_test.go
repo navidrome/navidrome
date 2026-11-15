@@ -130,3 +130,10 @@ func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
 	}
 	return nil, model.ErrNotFound
 }
+
+func mustParseArtworkID(id string) model.ArtworkID {
+	GinkgoHelper()
+	artID, err := model.ParseArtworkID(id)
+	Expect(err).ToNot(HaveOccurred())
+	return artID
+}

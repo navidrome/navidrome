@@ -114,7 +114,7 @@ var _ = Describe("Artwork", func() {
 		It("serves a store-backed found image sized (cache miss resizes, second call is a cache hit)", func() {
 			seedFoundStore("al", "al1", coverBytes)
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 100, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("al-al1"), 100, false)
 			Expect(err).ToNot(HaveOccurred())
 			// A resized response versions its ETag with the encode settings, not the pixel hash.
 			Expect(img.ETag).To(Equal(representationTag(img.Hash, 100, false)))
@@ -128,7 +128,7 @@ var _ = Describe("Artwork", func() {
 			hash, _ := hashImage(bytes.NewReader(coverBytes))
 			Expect(os.Remove(store.path(hash, "image/jpeg"))).To(Succeed())
 			Eventually(func(g Gomega) {
-				img2, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 100, false)
+				img2, err := svc.Get(ctx, mustParseArtworkID("al-al1"), 100, false)
 				g.Expect(err).ToNot(HaveOccurred())
 				g.Expect(readAll(img2)).To(Equal(resized))
 			}).Should(Succeed())
@@ -137,7 +137,7 @@ var _ = Describe("Artwork", func() {
 		It("treats a negative size as a full-size request, not a giant resize", func() {
 			seedFoundStore("al", "alneg", coverBytes)
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("al-alneg"), -2000000000, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("al-alneg"), -2000000000, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes), "original bytes, no resize (would OOM)")
 		})
@@ -154,7 +154,7 @@ var _ = Describe("Artwork", func() {
 				Source: "folder", SourcePath: imgPath, RefMtime: mtime,
 			})).To(Succeed())
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("al-al2"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("al-al2"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
@@ -170,7 +170,7 @@ var _ = Describe("Artwork", func() {
 				Source: "folder", SourcePath: secretPath, RefMtime: fileMtime(secretPath),
 			})).To(Succeed())
 
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-alni"), 0, false)
+			_, err := svc.Get(ctx, mustParseArtworkID("al-alni"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "alni")].Priority).To(Equal(model.ArtworkPriorityScan))
 		})
@@ -201,7 +201,7 @@ var _ = Describe("Artwork", func() {
 				_ = s.Close()
 			}).Should(Succeed())
 
-			_, err = svc.Get(ctx, model.MustParseArtworkID("al-alnic"), 100, false)
+			_, err = svc.Get(ctx, mustParseArtworkID("al-alnic"), 100, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "alnic")].Priority).To(Equal(model.ArtworkPriorityScan))
 		})
@@ -217,7 +217,7 @@ var _ = Describe("Artwork", func() {
 				Source: "folder", SourcePath: imgPath, RefMtime: fileMtime(imgPath) + 999,
 			})).To(Succeed())
 
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al3"), 0, false)
+			_, err := svc.Get(ctx, mustParseArtworkID("al-al3"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al3")].Priority).To(Equal(model.ArtworkPriorityScan))
 			ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
@@ -236,7 +236,7 @@ var _ = Describe("Artwork", func() {
 				Source: "folder", SourcePath: imgPath, RefMtime: fileMtime(imgPath) + 999,
 			})).To(Succeed())
 
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al3b"), 100, false)
+			_, err := svc.Get(ctx, mustParseArtworkID("al-al3b"), 100, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al3b")].Priority).To(Equal(model.ArtworkPriorityScan))
 		})
@@ -247,7 +247,7 @@ var _ = Describe("Artwork", func() {
 			Expect(hash).ToNot(BeEmpty())
 			albumRepo.SetData(model.Albums{}) // the album is deleted; its artwork row survives
 
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-alzz"), 0, false)
+			_, err := svc.Get(ctx, mustParseArtworkID("al-alzz"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 		})
 
@@ -256,7 +256,7 @@ var _ = Describe("Artwork", func() {
 				ItemKind: "al", ItemID: "al4", AttemptedAt: time.Now().Add(-365 * 24 * time.Hour),
 			})).To(Succeed())
 
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al4"), 0, false)
+			_, err := svc.Get(ctx, mustParseArtworkID("al-al4"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data).To(BeEmpty())
 		})
@@ -267,7 +267,7 @@ var _ = Describe("Artwork", func() {
 			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
 			albumRepo.SetData(model.Albums{{ID: "al5", Name: "Album", FolderIDs: []string{"f1"}}})
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("al-al5"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("al-al5"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
 
@@ -280,7 +280,7 @@ var _ = Describe("Artwork", func() {
 			folderRepo.result = nil
 			albumRepo.SetData(model.Albums{{ID: "al6", Name: "Album"}})
 
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al6"), 0, false)
+			_, err := svc.Get(ctx, mustParseArtworkID("al-al6"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al6")].Priority).To(Equal(model.ArtworkPriorityBump))
 			_, err = artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
@@ -292,7 +292,7 @@ var _ = Describe("Artwork", func() {
 		It("serves a track's own found art", func() {
 			seedFoundStore("mf", "mf1", coverBytes)
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf1"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mf1"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
@@ -303,7 +303,7 @@ var _ = Describe("Artwork", func() {
 			seedFoundStore("al", "albz", coverBytes)
 			mfRepo.SetData(model.MediaFiles{{ID: "mf7", AlbumID: "albz"}})
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf7"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mf7"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes), "album art, not the persisted embedded art")
 		})
@@ -313,7 +313,7 @@ var _ = Describe("Artwork", func() {
 			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "mf", ItemID: "mf2"})).To(Succeed())
 			mfRepo.SetData(model.MediaFiles{{ID: "mf2", AlbumID: "albm"}})
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf2"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mf2"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
 			_, mfEnq := queueRepo.Data[primaryKey("mf", "mf2")]
@@ -325,7 +325,7 @@ var _ = Describe("Artwork", func() {
 			seedFoundStore("al", "albn", coverBytes)
 			mfRepo.SetData(model.MediaFiles{{ID: "mf3", AlbumID: "albn", HasCoverArt: false}})
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf3"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mf3"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
 			_, mfEnq := queueRepo.Data[primaryKey("mf", "mf3")]
@@ -339,7 +339,7 @@ var _ = Describe("Artwork", func() {
 				Path: "tests/fixtures/artist/an-album/test.mp3", LibraryID: 0,
 			}})
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf4"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mf4"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(readAll(img))).To(BeNumerically(">", 0))
 			Expect(queueRepo.Data[primaryKey("mf", "mf4")].Priority).To(Equal(model.ArtworkPriorityBump))
@@ -353,7 +353,7 @@ var _ = Describe("Artwork", func() {
 			seedFoundStore("al", "aldd", []byte("album-art-distinct")) // album's own found art differs
 			mfRepo.SetData(model.MediaFiles{{ID: "mf5", AlbumID: "aldd", DiscNumber: 1, HasCoverArt: false}})
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf5"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mf5"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			// The disc-folder image, not the album's own art: proof it routed through serveDisc.
 			Expect(readAll(img)).To(Equal(coverBytes))
@@ -369,7 +369,7 @@ var _ = Describe("Artwork", func() {
 			albumRepo.SetData(model.Albums{{ID: "albad", Name: "Album"}})
 			seedFoundStore("al", "albad", coverBytes)
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mfbad"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mfbad"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes), "a placeholder here would be worse than the album cover")
 		})
@@ -381,7 +381,7 @@ var _ = Describe("Artwork", func() {
 			seedFoundStore("al", "alsd", []byte("album-art-distinct"))
 			mfRepo.SetData(model.MediaFiles{{ID: "mf6", AlbumID: "alsd", DiscNumber: 1, HasCoverArt: false}})
 
-			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf6"), 0, false)
+			img, err := svc.Get(ctx, mustParseArtworkID("mf-mf6"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
@@ -541,7 +541,7 @@ var _ = Describe("EntityExists", func() {
 
 	DescribeTable("reports whether the owning entity is still there",
 		func(id string, expected bool) {
-			Expect(entityExists(ctx, ds, model.MustParseArtworkID(id))).To(Equal(expected))
+			Expect(entityExists(ctx, ds, mustParseArtworkID(id))).To(Equal(expected))
 		},
 		Entry("existing album", "al-al1", true),
 		Entry("deleted album", "al-gone", false),
