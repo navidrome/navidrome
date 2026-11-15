@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -474,6 +475,40 @@ var _ = Describe("listenBrainzAgent", func() {
 					Duration:  0,
 				},
 			}))
+		})
+	})
+})
+
+var _ = Describe("register", func() {
+	var ds model.DataStore
+
+	BeforeEach(func() {
+		ds = &tests.MockDataStore{}
+	})
+
+	JustBeforeEach(func() {
+		delete(agents.Map, listenBrainzAgentName)
+		register()
+	})
+
+	When("ListenBrainz is disabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = false })
+		})
+
+		It("still registers the builtin name, but builds no agent", func() {
+			Expect(agents.Map).To(HaveKey(listenBrainzAgentName))
+			Expect(agents.Map[listenBrainzAgentName](ds) == nil).To(BeTrue())
+		})
+	})
+
+	When("ListenBrainz is enabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = true })
+		})
+
+		It("builds the agent", func() {
+			Expect(agents.Map[listenBrainzAgentName](ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
 		})
 	})
 })

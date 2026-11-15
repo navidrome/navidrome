@@ -228,15 +228,21 @@ func (l *listenBrainzAgent) PlaybackReport(context.Context, scrobbler.PlaybackSe
 }
 
 func init() {
-	conf.AddHook(func() {
-		if conf.Server().ListenBrainz.Enabled {
-			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				return listenBrainzConstructor(ds)
-			})
-			agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
-				return listenBrainzConstructor(ds)
-			})
+	conf.AddHook(register)
+}
+
+func register() {
+	scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
+		if !conf.Server().ListenBrainz.Enabled {
+			return nil
 		}
+		return listenBrainzConstructor(ds)
+	})
+	agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
+		if !conf.Server().ListenBrainz.Enabled {
+			return nil
+		}
+		return listenBrainzConstructor(ds)
 	})
 }
 
