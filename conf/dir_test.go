@@ -85,7 +85,7 @@ var _ = Describe("Dir", func() {
 			var fatalMsg []any
 			restore := conf.SetLogFatal(func(args ...any) {
 				fatalMsg = args
-				panic("logFatal called")
+				panic("logFatal called") //nolint:forbidigo
 			})
 			DeferCleanup(restore)
 

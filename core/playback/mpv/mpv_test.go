@@ -2,7 +2,6 @@ package mpv
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -377,6 +376,7 @@ var _ = Describe("MPV", func() {
 
 // createMockMPVScript creates a mock script that outputs arguments to stdout
 func createMockMPVScript(tempDir string) string {
+	GinkgoHelper()
 	var scriptContent string
 	var scriptExt string
 
@@ -402,10 +402,7 @@ done
 	}
 
 	scriptPath := filepath.Join(tempDir, "mock_mpv"+scriptExt)
-	err := os.WriteFile(scriptPath, []byte(scriptContent), 0755) //nolint:gosec
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create mock script: %v", err))
-	}
+	Expect(os.WriteFile(scriptPath, []byte(scriptContent), 0755)).To(Succeed()) //nolint:gosec
 
 	return scriptPath
 }

@@ -144,7 +144,7 @@ linters:
         - pattern: '^context\.(Background|TODO)$'
           msg: "in tests use the spec's ctx (from GinkgoT().Context()), t.Context() or b.Context()"
         - pattern: '^panic$'
-          msg: "return an error instead of panicking; use log.Fatal only for startup failures that must stop the server"
+          msg: "don't panic: return an error, or Expect(...)/Fail(...) in tests; log.Fatal only for startup failures that must stop the server"
     nolintlint:
       require-specific: true
       allow-unused: false
@@ -160,7 +160,7 @@ linters:
       - path: _test\.go
         linters:
           - containedctx
-      # forbidigo rules are scoped by their msg: "in migrations", "in tests use" or "instead of panicking"
+      # forbidigo rules are scoped by their msg: "in migrations" or "in tests use"
       - path-except: 'db/migrations/'
         linters:
           - forbidigo
@@ -169,10 +169,6 @@ linters:
         linters:
           - forbidigo
         text: "in tests use"
-      - path: '(_test\.go|^tests/|/storagetest/)'
-        linters:
-          - forbidigo
-        text: "instead of panicking"
     generated: lax
     presets:
       - comments

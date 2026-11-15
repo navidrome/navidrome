@@ -324,19 +324,14 @@ func loadEmbeddedFixture() {
 }
 
 func extractEmbeddedArt(mp3 []byte) []byte {
+	GinkgoHelper()
 	tf, err := taglib.OpenStream(bytes.NewReader(mp3))
-	if err != nil {
-		panic("embedded-art fixture: taglib.OpenStream failed: " + err.Error())
-	}
+	Expect(err).ToNot(HaveOccurred(), "embedded-art fixture: taglib.OpenStream failed")
 	defer tf.Close()
-	images := tf.Properties().Images
-	if len(images) == 0 {
-		panic("embedded-art fixture has no embedded images")
-	}
+	Expect(tf.Properties().Images).ToNot(BeEmpty(), "embedded-art fixture has no embedded images")
 	data, err := tf.Image(0)
-	if err != nil || len(data) == 0 {
-		panic("embedded-art fixture: could not read image 0")
-	}
+	Expect(err).ToNot(HaveOccurred(), "embedded-art fixture: could not read image 0")
+	Expect(data).ToNot(BeEmpty(), "embedded-art fixture: image 0 is empty")
 	return data
 }
 
