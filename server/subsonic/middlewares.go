@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -294,14 +293,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			ctx := r.Context()
 			userName, _ := request.UsernameFrom(ctx)
 			client, _ := request.ClientFrom(ctx)
-			// RemoteAddr is a bare IP, without port, when realIPMiddleware took it from a trusted proxy.
-			// Anything else that has no port, such as "@" on a unix socket, is no address.
-			var ip string
-			if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-				ip = host
-			} else if net.ParseIP(r.RemoteAddr) != nil {
-				ip = r.RemoteAddr
-			}
+			ip := middleware.GetClientIP(r.Context())
 			userAgent := canonicalUserAgent(r)
 
 			var player *model.Player

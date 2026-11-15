@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -666,7 +667,7 @@ var _ = Describe("Middlewares", func() {
 
 		It("registers the player with the client IP from RemoteAddr", func() {
 			r.RemoteAddr = "192.0.2.10:54321"
-			gp := getPlayer(mockedPlayers)(next)
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
 			gp.ServeHTTP(w, r)
 
 			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
@@ -674,7 +675,7 @@ var _ = Describe("Middlewares", func() {
 
 		It("keeps the client IP when RemoteAddr has no port, as set behind a trusted proxy", func() {
 			r.RemoteAddr = "192.0.2.10"
-			gp := getPlayer(mockedPlayers)(next)
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
 			gp.ServeHTTP(w, r)
 
 			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
@@ -682,7 +683,7 @@ var _ = Describe("Middlewares", func() {
 
 		It("does not take a unix socket peer for an IP", func() {
 			r.RemoteAddr = "@"
-			gp := getPlayer(mockedPlayers)(next)
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
 			gp.ServeHTTP(w, r)
 
 			Expect(mockedPlayers.ip).To(BeEmpty())
