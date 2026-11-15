@@ -215,6 +215,18 @@ var _ = Describe("Public URL Utilities", func() {
 		})
 	})
 
+	Describe("ShareURL", func() {
+		It("builds the share page URL under the configured ShareURL path", func() {
+			conf.Update(func(c *conf.Options) { c.ShareURL = "https://example.com/navi/" })
+			Expect(publicurl.ShareURL(ctx, "abc123")).To(Equal("https://example.com/navi/share/abc123"))
+		})
+
+		It("uses the request address when ShareURL is not set", func() {
+			ctx = request.WithServerAddress(ctx, "https", "music.example.com")
+			Expect(publicurl.ShareURL(ctx, "abc123")).To(Equal("https://music.example.com/share/abc123"))
+		})
+	})
+
 	Describe("ImageURL address precedence", func() {
 		var artID model.ArtworkID
 
