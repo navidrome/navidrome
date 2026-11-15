@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -664,6 +665,40 @@ var _ = Describe("Middlewares", func() {
 			Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone")))
 		})
 
+		It("registers the player with the client IP from RemoteAddr", func() {
+			r.RemoteAddr = "192.0.2.10:54321"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
+		It("keeps the client IP when RemoteAddr has no port, as set behind a trusted proxy", func() {
+			r.RemoteAddr = "192.0.2.10"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
+		It("takes the client IP resolved into the context, not the peer address", func() {
+			// realIPMiddleware resolves forwarding headers from a trusted proxy the same way
+			r.RemoteAddr = "10.0.0.1:1234"
+			r.Header.Set("X-Real-IP", "203.0.113.6")
+			gp := middleware.ClientIPFromHeader("X-Real-IP")(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("203.0.113.6"))
+		})
+
+		It("does not take a unix socket peer for an IP", func() {
+			r.RemoteAddr = "@"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(BeEmpty())
+		})
+
 		It("does not add the cookie if there was an error", func() {
 			ctx := request.WithClient(r.Context(), "error")
 			r = r.WithContext(ctx)
@@ -872,10 +907,12 @@ type mockPlayers struct {
 	core.Players
 	transcoding *model.Transcoding
 	touched     bool
+	ip          string
 }
 
-func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, _ string) (*model.Player, *model.Transcoding, error) {
+func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, ip string) (*model.Player, *model.Transcoding, error) {
 	mp.touched = true
+	mp.ip = ip
 	return &plr, mp.transcoding, nil
 }
 
@@ -884,6 +921,7 @@ func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player,
 }
 
 func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, *model.Transcoding, error) {
+	mp.ip = ip
 	if client == "error" {
 		return nil, nil, errors.New(client)
 	}
