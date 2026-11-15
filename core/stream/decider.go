@@ -152,11 +152,6 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Deta
 	return sd
 }
 
-func serverOverride(ctx context.Context) (model.Transcoding, bool) {
-	trc, ok := request.TranscodingFrom(ctx)
-	return trc, ok && trc.TargetFormat != ""
-}
-
 // applyServerOverride replaces the client-provided profiles with synthetic ones
 // matching the server-forced transcoding format and bitrate.
 func applyServerOverride(ctx context.Context, original *ClientInfo, trc *model.Transcoding) *ClientInfo {
@@ -262,7 +257,8 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 
 	targetIsLossless := isLosslessFormat(targetFormat)
 
-	if blocksLossyToLossless(src.IsLossless, targetIsLossless, clientInfo.AllowLossyToLossless, clientInfo.MaxAudioBitrate) {
+	// Lossless output from a lossy source is far larger than the source, so no bitrate cap can be honored
+	if !src.IsLossless && targetIsLossless && (!clientInfo.AllowLossyToLossless || clientInfo.MaxAudioBitrate > 0) {
 		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "sourceCodec", src.Codec,
 			"targetFormat", targetFormat, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		return nil, ""

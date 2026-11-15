@@ -3,7 +3,6 @@ package subsonic
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -31,10 +30,6 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := stream.ValidateLegacyRequest(ctx, mf, format, maxBitRate); err != nil {
-		return nil, fmt.Errorf("%w: %w", req.ErrInvalidParam, err)
 	}
 
 	streamReq := api.transcodeDecision.ResolveRequest(ctx, mf, format, maxBitRate, timeOffset)

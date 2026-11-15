@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -105,13 +104,11 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(streamerSpy.LastRequest.Format).To(Equal("flac"))
 		})
 
-		It("returns an error for a bitrate limit on a lossless format from a lossy source", func() {
-			streamerSpy.LastRequest = stream.Request{}
-			resp := doReq("stream", "id", trackID, "format", "flac", "maxBitRate", "1000")
+		It("falls back to the default downsampling format when a bitrate limit is also requested", func() {
+			w := doRawReq("stream", "id", trackID, "format", "flac", "maxBitRate", "1000")
 
-			Expect(resp.Status).To(Equal(responses.StatusFailed))
-			Expect(resp.Error.Code).To(Equal(responses.ErrorGeneric))
-			Expect(streamerSpy.LastRequest.Format).To(BeEmpty())
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
 		})
 
 		It("passes timeOffset through", func() {

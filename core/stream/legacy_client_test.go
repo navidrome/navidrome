@@ -446,37 +446,6 @@ var _ = Describe("ResolveRequest", func() {
 	})
 })
 
-var _ = Describe("ValidateLegacyRequest", func() {
-	var ctx context.Context
-
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
-	})
-
-	mp3 := &model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320}
-	flac := &model.MediaFile{ID: "2", Suffix: "flac", Codec: "FLAC", BitRate: 1000}
-
-	DescribeTable("rejects only a bitrate limit on a lossless format for a lossy source",
-		func(mf *model.MediaFile, format string, bitRate int, rejected bool) {
-			err := ValidateLegacyRequest(ctx, mf, format, bitRate)
-			if rejected {
-				Expect(err).To(MatchError(errLosslessBitRateLimit))
-			} else {
-				Expect(err).ToNot(HaveOccurred())
-			}
-		},
-		Entry("lossy source, lossless format, bitrate", mp3, "flac", 1000, true),
-		Entry("lossy source, lossless format, no bitrate", mp3, "flac", 0, false),
-		Entry("lossy source, lossy format, bitrate", mp3, "opus", 128, false),
-		Entry("lossless source, lossless format, bitrate", flac, "flac", 1000, false),
-	)
-
-	It("ignores the request when a server-side transcoding override replaces it", func() {
-		overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3"})
-		Expect(ValidateLegacyRequest(overrideCtx, mp3, "flac", 1000)).To(Succeed())
-	})
-})
-
 var _ = Describe("ResolveClientRequest", func() {
 	var (
 		svc TranscodeDecider

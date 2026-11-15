@@ -58,12 +58,6 @@ func targetSampleRate(srcSampleRate int, srcCodec string, capDSD bool) int {
 	return srcSampleRate
 }
 
-// blocksLossyToLossless reports whether a lossless target must be refused for a lossy source.
-// The output is far larger than its source, so no bitrate cap (kbps) can be honored.
-func blocksLossyToLossless(srcIsLossless, targetIsLossless, allowed bool, maxKbps int) bool {
-	return !srcIsLossless && targetIsLossless && (!allowed || maxKbps > 0)
-}
-
 // targetBitDepth returns the bit depth for a transcoded stream: 0 for lossy
 // targets (they have no PCM bit depth), otherwise the source depth, with DSD
 // (1 bit in tags, 8 in ffprobe) adjusted to the 24-bit PCM that ffmpeg produces.

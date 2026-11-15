@@ -2,7 +2,6 @@ package stream
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -58,20 +57,6 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 	return ci
 }
 
-var errLosslessBitRateLimit = errors.New("cannot limit the bitrate of a lossless format transcoded from a lossy source")
-
-// ValidateLegacyRequest rejects legacy stream parameters that cannot be honored together,
-// instead of silently serving a different format than the one requested.
-func ValidateLegacyRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) error {
-	if _, ok := serverOverride(ctx); ok {
-		return nil
-	}
-	if blocksLossyToLossless(buildSourceStream(mf, nil).IsLossless, isLosslessFormat(reqFormat), true, reqBitRate) {
-		return errLosslessBitRateLimit
-	}
-	return nil
-}
-
 // ResolveRequest uses MakeDecision to resolve legacy Subsonic stream parameters
 // into a fully specified Request.
 func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request {
@@ -120,7 +105,7 @@ func (s *deciderService) ResolveClientRequest(ctx context.Context, mf *model.Med
 // Request. ok is false when no profile fits.
 func (s *deciderService) resolve(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, offset int) (Request, bool) {
 	req := Request{Offset: offset}
-	if trc, ok := serverOverride(ctx); ok {
+	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
 		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
 	} else if player, ok := request.PlayerFrom(ctx); ok {
 		modified := *clientInfo
