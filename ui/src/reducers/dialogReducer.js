@@ -127,6 +127,7 @@ export const expandInfoDialogReducer = (
   previousState = {
     open: false,
     record: undefined,
+    resource: undefined,
   },
   payload,
 ) => {
@@ -137,12 +138,14 @@ export const expandInfoDialogReducer = (
         ...previousState,
         open: true,
         record: payload.record,
+        resource: payload.resource,
       }
     case EXTENDED_INFO_CLOSE:
       return {
         ...previousState,
         open: false,
         record: undefined,
+        resource: undefined,
       }
     default:
       return previousState

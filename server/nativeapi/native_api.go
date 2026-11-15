@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -48,10 +49,11 @@ type Router struct {
 	imgUpload     artwork.Uploader
 	provider      external.Provider
 	quickConnect  quickconnect.QuickConnect
+	agents        *agents.Agents
 }
 
-func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload artwork.Uploader, provider external.Provider, quickConnect quickconnect.QuickConnect) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, provider: provider, quickConnect: quickConnect}
+func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload artwork.Uploader, provider external.Provider, quickConnect quickconnect.QuickConnect, ag *agents.Agents) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, provider: provider, quickConnect: quickConnect, agents: ag}
 	r.Handler = r.routes()
 	return r
 }
@@ -96,6 +98,7 @@ func (api *Router) routes() http.Handler {
 			api.addUserLibraryRoute(r)
 			api.addPluginRoute(r)
 			api.addMetadataRoute(r)
+			api.addArtworkExplainRoute(r)
 			rx(r, "/library", api.libs.Repository(), true)
 		})
 	})

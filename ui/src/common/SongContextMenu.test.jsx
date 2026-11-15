@@ -4,6 +4,7 @@ import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SongContextMenu } from './SongContextMenu'
 import subsonic from '../subsonic'
+import { EXTENDED_INFO_OPEN } from '../actions'
 
 vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(),
@@ -128,6 +129,26 @@ describe('SongContextMenu', () => {
       screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
     expect(mockOnClick).not.toHaveBeenCalled()
+  })
+
+  it('dispatches the record and resource when opening the info dialog', async () => {
+    const record = { id: 'song1', size: 1 }
+    render(
+      <TestContext>
+        <SongContextMenu record={record} resource="song" />
+      </TestContext>,
+    )
+    fireEvent.click(screen.getAllByRole('button')[1])
+    await waitFor(() => screen.getByText(/resources\.song\.actions\.info/))
+    fireEvent.click(screen.getByText(/resources\.song\.actions\.info/))
+
+    await waitFor(() =>
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: EXTENDED_INFO_OPEN,
+        record,
+        resource: 'song',
+      }),
+    )
   })
 
   describe('Instant Mix action', () => {
