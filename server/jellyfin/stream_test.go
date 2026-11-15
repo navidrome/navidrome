@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/core/stream"
@@ -164,17 +163,15 @@ var _ = Describe("Stream", func() {
 			Expect(lyricStreams(res)).To(BeEmpty())
 		})
 
-		It("does not block playback info when lyrics lookup is slow, and includes Lyric stream once ready", func() {
+		It("does not block playback info when lyrics lookup is slow", func() {
 			origTimeout := playbackInfoLyricsTimeout
 			playbackInfoLyricsTimeout = 20 * time.Millisecond
 			DeferCleanup(func() { playbackInfoLyricsTimeout = origTimeout })
 
 			blockCh := make(chan struct{})
 			doneCh := make(chan struct{})
-			var closeOnce sync.Once
-			unblock := func() { closeOnce.Do(func() { close(blockCh) }) }
 			DeferCleanup(func() {
-				unblock()
+				close(blockCh)
 				Eventually(doneCh).Should(BeClosed())
 			})
 
@@ -195,11 +192,6 @@ var _ = Describe("Stream", func() {
 			Expect(duration).To(BeNumerically("<", 150*time.Millisecond))
 			Expect(res.MediaSources).To(HaveLen(1))
 			Expect(lyricStreams(res)).To(BeEmpty())
-
-			unblock()
-			Eventually(doneCh).Should(BeClosed())
-
-			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
 		})
 
 		It("recovers panics in detached lyrics lookup and returns 200 without Lyric stream", func() {

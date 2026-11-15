@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -17,7 +16,6 @@ import (
 
 // fakeLyricsService returns canned lyrics per media-file ID.
 type fakeLyricsService struct {
-	mu       sync.Mutex
 	lyrics   map[string]model.LyricList
 	err      error
 	panicVal any
@@ -26,33 +24,23 @@ type fakeLyricsService struct {
 }
 
 func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
-	f.mu.Lock()
-	blockCh := f.blockCh
-	doneCh := f.doneCh
-	f.blockCh = nil
-	f.doneCh = nil
-	panicVal := f.panicVal
-	err := f.err
-	list := f.lyrics[mf.ID]
-	f.mu.Unlock()
-
-	if doneCh != nil {
-		defer close(doneCh)
+	if f.doneCh != nil {
+		defer close(f.doneCh)
 	}
-	if blockCh != nil {
+	if f.blockCh != nil {
 		select {
-		case <-blockCh:
+		case <-f.blockCh:
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
 	}
-	if panicVal != nil {
-		panic(panicVal)
+	if f.panicVal != nil {
+		panic(f.panicVal)
 	}
-	if err != nil {
-		return nil, err
+	if f.err != nil {
+		return nil, f.err
 	}
-	return list, nil
+	return f.lyrics[mf.ID], nil
 }
 
 func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, string) (model.LyricList, error) {
