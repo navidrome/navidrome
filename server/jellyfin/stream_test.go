@@ -20,6 +20,7 @@ import (
 )
 
 var _ = Describe("Stream", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	var streamer *fakeMediaStreamer
@@ -27,10 +28,11 @@ var _ = Describe("Stream", func() {
 
 	// alice has access to library 1 only.
 	ctxUser := func() context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
+		return request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		streamer = &fakeMediaStreamer{}
 		decider = &fakeTranscodeDecider{}

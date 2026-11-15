@@ -21,7 +21,7 @@ var _ = Describe("deezerAgent", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.Deezer.Enabled = true })
 	})
 

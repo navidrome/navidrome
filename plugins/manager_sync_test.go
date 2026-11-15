@@ -36,7 +36,7 @@ var _ = Describe("syncPlugins", func() {
 	It("registers a plugin with a usable ID", func() {
 		writePackage("my-plugin" + PackageExtension)
 
-		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
+		Expect(m.syncPlugins(ctx, folder)).To(Succeed())
 
 		_, err := repo.Get(ctx, "my-plugin")
 		Expect(err).ToNot(HaveOccurred())
@@ -46,7 +46,7 @@ var _ = Describe("syncPlugins", func() {
 		writePackage("." + PackageExtension)
 		writePackage(".." + PackageExtension)
 
-		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
+		Expect(m.syncPlugins(ctx, folder)).To(Succeed())
 
 		all, err := repo.GetAll(ctx)
 		Expect(err).ToNot(HaveOccurred())

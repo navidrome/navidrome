@@ -50,11 +50,13 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 func p(ms int64) *int64 { return &ms }
 
 var _ = Describe("getLyrics", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	var fake *fakeLyricsService
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: testID("s1"), Title: "Song", LibraryID: 1},
@@ -69,10 +71,9 @@ var _ = Describe("getLyrics", func() {
 
 	doRequest := func(id string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
-		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}})
 		// Clients send hex-encoded ids (matching real traffic and the other handler tests).
 		enc := dto.EncodeID(id)
-		r := httptest.NewRequest("GET", "/Audio/"+enc+"/Lyrics", nil).WithContext(ctx)
+		r := httptest.NewRequest("GET", "/Audio/"+enc+"/Lyrics", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", enc)
 		invoke(api.getLyrics, w, r)
 		return w

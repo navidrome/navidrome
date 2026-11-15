@@ -81,13 +81,19 @@ var _ = Describe("encodeSteps/DecodeTrace", func() {
 })
 
 var _ = Describe("chainTrace", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("returns nil when no trace is attached", func() {
-		Expect(traceFrom(context.Background())).To(BeNil())
+		Expect(traceFrom(ctx)).To(BeNil())
 	})
 
 	It("collects steps in order", func() {
 		t := &ChainTrace{}
-		ctx := withTrace(context.Background(), t)
+		ctx = withTrace(ctx, t)
 
 		traceFrom(ctx).add(TraceStep{Candidate: "cover.*", Outcome: OutcomeMiss})
 		traceFrom(ctx).add(TraceStep{Candidate: "embedded", Outcome: OutcomeHit, Detail: "/music/a.flac"})
@@ -170,7 +176,7 @@ var _ = Describe("external agent tracing", func() {
 	)
 	BeforeEach(func() {
 		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ctx = withTrace(GinkgoT().Context(), t)
 		body = io.NopCloser(strings.NewReader("x"))
 	})
 
@@ -226,7 +232,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 		ffm = tests.NewMockFFmpeg("")
 		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
 		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ctx = withTrace(GinkgoT().Context(), t)
 	})
 
 	It("records a pattern skipped because the album folder holds no images", func() {
@@ -317,7 +323,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		ffm = tests.NewMockFFmpeg("")
 		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
 		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ctx = withTrace(GinkgoT().Context(), t)
 	})
 
 	It("records the upload short-circuit as a hit", func() {
@@ -402,6 +408,7 @@ var _ = Describe("resolveArtist tracing", func() {
 
 var _ = Describe("NewTracingResolver", func() {
 	var (
+		ctx         context.Context
 		ds          *tests.MockDataStore
 		albumRepo   *tests.MockAlbumRepo
 		artistRepo  *tests.MockArtistRepo
@@ -412,6 +419,7 @@ var _ = Describe("NewTracingResolver", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) {
 			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
 			c.CoverArtPriority = "external, embedded"
@@ -450,7 +458,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("asks the agents and records what each answered", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -459,7 +467,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("records the local chain steps too", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			last := t.Steps()[len(t.Steps())-1]
@@ -468,7 +476,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("never persists artwork state", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artworkRepo.ItemData).To(BeEmpty(),
@@ -477,7 +485,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("resolves an artist without persisting anything", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindArtistArtwork, "ar1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(BeEmpty())
@@ -493,7 +501,7 @@ var _ = Describe("NewTracingResolver", func() {
 				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
 			}})
 
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -514,9 +522,9 @@ var _ = Describe("NewTracingResolver", func() {
 			ds.MockedMediaFile = mfRepo
 			offline := NewTracingResolver(ds, imageAgents(fake), ffm, t, false)
 
-			_, err := offline.Resolve(context.Background(), model.KindDiscArtwork, "al1:1")
+			_, err := offline.Resolve(ctx, model.KindDiscArtwork, "al1:1")
 			Expect(err).ToNot(HaveOccurred())
-			_, err = offline.Resolve(context.Background(), model.KindMediaFileArtwork, "mf1")
+			_, err = offline.Resolve(ctx, model.KindMediaFileArtwork, "mf1")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fake.albumCalls).To(BeZero())
@@ -524,7 +532,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("propagates a lookup error", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "nope")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
@@ -558,7 +566,7 @@ var _ = Describe("resolveDisc tracing", func() {
 		}
 		ffm = tests.NewMockFFmpeg("")
 		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ctx = withTrace(GinkgoT().Context(), t)
 	})
 
 	It("accounts for every configured entry, including the ones that map to no source", func() {
@@ -626,7 +634,7 @@ var _ = Describe("resolveMediaFile tracing", func() {
 		ds = &tests.MockDataStore{MockedMediaFile: mfRepo, MockedLibrary: libRepo}
 		ffm = tests.NewMockFFmpeg("")
 		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ctx = withTrace(GinkgoT().Context(), t)
 	})
 
 	It("separates a disabled setting from a track with nothing embedded", func() {

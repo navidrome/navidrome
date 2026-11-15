@@ -29,8 +29,8 @@ var _ = Describe("lastfmAgent", func() {
 	var ds model.DataStore
 	var ctx context.Context
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		ctx = context.Background()
 		conf.Update(func(c *conf.Options) {
 			c.LastFM.Enabled = true
 			c.LastFM.ApiKey = "123"

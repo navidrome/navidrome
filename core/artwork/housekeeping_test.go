@@ -34,7 +34,7 @@ var _ = Describe("Housekeeping", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) {
 			c.CoverArtPriority = "embedded, folder"
 			c.ArtistArtPriority = "artist.jpg"
@@ -150,7 +150,7 @@ var _ = Describe("ItemName", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		albumRepo := tests.CreateMockAlbumRepo()
 		albumRepo.SetData(model.Albums{
 			{ID: "al-1", Name: "Kid A"},

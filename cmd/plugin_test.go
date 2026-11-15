@@ -65,16 +65,21 @@ var _ = Describe("formatPluginList", func() {
 })
 
 var _ = Describe("enable/disable plugin", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("calls EnablePlugin on the manager", func() {
 		mgr := &tests.MockPluginManager{}
-		err := enablePlugin(context.Background(), mgr, "alpha")
+		err := enablePlugin(ctx, mgr, "alpha")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.EnablePluginCalls).To(Equal([]string{"alpha"}))
 	})
 
 	It("calls DisablePlugin on the manager", func() {
 		mgr := &tests.MockPluginManager{}
-		err := disablePlugin(context.Background(), mgr, "beta")
+		err := disablePlugin(ctx, mgr, "beta")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.DisablePluginCalls).To(Equal([]string{"beta"}))
 	})
@@ -82,14 +87,16 @@ var _ = Describe("enable/disable plugin", func() {
 
 var _ = Describe("applyPluginEdit", func() {
 	var cur *model.Plugin
+	var ctx context.Context
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		cur = &model.Plugin{ID: "alpha", Users: `["bob"]`, Libraries: `[1,2]`, AllowWriteAccess: true}
 	})
 
 	It("validates then updates config when config is provided", func() {
 		mgr := &tests.MockPluginManager{}
 		cfg := `{"key":"val"}`
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{config: &cfg})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{config: &cfg})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.ValidatePluginConfigCalls).To(HaveLen(1))
 		Expect(mgr.ValidatePluginConfigCalls[0].ConfigJSON).To(Equal(cfg))
@@ -100,7 +107,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("updates users with allUsers flag", func() {
 		mgr := &tests.MockPluginManager{}
 		all := true
-		err := applyPluginEdit(context.Background(), mgr, cur,
+		err := applyPluginEdit(ctx, mgr, cur,
 			pluginEditOptions{allUsers: &all})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls).To(HaveLen(1))
@@ -111,7 +118,7 @@ var _ = Describe("applyPluginEdit", func() {
 		mgr := &tests.MockPluginManager{}
 		all := true
 		wr := true
-		err := applyPluginEdit(context.Background(), mgr, cur,
+		err := applyPluginEdit(ctx, mgr, cur,
 			pluginEditOptions{allLibraries: &all, writeAccess: &wr})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginLibrariesCalls).To(HaveLen(1))
@@ -122,7 +129,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("preserves existing fields when only the write-access flag changes", func() {
 		mgr := &tests.MockPluginManager{}
 		no := false
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{writeAccess: &no})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{writeAccess: &no})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginLibrariesCalls).To(HaveLen(1))
 		Expect(mgr.UpdatePluginLibrariesCalls[0].LibrariesJSON).To(Equal(`[1,2]`)) // not wiped
@@ -132,7 +139,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("preserves existing users when only the all-users flag changes", func() {
 		mgr := &tests.MockPluginManager{}
 		all := true
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{allUsers: &all})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{allUsers: &all})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["bob"]`)) // not wiped
 	})
@@ -140,7 +147,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("parses a comma-separated users value into a JSON array", func() {
 		mgr := &tests.MockPluginManager{}
 		users := "alice, bob"
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{users: &users})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["alice","bob"]`))
 	})
@@ -148,7 +155,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("passes a JSON-array users value through unchanged", func() {
 		mgr := &tests.MockPluginManager{}
 		users := `["alice","bob"]`
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{users: &users})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["alice","bob"]`))
 	})
@@ -156,7 +163,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("rejects a malformed JSON-array users value", func() {
 		mgr := &tests.MockPluginManager{}
 		users := `["alice"`
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{users: &users})
 		Expect(err).To(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls).To(BeEmpty())
 	})
@@ -164,7 +171,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("parses a comma-separated libraries value into a JSON array of ints", func() {
 		mgr := &tests.MockPluginManager{}
 		libs := "1, 2"
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{libraries: &libs})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{libraries: &libs})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginLibrariesCalls[0].LibrariesJSON).To(Equal(`[1,2]`))
 	})
@@ -172,7 +179,7 @@ var _ = Describe("applyPluginEdit", func() {
 	It("rejects a non-integer library ID", func() {
 		mgr := &tests.MockPluginManager{}
 		libs := "1,abc"
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{libraries: &libs})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{libraries: &libs})
 		Expect(err).To(HaveOccurred())
 		Expect(mgr.UpdatePluginLibrariesCalls).To(BeEmpty())
 	})
@@ -181,7 +188,7 @@ var _ = Describe("applyPluginEdit", func() {
 		mgr := &tests.MockPluginManager{}
 		cur.AllUsers = true
 		users := "alice"
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{users: &users})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{users: &users})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginUsersCalls[0].UsersJSON).To(Equal(`["alice"]`))
 		Expect(mgr.UpdatePluginUsersCalls[0].AllUsers).To(BeFalse())
@@ -191,7 +198,7 @@ var _ = Describe("applyPluginEdit", func() {
 		mgr := &tests.MockPluginManager{}
 		cur.AllLibraries = true
 		libs := "1"
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{libraries: &libs})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{libraries: &libs})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.UpdatePluginLibrariesCalls[0].LibrariesJSON).To(Equal(`[1]`))
 		Expect(mgr.UpdatePluginLibrariesCalls[0].AllLibraries).To(BeFalse())
@@ -199,14 +206,14 @@ var _ = Describe("applyPluginEdit", func() {
 
 	It("does nothing and errors when no fields are set", func() {
 		mgr := &tests.MockPluginManager{}
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{})
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("aborts the config update when validation fails", func() {
 		mgr := &tests.MockPluginManager{ValidateError: errors.New("bad config")}
 		cfg := `{"key":"val"}`
-		err := applyPluginEdit(context.Background(), mgr, cur, pluginEditOptions{config: &cfg})
+		err := applyPluginEdit(ctx, mgr, cur, pluginEditOptions{config: &cfg})
 		Expect(err).To(HaveOccurred())
 		Expect(mgr.ValidatePluginConfigCalls).To(HaveLen(1))
 		Expect(mgr.UpdatePluginConfigCalls).To(BeEmpty())
@@ -353,7 +360,7 @@ var _ = Describe("formatManifestInfo enriched text", func() {
 var _ = Describe("rescanPlugins", func() {
 	It("calls RescanPlugins on the manager", func() {
 		mgr := &tests.MockPluginManager{}
-		err := rescanPlugins(context.Background(), mgr)
+		err := rescanPlugins(GinkgoT().Context(), mgr)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(mgr.RescanPluginsCalls).To(Equal(1))
 	})

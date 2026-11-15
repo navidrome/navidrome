@@ -71,13 +71,13 @@ var _ = BeforeSuite(func() {
 		c.DataFolder = conf.NewDir(GinkgoT().TempDir())
 	})
 	db.Db().SetMaxOpenConns(1)
-	db.Init(request.WithUser(context.Background(), model.User{ID: "admin-1", IsAdmin: true}))
+	db.Init(request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", IsAdmin: true}))
 
 	userTables = harness.ResettableTables()
 })
 
 var _ = AfterSuite(func() {
-	db.Close(context.Background())
+	db.Close(GinkgoT().Context())
 })
 
 func setupResolutionHarness() {

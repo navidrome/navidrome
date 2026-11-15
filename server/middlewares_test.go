@@ -374,6 +374,7 @@ var _ = Describe("middlewares", func() {
 		}
 
 		BeforeEach(func() {
+			ctx = GinkgoT().Context()
 			id = uuid.NewString()
 			ds = &tests.MockDataStore{}
 			lastAccessTime = time.Now()
@@ -381,12 +382,8 @@ var _ = Describe("middlewares", func() {
 				To(Succeed())
 
 			middleware = UpdateLastAccessMiddleware(ds)
-			ctx = request.WithUser(
-				context.Background(),
-				model.User{ID: id, UserName: "johndoe"},
-			)
 			req, _ = http.NewRequest(http.MethodGet, "/", nil)
-			req = req.WithContext(ctx)
+			req = req.WithContext(request.WithUser(ctx, model.User{ID: id, UserName: "johndoe"}))
 		})
 
 		Context("when the request has a user", func() {
@@ -424,7 +421,7 @@ var _ = Describe("middlewares", func() {
 		})
 		Context("when the request has no user", func() {
 			It("does not update the last access time", func() {
-				req = req.WithContext(context.Background())
+				req = req.WithContext(ctx)
 				callMiddleware(req)
 
 				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")

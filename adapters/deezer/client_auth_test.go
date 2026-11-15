@@ -20,9 +20,9 @@ var _ = Describe("JWT Authentication", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		httpClient = &fakeHttpClient{}
 		client = newClient(httpClient)
-		ctx = context.Background()
 	})
 
 	Describe("getJWT", func() {
