@@ -681,6 +681,16 @@ var _ = Describe("Middlewares", func() {
 			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
 		})
 
+		It("takes the client IP resolved into the context, not the peer address", func() {
+			// realIPMiddleware resolves forwarding headers from a trusted proxy the same way
+			r.RemoteAddr = "10.0.0.1:1234"
+			r.Header.Set("X-Real-IP", "203.0.113.6")
+			gp := middleware.ClientIPFromHeader("X-Real-IP")(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("203.0.113.6"))
+		})
+
 		It("does not take a unix socket peer for an IP", func() {
 			r.RemoteAddr = "@"
 			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
