@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
@@ -68,7 +69,8 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	return list, nil
 }
 
-// fromPlugin attempts to load lyrics from a plugin with the given name.
+// fromPlugin attempts to load lyrics from a plugin with the given name. Results are cached,
+// misses included: clients ask for every track in a queue, and plugin lookups are slow.
 func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, pluginName string) (model.LyricList, error) {
 	if l.pluginLoader == nil {
 		log.Debug(ctx, "Invalid lyric source", "source", pluginName)
@@ -81,13 +83,18 @@ func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, plu
 		return nil, nil
 	}
 
-	lyricsList, err := provider.GetLyrics(ctx, mf)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(lyricsList) > 0 {
-		log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
-	}
-	return lyricsList, nil
+	key := pluginKey{plugin: pluginName, mediaFileID: mf.ID}
+	return l.pluginCache.GetWithLoader(key, func(pluginKey) (model.LyricList, time.Duration, error) {
+		// Concurrent callers share one load, so one cancelled request must not abort it for the others.
+		loadCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lyricsLoadTimeout)
+		defer cancel()
+		lyricsList, err := provider.GetLyrics(loadCtx, mf)
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(lyricsList) > 0 {
+			log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
+		}
+		return lyricsList, 0, nil
+	})
 }
