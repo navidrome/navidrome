@@ -55,6 +55,33 @@ func storedIndex(stored, visible model.MediaFiles, i int) int {
 	return i
 }
 
+// fallbackCurrent returns the stored index of the track GET shows instead of a stored current track the user
+// can't see, so a new position is saved for that track. The cheap Exists check keeps the common case light.
+func fallbackCurrent(ctx context.Context, w http.ResponseWriter, ds model.DataStore, userID string) (int, bool, bool) {
+	repo := ds.PlayQueue()
+	stored, ok := retrieveQueue(ctx, w, userID, repo.Retrieve)
+	if !ok || stored == nil {
+		return 0, false, ok
+	}
+	if stored.Current >= 0 && stored.Current < len(stored.Items) {
+		visible, err := ds.MediaFile().Exists(ctx, stored.Items[stored.Current].ID)
+		if err != nil {
+			log.Error(ctx, "Error checking current queue track", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return 0, false, false
+		}
+		if visible {
+			return 0, false, true
+		}
+	}
+	visible, ok := retrieveQueue(ctx, w, userID, repo.RetrieveWithMediaFiles)
+	if !ok || visible == nil {
+		return 0, false, ok
+	}
+	current := storedIndex(stored.Items, visible.Items, visible.Current)
+	return current, current != stored.Current, true
+}
+
 // decodeUpdatePayload decodes the JSON payload from the request body.
 // Returns false if decoding fails (and sends error response), true if successful.
 func decodeUpdatePayload(w http.ResponseWriter, r *http.Request) (*updateQueuePayload, bool) {
@@ -211,6 +238,17 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 		if payload.Position != nil {
 			pq.Position = max(*payload.Position, 0) // Ensure position is non-negative
 			cols = append(cols, "position")
+
+			if payload.Ids == nil && payload.Current == nil {
+				current, moved, ok := fallbackCurrent(ctx, w, ds, user.ID)
+				if !ok {
+					return
+				}
+				if moved {
+					pq.Current = current
+					cols = append(cols, "current")
+				}
+			}
 		}
 
 		// If no fields were specified for update, return success without doing anything

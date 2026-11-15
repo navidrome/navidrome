@@ -217,6 +217,7 @@ var _ = Describe("Queue Endpoints", func() {
 					Items: model.MediaFiles{{ID: "gone1"}, {ID: "s1"}, {ID: "gone2"}, {ID: "s2"}}}
 				repo.QueueWithMediaFiles = &model.PlayQueue{UserID: user.ID, Current: 1, Position: 0,
 					Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}}}
+				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(repo.QueueWithMediaFiles.Items)
 			})
 
 			put := func(payload updateQueuePayload) int {
@@ -236,6 +237,20 @@ var _ = Describe("Queue Endpoints", func() {
 
 			It("rejects a current that is only valid for the stored queue", func() {
 				Expect(put(updateQueuePayload{Current: new(2)})).To(Equal(http.StatusBadRequest))
+			})
+
+			It("moves current to the track the client saw when only position changes", func() {
+				Expect(put(updateQueuePayload{Position: new(int64(30))})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(3))
+				Expect(repo.Queue.Position).To(Equal(int64(30)))
+				Expect(repo.LastCols).To(ConsistOf("current", "position"))
+			})
+
+			It("writes only position when the stored current track is visible", func() {
+				repo.Queue.Current = 1
+				repo.QueueWithMediaFiles.Current = 0
+				Expect(put(updateQueuePayload{Position: new(int64(30))})).To(Equal(http.StatusNoContent))
+				Expect(repo.LastCols).To(ConsistOf("position"))
 			})
 
 			It("refuses to update current when the tracks fail to load", func() {
