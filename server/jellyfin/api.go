@@ -79,8 +79,8 @@ func (api *Router) routes() http.Handler {
 	// Rate-limit the password login, mirroring the native /auth/login: it's an unauthenticated
 	// brute-force surface, so it must share the same per-client throttle when one is configured.
 	login := inner.With(server.LimitLoginBody)
-	if conf.Server.AuthRequestLimit > 0 {
-		login = login.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+	if conf.Server().AuthRequestLimit > 0 {
+		login = login.With(server.ClientIPRateLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength))
 	}
 	login.Post("/users/authenticatebyname", api.authenticateByName)
 	quickConnectLogin := login.With(requireQuickConnect)
@@ -94,8 +94,8 @@ func (api *Router) routes() http.Handler {
 	// Bound concurrency like Subsonic's getCoverArt: image decode/resize is CPU- and memory-heavy,
 	// and an unbounded burst (a client fetching artwork across a large library) can exhaust memory.
 	inner.Group(func(r chi.Router) {
-		r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-			conf.Server.DevArtworkThrottleBacklogTimeout))
+		r.Use(server.ThrottleBacklog(conf.Server().DevArtworkMaxRequests, conf.Server().DevArtworkThrottleBacklogLimit,
+			conf.Server().DevArtworkThrottleBacklogTimeout))
 		r.Get("/items/{itemId}/images/{type}", api.getItemImage)
 		r.Get("/items/{itemId}/images/{type}/{index}", api.getItemImage)
 		r.Head("/items/{itemId}/images/{type}", api.getItemImage)
@@ -116,8 +116,8 @@ func (api *Router) routes() http.Handler {
 		r.Get("/users/{userId}", api.getCurrentUser)
 		// Throttled like login so a signed-in user cannot enumerate other people's pending codes.
 		approve := r.With(requireQuickConnect)
-		if conf.Server.AuthRequestLimit > 0 {
-			approve = approve.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		if conf.Server().AuthRequestLimit > 0 {
+			approve = approve.With(server.ClientIPRateLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength))
 		}
 		approve.Post("/quickconnect/authorize", api.quickConnectAuthorize)
 
@@ -126,7 +126,7 @@ func (api *Router) routes() http.Handler {
 		// scanner, scrobbles and the UI. Cap them at half the pool (see conf.MaxOpenConns); excess
 		// requests queue rather than fail.
 		r.Group(func(r chi.Router) {
-			r.Use(throttleStreams(conf.Server.Jellyfin.MaxConcurrentStreams))
+			r.Use(throttleStreams(conf.Server().Jellyfin.MaxConcurrentStreams))
 			r.Get("/items", api.getItems)
 			r.Get("/users/{userId}/items", api.getItems)
 			r.Get("/items/latest", api.getLatest)

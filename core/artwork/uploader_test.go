@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -24,9 +23,8 @@ var _ = Describe("Uploader", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
 		tmpDir = GinkgoT().TempDir()
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		ds := &tests.MockDataStore{MockedArtwork: artRepo, MockedArtworkQueue: queueRepo}
@@ -141,27 +139,24 @@ var _ = Describe("Uploader", func() {
 })
 
 var _ = Describe("MaxImageUploadSize", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("returns the configured size when valid", func() {
-		conf.Server.MaxImageUploadSize = "20MB"
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "20MB" })
 		Expect(MaxImageUploadSize()).To(Equal(int64(20_000_000)))
 	})
 
 	It("returns the default size when config is empty", func() {
-		conf.Server.MaxImageUploadSize = ""
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "" })
 		Expect(MaxImageUploadSize()).To(Equal(int64(10_000_000)))
 	})
 
 	It("returns the default size when config is invalid", func() {
-		conf.Server.MaxImageUploadSize = "not-a-size"
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "not-a-size" })
 		Expect(MaxImageUploadSize()).To(Equal(int64(10_000_000)))
 	})
 
 	It("parses raw byte values", func() {
-		conf.Server.MaxImageUploadSize = "52428800"
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "52428800" })
 		Expect(MaxImageUploadSize()).To(Equal(int64(52_428_800)))
 	})
 })

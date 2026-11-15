@@ -83,6 +83,8 @@ const (
 
 	DefaultInfoLanguage = "en"
 
+	DefaultMinScrobbleDuration = 30 * time.Second
+
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute
@@ -90,6 +92,7 @@ const (
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
+	NoMediaFile    = ".nomedia"
 	ArtworkFolder  = "artwork"
 	// HashedArtworkFolder is a subtree of ArtworkFolder, kept apart from the name-addressed
 	// upload folders beside it so Prune's sweep never reaches them.

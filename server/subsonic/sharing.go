@@ -62,7 +62,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	repo := api.share.Repository()
 	share := &model.Share{
 		Description:  description,
-		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare && conf.Server.EnableDownloads),
+		Downloadable: p.BoolOr("downloadable", conf.Server().DefaultDownloadableShare && conf.Server().EnableDownloads),
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 		ResourceIDs:  strings.Join(ids, ","),
 	}

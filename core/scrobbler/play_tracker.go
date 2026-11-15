@@ -141,7 +141,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		prSignal:          make(chan struct{}, 1),
 		prWorkerDone:      make(chan struct{}),
 	}
-	enableNowPlaying := conf.Server.EnableNowPlaying
+	enableNowPlaying := conf.Server().EnableNowPlaying
 	m.OnExpiration(func(_ string, info PlaybackSession) {
 		log.Debug("PlaybackSession expired", "clientId", info.PlayerId, "mediaId", info.MediaFile.ID, "state",
 			info.State, "username", info.Username, "userId", info.UserId)
@@ -363,22 +363,29 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	case StateStopped:
 		var loadedMF *model.MediaFile
 		haveVerdict := false
-		if !params.IgnoreScrobble && player.ScrobbleEnabled {
+		if !params.IgnoreScrobble {
 			mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 			if err != nil {
-				return err
-			}
-			loadedMF = mf
-			filtered = p.isFilteredOut(ctx, mf)
-			haveVerdict = true
-			trackDurationMs := int64(mf.Duration * 1000)
-			threshold := min(trackDurationMs*50/100, 240_000)
-			if params.PositionMs >= threshold {
-				err = p.incPlay(ctx, mf, now)
-				if err != nil {
-					log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
+				// If the track is not found, do not treat it as a fatal error.
+				// Log it and move on so that the session can still be closed
+				log.Warn(ctx, "Cannot find track for scrobbling", "id", params.MediaId, "user", user.UserName, err)
+			} else {
+				loadedMF = mf
+				filtered = p.isFilteredOut(ctx, mf)
+				haveVerdict = true
+				trackDurationMs := int64(mf.Duration * 1000)
+				threshold := min(trackDurationMs*50/100, 240_000)
+				if params.PositionMs >= threshold {
+					// To be consistent with Submit (/rest/scrobble?submission=true), play should be incremented even if
+					// scrobbling is disabled
+					err = p.incPlay(ctx, mf, now)
+					if err != nil {
+						log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
+					}
+					if player.ScrobbleEnabled {
+						p.dispatchScrobble(ctx, mf, now, filtered)
+					}
 				}
-				p.dispatchScrobble(ctx, mf, now, filtered)
 			}
 		}
 		p.sessionsMu.Lock()
@@ -422,7 +429,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.enqueuePlaybackReport(ctx, stoppedInfo, filtered)
 	}
 
-	if conf.Server.EnableNowPlaying {
+	if conf.Server().EnableNowPlaying {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 
@@ -518,7 +525,7 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 				return err
 			}
 		}
-		if conf.Server.EnableScrobbleHistory {
+		if conf.Server().EnableScrobbleHistory {
 			return tx.Scrobble().RecordScrobble(ctx, track.ID, timestamp)
 		}
 		return nil

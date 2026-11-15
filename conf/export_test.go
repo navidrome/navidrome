@@ -1,7 +1,7 @@
 package conf
 
 func ResetConf() {
-	Server = &configOptions{}
+	current.Store(&Options{})
 }
 
 var SetViperDefaults = setViperDefaults

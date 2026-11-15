@@ -5,15 +5,13 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("installedPackage", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(GinkgoT().TempDir()) })
 	})
 
 	It("returns empty when there's no .package file", func() {
@@ -65,6 +63,6 @@ var _ = Describe("hostingPlatform", func() {
 
 func writePackageFile(content string) {
 	GinkgoHelper()
-	path := filepath.Join(conf.Server.DataFolder.String(), ".package")
+	path := filepath.Join(conf.Server().DataFolder.String(), ".package")
 	Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
@@ -76,9 +75,10 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits AuthenticateByName by IP when a login limit is configured", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AuthRequestLimit = 2
-		conf.Server.AuthWindowLength = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.AuthRequestLimit = 2
+			c.AuthWindowLength = time.Minute
+		})
 		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		login := func() int {
@@ -95,10 +95,11 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits Quick Connect approval by IP when a login limit is configured", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AuthRequestLimit = 2
-		conf.Server.AuthWindowLength = time.Minute
-		conf.Server.Jellyfin.QuickConnect = true
+		conf.Update(func(c *conf.Options) {
+			c.AuthRequestLimit = 2
+			c.AuthWindowLength = time.Minute
+			c.Jellyfin.QuickConnect = true
+		})
 		ds := &tests.MockDataStore{}
 		auth.Init(ds)
 		usr := model.User{ID: testID("alice"), UserName: "alice"}
@@ -122,9 +123,10 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits AuthenticateByName by resolved client IP, not by the proxy connection", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AuthRequestLimit = 1
-		conf.Server.AuthWindowLength = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.AuthRequestLimit = 1
+			c.AuthWindowLength = time.Minute
+		})
 		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		// Every request arrives on the same proxy connection, so only the resolved client IP
 		// can separate the buckets.

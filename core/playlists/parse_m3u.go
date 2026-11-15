@@ -242,7 +242,7 @@ func resolveImageURL(value string, folder *model.Folder, matcher *model.LibraryM
 
 	// HTTP(S) URLs — store as-is, but only if external album art is enabled
 	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
-		if !conf.Server.EnableM3UExternalAlbumArt {
+		if !conf.Server().EnableM3UExternalAlbumArt {
 			return ""
 		}
 		return value

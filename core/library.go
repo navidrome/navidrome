@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -367,25 +366,14 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 	fsys, err := fileStore.FS()
 	if err != nil {
 		log.Warn(ctx, "Error validating library.path", "path", library.Path, err)
-		return fmt.Errorf("resources.library.validation.pathInvalid")
+		return errors.New(classifyLibraryPathError(err))
 	}
 
 	// Check if root directory exists
 	info, err := fs.Stat(fsys, ".")
 	if err != nil {
-		// Parse the error message to check for "not a directory"
 		log.Warn(ctx, "Error stating library.path", "path", library.Path, err)
-		errStr := err.Error()
-		if strings.Contains(errStr, "not a directory") ||
-			strings.Contains(errStr, "The directory name is invalid.") {
-			return fmt.Errorf("resources.library.validation.pathNotDirectory")
-		} else if os.IsNotExist(err) {
-			return fmt.Errorf("resources.library.validation.pathNotFound")
-		} else if os.IsPermission(err) {
-			return fmt.Errorf("resources.library.validation.pathNotAccessible")
-		} else {
-			return fmt.Errorf("resources.library.validation.pathInvalid")
-		}
+		return errors.New(classifyLibraryPathError(err))
 	}
 
 	if !info.IsDir() {
@@ -393,6 +381,22 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 	}
 
 	return nil
+}
+
+// classifyLibraryPathError maps a path error to its i18n key. It uses errors.Is because storage FS() wraps with %w.
+// Not-a-directory is matched by text: syscall.ENOTDIR means ERROR_PATH_NOT_FOUND on Windows, and ERROR_DIRECTORY is not exported.
+func classifyLibraryPathError(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "resources.library.validation.pathNotFound"
+	case errors.Is(err, fs.ErrPermission):
+		return "resources.library.validation.pathNotAccessible"
+	case strings.Contains(err.Error(), "not a directory") ||
+		strings.Contains(err.Error(), "The directory name is invalid."):
+		return "resources.library.validation.pathNotDirectory"
+	default:
+		return "resources.library.validation.pathInvalid"
+	}
 }
 
 func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []int) error {

@@ -23,7 +23,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── disc1.jpg            ← matched by disc*.*
 		It("returns the disc1.jpg image (matched as disc*.*)", func() {
-			conf.Server.DiscArtPriority = "disc*.*, cd*.*, cover.*, folder.*, front.*, embedded"
+			conf.Update(func(c *conf.Options) { c.DiscArtPriority = "disc*.*, cd*.*, cover.*, folder.*, front.*, embedded" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/disc1.jpg":      smallPNG("disc1-image"),
@@ -38,8 +38,10 @@ var _ = Describe("Disc artwork resolution", func() {
 		// └── Album/
 		//     └── 01 - Track.mp3       (no disc or album art — nothing to serve)
 		It("reports the disc lookup as unavailable", func() {
-			conf.Server.DiscArtPriority = "disc*.*, cd*.*"
-			conf.Server.CoverArtPriority = "cover.*, folder.*"
+			conf.Update(func(c *conf.Options) {
+				c.DiscArtPriority = "disc*.*, cd*.*"
+				c.CoverArtPriority = "cover.*, folder.*"
+			})
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 			})
@@ -54,8 +56,10 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── cover.jpg            ← album-level fallback (no disc art present)
 		It("falls back to the album cover", func() {
-			conf.Server.DiscArtPriority = "disc*.*, cd*.*"
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) {
+				c.DiscArtPriority = "disc*.*, cd*.*"
+				c.CoverArtPriority = defaultCoverPriority
+			})
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":      smallPNG("album-cover"),
@@ -72,7 +76,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     ├── disc1.jpg            ← matches request for disc 1
 		//     └── disc10.jpg
 		It("matches the requested disc number, not a higher-numbered one", func() {
-			conf.Server.DiscArtPriority = "disc*.*"
+			conf.Update(func(c *conf.Options) { c.DiscArtPriority = "disc*.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/disc1.jpg":      smallPNG("disc-one"),
@@ -93,7 +97,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		//         ├── 01 - Track.mp3
 		//         └── disc2.jpg        ← matches request for disc 2
 		It("returns the requested disc's image", func() {
-			conf.Server.DiscArtPriority = "disc*.*"
+			conf.Update(func(c *conf.Options) { c.DiscArtPriority = "disc*.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
@@ -118,7 +122,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		//         ├── 01 - Track.mp3
 		//         └── cd2.png          ← matched by cd*.* for disc 2
 		It("matches via the cd*.* pattern", func() {
-			conf.Server.DiscArtPriority = defaultDiscPriority
+			conf.Update(func(c *conf.Options) { c.DiscArtPriority = defaultDiscPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
@@ -140,7 +144,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		//         ├── 01 - Track.mp3
 		//         └── cover.jpg
 		It("falls through to cover.* inside the disc folder", func() {
-			conf.Server.DiscArtPriority = defaultDiscPriority
+			conf.Update(func(c *conf.Options) { c.DiscArtPriority = defaultDiscPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
@@ -163,8 +167,10 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     │   └── cd2.png          (ignored — DiscArtPriority is empty)
 		//     └── cover.jpg            ← used for every disc (album-level fallback)
 		It("skips every disc-level source and returns the album cover", func() {
-			conf.Server.DiscArtPriority = ""
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) {
+				c.DiscArtPriority = ""
+				c.CoverArtPriority = defaultCoverPriority
+			})
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
@@ -194,8 +200,10 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     │   └── 02 - Track.mp3
 		//     └── cover.jpg            (album-level fallback, unused here)
 		It("matches the per-disc image for each disc", func() {
-			conf.Server.DiscArtPriority = defaultDiscPriority
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) {
+				c.DiscArtPriority = defaultDiscPriority
+				c.CoverArtPriority = defaultCoverPriority
+			})
 			setLayout(fstest.MapFS{
 				"Artist/Album/disc1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/disc1/02 - Track.mp3": trackFile(2, "T2", map[string]any{"disc": "1"}),
@@ -219,7 +227,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     ├── 01 - Track.mp3       (discsubtitle="Bonus Tracks")
 		//     └── Bonus Tracks.jpg     ← matched by "discsubtitle" keyword
 		It("selects the subtitle-named image", func() {
-			conf.Server.DiscArtPriority = "discsubtitle"
+			conf.Update(func(c *conf.Options) { c.DiscArtPriority = "discsubtitle" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3":   trackFile(1, "T1", map[string]any{"disc": "1", "discsubtitle": "Bonus Tracks"}),
 				"Artist/Album/Bonus Tracks.jpg": smallPNG("bonus-tracks"),
@@ -242,8 +250,10 @@ var _ = Describe("Disc artwork resolution", func() {
 		// │   └── folder.jpg
 		// └── ... (12 discs)
 		It("uses album-root cover.jpg for album art and per-disc folder.jpg for each disc", func() {
-			conf.Server.DiscArtPriority = defaultDiscPriority
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) {
+				c.DiscArtPriority = defaultDiscPriority
+				c.CoverArtPriority = defaultCoverPriority
+			})
 			discNames := []string{
 				"Disc 01 (Birth of the Dead - The Studio Sides)",
 				"Disc 02 (Birth of the Dead - The Live Sides)",
@@ -294,8 +304,10 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── folder.jpg
 		It("uses album-root cover.jpg for album art and per-disc folder.jpg for each disc", func() {
-			conf.Server.DiscArtPriority = defaultDiscPriority
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) {
+				c.DiscArtPriority = defaultDiscPriority
+				c.CoverArtPriority = defaultCoverPriority
+			})
 			layout := fstest.MapFS{
 				"Album/cover.jpg": smallPNG("album-root-cover"),
 			}
@@ -321,7 +333,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		//     ├── 01 - Track.mp3       (discsubtitle="Bonus Tracks")
 		//     └── cover.jpg            ← wins (discsubtitle has no match, falls through)
 		It("falls through to the next priority entry", func() {
-			conf.Server.DiscArtPriority = "discsubtitle, cover.*"
+			conf.Update(func(c *conf.Options) { c.DiscArtPriority = "discsubtitle, cover.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1", "discsubtitle": "Bonus Tracks"}),
 				"Artist/Album/cover.jpg":      smallPNG("cover"),

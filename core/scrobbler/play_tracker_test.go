@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 
 	"github.com/navidrome/navidrome/model"
@@ -90,7 +89,6 @@ var _ = Describe("PlayTracker", func() {
 	var fake *fakeScrobbler
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = GinkgoT().Context()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1", Libraries: model.Libraries{{ID: 1}}})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
@@ -229,7 +227,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("does not send event when disabled", func() {
-			conf.Server.EnableNowPlaying = false
+			conf.Update(func(c *conf.Options) { c.EnableNowPlaying = false })
 			tracker = newPlayTracker(ds, eventBroker, nil)
 			info := PlaybackSession{MediaFile: track, Start: time.Now(), Username: "user"}
 			_ = tracker.playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
@@ -315,12 +313,15 @@ var _ = Describe("PlayTracker", func() {
 			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 		})
 
-		It("does not send track to agent if player is not enabled to send scrobbles", func() {
+		It("does not send track to agent if player is not enabled to send scrobbles (but should still track internally)", func() {
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
 
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
+			Expect(track.PlayCount).To(Equal(int64(1)))
+			Expect(album.PlayCount).To(Equal(int64(1)))
+
 			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 		})
 
@@ -351,7 +352,7 @@ var _ = Describe("PlayTracker", func() {
 
 		Context("Scrobble History", func() {
 			It("records scrobble in repository", func() {
-				conf.Server.EnableScrobbleHistory = true
+				conf.Update(func(c *conf.Options) { c.EnableScrobbleHistory = true })
 				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 				ts := time.Now()
 
@@ -368,7 +369,7 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("does not record scrobble when history is disabled", func() {
-				conf.Server.EnableScrobbleHistory = false
+				conf.Update(func(c *conf.Options) { c.EnableScrobbleHistory = false })
 				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 				ts := time.Now()
 
@@ -721,7 +722,7 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("does NOT broadcast when EnableNowPlaying is false", func() {
-				conf.Server.EnableNowPlaying = false
+				conf.Update(func(c *conf.Options) { c.EnableNowPlaying = false })
 				tracker = newPlayTracker(ds, eventBroker, nil)
 				tracker.builtinScrobblers["fake"] = fake
 
@@ -811,7 +812,8 @@ var _ = Describe("PlayTracker", func() {
 					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(track.PlayCount).To(Equal(int64(0)))
+				Expect(track.PlayCount).To(Equal(int64(1)))
+				Consistently(func() bool { return fake.ScrobbleCalled.Load() }).Should(BeFalse())
 			})
 
 			It("scrobbles twice for two separate sessions of same song", func() {

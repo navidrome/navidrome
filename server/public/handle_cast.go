@@ -18,7 +18,7 @@ import (
 const maxCastStreamBitRate = 320
 
 func (pub *Router) handleCastStream(w http.ResponseWriter, r *http.Request) {
-	if !conf.Server.EnableExternalServices {
+	if !conf.Server().EnableExternalServices {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}

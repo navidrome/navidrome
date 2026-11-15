@@ -107,7 +107,7 @@ func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
 // 1. Sync plugins folder with DB (discover new, update changed, remove deleted)
 // 2. Load only enabled plugins from DB
 func (m *Manager) Start(ctx context.Context) error {
-	if !conf.Server.Plugins.Enabled {
+	if !conf.Server().Plugins.Enabled {
 		log.Debug(ctx, "Plugin system is disabled")
 		return nil
 	}
@@ -116,19 +116,19 @@ func (m *Manager) Start(ctx context.Context) error {
 		log.Fatal(ctx, "Plugin manager requires the SubsonicAPI router to be configured")
 	}
 
-	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
-	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
+	cacheDir := filepath.Join(conf.Server().CacheFolder.MustPath(), "plugins")
+	purgeCacheBySize(ctx, cacheDir, conf.Server().Plugins.CacheSize)
 
 	if err := m.initRuntime(ctx, cacheDir); err != nil {
 		return err
 	}
 
-	if conf.Server.Plugins.Folder.String() == "" {
+	if conf.Server().Plugins.Folder.String() == "" {
 		log.Debug(ctx, "No plugins folder configured")
 		return nil
 	}
 
-	folder := conf.Server.Plugins.Folder.MustPath()
+	folder := conf.Server().Plugins.Folder.MustPath()
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
 
@@ -151,7 +151,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// Start file watcher if auto-reload is enabled
-	if conf.Server.Plugins.AutoReload {
+	if conf.Server().Plugins.AutoReload {
 		if err := m.startWatcher(); err != nil {
 			log.Error(ctx, "Failed to start plugin file watcher", err)
 			// Non-fatal - plugins are still loaded, just no auto-reload
@@ -163,9 +163,9 @@ func (m *Manager) Start(ctx context.Context) error {
 
 // initRuntime prepares the extism/wazero runtime that instantiating a plugin needs.
 func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
-	pluginLogLevel := conf.Server.Plugins.LogLevel
+	pluginLogLevel := conf.Server().Plugins.LogLevel
 	if pluginLogLevel == "" {
-		pluginLogLevel = conf.Server.LogLevel
+		pluginLogLevel = conf.Server().LogLevel
 	}
 	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
 
@@ -189,12 +189,12 @@ type transientLoad struct {
 // LoadPlugins loads the plugins named in only, so a CLI sees the agents a server would. Each is
 // instantiated, creating any KVStore, TaskQueue or Storage it declares; call Stop when done.
 func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) error {
-	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" || len(only) == 0 {
+	if !conf.Server().Plugins.Enabled || conf.Server().Plugins.Folder.String() == "" || len(only) == 0 {
 		return nil
 	}
 	m.transient = &transientLoad{only: only, runInit: runInit}
 
-	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
+	cacheDir := filepath.Join(conf.Server().CacheFolder.MustPath(), "plugins")
 	if err := m.initRuntime(ctx, cacheDir); err != nil {
 		return err
 	}
@@ -458,7 +458,7 @@ func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON s
 // This synchronizes the database with the filesystem, discovering new plugins,
 // updating changed ones, and removing deleted ones.
 func (m *Manager) RescanPlugins(ctx context.Context) error {
-	folder := conf.Server.Plugins.Folder.String()
+	folder := conf.Server().Plugins.Folder.String()
 	if folder == "" {
 		return fmt.Errorf("plugins folder not configured")
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -24,13 +23,10 @@ import (
 )
 
 var _ = Describe("Playlist Image Endpoints", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	DescribeTable("uploadPlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
@@ -49,7 +45,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 
 	DescribeTable("deletePlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)
@@ -76,9 +72,10 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
-		conf.Server.SessionTimeout = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.SessionTimeout = time.Minute
+		})
 
 		plsSvc = &mockPlaylistsService{}
 		userRepo = tests.CreateMockUserRepo()

@@ -50,14 +50,14 @@ type lastfmAgent struct {
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
-	if !conf.Server.LastFM.Enabled || conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
+	if !conf.Server().LastFM.Enabled || conf.Server().LastFM.ApiKey == "" || conf.Server().LastFM.Secret == "" {
 		return nil
 	}
 	l := &lastfmAgent{
 		ds:          ds,
-		languages:   conf.Server.LastFM.Languages,
-		apiKey:      conf.Server.LastFM.ApiKey,
-		secret:      conf.Server.LastFM.Secret,
+		languages:   conf.Server().LastFM.Languages,
+		apiKey:      conf.Server().LastFM.ApiKey,
+		secret:      conf.Server().LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
@@ -354,7 +354,7 @@ func (l *lastfmAgent) callTrackGetSimilar(ctx context.Context, name, artist stri
 }
 
 func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile, role model.Role, displayName string) string {
-	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
+	if conf.Server().LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
 		return track.Participants[role][0].Name
 	}
 	return displayName
@@ -388,10 +388,11 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
-	if s.Duration <= 30 {
+	if s.Duration <= float32(conf.Server().LastFM.MinScrobbleDuration.Seconds()) {
 		log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
 		return nil
 	}
+
 	err = l.client.scrobble(ctx, sk, ScrobbleInfo{
 		artist:      l.getArtistForScrobble(&s.MediaFile, model.RoleArtist, s.Artist),
 		track:       s.Title,

@@ -16,7 +16,7 @@ import (
 
 // externalName mirrors the normalization the aggregate provider applies, so agent searches match.
 func externalName(name string) string {
-	if conf.Server.DevPreserveUnicodeInExternalCalls {
+	if conf.Server().DevPreserveUnicodeInExternalCalls {
 		return name
 	}
 	return str.Clear(name)

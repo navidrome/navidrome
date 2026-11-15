@@ -49,7 +49,7 @@ func (api *Router) addCastRoute(r chi.Router) {
 
 func createCastTokens(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !conf.Server.EnableExternalServices {
+		if !conf.Server().EnableExternalServices {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}

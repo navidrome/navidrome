@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
@@ -26,8 +25,8 @@ var _ = Describe("handleCastStream", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableExternalServices = true
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) { c.EnableExternalServices = true })
 		ctx = GinkgoT().Context()
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-cast-secret"), nil)
 		auth.TokenAuth = jwtauth.New("HS256", []byte("test-session-secret"), nil)
@@ -113,7 +112,7 @@ var _ = Describe("handleCastStream", func() {
 		})
 		Expect(makeRequest(token).Code).To(Equal(http.StatusNotFound))
 
-		conf.Server.EnableExternalServices = false
+		conf.Update(func(c *conf.Options) { c.EnableExternalServices = false })
 		Expect(makeRequest(token).Code).To(Equal(http.StatusNotFound))
 		Expect(streamer.called).To(BeFalse())
 	})

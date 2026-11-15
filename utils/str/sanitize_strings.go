@@ -79,7 +79,7 @@ func SanitizeFieldForSortingNoArticle(originalValue string) string {
 }
 
 func RemoveArticle(name string) string {
-	articles := strings.SplitSeq(conf.Server.IgnoredArticles, " ")
+	articles := strings.SplitSeq(conf.Server().IgnoredArticles, " ")
 	for a := range articles {
 		n := strings.TrimPrefix(name, a+" ")
 		if n != name {

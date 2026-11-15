@@ -150,7 +150,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 })
 
 func recentlyAddedSort() string {
-	if conf.Server.RecentlyAddedByModTime {
+	if conf.Server().RecentlyAddedByModTime {
 		return "album.updated_at, album.id"
 	}
 	return "album.created_at, album.id"

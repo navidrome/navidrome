@@ -7,6 +7,8 @@ import {
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
   PLAYER_CAST_CURRENT,
+  clearQueue,
+  setPlayMode,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -96,6 +98,17 @@ describe('playerReducer', () => {
       expect(result.clear).toBe(false)
       expect(result.savedPlayIndex).toBe(0)
       expect(result.current.name).toBe('Song 1')
+    })
+  })
+
+  describe('play mode', () => {
+    it('is kept when the queue is cleared', () => {
+      const state = playerReducer(undefined, setPlayMode('singleLoop'))
+
+      const result = playerReducer(state, clearQueue())
+
+      expect(result.mode).toBe('singleLoop')
+      expect(result.queue).toEqual([])
     })
   })
 

@@ -110,7 +110,7 @@ func secureMiddleware() func(http.Handler) http.Handler {
 		FrameDeny:               true,
 		ReferrerPolicy:          "same-origin",
 		PermissionsPolicy:       "autoplay=(), camera=(), microphone=(), usb=()",
-		CustomFrameOptionsValue: conf.Server.HTTPHeaders.FrameOptions,
+		CustomFrameOptionsValue: conf.Server().HTTPHeaders.FrameOptions,
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
@@ -146,7 +146,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     cmp.Or(conf.Server.BasePath, "/"),
+				Path:     cmp.Or(conf.Server().BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {
@@ -174,7 +174,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 // a client cannot pick its own identity and evade controls keyed on it. The peer address is kept
 // in the context as request.ReverseProxyIp.
 func realIPMiddleware(next http.Handler) http.Handler {
-	trusted := conf.Server.ExtAuth.TrustedSources
+	trusted := conf.Server().ExtAuth.TrustedSources
 	fromPeer := middleware.ClientIPFromRemoteAddr(next)
 	if trusted == "" {
 		return fromPeer

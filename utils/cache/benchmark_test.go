@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 )
 
 type benchItem struct {
@@ -27,8 +26,8 @@ func setupBenchCache(b *testing.B, cacheSize string, getReader ReadFunc) (*fileC
 	if err != nil {
 		b.Fatal(err)
 	}
-	b.Cleanup(configtest.SetupConfig())
-	conf.Server.CacheFolder = conf.NewDir(tmpDir)
+	b.Cleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) { c.CacheFolder = conf.NewDir(tmpDir) })
 
 	fc := NewFileCache("bench", cacheSize, "bench", 0, getReader).(*fileCache)
 

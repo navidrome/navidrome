@@ -24,7 +24,7 @@ var _ = XDescribe("Watcher", func() {
 		tmpFolder = GinkgoT().TempDir()
 
 		local.RegisterExtractor("noop", func(fs fs.FS, path string) local.Extractor { return noopExtractor{} })
-		conf.Server.Scanner.Extractor = "noop"
+		conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "noop" })
 
 		ls, err := storage.For(tmpFolder)
 		Expect(err).ToNot(HaveOccurred())
@@ -141,7 +141,7 @@ func (s noopExtractor) Version() string                                         
 var _ = Describe("Watcher.Start", func() {
 	It("returns an error instead of hanging when the path cannot be watched", func() {
 		local.RegisterExtractor("noop", func(fs fs.FS, path string) local.Extractor { return noopExtractor{} })
-		conf.Server.Scanner.Extractor = "noop"
+		conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "noop" })
 		ls, err := storage.For(filepath.Join(GinkgoT().TempDir(), "does-not-exist"))
 		Expect(err).ToNot(HaveOccurred())
 		lsw := ls.(storage.Watcher)

@@ -2,13 +2,13 @@ package scanner_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing/fstest"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -35,18 +35,24 @@ var _ = Describe("ScanFolders", Ordered, func() {
 	var fsys storagetest.FakeFS
 
 	BeforeAll(func() {
-		tests.SkipOnWindows("SQLite file lock blocks TempDir cleanup (#TBD-path-sep-scanner)")
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		tmpDir := GinkgoT().TempDir()
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL")
-		log.Warn("Using DB at " + conf.Server.DbPath)
+		// db.Db() is a process-wide singleton, so this dir may hold the open DB until
+		// the suite ends, and Windows can't delete an open file
+		tmpDir, err := os.MkdirTemp("", "scanner-test")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL") })
+		log.Warn("Using DB at " + conf.Server().DbPath)
 		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MusicFolder = "fake:///music"
-		conf.Server.DevExternalScanner = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = "fake:///music"
+			c.DevExternalScanner = false
+		})
 
 		db.Init(ctx)
 		DeferCleanup(func() {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -26,8 +25,7 @@ var _ = Describe("Cast Tokens Endpoint", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableExternalServices = true
+		conf.Update(func(c *conf.Options) { c.EnableExternalServices = true })
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-public-secret"), nil)
 		auth.TokenAuth = jwtauth.New("HS256", []byte("test-session-secret"), nil)
 
@@ -123,7 +121,7 @@ var _ = Describe("Cast Tokens Endpoint", func() {
 		createCastTokens(ds)(w2, req2)
 		Expect(w2.Code).To(Equal(http.StatusBadRequest))
 
-		conf.Server.EnableExternalServices = false
+		conf.Update(func(c *conf.Options) { c.EnableExternalServices = false })
 		okBody, _ := json.Marshal(castTokensRequest{Items: []castTokenRequestItem{{ID: "s1"}}})
 		req3 := httptest.NewRequest(http.MethodPost, "/cast/tokens", bytes.NewReader(okBody))
 		req3 = req3.WithContext(request.WithUser(req3.Context(), user))

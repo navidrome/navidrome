@@ -26,8 +26,8 @@ func (api *Router) addQuickConnectRoute(r chi.Router) {
 	}
 	r.Route("/quickconnect", func(r chi.Router) {
 		// Throttled like login so a signed-in user cannot enumerate other people's pending codes.
-		if conf.Server.AuthRequestLimit > 0 {
-			r.Use(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		if conf.Server().AuthRequestLimit > 0 {
+			r.Use(server.ClientIPRateLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength))
 		}
 		r.Get("/", lookupQuickConnect(api.quickConnect))
 		r.Post("/authorize", authorizeQuickConnect(api.quickConnect))

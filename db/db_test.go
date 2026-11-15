@@ -9,6 +9,7 @@ import (
 
 	"github.com/mattn/go-sqlite3"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
@@ -22,6 +23,8 @@ func TestDB(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "DB Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 var _ = DescribeTable("IsBusy",
 	func(err error, expected bool) {
