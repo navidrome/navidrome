@@ -3,7 +3,6 @@ package jellyfin
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/sync/singleflight"
@@ -23,7 +22,6 @@ import (
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/utils/cache"
 )
 
 type Router struct {
@@ -39,7 +37,6 @@ type Router struct {
 	sonic            sonic.Engine
 	lyrics           lyrics.Lyrics
 	broker           events.Broker
-	lyricsCache      cache.SimpleCache[string, model.LyricList]
 	similarFlight    singleflight.Group
 	quickConnect     quickconnect.QuickConnect
 	serverIDVal      string
@@ -53,10 +50,6 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 		ds: ds, artwork: artwork, streamer: streamer, transcodeDecider: transcodeDecider,
 		players: players, scrobbler: scrobbler, playlists: playlists, provider: provider,
 		sonic: sonicSvc, lyrics: lyricsSvc, broker: broker, quickConnect: quickConnect,
-		lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{
-			SizeLimit:  1000,
-			DefaultTTL: 5 * time.Minute,
-		}),
 	}
 	r.Handler = r.routes()
 	return r
