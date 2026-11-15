@@ -315,7 +315,7 @@ func (c *client) getSimilarArtists(ctx context.Context, mbid string, limit int) 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-artists/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"artist_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.ArtistAlgorithm},
+		"artist_mbids": []string{mbid}, "algorithm": []string{conf.Server().ListenBrainz.ArtistAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
@@ -354,7 +354,7 @@ func (c *client) getSimilarRecordings(ctx context.Context, mbid string, limit in
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-recordings/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"recording_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.TrackAlgorithm},
+		"recording_mbids": []string{mbid}, "algorithm": []string{conf.Server().ListenBrainz.TrackAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)

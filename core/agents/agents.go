@@ -94,7 +94,7 @@ type enabledAgent struct {
 // Each enabledAgent contains the name and whether it's a plugin (true) or built-in (false)
 func (a *Agents) getEnabledAgentNames() []enabledAgent {
 	// If no agents configured, ONLY use the local agent
-	if conf.Server.Agents == "" {
+	if conf.Server().Agents == "" {
 		return []enabledAgent{{name: LocalAgentName, isPlugin: false}}
 	}
 
@@ -105,7 +105,7 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 	}
 	log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
 
-	configuredAgents := strings.Split(conf.Server.Agents, ",")
+	configuredAgents := strings.Split(conf.Server().Agents, ",")
 
 	// Always add LocalAgentName if not already included
 	hasLocalAgent := slices.Contains(configuredAgents, LocalAgentName)
@@ -181,7 +181,7 @@ type AlbumImageAgent struct {
 }
 
 // ArtistImageAgents returns the enabled agents implementing ArtistImageRetriever,
-// in conf.Server.Agents order (same order the aggregate dispatch uses).
+// in conf.Server().Agents order (same order the aggregate dispatch uses).
 func (a *Agents) ArtistImageAgents() []ArtistImageAgent {
 	var result []ArtistImageAgent
 	for _, ea := range a.getEnabledAgentNames() {
@@ -193,7 +193,7 @@ func (a *Agents) ArtistImageAgents() []ArtistImageAgent {
 }
 
 // AlbumImageAgents returns the enabled agents implementing AlbumImageRetriever,
-// in conf.Server.Agents order (same order the aggregate dispatch uses).
+// in conf.Server().Agents order (same order the aggregate dispatch uses).
 func (a *Agents) AlbumImageAgents() []AlbumImageAgent {
 	var result []AlbumImageAgent
 	for _, ea := range a.getEnabledAgentNames() {
@@ -256,7 +256,7 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 }
 
 // GetSimilarArtists returns similar artists by id, name, and/or mbid. Because some artists returned from an enabled
-// agent may not exist in the database, return at most limit * conf.Server.DevExternalArtistFetchMultiplier items.
+// agent may not exist in the database, return at most limit * conf.Server().DevExternalArtistFetchMultiplier items.
 func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]Artist, error) {
 	switch id {
 	case consts.UnknownArtistID:
@@ -265,7 +265,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 		return nil, nil
 	}
 
-	overLimit := int(float64(limit) * conf.Server.DevExternalArtistFetchMultiplier)
+	overLimit := int(float64(limit) * conf.Server().DevExternalArtistFetchMultiplier)
 
 	start := time.Now()
 	attempts := newAttempts(&a.cooldowns)
@@ -316,7 +316,7 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 }
 
 // GetArtistTopSongs returns top songs by id, name, and/or mbid. Because some songs returned from an enabled
-// agent may not exist in the database, return at most limit * conf.Server.DevExternalArtistFetchMultiplier items.
+// agent may not exist in the database, return at most limit * conf.Server().DevExternalArtistFetchMultiplier items.
 func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
 	switch id {
 	case consts.UnknownArtistID:
@@ -325,7 +325,7 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 		return nil, nil
 	}
 
-	overLimit := int(float64(count) * conf.Server.DevExternalArtistFetchMultiplier)
+	overLimit := int(float64(count) * conf.Server().DevExternalArtistFetchMultiplier)
 
 	return callAgentSliceMethod(ctx, a, "GetArtistTopSongs", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(ArtistTopSongsRetriever)

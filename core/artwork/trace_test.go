@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
@@ -212,8 +211,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CoverArtPriority = "cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 		libRepo := &tests.MockLibraryRepo{}
@@ -266,7 +264,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 	})
 
 	It("ignores an empty priority token", func() {
-		conf.Server.CoverArtPriority = "cover.jpg,"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg," })
 		albumRepo.SetData(model.Albums{{ID: "al2", Name: "Album", FolderIDs: []string{"f1"}}})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
@@ -298,9 +296,10 @@ var _ = Describe("resolveArtist tracing", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
-		conf.Server.ArtistArtPriority = "album/artist.*"
+		conf.Update(func(c *conf.Options) {
+			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
+			c.ArtistArtPriority = "album/artist.*"
+		})
 		var err error
 		repoRoot, err = os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
@@ -372,7 +371,7 @@ var _ = Describe("resolveArtist tracing", func() {
 	})
 
 	It("records why an artist folder pattern was skipped", func() {
-		conf.Server.ArtistArtPriority = "artist.*"
+		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*" })
 		artistRepo.SetData(model.Artists{{ID: "ar6", Name: "Artist"}})
 		albumRepo.All = model.Albums{{ID: "al10", Name: "Album", LibraryID: 0, FolderIDs: []string{"f1"}}}
 
@@ -413,10 +412,11 @@ var _ = Describe("NewTracingResolver", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
-		conf.Server.CoverArtPriority = "external, embedded"
-		conf.Server.ArtistArtPriority = "external"
+		conf.Update(func(c *conf.Options) {
+			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
+			c.CoverArtPriority = "external, embedded"
+			c.ArtistArtPriority = "external"
+		})
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 		libRepo := &tests.MockLibraryRepo{}
@@ -487,7 +487,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("closes the reader it does not hand back", func() {
-			conf.Server.CoverArtPriority = "embedded"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "embedded" })
 			ffm = tests.NewMockFFmpeg("fake image bytes")
 			albumRepo.SetData(model.Albums{{
 				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
@@ -503,9 +503,11 @@ var _ = Describe("NewTracingResolver", func() {
 		// Serving falls back disc -> album and track -> disc -> album. The resolver does not, but
 		// if it ever did, an explain without --live would start calling providers uninvited.
 		It("cannot reach a provider without live, whatever the chain does", func() {
-			conf.Server.DiscArtPriority = "external, cover.*"
-			conf.Server.CoverArtPriority = "external, cover.*"
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) {
+				c.DiscArtPriority = "external, cover.*"
+				c.CoverArtPriority = "external, cover.*"
+				c.EnableMediaFileCoverArt = true
+			})
 			mfRepo := tests.CreateMockMediaFileRepo()
 			mfRepo.SetData(model.MediaFiles{{ID: "mf1", LibraryID: 0, HasCoverArt: true,
 				Path: "tests/fixtures/artist/an-album/test.mp3"}})
@@ -539,7 +541,6 @@ var _ = Describe("resolveDisc tracing", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 		libRepo := &tests.MockLibraryRepo{}
@@ -561,7 +562,7 @@ var _ = Describe("resolveDisc tracing", func() {
 	})
 
 	It("accounts for every configured entry, including the ones that map to no source", func() {
-		conf.Server.DiscArtPriority = "external, discsubtitle, cover.jpg"
+		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "external, discsubtitle, cover.jpg" })
 
 		res, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, model.DiscArtworkID("al1", 2))
 
@@ -575,7 +576,7 @@ var _ = Describe("resolveDisc tracing", func() {
 	})
 
 	It("records the entry that won and stops there", func() {
-		conf.Server.DiscArtPriority = "disc*.*, cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "disc*.*, cover.jpg, embedded" })
 		folderRepo.result = []model.Folder{{
 			Path:       "tests/fixtures/artist/an-album",
 			ImageFiles: []string{"cover.jpg"},
@@ -597,7 +598,7 @@ var _ = Describe("resolveDisc tracing", func() {
 	})
 
 	It("reports an unparseable disc id rather than explaining another disc", func() {
-		conf.Server.DiscArtPriority = "cover.jpg"
+		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "cover.jpg" })
 		_, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, "al1")
 		Expect(err).To(HaveOccurred())
 	})
@@ -613,8 +614,7 @@ var _ = Describe("resolveMediaFile tracing", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableMediaFileCoverArt = true
+		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 		libRepo := &tests.MockLibraryRepo{}
@@ -630,7 +630,7 @@ var _ = Describe("resolveMediaFile tracing", func() {
 	})
 
 	It("separates a disabled setting from a track with nothing embedded", func() {
-		conf.Server.EnableMediaFileCoverArt = false
+		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 
 		_, err := newResolver(ds, nil, ffm, nil).resolveMediaFile(ctx, "mf1")
 

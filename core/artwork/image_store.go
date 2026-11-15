@@ -27,7 +27,7 @@ func NewImageStore(rootDir string) *ImageStore {
 }
 
 func GetImageStore() *ImageStore {
-	return NewImageStore(filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, consts.HashedArtworkFolder))
+	return NewImageStore(filepath.Join(conf.Server().DataFolder.String(), consts.ArtworkFolder, consts.HashedArtworkFolder))
 }
 
 // extForMime must stay stable across OSes: extensions are baked into stored paths and re-derived on Open.

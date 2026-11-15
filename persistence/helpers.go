@@ -87,7 +87,7 @@ var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 // naturalSort makes a plain text column sort numbers by value, leaving it alone
 // otherwise so it keeps its declared collation. Parens guard buildSortOrder's space split.
 func naturalSort(col string) string {
-	if !conf.Server.EnableNaturalSorting {
+	if !conf.Server().EnableNaturalSorting {
 		return col
 	}
 	return fmt.Sprintf("(%s collate %s)", col, db.NaturalCollation)
@@ -99,11 +99,11 @@ func naturalSort(col string) string {
 // It finds order column names anywhere in the substring
 func mapSortOrder(tableName, order string) string {
 	col := tableName + ".order_$1"
-	if conf.Server.PreferSortTags {
+	if conf.Server().PreferSortTags {
 		col = fmt.Sprintf("coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1)", tableName)
 	}
 	collation := "nocase"
-	if conf.Server.EnableNaturalSorting {
+	if conf.Server().EnableNaturalSorting {
 		collation = db.NaturalCollation
 	}
 	repl := fmt.Sprintf("(%s collate %s)", col, collation)

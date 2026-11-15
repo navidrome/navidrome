@@ -82,7 +82,7 @@ func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id s
 
 func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
 	s.URL = ShareURL(r.Context(), s.ID)
-	s.ImageURL = publicurl.ImageURL(r.Context(), s.CoverArtID(), conf.Server.UICoverArtSize)
+	s.ImageURL = publicurl.ImageURL(r.Context(), s.CoverArtID(), conf.Server().UICoverArtSize)
 	for i := range s.Tracks {
 		s.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
 	}

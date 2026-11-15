@@ -45,7 +45,7 @@ func (p *phasePlaylists) producer() ppl.Producer[*model.Folder] {
 }
 
 func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
-	if !conf.Server.AutoImportPlaylists {
+	if !conf.Server().AutoImportPlaylists {
 		log.Info(p.ctx, "Playlists will not be imported, AutoImportPlaylists is set to false")
 		return nil
 	}

@@ -38,6 +38,8 @@ func TestSmartPlaylistE2E(t *testing.T) {
 	RunSpecs(t, "Smart Playlist E2E Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 type _t = map[string]any
 
 var template = storagetest.Template
@@ -239,12 +241,14 @@ var _ = BeforeSuite(func() {
 	tmpDir := GinkgoT().TempDir()
 	dbFilePath = filepath.Join(tmpDir, "smartplaylist-e2e.db")
 	snapshotPath = filepath.Join(tmpDir, "smartplaylist-e2e.db.snapshot")
-	conf.Server.DbPath = dbFilePath + "?_journal_mode=WAL"
+	conf.Update(func(c *conf.Options) { c.DbPath = dbFilePath + "?_journal_mode=WAL" })
 	db.Db().SetMaxOpenConns(1)
 
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DevExternalScanner = false
-	conf.Server.SmartPlaylistRefreshDelay = 0
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DevExternalScanner = false
+		c.SmartPlaylistRefreshDelay = 0
+	})
 
 	db.Init(ctx)
 
@@ -340,10 +344,12 @@ func restoreDB() {
 
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DevExternalScanner = false
-	conf.Server.SmartPlaylistRefreshDelay = 0
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DevExternalScanner = false
+		c.SmartPlaylistRefreshDelay = 0
+	})
 
 	restoreDB()
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}

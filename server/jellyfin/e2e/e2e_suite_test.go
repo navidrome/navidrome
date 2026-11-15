@@ -72,6 +72,8 @@ func TestJellyfinE2E(t *testing.T) {
 	RunSpecs(t, "Jellyfin API E2E Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 // testID maps a readable label to a deterministic canonical id, so fixtures exercise the same
 // id shape production uses.
 func testID(label string) string { return id.NewHash("jellyfin-test", label) }
@@ -298,9 +300,11 @@ var _ = BeforeSuite(func() {
 	dataFolder = filepath.Join(GinkgoT().TempDir(), "data")
 	Expect(os.MkdirAll(dataFolder, 0o755)).To(Succeed())
 
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DataFolder = conf.NewDir(dataFolder)
-	conf.Server.DevExternalScanner = false
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DataFolder = conf.NewDir(dataFolder)
+		c.DevExternalScanner = false
+	})
 
 	buildTestFS()
 	goldenDB = harness.SetupDB(ctx, &adminUser, &regularUser)
@@ -316,11 +320,13 @@ var _ = AfterSuite(func() {
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DataFolder = conf.NewDir(dataFolder)
-	conf.Server.DevExternalScanner = false
-	conf.Server.DevEnableMediaFileProbe = false
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DataFolder = conf.NewDir(dataFolder)
+		c.DevExternalScanner = false
+		c.DevEnableMediaFileProbe = false
+	})
 
 	goldenDB.Restore()
 

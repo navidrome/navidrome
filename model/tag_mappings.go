@@ -143,7 +143,7 @@ var artistSplitExceptions atomic.Pointer[artistSplitExceptionsCache]
 // configured list changes. Lock-free on the cache-hit path, as this is called
 // per tag mapping per scanned file, across concurrent scanner goroutines.
 func artistSplitExceptionsRx() *regexp.Regexp {
-	names := conf.Server.Scanner.ArtistSplitExceptions
+	names := conf.Server().Scanner.ArtistSplitExceptions
 	if c := artistSplitExceptions.Load(); c != nil && slices.Equal(c.names, names) {
 		return c.rx
 	}
@@ -338,16 +338,16 @@ func loadTagMappings() {
 	}
 
 	// Use Scanner.GenreSeparators if specified and Tags.genre is not defined
-	if conf.Server.Scanner.GenreSeparators != "" && len(conf.Server.Tags["genre"].Aliases) == 0 {
+	if conf.Server().Scanner.GenreSeparators != "" && len(conf.Server().Tags["genre"].Aliases) == 0 {
 		genreConf := _mappings.Main[TagName("genre")]
-		genreConf.Split = strings.Split(conf.Server.Scanner.GenreSeparators, "")
+		genreConf.Split = strings.Split(conf.Server().Scanner.GenreSeparators, "")
 		genreConf.SplitRx = compileSplitRegex("genre", genreConf.Split)
 		_mappings.Main[TagName("genre")] = genreConf
 		log.Debug("Loading deprecated list of genre separators", "separators", genreConf.Split)
 	}
 
 	// Overwrite the default mappings with the ones from the config
-	for tag, cfg := range conf.Server.Tags {
+	for tag, cfg := range conf.Server().Tags {
 		if cfg.Ignore {
 			delete(_mappings.Main, TagName(tag))
 			delete(_mappings.Additional, TagName(tag))

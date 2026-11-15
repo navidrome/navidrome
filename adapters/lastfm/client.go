@@ -182,7 +182,14 @@ func (c *client) scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	params.Add("album", info.album)
 	params.Add("trackNumber", strconv.Itoa(info.trackNumber))
 	params.Add("mbid", info.mbid)
-	params.Add("duration", strconv.Itoa(info.duration))
+
+	// Last.fm requires a minimum duration of 30 seconds to scrobble a track. To circumvent this, only send the duration if it is greater than or equal to 30 seconds.
+	if info.duration >= 30 {
+		params.Add("duration", strconv.Itoa(info.duration))
+	} else {
+		log.Debug(ctx, "LastFM: scrobble duration is less than 30 seconds, duration will not be transmitted", "duration", info.duration)
+	}
+
 	params.Add("albumArtist", info.albumArtist)
 	params.Add("sk", sessionKey)
 	resp, err := c.makeRequest(ctx, http.MethodPost, params, true)

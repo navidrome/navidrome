@@ -107,7 +107,7 @@ func (api *Router) streamUniversal(w http.ResponseWriter, r *http.Request) {
 
 func universalClientInfo(p *req.Values) *stream.ClientInfo {
 	ci := &stream.ClientInfo{Name: "jellyfin-universal", MaxAudioBitrate: bitRateParam(p)}
-	for entry := range strings.SplitSeq(p.StringOr("container", ""), ",") {
+	for entry := range strings.SplitSeq(joinedStrings(p, "container"), ",") {
 		container, codec, _ := strings.Cut(strings.TrimSpace(entry), "|")
 		if container == "" {
 			continue

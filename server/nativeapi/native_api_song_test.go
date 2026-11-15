@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -35,9 +34,10 @@ var _ = Describe("Song Endpoints", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
-		conf.Server.SessionTimeout = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.SessionTimeout = time.Minute
+		})
 
 		// Setup mock repositories
 		mfRepo = tests.CreateMockMediaFileRepo()

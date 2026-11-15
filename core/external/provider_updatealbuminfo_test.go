@@ -36,7 +36,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		ag = new(mockAgents)
 		p = external.NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
 		mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
-		conf.Server.DevAlbumInfoTimeToLive = 1 * time.Hour
+		conf.Update(func(c *conf.Options) { c.DevAlbumInfoTimeToLive = 1 * time.Hour })
 	})
 
 	It("returns error when album is not found", func() {
@@ -89,7 +89,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			ExternalUrl:           "http://cached.com/album",
 			Description:           "Cached Desc",
 			LargeImageUrl:         "http://cached.com/large.jpg",
-			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevAlbumInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server().DevAlbumInfoTimeToLive / 2)),
 		}
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
@@ -104,7 +104,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 
 	It("returns cached info and triggers background refresh when info is expired", func() {
 		now := time.Now()
-		expiredTime := now.Add(-conf.Server.DevAlbumInfoTimeToLive * 2)
+		expiredTime := now.Add(-conf.Server().DevAlbumInfoTimeToLive * 2)
 		originalAlbum := &model.Album{
 			ID:                    "al-expired",
 			Name:                  "Expired Album",

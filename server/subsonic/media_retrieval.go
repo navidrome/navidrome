@@ -20,7 +20,7 @@ import (
 )
 
 func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	if !conf.Server.EnableGravatar {
+	if !conf.Server().EnableGravatar {
 		return api.getPlaceHolderAvatar(w, r)
 	}
 	p := req.Params(r)

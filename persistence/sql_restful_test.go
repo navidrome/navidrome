@@ -7,7 +7,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -27,8 +26,7 @@ var _ = Describe("sqlRestful", func() {
 		})
 
 		It(`returns nil if tries a filter with legacySearchExpr("'")`, func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Search.Backend = "legacy"
+			conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 			r.filterMappings = map[string]filterFunc{
 				"name": fullTextFilter("table"),
 			}
@@ -78,8 +76,7 @@ var _ = Describe("sqlRestful", func() {
 		var mbidFields []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Search.Backend = "legacy"
+			conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 			tableName = "test_table"
 			mbidFields = []string{"mbid", "artist_mbid"}
 			filter = fullTextFilter(tableName, mbidFields...)
@@ -138,7 +135,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("when SearchFullString config changes behavior", func() {
 			It("uses different separator with SearchFullString=false", func() {
-				conf.Server.Search.FullString = false
+				conf.Update(func(c *conf.Options) { c.Search.FullString = false })
 				result := filter("search", "test query")
 
 				sql, args, err := result.ToSql()
@@ -150,7 +147,7 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("uses no separator with SearchFullString=true", func() {
-				conf.Server.Search.FullString = true
+				conf.Update(func(c *conf.Options) { c.Search.FullString = true })
 				result := filter("search", "test query")
 
 				sql, args, err := result.ToSql()
@@ -164,7 +161,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("single-character queries (regression: must not be rejected)", func() {
 			It("returns valid filter for single-char query with legacy backend", func() {
-				conf.Server.Search.Backend = "legacy"
+				conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 				result := filter("search", "a")
 				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")
 				sql, args, err := result.ToSql()
@@ -174,8 +171,10 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("returns valid filter for single-char query with FTS backend", func() {
-				conf.Server.Search.Backend = "fts"
-				conf.Server.Search.FullString = false
+				conf.Update(func(c *conf.Options) {
+					c.Search.Backend = "fts"
+					c.Search.FullString = false
+				})
 				ftsFilter := fullTextFilter(tableName, mbidFields...)
 				result := ftsFilter("search", "a")
 				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")

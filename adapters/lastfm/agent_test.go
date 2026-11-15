@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
@@ -32,15 +31,16 @@ var _ = Describe("lastfmAgent", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		ctx = context.Background()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LastFM.Enabled = true
-		conf.Server.LastFM.ApiKey = "123"
-		conf.Server.LastFM.Secret = "secret"
+		conf.Update(func(c *conf.Options) {
+			c.LastFM.Enabled = true
+			c.LastFM.ApiKey = "123"
+			c.LastFM.Secret = "secret"
+		})
 	})
 	Describe("lastFMConstructor", func() {
 		When("Agent is properly configured", func() {
 			It("uses configured api key and languages", func() {
-				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"pt", "en"} })
 				agent := lastFMConstructor(ds)
 				Expect(agent.apiKey).To(Equal("123"))
 				Expect(agent.secret).To(Equal("secret"))
@@ -49,19 +49,19 @@ var _ = Describe("lastfmAgent", func() {
 		})
 		When("Agent is disabled", func() {
 			It("returns nil", func() {
-				conf.Server.LastFM.Enabled = false
+				conf.Update(func(c *conf.Options) { c.LastFM.Enabled = false })
 				Expect(lastFMConstructor(ds)).To(BeNil())
 			})
 		})
 		When("ApiKey is empty", func() {
 			It("returns nil", func() {
-				conf.Server.LastFM.ApiKey = ""
+				conf.Update(func(c *conf.Options) { c.LastFM.ApiKey = "" })
 				Expect(lastFMConstructor(ds)).To(BeNil())
 			})
 		})
 		When("Secret is empty", func() {
 			It("returns nil", func() {
-				conf.Server.LastFM.Secret = ""
+				conf.Update(func(c *conf.Options) { c.LastFM.Secret = "" })
 				Expect(lastFMConstructor(ds)).To(BeNil())
 			})
 		})
@@ -121,7 +121,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns content in first language when available (1 API call)", func() {
-				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"pt", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -138,7 +138,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("falls back to second language when first returns empty (2 API calls)", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -159,7 +159,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns ErrNotFound when all languages return empty", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "xx"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -186,7 +186,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("falls back to second language when first returns empty description (2 API calls)", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -208,7 +208,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns album without description when all languages return empty", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "xx"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -412,7 +412,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			When("ScrobbleFirstArtistOnly is true", func() {
 				BeforeEach(func() {
-					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+					conf.Update(func(c *conf.Options) { c.LastFM.ScrobbleFirstArtistOnly = true })
 				})
 
 				It("uses only the first artist", func() {
@@ -454,7 +454,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			When("ScrobbleFirstArtistOnly is true", func() {
 				BeforeEach(func() {
-					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+					conf.Update(func(c *conf.Options) { c.LastFM.ScrobbleFirstArtistOnly = true })
 				})
 
 				It("uses only the first artist", func() {
@@ -471,14 +471,54 @@ var _ = Describe("lastfmAgent", func() {
 				})
 			})
 
-			It("skips songs with less than 31 seconds", func() {
-				track.Duration = 29
+			It("skips songs at the 30-second minimum", func() {
+				track.Duration = 30
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("sends the duration parameter for a 30.5-second song", func() {
+				track.Duration = 30.5
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"scrobbles":{"scrobble":{"ignoredMessage":{"code":"0"}},"@attr":{"accepted":1}}}`)), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeTrue())
+				Expect(sentParams.Get("duration")).To(Equal("30"))
+			})
+
+			It("skips songs according to the configured minimum duration", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 60 * time.Second })
+				track.Duration = 59
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("does not skip short songs when the minimum duration is disabled", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 0 })
+				track.Duration = 29
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).ToNot(BeNil())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeFalse())
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {
@@ -546,7 +586,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("calls track.love when SyncLovedTracks is enabled and starred is true", func() {
-				conf.Server.LastFM.SyncLovedTracks = true
+				conf.Update(func(c *conf.Options) { c.LastFM.SyncLovedTracks = true })
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 				err := agent.SetFavorite(ctx, "user-1", track, true)
 				Expect(err).ToNot(HaveOccurred())
@@ -574,7 +614,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("respects per-user LastFMSyncLoved=false even when server SyncLovedTracks is true", func() {
-				conf.Server.LastFM.SyncLovedTracks = true
+				conf.Update(func(c *conf.Options) { c.LastFM.SyncLovedTracks = true })
 				_ = ds.UserProps().Put(ctx, "user-1", syncLovedProperty, "false")
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 				err := agent.SetFavorite(ctx, "user-1", track, true)
@@ -583,13 +623,13 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {
-				conf.Server.LastFM.SyncLovedTracks = true
+				conf.Update(func(c *conf.Options) { c.LastFM.SyncLovedTracks = true })
 				err := agent.SetFavorite(ctx, "user-2", track, true)
 				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 			})
 
 			It("returns ErrRetryLater on transient Last.fm errors", func() {
-				conf.Server.LastFM.SyncLovedTracks = true
+				conf.Update(func(c *conf.Options) { c.LastFM.SyncLovedTracks = true })
 				httpClient.Res = http.Response{
 					Body:       io.NopCloser(bytes.NewBufferString(`{"error":16,"message":"Temporary error"}`)),
 					StatusCode: 400,

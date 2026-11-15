@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
@@ -226,8 +225,7 @@ var _ = Describe("formatExplain", func() {
 	var rep explainReport
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.ArtistArtPriority = "external, artist.*"
+		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external, artist.*" })
 		rep = explainReport{
 			kind:   model.KindArtistArtwork,
 			id:     "ar-1",
@@ -289,7 +287,7 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
-		conf.Server.CoverArtPriority = "cover.*, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*, embedded" })
 		rep.kind = model.KindPlaylistArtwork
 		rep.steps = nil
 		rep.agents = ""
@@ -305,7 +303,7 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("says disc artwork keeps no state instead of reporting it as unresolved state", func() {
-		conf.Server.DiscArtPriority = "cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "cover.jpg, embedded" })
 		rep = explainReport{
 			kind: model.KindDiscArtwork, id: "al-1:2", name: "OK Computer (disc 2)",
 			steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
@@ -387,7 +385,7 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("reports the setting that governs media file artwork", func() {
-		conf.Server.EnableMediaFileCoverArt = false
+		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 		rep = explainReport{
 			kind: model.KindMediaFileArtwork, id: "mf-1", name: "Airbag",
 			walked: true,
@@ -406,9 +404,10 @@ var _ = Describe("formatExplain", func() {
 
 var _ = Describe("explainConfig", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DiscArtPriority = "cover.jpg"
-		conf.Server.EnableMediaFileCoverArt = true
+		conf.Update(func(c *conf.Options) {
+			c.DiscArtPriority = "cover.jpg"
+			c.EnableMediaFileCoverArt = true
+		})
 	})
 
 	DescribeTable("names the setting that decides where a kind's artwork comes from",
@@ -578,10 +577,11 @@ var _ = Describe("reprocessArtwork", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CoverArtPriority = "cover.*, external"
-		conf.Server.ArtistArtPriority = "artist.*, external"
-		conf.Server.EnableM3UExternalAlbumArt = false
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*, external"
+			c.ArtistArtPriority = "artist.*, external"
+			c.EnableM3UExternalAlbumArt = false
+		})
 		imageAgents = artwork.ImageAgentCount{Artist: 1, Album: 1}
 		ds = &tests.MockDataStore{}
 		art = ds.Artwork().(*tests.MockArtworkRepo)
@@ -714,7 +714,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("says so when the selection needs no external lookup", func() {
-		conf.Server.CoverArtPriority = "cover.*"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
@@ -723,8 +723,10 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("counts playlists as external cost when the m3u image fetch is enabled", func() {
-		conf.Server.CoverArtPriority = "cover.*"
-		conf.Server.EnableM3UExternalAlbumArt = true
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*"
+			c.EnableM3UExternalAlbumArt = true
+		})
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 		var external int64
 		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
@@ -1012,10 +1014,11 @@ var _ = Describe("refreshItems", func() {
 
 var _ = Describe("needsImageAgents", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CoverArtPriority = "cover.*, external"
-		conf.Server.ArtistArtPriority = "artist.*, external"
-		conf.Server.EnableM3UExternalAlbumArt = false
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*, external"
+			c.ArtistArtPriority = "artist.*, external"
+			c.EnableM3UExternalAlbumArt = false
+		})
 	})
 
 	It("is false for a selection no agent can serve", func() {
@@ -1033,24 +1036,25 @@ var _ = Describe("needsImageAgents", func() {
 	})
 
 	It("is false once the chains no longer reach an agent", func() {
-		conf.Server.CoverArtPriority = "cover.*"
-		conf.Server.ArtistArtPriority = "artist.*"
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*"
+			c.ArtistArtPriority = "artist.*"
+		})
 		Expect(needsImageAgents(artwork.ReprocessKinds)).To(BeFalse())
 	})
 })
 
 var _ = Describe("configuredAgents", func() {
-	BeforeEach(func() { DeferCleanup(configtest.SetupConfig()) })
 
 	It("splits and trims the configured list", func() {
-		conf.Server.Agents = "lastfm, spotify ,deezer"
+		conf.Update(func(c *conf.Options) { c.Agents = "lastfm, spotify ,deezer" })
 		Expect(configuredAgents()).To(Equal([]string{"lastfm", "spotify", "deezer"}))
 	})
 
 	// An empty name would match no plugin, but it also must not make the list look non-empty:
 	// LoadPlugins treats an empty list as "load nothing".
 	It("drops empty entries rather than passing a name nothing can match", func() {
-		conf.Server.Agents = " , ,"
+		conf.Update(func(c *conf.Options) { c.Agents = " , ," })
 		Expect(configuredAgents()).To(BeEmpty())
 	})
 })

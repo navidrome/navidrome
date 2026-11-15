@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -24,12 +25,14 @@ func TestPersistence(t *testing.T) {
 
 	//os.Remove("./test-123.db")
 	//conf.Server.DbPath = "./test-123.db"
-	conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
+	conf.Update(func(c *conf.Options) { c.DbPath = "file::memory:?cache=shared&_foreign_keys=on" })
 	defer db.Init(context.Background())()
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}

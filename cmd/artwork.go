@@ -416,7 +416,7 @@ func needsImageAgents(kinds []model.Kind) bool {
 // configuredAgents names the agents in priority order; one absent from it can never supply an image.
 func configuredAgents() []string {
 	var names []string
-	for name := range strings.SplitSeq(conf.Server.Agents, ",") {
+	for name := range strings.SplitSeq(conf.Server().Agents, ",") {
 		if name = strings.TrimSpace(name); name != "" {
 			names = append(names, name)
 		}
@@ -811,13 +811,13 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 func explainConfig(kind model.Kind) (name, value string) {
 	switch kind {
 	case model.KindArtistArtwork:
-		return "ArtistArtPriority", conf.Server.ArtistArtPriority
+		return "ArtistArtPriority", conf.Server().ArtistArtPriority
 	case model.KindAlbumArtwork:
-		return "CoverArtPriority", conf.Server.CoverArtPriority
+		return "CoverArtPriority", conf.Server().CoverArtPriority
 	case model.KindDiscArtwork:
-		return "DiscArtPriority", conf.Server.DiscArtPriority
+		return "DiscArtPriority", conf.Server().DiscArtPriority
 	case model.KindMediaFileArtwork:
-		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server.EnableMediaFileCoverArt)
+		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server().EnableMediaFileCoverArt)
 	}
 	return "", ""
 }
@@ -1002,7 +1002,7 @@ func runExplain(ctx context.Context, args []string) {
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
 			mgr := loadPluginAgents(ctx, explainLive)
 			defer func() { _ = mgr.Stop() }()
-			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
+			rep.agents = explainAgents(conf.Server().Agents, availableImageAgents(ds, mgr, kind))
 		}
 		switch {
 		case rep.walked:

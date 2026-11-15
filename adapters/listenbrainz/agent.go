@@ -31,7 +31,7 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 	l := &listenBrainzAgent{
 		ds:          ds,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
-		baseURL:     conf.Server.ListenBrainz.BaseURL,
+		baseURL:     conf.Server().ListenBrainz.BaseURL,
 	}
 	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
@@ -229,7 +229,7 @@ func (l *listenBrainzAgent) PlaybackReport(context.Context, scrobbler.PlaybackSe
 
 func init() {
 	conf.AddHook(func() {
-		if conf.Server.ListenBrainz.Enabled {
+		if conf.Server().ListenBrainz.Enabled {
 			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
 				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzAgent)(nil)
 				// See https://go.dev/doc/faq#nil_error

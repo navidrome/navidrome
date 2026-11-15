@@ -107,14 +107,14 @@ type MediaFile struct {
 }
 
 func (mf MediaFile) FullTitle() string {
-	if s := mf.Tags.First(TagSubtitle); conf.Server.Subsonic.AppendSubtitle && s != "" {
+	if s := mf.Tags.First(TagSubtitle); conf.Server().Subsonic.AppendSubtitle && s != "" {
 		return appendSuffix(mf.Title, s)
 	}
 	return mf.Title
 }
 
 func (mf MediaFile) FullAlbumName() string {
-	if v := mf.Tags.First(TagAlbumVersion); conf.Server.Subsonic.AppendAlbumVersion && v != "" {
+	if v := mf.Tags.First(TagAlbumVersion); conf.Server().Subsonic.AppendAlbumVersion && v != "" {
 		return appendSuffix(mf.Album, v)
 	}
 	return mf.Album
@@ -136,7 +136,7 @@ func (mf MediaFile) ContentType() string {
 
 func (mf MediaFile) CoverArtID() ArtworkID {
 	// If it has a cover art, return it (if feature is disabled, skip)
-	if mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+	if mf.HasCoverArt && conf.Server().EnableMediaFileCoverArt {
 		return artworkIDFromMediaFile(mf)
 	}
 	// Otherwise fallback to disc (if available) or album cover

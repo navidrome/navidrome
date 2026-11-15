@@ -77,7 +77,7 @@ func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, 
 			"play_date",
 			"rated_at",
 		)
-	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
+	if conf.Server().AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
 		query = query.Columns(
 			fmt.Sprintf("round(coalesce(round(cast(play_count as float) / coalesce(%[1]s.song_count, 1), 1), 0)) as play_count", r.tableName),
 		)

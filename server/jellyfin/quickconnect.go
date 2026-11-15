@@ -15,7 +15,7 @@ import (
 
 func requireQuickConnect(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !conf.Server.Jellyfin.QuickConnect {
+		if !conf.Server().Jellyfin.QuickConnect {
 			http.Error(w, "Quick connect is disabled", http.StatusUnauthorized)
 			return
 		}
@@ -24,7 +24,7 @@ func requireQuickConnect(next http.Handler) http.Handler {
 }
 
 func (api *Router) quickConnectEnabled(w http.ResponseWriter, r *http.Request) {
-	api.ok(w, r, conf.Server.Jellyfin.QuickConnect)
+	api.ok(w, r, conf.Server().Jellyfin.QuickConnect)
 }
 
 // Initiate is unauthenticated and its fields are kept for minutes, so their size must be bounded.

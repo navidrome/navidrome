@@ -44,7 +44,8 @@ var _ = Describe("runPhase", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
+		sum.Store(0)
 		phaseNum = 1
 		phase = &mockPhase{
 			num: 3,

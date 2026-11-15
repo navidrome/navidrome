@@ -59,7 +59,7 @@ func (pls Playlist) RefreshDelay() time.Duration {
 	if pls.IsSmartPlaylist() && pls.Rules.RefreshDelay > 0 {
 		return pls.Rules.RefreshDelay
 	}
-	return conf.Server.SmartPlaylistRefreshDelay
+	return conf.Server().SmartPlaylistRefreshDelay
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {

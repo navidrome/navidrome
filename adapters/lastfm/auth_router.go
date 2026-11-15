@@ -40,8 +40,8 @@ type Router struct {
 func NewRouter(ds model.DataStore) *Router {
 	r := &Router{
 		ds:          ds,
-		apiKey:      conf.Server.LastFM.ApiKey,
-		secret:      conf.Server.LastFM.Secret,
+		apiKey:      conf.Server().LastFM.ApiKey,
+		secret:      conf.Server().LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 		syncLoved:   &agents.SessionKeys{DataStore: ds, KeyName: syncLovedProperty},
 	}

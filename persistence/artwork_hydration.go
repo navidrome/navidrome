@@ -41,7 +41,10 @@ func streamByIDs[S ~[]T, T any](ids []string, fetch func(chunk []string) (S, err
 func chunkOptions(options []model.QueryOptions, idField string) func([]string) model.QueryOptions {
 	var base model.QueryOptions
 	if len(options) > 0 {
-		base = model.QueryOptions{Sort: options[0].Sort, Order: options[0].Order, Filters: options[0].Filters}
+		base = model.QueryOptions{
+			Sort: options[0].Sort, Order: options[0].Order, SortOrders: options[0].SortOrders,
+			Filters: options[0].Filters,
+		}
 	}
 	return func(chunk []string) model.QueryOptions {
 		opts := base
@@ -99,7 +102,7 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 	var eligibleIDs []string
 	for i := range mfs {
 		albumIDs[i] = mfs[i].AlbumID
-		if mfs[i].HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+		if mfs[i].HasCoverArt && conf.Server().EnableMediaFileCoverArt {
 			eligibleIDs = append(eligibleIDs, mfs[i].ID)
 		}
 	}
@@ -108,7 +111,7 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 	for i := range mfs {
 		mf := &mfs[i]
 		applyItemImage(albumInfos, mf.AlbumID, &mf.AlbumImage)
-		eligible := mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt
+		eligible := mf.HasCoverArt && conf.Server().EnableMediaFileCoverArt
 		ownInfo, ownResolved := mfInfos[mf.ID]
 		if eligible && ownResolved && !ownInfo.Absent() {
 			mf.ItemImage = ownInfo.Image()

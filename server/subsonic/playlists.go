@@ -135,7 +135,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	pls.Changed = p.UpdatedAt
 
 	player, ok := request.PlayerFrom(ctx)
-	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
+	if ok && isClientInList(conf.Server().Subsonic.MinimalClients, player.Client) {
 		return pls
 	}
 
@@ -150,7 +150,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 
 func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubsonicPlaylist {
 	player, ok := request.PlayerFrom(ctx)
-	if ok && isClientInList(conf.Server.Subsonic.LegacyClients, player.Client) {
+	if ok && isClientInList(conf.Server().Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	pls := responses.OpenSubsonicPlaylist{}
