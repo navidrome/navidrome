@@ -1,7 +1,6 @@
 package public
 
 import (
-	"context"
 	"net/http"
 	"path"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -59,9 +57,4 @@ func (pub *Router) routes() http.Handler {
 		}
 	})
 	return r
-}
-
-func ShareURL(ctx context.Context, id string) string {
-	uri := path.Join(consts.URLPathPublic, id)
-	return publicurl.PublicURL(ctx, uri, nil)
 }
