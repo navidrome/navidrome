@@ -202,10 +202,6 @@ var _ = BeforeSuite(func() {
 	ur := NewUserRepository(conn)
 	for i := range testUsers {
 		Expect(ur.Put(ctx, &testUsers[i])).To(Succeed())
-	}
-
-	// Associate users with library 1 (default test library)
-	for i := range testUsers {
 		Expect(ur.SetUserLibraries(ctx, testUsers[i].ID, []int{1})).To(Succeed())
 	}
 
@@ -215,13 +211,9 @@ var _ = BeforeSuite(func() {
 	}
 
 	arr := NewArtistRepository(conn)
-	for i := range testArtists {
-		Expect(arr.Put(ctx, new(testArtists[i]))).To(Succeed())
-	}
-
-	// Associate artists with library 1 (default test library)
 	lr := NewLibraryRepository(conn)
 	for i := range testArtists {
+		Expect(arr.Put(ctx, new(testArtists[i]))).To(Succeed())
 		Expect(lr.AddArtist(ctx, 1, testArtists[i].ID)).To(Succeed())
 	}
 

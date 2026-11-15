@@ -82,20 +82,14 @@ var _ = Describe("Dir", func() {
 		})
 
 		It("calls logFatal on error", func() {
-			var fatalMsg []any
-			restore := conf.SetLogFatal(func(args ...any) {
-				fatalMsg = args
-				panic("logFatal called") //nolint:forbidigo
-			})
-			DeferCleanup(restore)
+			DeferCleanup(conf.PanicOnLogFatal())
 
 			f := GinkgoT().TempDir() + "/blocker"
 			Expect(os.WriteFile(f, []byte("x"), 0600)).To(Succeed())
 			invalid := f + "/subdir"
 
 			d := conf.NewDir(invalid)
-			Expect(func() { d.MustPath() }).To(Panic())
-			Expect(fatalMsg).ToNot(BeEmpty())
+			Expect(func() { d.MustPath() }).To(PanicWith(ContainSubstring("creating directory")))
 		})
 	})
 

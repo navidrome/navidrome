@@ -34,10 +34,7 @@ var _ = Describe("Configuration", func() {
 		viper.SetDefault("loglevel", "error")
 		conf.ResetConf()
 
-		// Panic instead of exiting on fatal errors to allow testing error conditions
-		DeferCleanup(conf.SetLogFatal(func(args ...any) {
-			panic(fmt.Sprint(args...)) //nolint:forbidigo
-		}))
+		DeferCleanup(conf.PanicOnLogFatal())
 	})
 
 	Describe("ParseLanguages", func() {
