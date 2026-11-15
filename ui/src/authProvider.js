@@ -27,7 +27,11 @@ function storeAuthenticationInfo(authInfo) {
 
 const isNetworkError = (error) => {
   const msg = error?.message || ''
-  return msg === 'Failed to fetch' || msg.includes('NetworkError')
+  return (
+    msg === 'Failed to fetch' ||
+    msg === 'Load failed' ||
+    msg.includes('NetworkError')
+  )
 }
 
 const authProvider = {

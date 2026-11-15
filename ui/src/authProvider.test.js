@@ -106,6 +106,7 @@ describe('authProvider.checkError', () => {
       'Firefox',
       new TypeError('NetworkError when attempting to fetch resource'),
     ],
+    ['Safari', new TypeError('Load failed')],
   ])(
     'clears auth and reloads on %s network error with proxy auth',
     async (_, error) => {
