@@ -60,15 +60,18 @@ func targetSampleRate(srcSampleRate int, srcCodec string, capDSD bool) int {
 
 // targetBitDepth returns the bit depth for a transcoded stream: 0 for lossy
 // targets (they have no PCM bit depth), otherwise the source depth, with DSD
-// (1 bit in tags, 8 in ffprobe) adjusted to the 24-bit PCM that ffmpeg produces.
-func targetBitDepth(srcBitDepth int, srcCodec string, targetIsLossless bool) int {
-	if !targetIsLossless {
+// (1 bit in tags, 8 in ffprobe) adjusted to the 24-bit PCM that ffmpeg produces,
+// and lossy sources (no PCM depth) given the most widely supported 16 bits.
+func targetBitDepth(src *Details, targetIsLossless bool) int {
+	switch {
+	case !targetIsLossless:
 		return 0
-	}
-	if strings.EqualFold(srcCodec, "dsd") {
+	case strings.EqualFold(src.Codec, "dsd"):
 		return 24
+	case !src.IsLossless:
+		return 16
 	}
-	return srcBitDepth
+	return src.BitDepth
 }
 
 // codecFixedOutputSampleRate returns the mandatory output sample rate for codecs

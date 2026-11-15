@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -42,6 +43,7 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 		ci.TranscodingProfiles = []Profile{
 			{Container: targetFormat, AudioCodec: targetFormat, Protocol: ProtocolHTTP},
 		}
+		ci.AllowLossyToLossless = reqFormat != ""
 		if reqBitRate > 0 {
 			ci.MaxAudioBitrate = reqBitRate
 			ci.MaxTranscodingAudioBitrate = reqBitRate
@@ -54,6 +56,20 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 	}
 
 	return ci
+}
+
+var ErrLosslessBitRateLimit = errors.New("cannot limit the bitrate of a lossless format transcoded from a lossy source")
+
+// ValidateLegacyRequest rejects legacy stream parameters that cannot be honored together,
+// instead of silently serving a different format than the one requested.
+func ValidateLegacyRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) error {
+	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
+		return nil
+	}
+	if reqBitRate > 0 && isLosslessFormat(reqFormat) && !buildSourceStream(mf, nil).IsLossless {
+		return ErrLosslessBitRateLimit
+	}
+	return nil
 }
 
 // ResolveRequest uses MakeDecision to resolve legacy Subsonic stream parameters

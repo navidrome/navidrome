@@ -175,6 +175,7 @@ func applyServerOverride(ctx context.Context, original *ClientInfo, trc *model.T
 		TranscodingProfiles: []Profile{
 			{Container: trc.TargetFormat, AudioCodec: trc.TargetFormat, Protocol: ProtocolHTTP},
 		},
+		AllowLossyToLossless: true,
 	}
 }
 
@@ -257,9 +258,9 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 
 	targetIsLossless := isLosslessFormat(targetFormat)
 
-	// Reject lossy to lossless conversion
-	if !src.IsLossless && targetIsLossless {
-		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
+	if !src.IsLossless && targetIsLossless && !clientInfo.AllowLossyToLossless {
+		log.Debug(ctx, "Skipping transcoding profile: lossy to lossless not allowed",
+			"sourceCodec", src.Codec, "targetFormat", targetFormat)
 		return nil, ""
 	}
 
@@ -274,7 +275,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 		Codec:      targetCodec,
 		SampleRate: targetSampleRate(src.SampleRate, src.Codec, capDSD),
 		Channels:   src.Channels,
-		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
+		BitDepth:   targetBitDepth(src, targetIsLossless),
 		IsLossless: targetIsLossless,
 	}
 
@@ -385,6 +386,13 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *Details, targe
 					"targetFormat", targetFormat, "sourceBitrate", src.Bitrate, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 				return false
 			}
+		}
+	} else if targetIsLossless {
+		// Lossless output from a lossy source is far larger than the source, so no cap can be honored
+		if clientInfo.MaxAudioBitrate > 0 {
+			log.Trace(ctx, "Skipping transcoding profile: lossy to lossless cannot honor bitrate limit",
+				"targetFormat", targetFormat, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
+			return false
 		}
 	} else {
 		ts.Bitrate = src.Bitrate

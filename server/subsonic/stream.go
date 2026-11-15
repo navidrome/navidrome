@@ -32,6 +32,10 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 		return nil, err
 	}
 
+	if err := stream.ValidateLegacyRequest(ctx, mf, format, maxBitRate); err != nil {
+		return nil, newError(responses.ErrorGeneric, err.Error())
+	}
+
 	streamReq := api.transcodeDecision.ResolveRequest(ctx, mf, format, maxBitRate, timeOffset)
 	stream, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
