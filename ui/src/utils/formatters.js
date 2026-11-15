@@ -5,15 +5,12 @@ export const formatBytes = (bytes, decimals = 2) => {
   const dm = decimals < 0 ? 0 : decimals
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
 
+  const scaled = (n) => parseFloat((bytes / Math.pow(k, n)).toFixed(dm))
   let i = Math.floor(Math.log(bytes) / Math.log(k))
-  let value = parseFloat((bytes / Math.pow(k, i)).toFixed(dm))
-  // 1048575 bytes rounds to 1024 KB, which is 1 MB
-  if (value >= k && i < sizes.length - 1) {
-    i++
-    value = parseFloat((bytes / Math.pow(k, i)).toFixed(dm))
-  }
+  // rounding can carry the value up to k, e.g. 1048575 -> "1024 KB"
+  if (scaled(i) >= k && i < sizes.length - 1) i++
 
-  return value + ' ' + sizes[i]
+  return scaled(i) + ' ' + sizes[i]
 }
 
 export const formatDuration = (d) => {
