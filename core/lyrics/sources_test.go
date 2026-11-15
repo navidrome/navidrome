@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"testing/fstest"
+	"time"
 
+	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/text/unicode/norm"
 )
 
 var _ = Describe("sources", func() {
@@ -149,5 +153,75 @@ var _ = Describe("sources", func() {
 			Expect(lyrics[0].Line[1].Start).To(Equal(new(int64(22801))))
 			Expect(lyrics[0].Line[1].Value).To(Equal("UTF16 line two"))
 		})
+	})
+
+	// A sidecar written next to a track can use a different Unicode normalization
+	// form than the track's own filename (macOS commonly stores names as NFD,
+	// while Linux and Windows keep NFC). A byte-exact lookup then misses a sidecar
+	// that is really on disk, so the retry has to try the other form. Issue #4148.
+	Describe("fromExternalFile with mismatched Unicode normalization", func() {
+		const scheme = "fake-lyrics-norm"
+		// "ガ" is katakana KA plus a dakuten, so it has distinct NFC (a single
+		// codepoint) and NFD (base plus combining mark) forms, unlike the plain
+		// CJK ideographs around it. It mirrors the filename from the bug report.
+		const base = "03. 鬱P feat. 初音ミク - ガ"
+
+		var fsys *storagetest.FakeFS
+
+		BeforeEach(func() {
+			fsys = &storagetest.FakeFS{}
+			storagetest.Register(scheme, fsys)
+		})
+
+		// lyricsFor stores the track and its sidecar under dir (kept byte-for-byte,
+		// as the scanner reads it from disk) with the file names in the given forms.
+		lyricsFor := func(dir string, trackForm, sidecarForm norm.Form) (model.LyricList, error) {
+			trackBase := dir + trackForm.String(base)
+			sidecarBase := dir + sidecarForm.String(base)
+			Expect(trackBase).ToNot(Equal(sidecarBase))
+
+			// A non-zero ModTime is required so the FakeFS directory-timestamp
+			// bookkeeping settles instead of looping.
+			modTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			fsys.SetFiles(fstest.MapFS{
+				trackBase + ".flac":  &fstest.MapFile{Data: []byte("audio"), ModTime: modTime},
+				sidecarBase + ".lrc": &fstest.MapFile{Data: []byte("[00:18.80]We're no strangers to love"), ModTime: modTime},
+			})
+
+			mf := &model.MediaFile{LibraryPath: scheme + ":///music", Path: trackBase + ".flac"}
+			return fromExternalFile(ctx, mf, ".lrc")
+		}
+
+		It("finds an NFD-encoded sidecar for an NFC track path", func() {
+			lyrics, err := lyricsFor("", norm.NFC, norm.NFD)
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Synced).To(BeTrue())
+		})
+
+		It("finds an NFC-encoded sidecar for an NFD track path", func() {
+			lyrics, err := lyricsFor("", norm.NFD, norm.NFC)
+
+			Expect(err).To(BeNil())
+			Expect(lyrics).To(HaveLen(1))
+			Expect(lyrics[0].Synced).To(BeTrue())
+		})
+
+		// Only the sidecar's file name can differ in form: the directories come from
+		// the scanner, so they are correct as stored and must not be re-normalized.
+		DescribeTable("when the track sits in a folder with composable characters",
+			func(dir string, trackForm, sidecarForm norm.Form) {
+				lyrics, err := lyricsFor(dir, trackForm, sidecarForm)
+
+				Expect(err).To(BeNil())
+				Expect(lyrics).To(HaveLen(1))
+				Expect(lyrics[0].Synced).To(BeTrue())
+			},
+			Entry("NFC folder, NFC track, NFD sidecar", "ビートルズ/Beyoncé/", norm.NFC, norm.NFD),
+			Entry("NFC folder, NFD track, NFC sidecar", norm.NFC.String("ビートルズ/Beyoncé/"), norm.NFD, norm.NFC),
+			Entry("NFD folder, NFD track, NFC sidecar", norm.NFD.String("ビートルズ/Beyoncé/"), norm.NFD, norm.NFC),
+			Entry("NFD folder, NFC track, NFD sidecar", norm.NFD.String("ビートルズ/Beyoncé/"), norm.NFC, norm.NFD),
+		)
 	})
 })
