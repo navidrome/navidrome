@@ -257,8 +257,10 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 
 	targetIsLossless := isLosslessFormat(targetFormat)
 
+	lossyToLossless := !src.IsLossless && targetIsLossless
 	// Lossless output from a lossy source is far larger than the source, so no bitrate cap can be honored
-	if !src.IsLossless && targetIsLossless && (!clientInfo.AllowLossyToLossless || clientInfo.MaxAudioBitrate > 0) {
+	lossyToLosslessAllowed := clientInfo.AllowLossyToLossless && clientInfo.MaxAudioBitrate == 0
+	if lossyToLossless && !lossyToLosslessAllowed {
 		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "sourceCodec", src.Codec,
 			"targetFormat", targetFormat, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		return nil, ""
