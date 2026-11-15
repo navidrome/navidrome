@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
@@ -159,6 +161,62 @@ var _ = Describe("Stream", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.MediaSources).To(HaveLen(1))
 			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID(testID("s-err"))))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
+
+		It("does not block playback info when lyrics lookup is slow, and includes Lyric stream once ready", func() {
+			origTimeout := playbackInfoLyricsTimeout
+			playbackInfoLyricsTimeout = 20 * time.Millisecond
+			DeferCleanup(func() { playbackInfoLyricsTimeout = origTimeout })
+
+			blockCh := make(chan struct{})
+			doneCh := make(chan struct{})
+			var closeOnce sync.Once
+			unblock := func() { closeOnce.Do(func() { close(blockCh) }) }
+			DeferCleanup(func() {
+				unblock()
+				Eventually(doneCh).Should(BeClosed())
+			})
+
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s1"), Title: "Slow Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{
+				lyrics: map[string]model.LyricList{
+					testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "delayed"}}}},
+				},
+				blockCh: blockCh,
+				doneCh:  doneCh,
+			}
+
+			start := time.Now()
+			res := playbackInfo()
+			duration := time.Since(start)
+			Expect(duration).To(BeNumerically("<", 150*time.Millisecond))
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(lyricStreams(res)).To(BeEmpty())
+
+			unblock()
+			Eventually(doneCh).Should(BeClosed())
+
+			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
+		})
+
+		It("recovers panics in detached lyrics lookup and returns 200 without Lyric stream", func() {
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s-panic"), Title: "Panic Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{panicVal: "lyrics plugin crash"}
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("s-panic"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s-panic")))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
 			Expect(lyricStreams(res)).To(BeEmpty())
 		})
 	})

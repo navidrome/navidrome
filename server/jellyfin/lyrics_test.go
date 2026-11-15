@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -16,15 +17,42 @@ import (
 
 // fakeLyricsService returns canned lyrics per media-file ID.
 type fakeLyricsService struct {
-	lyrics map[string]model.LyricList
-	err    error
+	mu       sync.Mutex
+	lyrics   map[string]model.LyricList
+	err      error
+	panicVal any
+	blockCh  <-chan struct{}
+	doneCh   chan<- struct{}
 }
 
-func (f *fakeLyricsService) GetLyrics(_ context.Context, mf *model.MediaFile) (model.LyricList, error) {
-	if f.err != nil {
-		return nil, f.err
+func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+	f.mu.Lock()
+	blockCh := f.blockCh
+	doneCh := f.doneCh
+	f.blockCh = nil
+	f.doneCh = nil
+	panicVal := f.panicVal
+	err := f.err
+	list := f.lyrics[mf.ID]
+	f.mu.Unlock()
+
+	if doneCh != nil {
+		defer close(doneCh)
 	}
-	return f.lyrics[mf.ID], nil
+	if blockCh != nil {
+		select {
+		case <-blockCh:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	if panicVal != nil {
+		panic(panicVal)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
 }
 
 func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, string) (model.LyricList, error) {
