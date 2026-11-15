@@ -73,7 +73,7 @@ var _ = Describe("database backups", func() {
 		}
 
 		BeforeEach(func() {
-
+			ctx = GinkgoT().Context()
 			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
 			Expect(err).ToNot(HaveOccurred())
 			conf.Update(func(c *conf.Options) { c.Backup.Path = conf.NewDir(tempFolder) })
@@ -95,8 +95,6 @@ var _ = Describe("database backups", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_ = file.Close()
 			}
-
-			ctx = context.Background()
 		})
 
 		DescribeTable("prune", func(count, expected int) {
@@ -138,7 +136,7 @@ var _ = Describe("database backups", func() {
 		var ctx context.Context
 
 		BeforeAll(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			DeferCleanup(conf.SnapshotConfig())
 
 			conf.Update(func(c *conf.Options) { c.DbPath = "file::memory:?cache=shared&_foreign_keys=on" })
@@ -184,7 +182,7 @@ var _ = Describe("database backups", func() {
 		var dbFilePath string
 
 		BeforeAll(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			DeferCleanup(conf.SnapshotConfig())
 
 			var err error

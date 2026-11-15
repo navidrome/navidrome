@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 
@@ -18,7 +17,7 @@ var _ = Describe("trackScanInteractively", func() {
 		progress <- &scanner.ProgressInfo{Error: "scan failed"}
 		close(progress)
 
-		changesDetected, err := trackScanInteractively(context.Background(), progress)
+		changesDetected, err := trackScanInteractively(GinkgoT().Context(), progress)
 		Expect(changesDetected).To(BeTrue())
 		Expect(err).To(MatchError("scan failed"))
 	})

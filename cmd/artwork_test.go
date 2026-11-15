@@ -55,9 +55,10 @@ var _ = Describe("parseArtworkKind", func() {
 
 var _ = Describe("resolveArtworkTargets", func() {
 	var ds *tests.MockDataStore
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		artists := tests.CreateMockArtistRepo()
 		artists.SetData(model.Artists{{ID: "artist1"}})
 		ds = &tests.MockDataStore{MockedArtist: artists}
@@ -474,7 +475,10 @@ var _ = Describe("artwork reprocess selection", func() {
 })
 
 var _ = Describe("explain/reprocess source round trip", func() {
-	ctx := context.Background()
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	// storedSource reads back the Source line explain printed, as an operator would copy it.
 	storedSource := func(out string) string {
@@ -566,7 +570,7 @@ var _ = Describe("reprocessArtwork", func() {
 	var queue *tests.MockArtworkQueueRepo
 	var out strings.Builder
 	var imageAgents artwork.ImageAgentCount
-	ctx := context.Background()
+	var ctx context.Context
 	kinds := []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
 	accept := func(io.Writer, int64, int64) bool { return true }
 	decline := func(io.Writer, int64, int64) bool { return false }
@@ -577,6 +581,7 @@ var _ = Describe("reprocessArtwork", func() {
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) {
 			c.CoverArtPriority = "cover.*, external"
 			c.ArtistArtPriority = "artist.*, external"
@@ -814,9 +819,10 @@ var _ = Describe("collectStatus", func() {
 	var ds *tests.MockDataStore
 	var art *tests.MockArtworkRepo
 	var queue *tests.MockArtworkQueueRepo
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		art = ds.Artwork().(*tests.MockArtworkRepo)
 		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
@@ -969,9 +975,10 @@ var _ = Describe("refreshItems", func() {
 	var queue *tests.MockArtworkQueueRepo
 	var art *tests.MockArtworkRepo
 	var out strings.Builder
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		albums := tests.CreateMockAlbumRepo()
 		albums.SetData(model.Albums{{ID: "al-1"}, {ID: "al-3"}})
 		ds = &tests.MockDataStore{MockedAlbum: albums}
@@ -1143,11 +1150,12 @@ var _ = Describe("cancelArtwork", func() {
 	var ds *tests.MockDataStore
 	var queue *tests.MockArtworkQueueRepo
 	var out strings.Builder
-	ctx := context.Background()
+	var ctx context.Context
 	accept := func(io.Writer, int64, int64) bool { return true }
 	decline := func(io.Writer, int64, int64) bool { return false }
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
 		out.Reset()

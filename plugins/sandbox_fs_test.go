@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -65,9 +64,10 @@ func callSandbox(manager *Manager, input sandboxInput) sandboxOutput {
 	manager.mu.RUnlock()
 	Expect(p).ToNot(BeNil())
 
-	instance, err := p.instance(context.Background())
+	ctx := GinkgoT().Context()
+	instance, err := p.instance(ctx)
 	Expect(err).ToNot(HaveOccurred())
-	defer instance.Close(context.Background())
+	defer instance.Close(ctx)
 
 	inputBytes, err := json.Marshal(input)
 	Expect(err).ToNot(HaveOccurred())

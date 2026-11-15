@@ -63,7 +63,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	}
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 		coverBytes = readFixture(coverFixture)

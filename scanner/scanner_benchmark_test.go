@@ -1,7 +1,6 @@
 package scanner_test
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"path/filepath"
@@ -53,11 +52,11 @@ func BenchmarkScan(b *testing.B) {
 	// opens a fresh one whether or not the test suite ran before this benchmark.
 	singleton.DeleteInstance[*sql.DB]()
 	// Close before b.TempDir cleanup runs, or Windows cannot delete the open DB/WAL files.
-	defer db.Init(context.Background())()
+	defer db.Init(b.Context())()
 
 	ds := persistence.New(db.Db())
 	conf.Update(func(c *conf.Options) { c.DevExternalScanner = false })
-	s := scanner.New(context.Background(), ds, events.NoopBroker(),
+	s := scanner.New(b.Context(), ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 	fs := storagetest.FakeFS{}
@@ -95,7 +94,7 @@ func BenchmarkScan(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := s.ScanAll(context.Background(), true)
+		_, err := s.ScanAll(b.Context(), true)
 		if err != nil {
 			b.Fatal(err)
 		}

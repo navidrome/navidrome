@@ -70,7 +70,7 @@ var _ = Describe("Artwork", func() {
 	}
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		var err error
 		repoRoot, err = os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
@@ -529,7 +529,7 @@ var _ = Describe("EntityExists", func() {
 	var ds *tests.MockDataStore
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		albumRepo := tests.CreateMockAlbumRepo()
 		albumRepo.SetData(model.Albums{{ID: "al1"}})
 		artistRepo := tests.CreateMockArtistRepo()

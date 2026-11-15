@@ -23,9 +23,12 @@ var _ = Describe("Controller", func() {
 	var ds *tests.MockDataStore
 	var ctrl model.Scanner
 
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("Status", func() {
 		BeforeEach(func() {
-			ctx = context.Background()
 			db.Init(ctx)
 			DeferCleanup(func() { Expect(tests.ClearDB()).To(Succeed()) })
 			ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
@@ -66,9 +69,11 @@ var _ = Describe("LockForMaintenance", func() {
 })
 
 var _ = Describe("EffectiveFullScan", func() {
+	var ctx context.Context
 	var ds *tests.MockDataStore
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		pid := model.Library{}.EffectivePID()
 		libraries := &tests.MockLibraryRepo{}
 		libraries.SetData(model.Libraries{
@@ -81,21 +86,21 @@ var _ = Describe("EffectiveFullScan", func() {
 
 	It("detects a library that needs a full rescan for a PID change", func() {
 		targets := []model.ScanTarget{{LibraryID: 3, FolderPath: "."}}
-		Expect(scanner.EffectiveFullScan(GinkgoT().Context(), ds, false, targets)).To(BeTrue())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, targets)).To(BeTrue())
 	})
 
 	It("detects an interrupted full scan in a targeted library", func() {
 		targets := []model.ScanTarget{{LibraryID: 1, FolderPath: "."}}
-		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeTrue())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, targets)).To(BeTrue())
 	})
 
 	It("detects an interrupted full scan when scanning all libraries", func() {
-		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, nil)).To(BeTrue())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, nil)).To(BeTrue())
 	})
 
 	It("ignores interrupted full scans in untargeted libraries", func() {
 		targets := []model.ScanTarget{{LibraryID: 2, FolderPath: "."}}
-		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeFalse())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, targets)).To(BeFalse())
 	})
 })
 
@@ -103,8 +108,9 @@ var _ = Describe("GetInstance", func() {
 	It("returns the same controller to every caller", func() {
 		ds := &tests.MockDataStore{}
 		pls := playlists.NewPlaylists(ds, artwork.NewUploader(ds))
-		a := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
-		b := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		ctx := GinkgoT().Context()
+		a := scanner.GetInstance(ctx, ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		b := scanner.GetInstance(ctx, ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
 		Expect(a).To(BeIdenticalTo(b))
 	})
 })

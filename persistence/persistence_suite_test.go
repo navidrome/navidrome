@@ -26,7 +26,7 @@ func TestPersistence(t *testing.T) {
 	//os.Remove("./test-123.db")
 	//conf.Server.DbPath = "./test-123.db"
 	conf.Update(func(c *conf.Options) { c.DbPath = "file::memory:?cache=shared&_foreign_keys=on" })
-	defer db.Init(context.Background())()
+	defer db.Init(t.Context())()
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
@@ -196,7 +196,7 @@ func restrictedFixture(name string) (context.Context, model.Library, model.User)
 
 var _ = BeforeSuite(func() {
 	conn := GetDBXBuilder()
-	ctx := log.NewContext(context.TODO())
+	ctx := log.NewContext(GinkgoT().Context())
 	ctx = request.WithUser(ctx, adminUser)
 
 	ur := NewUserRepository(conn)

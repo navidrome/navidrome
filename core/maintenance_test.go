@@ -21,7 +21,7 @@ var _ = Describe("Maintenance", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ctx = request.WithUser(ctx, model.User{ID: "user1", IsAdmin: true})
 
 		ds = createTestDataStore()

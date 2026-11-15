@@ -51,7 +51,7 @@ var _ = Describe("Prune", func() {
 			"ar": {"live-artist": true},
 		}
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "gone-album", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -70,7 +70,7 @@ var _ = Describe("Prune", func() {
 		queueRepo.ExistingIDs = map[string]map[string]bool{"al": {"live-album": true}}
 		ds.MockedArtworkQueue = queueRepo
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		Expect(findQueued(queueRepo, "al", "gone-album")).To(BeNil())
 		Expect(findQueued(queueRepo, "al", "live-album")).ToNot(BeNil())
@@ -90,7 +90,7 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(hk, "image/jpeg", bytes.NewReader(kept))).To(Succeed())
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -110,7 +110,7 @@ var _ = Describe("Prune", func() {
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).ToNot(HaveOccurred())
@@ -126,7 +126,7 @@ var _ = Describe("Prune", func() {
 		// Reacquisition refreshed created_at, so the row is unreferenced but too young to drop.
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).ToNot(HaveOccurred())
@@ -143,7 +143,7 @@ var _ = Describe("Prune", func() {
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
 		// The row is orphaned, but a concurrent acquisition just touched the file's mtime.
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())
@@ -157,7 +157,7 @@ var _ = Describe("Prune", func() {
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := store.Open(h, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -174,7 +174,7 @@ var _ = Describe("Prune", func() {
 		// The row records the current mime; the .png file is a superseded variant.
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := store.Open(h, "image/png")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -210,7 +210,7 @@ var _ = Describe("Prune", func() {
 		Expect(os.Chmod(shardDir, 0500)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(shardDir, 0755) })
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, hg)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -232,7 +232,7 @@ var _ = Describe("Prune", func() {
 		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).ToNot(Succeed())
+		Expect(prune(ctx, ds, store)).ToNot(Succeed())
 
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())

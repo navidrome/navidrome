@@ -213,7 +213,7 @@ var _ = Describe("PluginRepository", func() {
 				DeferCleanup(conn.Close)
 				_, err = conn.ExecContext(GinkgoT().Context(), "BEGIN IMMEDIATE")
 				Expect(err).ToNot(HaveOccurred())
-				DeferCleanup(func() { _, _ = conn.ExecContext(context.Background(), "ROLLBACK") })
+				DeferCleanup(func() { _, _ = conn.ExecContext(ctx, "ROLLBACK") })
 
 				Expect(repo.ClearErrors(ctx)).To(Succeed())
 			})

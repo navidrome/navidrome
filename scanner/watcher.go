@@ -159,7 +159,7 @@ func (w *watcher) Watch(ctx context.Context, lib *model.Library) error {
 	}
 
 	// Start new watcher
-	watcherCtx, cancel := context.WithCancel(w.mainCtx) //nolint:gosec // cancel is stored in instance and called on shutdown
+	watcherCtx, cancel := context.WithCancel(w.mainCtx)
 	instance := &libraryWatcherInstance{
 		library: lib,
 		cancel:  cancel,
