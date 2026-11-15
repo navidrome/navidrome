@@ -35,8 +35,7 @@ var _ = Describe("Stream", func() {
 		decider = &fakeTranscodeDecider{}
 		api = &Router{
 			ds: ds, streamer: streamer, transcodeDecider: decider,
-			lyrics:      &fakeLyricsService{lyrics: map[string]model.LyricList{}},
-			lyricsCache: newTestLyricsCache(),
+			lyrics: &fakeLyricsService{lyrics: map[string]model.LyricList{}},
 		}
 	})
 
