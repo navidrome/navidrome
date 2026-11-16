@@ -210,6 +210,23 @@ var _ = Describe("Queue Endpoints", func() {
 			Expect(repo.LastCols).To(ConsistOf("items"))
 		})
 
+		It("updates only ids when some tracks fail to load", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 1, Position: 45,
+				Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}, {ID: "s3"}}}
+			repo.QueueWithMediaFiles = &model.PlayQueue{UserID: user.ID, Current: 1, Position: 45,
+				Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}}}
+			repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
+			body, _ := json.Marshal(updateQueuePayload{Ids: new([]string{"s1", "s2", "s3", "s4"})})
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue.Items).To(HaveLen(4))
+			Expect(repo.LastCols).To(ConsistOf("items"))
+		})
+
 		Context("when the stored queue has tracks the user can't see", func() {
 			BeforeEach(func() {
 				repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2, Position: 45,

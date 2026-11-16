@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -31,9 +32,9 @@ func validateCurrentIndex(w http.ResponseWriter, current int, itemsLength int) b
 
 // retrieveQueue retrieves a user's play queue with proper error handling.
 // Returns the queue (nil if not found) and false if an error occurred and response was sent.
-func retrieveQueue(ctx context.Context, w http.ResponseWriter, userID string, retrieve func(context.Context, string) (*model.PlayQueue, error)) (*model.PlayQueue, bool) {
+func retrieveQueue(ctx context.Context, w http.ResponseWriter, userID string, retrieve func(context.Context, string) (*model.PlayQueue, error), ignore ...error) (*model.PlayQueue, bool) {
 	existing, err := retrieve(ctx, userID)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
+	if err != nil && !errors.Is(err, model.ErrNotFound) && !slices.ContainsFunc(ignore, func(e error) bool { return errors.Is(err, e) }) {
 		log.Error(ctx, "Error retrieving queue", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, false
@@ -185,7 +186,8 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 			cols = append(cols, "items")
 
 			if payload.Current == nil {
-				visible, ok := retrieveQueue(ctx, w, user.ID, repo.RetrieveWithMediaFiles)
+				// On a load error GET shows the stored current and position, so only items get written
+				visible, ok := retrieveQueue(ctx, w, user.ID, repo.RetrieveWithMediaFiles, model.ErrIncompleteQueue)
 				if !ok {
 					return
 				}
