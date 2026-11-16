@@ -72,7 +72,7 @@ func TestLyricsOriginalHeadersAreTrustedServerValues(t *testing.T) {
 		"ttml":       {"application/ttml+xml", ".ttml"},
 		"qrc":        {"application/xml", ".qrc"},
 		"wsy":        {"application/octet-stream", ".wsy"},
-		"lyricsfile": {"application/json", ".json"},
+		"lyricsfile": {"application/yaml", ".yaml"},
 	}
 	for format, want := range cases {
 		if got := LyricsOriginalMediaType(format); got != want.mediaType {

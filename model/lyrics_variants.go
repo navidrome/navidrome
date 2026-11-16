@@ -204,7 +204,7 @@ func lyricsOriginalExtension(format string) (string, string) {
 	case "wsy":
 		return "application/octet-stream", ".wsy"
 	case "lyricsfile":
-		return "application/json", ".json"
+		return "application/yaml", ".yaml"
 	case "plain":
 		return "text/plain; charset=utf-8", ".txt"
 	}
