@@ -17,9 +17,13 @@ const (
 	MaxLyricsVariantRoleBytes      = 32
 	MaxLyricsVariantFormatBytes    = 16
 	MaxLyricsVariantPluginBytes    = 128
-	// MaxLyricsVariants bounds one global listing. Dropped selections stay
+	// MaxLyricsVariantsPerPlugin bounds one plugin's listing, matching the
+	// plugin's shared playback/listing bound.
+	MaxLyricsVariantsPerPlugin = 64
+	// MaxLyricsVariants bounds the global listing across configured plugins
+	// (bounded plugin patterns × per-plugin bound). Dropped selections stay
 	// absent (and therefore unavailable); they are never remapped.
-	MaxLyricsVariants = 64
+	MaxLyricsVariants = 512
 	// MaxLyricsOriginalBytes matches the plugin's per-entry cache bound.
 	MaxLyricsOriginalBytes  = 1 << 20
 	MaxLyricsSelectionBytes = 1024

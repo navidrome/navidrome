@@ -128,7 +128,7 @@ func (l *LyricsPlugin) ListLyricsVariants(ctx context.Context, mf *model.MediaFi
 			PlaybackIndex: entry.PlaybackIndex,
 			Original:      original,
 		})
-		if len(variants) >= model.MaxLyricsVariants {
+		if len(variants) >= model.MaxLyricsVariantsPerPlugin {
 			break
 		}
 	}
