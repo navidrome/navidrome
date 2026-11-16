@@ -57,8 +57,18 @@ func (identity LyricsVariantIdentity) Valid() bool {
 	default:
 		return false
 	}
-	_, extension := lyricsOriginalExtension(identity.Format)
-	return extension != ""
+	return lyricsPlaybackFormat(identity.Format)
+}
+
+// lyricsPlaybackFormat is the set of representations Navidrome can parse for
+// playback. An identity names a playback entry; a native-only document format
+// such as QRC is addressed by the entry it was converted into.
+func lyricsPlaybackFormat(format string) bool {
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "ttml", "lrc", "elrc", "plain":
+		return true
+	}
+	return false
 }
 
 // Key is a stable dedupe key for one identity.
