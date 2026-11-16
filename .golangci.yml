@@ -29,6 +29,7 @@ linters:
     - nolintlint
     - rowserrcheck
     - staticcheck
+    - thelper
     - unconvert
     - usetesting
     - whitespace
@@ -162,6 +163,16 @@ linters:
     staticcheck:
       dot-import-whitelist:
         - github.com/Masterminds/squirrel
+    thelper:
+      # Helper() is what fixes failure line numbers; the t/tb/b/f parameter name does not
+      test:
+        name: false
+      benchmark:
+        name: false
+      tb:
+        name: false
+      fuzz:
+        name: false
   exclusions:
     rules:
       - linters:

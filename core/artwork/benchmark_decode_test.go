@@ -15,8 +15,14 @@ func BenchmarkImageDecode(b *testing.B) {
 		name string
 		gen  func(tb testing.TB, w, h int) []byte
 	}{
-		{"jpeg", func(tb testing.TB, w, h int) []byte { return generateJPEG(tb, w, h, 75) }},
-		{"png", func(tb testing.TB, w, h int) []byte { return generatePNG(tb, w, h) }},
+		{"jpeg", func(tb testing.TB, w, h int) []byte {
+			tb.Helper()
+			return generateJPEG(tb, w, h, 75)
+		}},
+		{"png", func(tb testing.TB, w, h int) []byte {
+			tb.Helper()
+			return generatePNG(tb, w, h)
+		}},
 	}
 
 	for _, format := range formats {
