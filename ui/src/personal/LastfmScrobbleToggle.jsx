@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import { useNotify, useTranslate } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import {
   FormControl,
   FormControlLabel,
@@ -14,7 +15,7 @@ import { baseUrl, openInNewTab } from '../utils'
 const Progress = (props) => {
   const { setLinked, setCheckingLink, openedTab } = props
   const notify = useNotify()
-  const dataProvider = useDataProvider()
+  const dataProvider = useDirectDataProvider()
   let linkCheckDelay = 2000
   let linkChecks = 30
 
@@ -62,7 +63,7 @@ const Progress = (props) => {
 
 export const LastfmScrobbleToggle = (props) => {
   const notify = useNotify()
-  const dataProvider = useDataProvider()
+  const dataProvider = useDirectDataProvider()
   const translate = useTranslate()
   const [linked, setLinked] = useState(null)
   const [checkingLink, setCheckingLink] = useState(false)

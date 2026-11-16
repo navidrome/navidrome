@@ -9,8 +9,8 @@ import {
   useRecordContext,
   useRefresh,
   useTranslate,
-  useDataProvider,
 } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { makeStyles } from '@material-ui/core/styles'
 import {
   useMediaQuery,
@@ -81,7 +81,7 @@ const ManifestField = ({ source }) => {
 
 const RescanButton = () => {
   const notify = useNotify()
-  const dataProvider = useDataProvider()
+  const dataProvider = useDirectDataProvider()
   const refresh = useRefresh()
   const [loading, setLoading] = useState(false)
 

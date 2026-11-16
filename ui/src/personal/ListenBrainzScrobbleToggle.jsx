@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import { useNotify, useTranslate } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { FormControl, FormControlLabel, Switch } from '@material-ui/core'
 import { ListenBrainzTokenDialog } from '../dialogs'
 import { useDispatch } from 'react-redux'
@@ -8,7 +9,7 @@ import { openListenBrainzTokenDialog } from '../actions'
 export const ListenBrainzScrobbleToggle = () => {
   const dispatch = useDispatch()
   const notify = useNotify()
-  const dataProvider = useDataProvider()
+  const dataProvider = useDirectDataProvider()
   const translate = useTranslate()
   const [linked, setLinked] = useState(null)
 

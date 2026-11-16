@@ -2,12 +2,8 @@ import { IconButton, Tooltip } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import PhotoCameraIcon from '@material-ui/icons/PhotoCamera'
 import DeleteIcon from '@material-ui/icons/Delete'
-import {
-  useDataProvider,
-  useTranslate,
-  useNotify,
-  useRefresh,
-} from 'react-admin'
+import { useTranslate, useNotify, useRefresh } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { useCallback, useRef } from 'react'
 import config from '../config'
 
@@ -48,7 +44,7 @@ export const ImageUploadOverlay = ({
   const translate = useTranslate()
   const notify = useNotify()
   const refresh = useRefresh()
-  const dataProvider = useDataProvider()
+  const dataProvider = useDirectDataProvider()
   const classes = useStyles()
   const fileInputRef = useRef(null)
 

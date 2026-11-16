@@ -6,6 +6,7 @@ import {
   useRefresh,
   useTranslate,
 } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import {
   Button,
   Dialog,
@@ -46,6 +47,7 @@ export const AddToPlaylistDialog = () => {
   const [value, setValue] = useState({})
   const [check, setCheck] = useState(false)
   const dataProvider = useDataProvider()
+  const directDataProvider = useDirectDataProvider()
   const createAndAddToPlaylist = (playlistObject) => {
     dataProvider
       .create('playlist', {
@@ -84,7 +86,7 @@ export const AddToPlaylistDialog = () => {
   }
 
   const checkDuplicateSong = (playlistObject) => {
-    dataProvider
+    directDataProvider
       .getPlaylistTracks(playlistObject.id)
       .then((res) => {
         const tracks = res.data

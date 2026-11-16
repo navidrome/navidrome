@@ -10,14 +10,15 @@ import {
   Link,
   TextField,
 } from '@material-ui/core'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import { useNotify, useTranslate } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { useDispatch, useSelector } from 'react-redux'
 import { closeListenBrainzTokenDialog } from '../actions'
 
 export const ListenBrainzTokenDialog = ({ setLinked }) => {
   const dispatch = useDispatch()
   const notify = useNotify()
-  const dataProvider = useDataProvider()
+  const dataProvider = useDirectDataProvider()
   const translate = useTranslate()
   const { open } = useSelector((state) => state.listenBrainzTokenDialog)
   const [token, setToken] = useState('')

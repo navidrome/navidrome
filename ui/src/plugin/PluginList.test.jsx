@@ -20,7 +20,6 @@ vi.mock('react-admin', async () => {
     useUpdate: vi.fn(() => [vi.fn(), { loading: false }]),
     useNotify: vi.fn(() => mockNotify),
     useRefresh: vi.fn(() => mockRefresh),
-    useDataProvider: vi.fn(() => ({ rescanPlugins: mockRescanPlugins })),
     useTranslate: vi.fn(() => (key) => key),
     useResourceContext: vi.fn(() => 'plugin'),
     useRecordContext: vi.fn(() => ({
@@ -78,6 +77,10 @@ vi.mock('@material-ui/core', async () => {
 // Mock ToggleEnabledSwitch
 vi.mock('./ToggleEnabledSwitch', () => ({
   default: () => <span data-testid="toggle-switch" />,
+}))
+
+vi.mock('../dataProvider', () => ({
+  useDirectDataProvider: () => ({ rescanPlugins: mockRescanPlugins }),
 }))
 
 import PluginList from './PluginList'
