@@ -242,6 +242,47 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			stored = doReqWithUser(adminWithLibs, "getPlaylist", "id", ownID)
 			Expect(stored.Playlist.Entry).To(BeEmpty())
 		})
+
+		It("songIndexToRemove counts only the tracks the owner can still access (issue #6461)", func() {
+			lib1Songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
+				Filters: squirrel.Eq{"media_file.library_id": lib.ID},
+				Max:     2, Sort: "title",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lib1Songs).To(HaveLen(2))
+
+			By("a user with both libraries building a playlist with a lib2 song in the middle")
+			owner := model.User{ID: "multilib-user-6461", UserName: "user6461", Name: "User 6461", NewPassword: "password"}
+			Expect(ds.User().Put(ctx, &owner)).To(Succeed())
+			Expect(ds.User().SetUserLibraries(ctx, owner.ID, []int{lib.ID, lib2.ID})).To(Succeed())
+			loaded, err := ds.User().FindByUsername(ctx, owner.UserName)
+			Expect(err).ToNot(HaveOccurred())
+			owner.Libraries = loaded.Libraries
+
+			resp := doReqWithUser(owner, "createPlaylist", "name", "Lost Library Playlist",
+				"songId", lib1Songs[0].ID, "songId", lib2SongID, "songId", lib1Songs[1].ID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.Playlist.Entry).To(HaveLen(3))
+			ownID := resp.Playlist.Id
+
+			By("losing access to lib2, which hides its song")
+			Expect(ds.User().SetUserLibraries(ctx, owner.ID, []int{lib.ID})).To(Succeed())
+			loaded, err = ds.User().FindByUsername(ctx, owner.UserName)
+			Expect(err).ToNot(HaveOccurred())
+			owner.Libraries = loaded.Libraries
+
+			resp = doReqWithUser(owner, "getPlaylist", "id", ownID)
+			Expect(resp.Playlist.Entry).To(HaveLen(2))
+
+			By("removing index 1, the second song the owner sees")
+			resp = doReqWithUser(owner, "updatePlaylist", "playlistId", ownID, "songIndexToRemove", "1")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			stored := doReqWithUser(adminWithLibs, "getPlaylist", "id", ownID)
+			Expect(stored.Playlist.Entry).To(HaveLen(2))
+			Expect(stored.Playlist.Entry[0].Id).To(Equal(lib1Songs[0].ID))
+			Expect(stored.Playlist.Entry[1].Id).To(Equal(lib2SongID), "the hidden lib2 song must be kept")
+		})
 	})
 
 	Describe("Cross-library shares", Ordered, func() {

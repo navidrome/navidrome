@@ -144,25 +144,25 @@ func (r *playlistTrackRepository) GetCursor(ctx context.Context, options ...mode
 
 // GetMediaFileIDs returns the tracks' song ids, for callers that need every id but no track data.
 func (r *playlistTrackRepository) GetMediaFileIDs(ctx context.Context, options ...model.QueryOptions) ([]string, error) {
-	query := r.newSelect(ctx, options...).Columns("media_file_id").
+	return r.selectColumn(ctx, "media_file_id", options...)
+}
+
+// GetPositionIDs returns the tracks' position ids (playlist_tracks.id), to map client indexes onto stored rows.
+func (r *playlistTrackRepository) GetPositionIDs(ctx context.Context, options ...model.QueryOptions) ([]string, error) {
+	return r.selectColumn(ctx, "playlist_tracks.id", options...)
+}
+
+func (r *playlistTrackRepository) GetAlbumIDs(ctx context.Context, options ...model.QueryOptions) ([]string, error) {
+	return r.selectColumn(ctx, "distinct f.album_id", options...)
+}
+
+func (r *playlistTrackRepository) selectColumn(ctx context.Context, column string, options ...model.QueryOptions) ([]string, error) {
+	query := r.newSelect(ctx, options...).Columns(column).
 		Join("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
 	query = r.applyLibraryFilter(ctx, query, "f")
 	var ids []string
 	if err := r.queryAllSlice(ctx, query, &ids); err != nil {
-		return nil, err
-	}
-	return ids, nil
-}
-
-func (r *playlistTrackRepository) GetAlbumIDs(ctx context.Context, options ...model.QueryOptions) ([]string, error) {
-	query := r.newSelect(ctx, options...).Columns("distinct mf.album_id").
-		Join("media_file mf on mf.id = media_file_id").
-		Where(Eq{"playlist_id": r.playlistId})
-	query = r.applyLibraryFilter(ctx, query, "mf")
-	var ids []string
-	err := r.queryAllSlice(ctx, query, &ids)
-	if err != nil {
 		return nil, err
 	}
 	return ids, nil

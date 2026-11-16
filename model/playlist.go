@@ -249,6 +249,7 @@ type PlaylistTrackRepository interface {
 	GetCursor(ctx context.Context, options ...QueryOptions) (PlaylistTrackCursor, error)
 	GetAlbumIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
 	GetMediaFileIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
+	GetPositionIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
 	Add(ctx context.Context, mediaFileIds []string) (int, error)
 	Insert(ctx context.Context, mediaFileIds []string, pos int) (int, error)
 	AddAlbums(ctx context.Context, albumIds []string) (int, error)

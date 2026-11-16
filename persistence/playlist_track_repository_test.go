@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -78,6 +79,29 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		It("honors Max and Offset", func() {
 			Expect(repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id", Max: 1, Offset: 1})).
 				To(Equal([]string{songRadioactivity.ID}))
+		})
+	})
+
+	Describe("GetPositionIDs", func() {
+		It("leaves out missing tracks when filtered on missing", func() {
+			mfRepo := NewMediaFileRepository(GetDBXBuilder())
+			gone := mf(model.MediaFile{ID: "pls-missing-track", Title: "Gone Track", ArtistID: artistKraftwerk.ID,
+				Artist: artistKraftwerk.Name, AlbumID: "pls-missing-album", Album: "Gone Album", Path: p("gone/track.mp3")})
+			Expect(mfRepo.Put(ctx, &gone)).To(Succeed())
+			DeferCleanup(func() { _ = mfRepo.Delete(ctx, gone.ID) })
+
+			plsRepo := NewPlaylistRepository(GetDBXBuilder())
+			pls := model.Playlist{Name: "With missing", OwnerID: adminUser.ID, OwnerName: adminUser.UserName}
+			Expect(plsRepo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { _ = plsRepo.Delete(ctx, pls.ID) })
+			tracks := plsRepo.Tracks(ctx, pls.ID, false)
+			Expect(tracks.Add(ctx, []string{gone.ID, songRadioactivity.ID})).To(Equal(2))
+			Expect(mfRepo.MarkMissing(ctx, true, &gone)).To(Succeed())
+
+			Expect(tracks.GetPositionIDs(ctx, model.QueryOptions{Sort: "id"})).
+				To(Equal([]string{"1", "2"}))
+			Expect(tracks.GetPositionIDs(ctx, model.QueryOptions{Sort: "id", Filters: squirrel.Eq{"missing": false}})).
+				To(Equal([]string{"2"}))
 		})
 	})
 
