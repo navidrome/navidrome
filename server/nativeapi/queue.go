@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -29,16 +30,56 @@ func validateCurrentIndex(w http.ResponseWriter, current int, itemsLength int) b
 	return true
 }
 
-// retrieveExistingQueue retrieves an existing play queue for a user with proper error handling.
+// retrieveQueue retrieves a user's play queue with proper error handling.
 // Returns the queue (nil if not found) and false if an error occurred and response was sent.
-func retrieveExistingQueue(ctx context.Context, w http.ResponseWriter, ds model.DataStore, userID string) (*model.PlayQueue, bool) {
-	existing, err := ds.PlayQueue().Retrieve(ctx, userID)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
+func retrieveQueue(ctx context.Context, w http.ResponseWriter, userID string, retrieve func(context.Context, string) (*model.PlayQueue, error), ignore ...error) (*model.PlayQueue, bool) {
+	existing, err := retrieve(ctx, userID)
+	if err != nil && !errors.Is(err, model.ErrNotFound) && !slices.ContainsFunc(ignore, func(e error) bool { return errors.Is(err, e) }) {
 		log.Error(ctx, "Error retrieving queue", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return nil, false
 	}
 	return existing, true
+}
+
+// storedIndex maps an index in the queue as GET returns it to the stored queue, which keeps the same order.
+func storedIndex(stored, visible model.MediaFiles, i int) int {
+	kept := 0
+	for j, t := range stored {
+		if kept < len(visible) && visible[kept].ID == t.ID {
+			if kept == i {
+				return j
+			}
+			kept++
+		}
+	}
+	return i
+}
+
+// fallbackCurrent returns the stored index of the track GET shows in place of a stored current track the user can't see.
+func fallbackCurrent(ctx context.Context, w http.ResponseWriter, ds model.DataStore, userID string) (int, bool, bool) {
+	repo := ds.PlayQueue()
+	stored, ok := retrieveQueue(ctx, w, userID, repo.Retrieve)
+	if !ok || stored == nil {
+		return 0, false, ok
+	}
+	if stored.Current >= 0 && stored.Current < len(stored.Items) {
+		visible, err := ds.MediaFile().Exists(ctx, stored.Items[stored.Current].ID)
+		if err != nil {
+			log.Error(ctx, "Error checking current queue track", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return 0, false, false
+		}
+		if visible {
+			return 0, false, true
+		}
+	}
+	visible, ok := retrieveQueue(ctx, w, userID, repo.RetrieveWithMediaFiles)
+	if !ok || visible == nil {
+		return 0, false, ok
+	}
+	current := storedIndex(stored.Items, visible.Items, visible.Current)
+	return current, current != stored.Current, true
 }
 
 // decodeUpdatePayload decodes the JSON payload from the request body.
@@ -72,7 +113,7 @@ func getQueue(ds model.DataStore) http.HandlerFunc {
 		user, _ := request.UserFrom(ctx)
 		repo := ds.PlayQueue()
 		pq, err := repo.RetrieveWithMediaFiles(ctx, user.ID)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
+		if err != nil && !errors.Is(err, model.ErrNotFound) && !errors.Is(err, model.ErrIncompleteQueue) {
 			log.Error(ctx, "Error retrieving queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -137,21 +178,36 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 		// Initialize play queue with user ID and client info
 		pq := &model.PlayQueue{UserID: user.ID, ChangedBy: client}
 		var cols []string // Track which columns to update in the database
+		repo := ds.PlayQueue()
 
-		// Handle queue items update
+		// Clients index the queue as GET returns it, without the tracks the user can't see
 		if payload.Ids != nil {
 			pq.Items = createMediaFileItems(*payload.Ids)
 			cols = append(cols, "items")
 
-			// If current index is not being updated, validate existing current index
-			// against the new items list to ensure it remains valid
 			if payload.Current == nil {
-				existing, ok := retrieveExistingQueue(ctx, w, ds, user.ID)
+				// On a load error GET shows the stored current and position, so only items get written
+				visible, ok := retrieveQueue(ctx, w, user.ID, repo.RetrieveWithMediaFiles, model.ErrIncompleteQueue)
 				if !ok {
 					return
 				}
-				if existing != nil && !validateCurrentIndex(w, existing.Current, len(*payload.Ids)) {
-					return
+				if visible != nil {
+					if !validateCurrentIndex(w, visible.Current, len(*payload.Ids)) {
+						return
+					}
+					stored, ok := retrieveQueue(ctx, w, user.ID, repo.Retrieve)
+					if !ok {
+						return
+					}
+					// Write only what GET changed, so a concurrent position update is not overwritten
+					if visible.Current != stored.Current {
+						pq.Current = visible.Current
+						cols = append(cols, "current")
+					}
+					if payload.Position == nil && visible.Position != stored.Position {
+						pq.Position = visible.Position
+						cols = append(cols, "position")
+					}
 				}
 			}
 		}
@@ -167,13 +223,21 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 					return
 				}
 			} else {
-				// If only current index is being updated, validate against existing items
-				existing, ok := retrieveExistingQueue(ctx, w, ds, user.ID)
+				visible, ok := retrieveQueue(ctx, w, user.ID, repo.RetrieveWithMediaFiles)
 				if !ok {
 					return
 				}
-				if existing != nil && !validateCurrentIndex(w, *payload.Current, len(existing.Items)) {
-					return
+				if visible != nil {
+					if !validateCurrentIndex(w, *payload.Current, len(visible.Items)) {
+						return
+					}
+					stored, ok := retrieveQueue(ctx, w, user.ID, repo.Retrieve)
+					if !ok {
+						return
+					}
+					if stored != nil {
+						pq.Current = storedIndex(stored.Items, visible.Items, *payload.Current)
+					}
 				}
 			}
 		}
@@ -182,6 +246,17 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 		if payload.Position != nil {
 			pq.Position = max(*payload.Position, 0) // Ensure position is non-negative
 			cols = append(cols, "position")
+
+			if payload.Ids == nil && payload.Current == nil {
+				current, moved, ok := fallbackCurrent(ctx, w, ds, user.ID)
+				if !ok {
+					return
+				}
+				if moved {
+					pq.Current = current
+					cols = append(cols, "current")
+				}
+			}
 		}
 
 		// If no fields were specified for update, return success without doing anything
@@ -191,7 +266,7 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 		}
 
 		// Perform partial update of the specified columns only
-		if err := ds.PlayQueue().Store(ctx, pq, cols...); err != nil {
+		if err := repo.Store(ctx, pq, cols...); err != nil {
 			log.Error(ctx, "Error updating queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
