@@ -355,17 +355,20 @@ const useEnhancedLyrics = ({
         if (!active) return
         autoRetryRef.current = { cacheKey, attempts: 0 }
         setAutoRetry(null)
-        if (
-          keepingContent &&
-          structuredLyrics.length === 0 &&
-          evidence.length === 0
-        ) {
+        if (keepingContent && structuredLyrics.length === 0) {
+          const retainedEvidence = evidence.length
+            ? evidence
+            : stateRef.current.evidence
           rememberLyrics(
             cacheKey,
             stateRef.current.structuredLyrics,
-            stateRef.current.evidence,
+            retainedEvidence,
           )
-          setState((current) => ({ ...current, refreshing: false }))
+          setState((current) => ({
+            ...current,
+            evidence: retainedEvidence,
+            refreshing: false,
+          }))
           return
         }
         setState((current) => ({

@@ -7,6 +7,7 @@ import {
   hasNudgeableTiming,
   hasStructuredLyricContent,
   hasWordTiming,
+  isPlayableVariant,
   legacyVariantKey,
 } from './lyrics'
 import { downloadLyrics } from './lyricsExport'
@@ -55,7 +56,7 @@ const usePlayerLyrics = ({
 
   const {
     variants,
-    evidence,
+    evidence = [],
     layers: lyricLayers,
     loading: lyricsLoading,
     refreshing: lyricsRefreshing,
@@ -77,7 +78,7 @@ const usePlayerLyrics = ({
   const resolvedVariantKey = useMemo(() => {
     return (
       findLyricVariant(variants, selectedSourceKey)?.key ??
-      variants.find((variant) => !variant.suggestion)?.key ??
+      variants.find(isPlayableVariant)?.key ??
       null
     )
   }, [selectedSourceKey, variants])
@@ -167,9 +168,17 @@ const usePlayerLyrics = ({
   ])
 
   const waitingForLyrics =
-    lyricsLoading || (discovering && !lyricsError && variants.length === 0)
+    lyricsLoading ||
+    (discovering &&
+      !lyricsError &&
+      variants.length === 0 &&
+      evidence.length === 0)
   const checkingMoreSources =
-    discovering && !lyricsLoading && !lyricsError && variants.length === 0
+    discovering &&
+    !lyricsLoading &&
+    !lyricsError &&
+    variants.length === 0 &&
+    evidence.length === 0
 
   const hasTranslationLyric = hasStructuredLyricContent(lyricLayers.translation)
   const hasPronunciationLyric = hasStructuredLyricContent(

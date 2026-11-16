@@ -726,3 +726,33 @@ describe('selection preference compatibility', () => {
     expect(layers.translation.line[0].value).toBe('traducción')
   })
 })
+
+describe('invalid match status auto-selection', () => {
+  const entry = (value, status) => ({
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value }],
+    match: { status, autoSaveEligible: false },
+  })
+
+  it('skips a mismatch before a playable result', () => {
+    const layers = selectLyricLayers(
+      [entry('wrong', 'mismatch'), entry('right', 'validated')],
+      'en',
+    )
+    expect(layers.main.line[0].value).toBe('right')
+  })
+
+  it('does not auto-select when only mismatches exist', () => {
+    expect(selectLyricLayers([entry('wrong', 'mismatch')], 'en').main).toBe(
+      null,
+    )
+  })
+
+  it('does not treat an unknown assessed status as playable', () => {
+    expect(selectLyricLayers([entry('unknown', 'pending')], 'en').main).toBe(
+      null,
+    )
+  })
+})

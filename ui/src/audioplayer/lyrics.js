@@ -337,8 +337,17 @@ export const findLyricVariant = (variants, key) => {
 export const lyricMatchStatus = (lyric) => lyric?.match?.status || 'unassessed'
 
 export const isPlayableMatch = (lyric) => {
+  if (!lyric?.match) return true
   const status = lyricMatchStatus(lyric)
-  return status !== 'ambiguous' && status !== 'mismatch'
+  return status === 'validated' || status === 'unassessed'
+}
+
+export const isPlayableVariant = (variant) => {
+  if (!variant?.lyric?.match) return true
+  if (Array.isArray(variant.entries) && variant.entries.length > 0) {
+    return variant.entries.some(isPlayableMatch)
+  }
+  return isPlayableMatch(variant.lyric)
 }
 
 export const isSuggestion = (lyric) => lyricMatchStatus(lyric) === 'ambiguous'
@@ -437,10 +446,12 @@ export const selectLyricLayers = (
   const variants = groupLyricVariants(mainKindEntries(available))
   const explicitlySelected = findLyricVariant(variants, selectedSourceKey)
   const selectedVariant =
-    explicitlySelected ||
-    variants.find((variant) => !variant.suggestion) ||
-    null
-  const mainCandidates = selectedVariant ? selectedVariant.entries : []
+    explicitlySelected || variants.find(isPlayableVariant) || null
+  const mainCandidates = selectedVariant
+    ? explicitlySelected
+      ? selectedVariant.entries
+      : selectedVariant.entries.filter(isPlayableMatch)
+    : []
 
   // A different provider's auxiliary track can have incompatible timing or
   // text. Only older responses without source attribution can be a fallback.

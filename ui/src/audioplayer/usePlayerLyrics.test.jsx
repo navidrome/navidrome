@@ -498,3 +498,26 @@ describe('usePlayerLyrics', () => {
     )
   })
 })
+
+describe('evidence-only lyrics state', () => {
+  it('does not remain loading and forwards typed evidence', async () => {
+    subsonic.getLyricsBySongId.mockResolvedValue({
+      json: {
+        'subsonic-response': {
+          lyricsList: {
+            instrumentalEvidence: [
+              { kind: 'instrumental', provider: 'LRCLib' },
+            ],
+          },
+        },
+      },
+    })
+    const { result } = renderPlayerLyrics()
+    act(() => result.current.toolbarLyricsProps.onToggleLyrics())
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.evidence).toHaveLength(1),
+    )
+    expect(result.current.desktopLyricsProps.loading).toBe(false)
+    expect(result.current.desktopLyricsProps.mainLyric).toBeNull()
+  })
+})

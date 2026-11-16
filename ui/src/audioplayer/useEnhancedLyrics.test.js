@@ -722,3 +722,24 @@ describe('useEnhancedLyrics recording evidence', () => {
     expect(second.result.current.evidence).toHaveLength(1)
   })
 })
+
+describe('useEnhancedLyrics evidence-only refresh', () => {
+  it('does not hide the current lyric when a refresh returns evidence only', async () => {
+    const evidenceOnly = responseForEntries([])
+    evidenceOnly.json['subsonic-response'].lyricsList.instrumentalEvidence = [
+      { kind: 'instrumental', provider: 'LRCLib' },
+    ]
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(responseFor('Readable lyric'))
+      .mockResolvedValueOnce(evidenceOnly)
+    const { result } = renderLyrics({ trackId: 'evidence-refresh' })
+    await act(async () => {})
+    expect(result.current.layers.main.line[0].value).toBe('Readable lyric')
+    act(() => {
+      result.current.refresh()
+    })
+    await act(async () => {})
+    expect(result.current.layers.main.line[0].value).toBe('Readable lyric')
+    expect(result.current.evidence).toHaveLength(1)
+  })
+})
