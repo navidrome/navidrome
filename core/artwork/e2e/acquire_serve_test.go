@@ -185,7 +185,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.Mime).To(Equal("image/png"))
-		Expect(len(readAll(img))).To(BeNumerically(">", 0))
+		Expect(readAll(img)).ToNot(BeEmpty())
 	})
 
 	It("acquires a radio station's uploaded image and serves it", func() {
@@ -214,7 +214,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(provisional.Placeholder).To(BeFalse())
 		Expect(provisional.Hash).ToNot(BeEmpty())
 		provisionalBytes := readAll(provisional)
-		Expect(len(provisionalBytes)).To(BeNumerically(">", 0))
+		Expect(provisionalBytes).ToNot(BeEmpty())
 
 		_, err = artRepo.GetItemArtwork(ctx, model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "provisional serving must not write a state row")

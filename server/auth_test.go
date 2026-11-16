@@ -55,7 +55,7 @@ var _ = Describe("Auth", func() {
 			It("creates an admin user with the specified password", func() {
 				usr := ds.User()
 				u, err := usr.FindByUsername(ctx, "johndoe")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
 				Expect(*u.LastLoginAt).To(BeTemporally(">=", createdAt, time.Second))
@@ -64,8 +64,8 @@ var _ = Describe("Auth", func() {
 			It("returns the expected payload", func() {
 				Expect(resp.Code).To(Equal(http.StatusOK))
 				var parsed map[string]any
-				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-				Expect(parsed["isAdmin"]).To(Equal(true))
+				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+				Expect(parsed["isAdmin"]).To(BeTrue())
 				Expect(parsed["username"]).To(Equal("johndoe"))
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
@@ -250,8 +250,8 @@ var _ = Describe("Auth", func() {
 				Expect(resp.Code).To(Equal(http.StatusOK))
 
 				var parsed map[string]any
-				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-				Expect(parsed["isAdmin"]).To(Equal(false))
+				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+				Expect(parsed["isAdmin"]).To(BeFalse())
 				Expect(parsed["username"]).To(Equal("janedoe"))
 				Expect(parsed["name"]).To(Equal("Jane"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
@@ -411,7 +411,7 @@ var _ = Describe("Auth", func() {
 
 			// Verify user was created as admin
 			u, err := ds.User().FindByUsername(ctx, "firstuser")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(u.IsAdmin).To(BeTrue())
 		})
 
@@ -433,7 +433,7 @@ var _ = Describe("Auth", func() {
 
 			// Verify user was created as non-admin
 			u, err := ds.User().FindByUsername(ctx, "seconduser")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(u.IsAdmin).To(BeFalse())
 		})
 	})

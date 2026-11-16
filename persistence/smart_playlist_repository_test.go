@@ -328,7 +328,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				Expect(repo.Delete(ctx, testPlaylistID)).To(BeNil())
+				Expect(repo.Delete(ctx, testPlaylistID)).To(Succeed())
 				testPlaylistID = ""
 			}
 		})
@@ -477,7 +477,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				trackIDs[i] = t.MediaFileID
 			}
 			Expect(trackIDs).To(ContainElement("1002"))
-			Expect(len(pls.Tracks)).To(BeNumerically(">=", 1))
+			Expect(pls.Tracks).ToNot(BeEmpty())
 		})
 
 		It("returns same results for string and bool loved values (issue #4826)", func() {

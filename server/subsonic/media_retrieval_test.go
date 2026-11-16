@@ -60,7 +60,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			r := newGetRequest() // No id parameter
 			_, err := router.GetCoverArt(w, r)
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(artwork.recvId).To(BeEmpty())
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})

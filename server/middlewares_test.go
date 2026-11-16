@@ -238,7 +238,7 @@ var _ = Describe("middlewares", func() {
 				It("adds the unique client ID to the request context", func() {
 					middleware.ServeHTTP(rec, req)
 
-					Expect(rec.Result().Cookies()).To(HaveLen(0))
+					Expect(rec.Result().Cookies()).To(BeEmpty())
 
 					clientUniqueId, _ := request.ClientUniqueIdFrom(nextReq.Context())
 					Expect(clientUniqueId).To(Equal("123456"))
@@ -249,7 +249,7 @@ var _ = Describe("middlewares", func() {
 				It("does not add the unique client ID to the request context", func() {
 					middleware.ServeHTTP(rec, req)
 
-					Expect(rec.Result().Cookies()).To(HaveLen(0))
+					Expect(rec.Result().Cookies()).To(BeEmpty())
 
 					clientUniqueId, _ := request.ClientUniqueIdFrom(nextReq.Context())
 					Expect(clientUniqueId).To(BeEmpty())

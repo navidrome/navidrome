@@ -64,7 +64,7 @@ var _ = Describe("client", func() {
 		It("parses and returns the response", func() {
 			res, err := client.validateToken(ctx, "LB-TOKEN")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.Valid).To(Equal(true))
+			Expect(res.Valid).To(BeTrue())
 			Expect(res.UserName).To(Equal("ListenBrainzUser"))
 		})
 	})

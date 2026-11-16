@@ -68,7 +68,7 @@ var _ = Describe("MediaStreamer", func() {
 		})
 		It("returns a NON seekable stream if transcode is required", func() {
 			s, err := streamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 64})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeFalse())
 			Expect(s.Duration()).To(Equal(float32(257.0)))
 		})
@@ -113,7 +113,7 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			_, _ = io.ReadAll(s1)
 			_ = s1.Close()
-			Eventually(func() bool { return ffmpeg.IsClosed() }, "3s").Should(BeTrue())
+			Eventually(func() bool { return ffmpeg.IsClosed() }, 3*time.Second).Should(BeTrue())
 
 			// Slot should now be free for a different transcode.
 			s2, err := tightStreamer.NewStream(userCtx, mf, stream.Request{Format: "mp3", BitRate: 96})
@@ -144,13 +144,13 @@ var _ = Describe("MediaStreamer", func() {
 
 		It("returns a seekable stream if the file is complete in the cache", func() {
 			s, err := streamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 32})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
-			Eventually(func() bool { return ffmpeg.IsClosed() }, "3s").Should(BeTrue())
+			Eventually(func() bool { return ffmpeg.IsClosed() }, 3*time.Second).Should(BeTrue())
 
 			s, err = streamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 32})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
 	})

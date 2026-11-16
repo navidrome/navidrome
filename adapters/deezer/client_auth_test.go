@@ -35,7 +35,7 @@ var _ = Describe("JWT Authentication", func() {
 				})
 
 				token, err := client.getJWT(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(token).To(Equal(testJWT))
 			})
 
@@ -48,14 +48,14 @@ var _ = Describe("JWT Authentication", func() {
 
 				// First call should fetch from API
 				token1, err := client.getJWT(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(token1).To(Equal(testJWT))
 				Expect(httpClient.lastRequest.URL.Path).To(Equal("/login/anonymous"))
 
 				// Second call should return cached token without hitting API
 				httpClient.lastRequest = nil // Clear last request to verify no new request is made
 				token2, err := client.getJWT(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(token2).To(Equal(testJWT))
 				Expect(httpClient.lastRequest).To(BeNil()) // No new request made
 			})
@@ -65,9 +65,9 @@ var _ = Describe("JWT Authentication", func() {
 				testToken, err := jwt.NewBuilder().
 					Expiration(expectedExpiration).
 					Build()
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				testJWT, err := jwt.Sign(testToken, jwt.WithInsecureNoSignature())
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
@@ -75,7 +75,7 @@ var _ = Describe("JWT Authentication", func() {
 				})
 
 				token, err := client.getJWT(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(token).ToNot(BeEmpty())
 
 				// Verify the token is cached until close to expiration
@@ -121,7 +121,7 @@ var _ = Describe("JWT Authentication", func() {
 				})
 
 				token, err := client.getJWT(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(token).ToNot(BeEmpty())
 			})
 		})
@@ -176,14 +176,14 @@ var _ = Describe("JWT Authentication", func() {
 				testToken, err := jwt.NewBuilder().
 					Claim("custom", "value").
 					Build()
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				// Verify token has no expiration
 				_, hasExp := testToken.Expiration()
 				Expect(hasExp).To(BeFalse())
 
 				testJWT, err := jwt.Sign(testToken, jwt.WithInsecureNoSignature())
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
 					StatusCode: 200,
@@ -206,7 +206,7 @@ var _ = Describe("JWT Authentication", func() {
 				})
 
 				token1, err := client.getJWT(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(token1).To(Equal(firstJWT))
 
 				// Manually expire the cached token
@@ -220,7 +220,7 @@ var _ = Describe("JWT Authentication", func() {
 				})
 
 				token2, err := client.getJWT(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(token2).To(Equal(secondJWT))
 				Expect(token2).ToNot(Equal(token1))
 			})

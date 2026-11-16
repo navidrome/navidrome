@@ -337,7 +337,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 var _ = Describe("mapScrobblerError", func() {
 	It("returns nil for nil error", func() {
-		Expect(mapScrobblerError(nil)).ToNot(HaveOccurred())
+		Expect(mapScrobblerError(nil)).To(Succeed())
 	})
 
 	It("returns ErrNotAuthorized for error containing 'not_authorized'", func() {

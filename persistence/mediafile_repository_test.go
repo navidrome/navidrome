@@ -193,7 +193,7 @@ var _ = Describe("MediaRepository", func() {
 			},
 		})
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(results).To(HaveLen(3))
 		Expect(results[0].Lyrics).To(Equal(`[{"lang":"xxx","line":[{"value":"This is a set of lyrics"}],"synced":false}]`))
 		for _, item := range results[1:] {
@@ -404,12 +404,12 @@ var _ = Describe("MediaRepository", func() {
 	Context("Annotations", func() {
 		It("increments play count when the tracks does not have annotations", func() {
 			id := "incplay.firsttime"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
@@ -485,38 +485,38 @@ var _ = Describe("MediaRepository", func() {
 
 		It("preserves play date if and only if provided date is older", func() {
 			id := "incplay.playdate"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
 
 			playDateLate := playDate.AddDate(0, 0, 1)
-			Expect(mr.IncPlayCount(ctx, id, playDateLate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateLate)).To(Succeed())
 			mf, err = mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(2)))
 
 			playDateEarly := playDate.AddDate(0, 0, -1)
-			Expect(mr.IncPlayCount(ctx, id, playDateEarly)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateEarly)).To(Succeed())
 			mf, err = mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(3)))
 		})
 
 		It("increments play count on newly starred items", func() {
 			id := "star.incplay"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
-			Expect(mr.SetStar(ctx, true, id)).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
+			Expect(mr.SetStar(ctx, true, id)).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))

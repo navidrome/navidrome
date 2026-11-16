@@ -384,7 +384,7 @@ var _ = Describe("PlayTracker", func() {
 				Expect(err).ToNot(HaveOccurred())
 				mockDS := ds.(*tests.MockDataStore)
 				mockScrobble := mockDS.Scrobble().(*tests.MockScrobbleRepo)
-				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(0))
+				Expect(mockScrobble.RecordedScrobbles).To(BeEmpty())
 			})
 		})
 	})

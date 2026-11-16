@@ -106,7 +106,7 @@ var _ = Describe("ScrobbleRepository", func() {
 		Describe("Get", func() {
 			It("returns an existing scrobble for the user", func() {
 				scrobble, err := repo.Get(ctx, "1")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(scrobble.ID).To(Equal(int64(1)))
 				Expect(scrobble.MediaFileID).To(Equal("1001"))
 				Expect(scrobble.SubmissionTime).To(Equal(firstScrobble.SubmissionTime))
@@ -130,7 +130,7 @@ var _ = Describe("ScrobbleRepository", func() {
 					Sort:  "submission_time",
 					Order: "DESC",
 				})
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(scrobbles).To(HaveLen(2))
 
 				Expect(scrobbles[0].ID).To(Equal(int64(3)))
@@ -146,7 +146,7 @@ var _ = Describe("ScrobbleRepository", func() {
 				scrobbles, err := repo.GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.GtOrEq{"submission_time": 1}})
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(scrobbles).To(HaveLen(1))
 
 				Expect(scrobbles[0].ID).To(Equal(int64(3)))
@@ -175,7 +175,7 @@ var _ = Describe("ScrobbleRepository", func() {
 		Describe("Get", func() {
 			It("returns an existing scrobble for the user", func() {
 				scrobble, err := repo.Get(ctx, "2")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(scrobble.ID).To(Equal(int64(2)))
 				Expect(scrobble.MediaFileID).To(Equal("1003"))
 				Expect(scrobble.SubmissionTime).To(Equal(secondScrobble.SubmissionTime))
@@ -198,7 +198,7 @@ var _ = Describe("ScrobbleRepository", func() {
 					Sort:  "submission_time",
 					Order: "DESC",
 				})
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(scrobbles).To(HaveLen(1))
 
 				Expect(scrobbles[0].ID).To(Equal(int64(2)))
@@ -210,7 +210,7 @@ var _ = Describe("ScrobbleRepository", func() {
 				scrobbles, err := repo.GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.GtOrEq{"submission_time": 1}})
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(scrobbles).To(HaveLen(1))
 
 				Expect(scrobbles[0].ID).To(Equal(int64(2)))

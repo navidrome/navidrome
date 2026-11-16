@@ -98,7 +98,7 @@ func ResettableTables() []string {
 		Expect(rows.Scan(&name)).To(Succeed())
 		tables = append(tables, name)
 	}
-	Expect(rows.Err()).ToNot(HaveOccurred())
+	Expect(rows.Err()).To(Succeed())
 	return tables
 }
 

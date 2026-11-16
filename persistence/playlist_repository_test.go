@@ -96,7 +96,7 @@ var _ = Describe("PlaylistRepository", func() {
 	Describe("Get", func() {
 		It("returns an existing playlist", func() {
 			p, err := repo.Get(ctx, plsBest.ID)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			// Compare all but Tracks and timestamps
 			p2 := *p
 			p2.Tracks = plsBest.Tracks
@@ -296,11 +296,11 @@ var _ = Describe("PlaylistRepository", func() {
 		newPls.AddMediaFilesByID([]string{"1004", "1003"})
 
 		By("saves the playlist to the DB")
-		Expect(repo.Put(ctx, &newPls)).To(BeNil())
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
 
 		By("adds repeated songs to a playlist and keeps the order")
 		newPls.AddMediaFilesByID([]string{"1004"})
-		Expect(repo.Put(ctx, &newPls)).To(BeNil())
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
 		saved, _ := repo.GetWithTracks(ctx, newPls.ID, true, false)
 		Expect(saved.Tracks).To(HaveLen(3))
 		Expect(saved.Tracks[0].MediaFileID).To(Equal("1004"))
@@ -311,7 +311,7 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(repo.Exists(ctx, newPls.ID)).To(BeTrue())
 
 		By("returns deletes the playlist")
-		Expect(repo.Delete(ctx, newPls.ID)).To(BeNil())
+		Expect(repo.Delete(ctx, newPls.ID)).To(Succeed())
 
 		By("returns error if tries to retrieve the deleted playlist")
 		Expect(repo.Exists(ctx, newPls.ID)).To(BeFalse())
@@ -373,7 +373,7 @@ var _ = Describe("PlaylistRepository", func() {
 	Describe("GetAll", func() {
 		It("returns all playlists from DB", func() {
 			all, err := repo.GetAll(ctx)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(all[0].ID).To(Equal(plsBest.ID))
 			Expect(all[1].ID).To(Equal(plsCool.ID))
 		})
@@ -390,7 +390,7 @@ var _ = Describe("PlaylistRepository", func() {
 		It("returns empty when none", func() {
 			pls, err := repo.GetPlaylists(ctx, "9999")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(pls).To(HaveLen(0))
+			Expect(pls).To(BeEmpty())
 		})
 	})
 
@@ -399,7 +399,7 @@ var _ = Describe("PlaylistRepository", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				Expect(repo.Delete(ctx, testPlaylistID)).To(BeNil())
+				Expect(repo.Delete(ctx, testPlaylistID)).To(Succeed())
 				testPlaylistID = ""
 			}
 		})

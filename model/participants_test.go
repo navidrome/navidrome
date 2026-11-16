@@ -21,11 +21,11 @@ var _ = Describe("Participants", func() {
 
 			It("marshals correctly", func() {
 				data, err := json.Marshal(participants)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				var afterConversion Participants
 				err = json.Unmarshal(data, &afterConversion)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(afterConversion).To(Equal(participants))
 			})
 

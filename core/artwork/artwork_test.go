@@ -341,7 +341,7 @@ var _ = Describe("Artwork", func() {
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf4"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(readAll(img))).To(BeNumerically(">", 0))
+			Expect(readAll(img)).ToNot(BeEmpty())
 			Expect(queueRepo.Data[primaryKey("mf", "mf4")].Priority).To(Equal(model.ArtworkPriorityBump))
 			_, err = artRepo.GetItemArtwork(ctx, model.KindMediaFileArtwork, "mf4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))

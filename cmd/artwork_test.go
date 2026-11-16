@@ -425,9 +425,9 @@ var _ = Describe("explainConfig", func() {
 
 var _ = Describe("artwork refresh command", func() {
 	It("requires at least one argument", func() {
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{})).To(HaveOccurred())
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"id1"})).ToNot(HaveOccurred())
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1"})).ToNot(HaveOccurred())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{})).ToNot(Succeed())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"id1"})).To(Succeed())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1"})).To(Succeed())
 	})
 })
 
@@ -810,8 +810,8 @@ var _ = Describe("reprocessArtwork", func() {
 
 var _ = Describe("artwork status command", func() {
 	It("takes no arguments", func() {
-		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{})).ToNot(HaveOccurred())
-		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{"x"})).To(HaveOccurred())
+		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{})).To(Succeed())
+		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{"x"})).ToNot(Succeed())
 	})
 })
 

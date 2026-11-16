@@ -82,7 +82,7 @@ var _ = Describe("Bookmark and PlayQueue Endpoints", Ordered, func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.PlayQueue).ToNot(BeNil())
-			Expect(resp.PlayQueue.Entry).To(HaveLen(0))
+			Expect(resp.PlayQueue.Entry).To(BeEmpty())
 			Expect(resp.PlayQueue.Current).To(BeEmpty())
 			Expect(resp.PlayQueue.Position).To(Equal(int64(0)))
 			Expect(resp.PlayQueue.Username).To(Equal(adminUser.UserName))
@@ -94,7 +94,7 @@ var _ = Describe("Bookmark and PlayQueue Endpoints", Ordered, func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.PlayQueueByIndex).ToNot(BeNil())
-			Expect(resp.PlayQueueByIndex.Entry).To(HaveLen(0))
+			Expect(resp.PlayQueueByIndex.Entry).To(BeEmpty())
 			Expect(resp.PlayQueueByIndex.CurrentIndex).To(BeNil())
 			Expect(resp.PlayQueueByIndex.Position).To(Equal(int64(0)))
 			Expect(resp.PlayQueueByIndex.Username).To(Equal(adminUser.UserName))

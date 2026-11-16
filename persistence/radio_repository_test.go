@@ -48,7 +48,7 @@ var _ = Describe("RadioRepository", func() {
 			It("deletes existing item", func() {
 				err := repo.Delete(ctx, radioWithHomePage.ID)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = repo.Get(ctx, radioWithHomePage.ID)
 				Expect(err).To(MatchError(model.ErrNotFound))
@@ -63,7 +63,7 @@ var _ = Describe("RadioRepository", func() {
 			It("returns an existing item", func() {
 				res, err := repo.Get(ctx, radioWithHomePage.ID)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(res.ID).To(Equal(radioWithHomePage.ID))
 			})
 
@@ -77,7 +77,7 @@ var _ = Describe("RadioRepository", func() {
 		Describe("GetAll", func() {
 			It("returns all items from the DB", func() {
 				all, err := repo.GetAll(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(all[0].ID).To(Equal(radioWithoutHomePage.ID))
 				Expect(all[1].ID).To(Equal(radioWithHomePage.ID))
 			})
@@ -91,10 +91,10 @@ var _ = Describe("RadioRepository", func() {
 					StreamUrl: "https://example.com:4533/app",
 				})
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				item, err := repo.Get(ctx, radioWithHomePage.ID)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				Expect(item.HomePageUrl).To(Equal(""))
 			})
@@ -105,11 +105,11 @@ var _ = Describe("RadioRepository", func() {
 					StreamUrl: "https://example.com:4533/app",
 				})
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(repo.CountAll(ctx)).To(Equal(int64(3)))
 
 				all, err := repo.GetAll(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(all[2].StreamUrl).To(Equal("https://example.com:4533/app"))
 			})
 
@@ -118,15 +118,15 @@ var _ = Describe("RadioRepository", func() {
 					Name:      "Artwork radio",
 					StreamUrl: "https://example.com:4533/artwork",
 				})
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				all, err := repo.GetAll(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				created := all[len(all)-1]
 
 				queueRepo := NewArtworkQueueRepository(GetDBXBuilder())
 				queued, err := queueRepo.DequeueBatch(ctx, 1000)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(queued).To(ContainElement(SatisfyAll(
 					HaveField("ItemKind", "ra"),
 					HaveField("ItemID", created.ID),
@@ -144,7 +144,7 @@ var _ = Describe("RadioRepository", func() {
 				Expect(repo.Update(ctx, radio.ID, model.Radio{Name: "Renamed"}, "name")).To(Succeed())
 
 				item, err := repo.Get(ctx, radio.ID)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(item.Name).To(Equal("Renamed"))
 				Expect(item.UploadedImage).To(Equal("cover.png"))
 				Expect(item.StreamUrl).To(Equal(radio.StreamUrl))
@@ -177,7 +177,7 @@ var _ = Describe("RadioRepository", func() {
 			It("returns an existing item", func() {
 				res, err := repo.Get(ctx, radioWithHomePage.ID)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(res.ID).To(Equal(radioWithHomePage.ID))
 			})
 
@@ -191,7 +191,7 @@ var _ = Describe("RadioRepository", func() {
 		Describe("GetAll", func() {
 			It("returns all items from the DB", func() {
 				all, err := repo.GetAll(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(all[0].ID).To(Equal(radioWithoutHomePage.ID))
 				Expect(all[1].ID).To(Equal(radioWithHomePage.ID))
 			})

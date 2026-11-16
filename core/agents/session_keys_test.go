@@ -24,7 +24,7 @@ var _ = Describe("SessionKeys", func() {
 		Expect(sk.KeyName).To(Equal("fakeSessionKey"))
 	})
 	It("stores a value in the DB", func() {
-		Expect(sk.Put(ctx, user.ID, "test-stored-value")).To(BeNil())
+		Expect(sk.Put(ctx, user.ID, "test-stored-value")).To(Succeed())
 	})
 	It("fetches the stored value", func() {
 		value, err := sk.Get(ctx, user.ID)
@@ -32,7 +32,7 @@ var _ = Describe("SessionKeys", func() {
 		Expect(value).To(Equal("test-stored-value"))
 	})
 	It("deletes the stored value", func() {
-		Expect(sk.Delete(ctx, user.ID)).To(BeNil())
+		Expect(sk.Delete(ctx, user.ID)).To(Succeed())
 	})
 	It("handles a not found value", func() {
 		_, err := sk.Get(ctx, "u-2")

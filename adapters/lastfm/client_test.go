@@ -33,7 +33,7 @@ var _ = Describe("client", func() {
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
 			album, err := client.albumGetInfo(ctx, "Believe", "U2", "mbid-1234", "pt")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(album.Name).To(Equal("Believe"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
 		})
@@ -54,7 +54,7 @@ var _ = Describe("client", func() {
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
 			artist, err := client.artistGetInfo(ctx, "U2", "pt")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(artist.Name).To(Equal("U2"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
 		})
@@ -123,8 +123,8 @@ var _ = Describe("client", func() {
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
 			similar, err := client.artistGetSimilar(ctx, "U2", 2)
-			Expect(err).To(BeNil())
-			Expect(len(similar.Artists)).To(Equal(2))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(similar.Artists).To(HaveLen(2))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
 		})
 
@@ -144,8 +144,8 @@ var _ = Describe("client", func() {
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
 			top, err := client.artistGetTopTracks(ctx, "U2", 2)
-			Expect(err).To(BeNil())
-			Expect(len(top.Track)).To(Equal(2))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(top.Track).To(HaveLen(2))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
 		})
 
@@ -165,8 +165,8 @@ var _ = Describe("client", func() {
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
 			similar, err := client.trackGetSimilar(ctx, "Just Can't Get Enough", "Depeche Mode", 5)
-			Expect(err).To(BeNil())
-			Expect(len(similar.Track)).To(Equal(5))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(similar.Track).To(HaveLen(5))
 			Expect(similar.Track[0].Name).To(Equal("Dreaming of Me"))
 			Expect(similar.Track[0].Artist.Name).To(Equal("Depeche Mode"))
 			Expect(similar.Track[0].Match).To(Equal(1.0))
@@ -189,7 +189,7 @@ var _ = Describe("client", func() {
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
 			similar, err := client.trackGetSimilar(ctx, "UnknownTrack", "UnknownArtist", 3)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(similar.Track).To(BeEmpty())
 		})
 	})
@@ -243,7 +243,7 @@ var _ = Describe("client", func() {
 				albumArtist: "U2",
 			}
 			err := client.scrobble(ctx, "SESSION_KEY", info)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			req := httpClient.SavedRequest
 			Expect(req.Method).To(Equal(http.MethodPost))
@@ -277,7 +277,7 @@ var _ = Describe("client", func() {
 				albumArtist: "U2",
 			}
 			err := client.updateNowPlaying(ctx, "SESSION_KEY", info)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			req := httpClient.SavedRequest
 			Expect(req.Method).To(Equal(http.MethodPost))

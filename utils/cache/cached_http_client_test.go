@@ -37,27 +37,27 @@ var _ = Describe("HTTPClient", func() {
 		It("caches repeated requests", func() {
 			r, _ := http.NewRequest("GET", ts.URL+"?name=doe", nil)
 			resp, err := chc.Do(r)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			body, err := io.ReadAll(resp.Body)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(string(body)).To(Equal("Hello, [doe]"))
 			Expect(requestsReceived).To(Equal(1))
 
 			// Same request
 			r, _ = http.NewRequest("GET", ts.URL+"?name=doe", nil)
 			resp, err = chc.Do(r)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			body, err = io.ReadAll(resp.Body)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(string(body)).To(Equal("Hello, [doe]"))
 			Expect(requestsReceived).To(Equal(1))
 
 			// Different request
 			r, _ = http.NewRequest("GET", ts.URL, nil)
 			resp, err = chc.Do(r)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			body, err = io.ReadAll(resp.Body)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(string(body)).To(Equal("Hello, []"))
 			Expect(requestsReceived).To(Equal(2))
 
@@ -65,9 +65,9 @@ var _ = Describe("HTTPClient", func() {
 			r, _ = http.NewRequest("GET", ts.URL, nil)
 			r.Header.Add("head", "this is a header")
 			resp, err = chc.Do(r)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			body, err = io.ReadAll(resp.Body)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(string(body)).To(Equal("Hello, []"))
 			Expect(header).To(Equal("this is a header"))
 			Expect(requestsReceived).To(Equal(3))
@@ -79,7 +79,7 @@ var _ = Describe("HTTPClient", func() {
 
 			r, _ := http.NewRequest("GET", ts.URL+"?name=doe", nil)
 			_, err := chc.Do(r)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(requestsReceived).To(Equal(1))
 
 			// Wait more than the TTL
@@ -88,7 +88,7 @@ var _ = Describe("HTTPClient", func() {
 			// Same request
 			r, _ = http.NewRequest("GET", ts.URL+"?name=doe", nil)
 			_, err = chc.Do(r)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(requestsReceived).To(Equal(2))
 		})
 	})

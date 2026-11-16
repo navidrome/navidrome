@@ -87,7 +87,7 @@ var _ = Describe("Auth", func() {
 			Expect(claims.Issuer).To(Equal(consts.JWTIssuer))
 			Expect(claims.Subject).To(Equal("johndoe"))
 			Expect(claims.UserID).To(Equal("123"))
-			Expect(claims.IsAdmin).To(Equal(true))
+			Expect(claims.IsAdmin).To(BeTrue())
 			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
 		})
 	})

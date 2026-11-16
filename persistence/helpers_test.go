@@ -53,7 +53,7 @@ var _ = Describe("Helpers", func() {
 			now := time.Now()
 			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
 			args, err := toSQLArgs(m)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(args).To(SatisfyAll(
 				HaveKeyWithValue("id", "123"),
 				HaveKeyWithValue("album_id", "456"),
@@ -71,7 +71,7 @@ var _ = Describe("Helpers", func() {
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(ConsistOf(1))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -81,7 +81,7 @@ var _ = Describe("Helpers", func() {
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
 			Expect(args).To(BeEmpty())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 

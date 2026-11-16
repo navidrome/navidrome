@@ -528,7 +528,7 @@ var _ = Describe("httpServiceImpl", func() {
 				TimeoutMs: 5000,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(resp.Body)).To(Equal(httpClientMaxResponseBodyLen))
+			Expect(resp.Body).To(HaveLen(httpClientMaxResponseBodyLen))
 		})
 	})
 

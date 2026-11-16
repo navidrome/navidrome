@@ -60,12 +60,12 @@ var _ = Describe("Archiver", func() {
 
 			out := new(bytes.Buffer)
 			err := arch.ZipAlbum(ctx, "1", "mp3", 128, out)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
-			Expect(len(zr.File)).To(Equal(2))
+			Expect(zr.File).To(HaveLen(2))
 			Expect(zr.File[0].Name).To(Equal("Album_Promo/01 - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("Album_Promo/02 - track2.mp3"))
 		})
@@ -109,12 +109,12 @@ var _ = Describe("Archiver", func() {
 
 			out := new(bytes.Buffer)
 			err := arch.ZipArtist(ctx, "1", "mp3", 128, out)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
-			Expect(len(zr.File)).To(Equal(2))
+			Expect(zr.File).To(HaveLen(2))
 			Expect(zr.File[0].Name).To(Equal("Album 1/01 - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("Album 1/02 - track2.mp3"))
 		})
@@ -131,7 +131,7 @@ var _ = Describe("Archiver", func() {
 				out := new(bytes.Buffer)
 				Expect(arch.ZipArtist(ctx, "1", "mp3", 128, out)).To(Succeed())
 				zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				names := make([]string, len(zr.File))
 				for i, f := range zr.File {
 					names[i] = f.Name
@@ -296,16 +296,16 @@ var _ = Describe("Archiver", func() {
 
 			out := new(bytes.Buffer)
 			err := arch.ZipShare(ctx, share, out)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			// Share.Load records a visit; re-loading here would double-count
 			// every download.
 			sh.AssertNotCalled(GinkgoT(), "Load", mock.Anything, mock.Anything)
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
-			Expect(len(zr.File)).To(Equal(2))
+			Expect(zr.File).To(HaveLen(2))
 			Expect(zr.File[0].Name).To(Equal("01 - Artist 1 - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("02 - Artist 2 - track2.mp3"))
 
@@ -356,23 +356,23 @@ var _ = Describe("Archiver", func() {
 
 			out := new(bytes.Buffer)
 			err := arch.ZipPlaylist(ctx, "1", "mp3", 128, out)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
-			Expect(len(zr.File)).To(Equal(3))
+			Expect(zr.File).To(HaveLen(3))
 			Expect(zr.File[0].Name).To(Equal("01 - AC_DC - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("02 - Artist 2 - track2.mp3"))
 			Expect(zr.File[2].Name).To(Equal("Test Playlist.m3u"))
 
 			// Verify M3U content
 			m3uFile, err := zr.File[2].Open()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			defer m3uFile.Close()
 
 			m3uContent, err := io.ReadAll(m3uFile)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			expectedM3U := "#EXTM3U\n#PLAYLIST:Test Playlist\n#EXTINF:0,AC/DC - track1\n01 - AC_DC - track1.mp3\n#EXTINF:0,Artist 2 - track2\n02 - Artist 2 - track2.mp3\n"
 			Expect(string(m3uContent)).To(Equal(expectedM3U))

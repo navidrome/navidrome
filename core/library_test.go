@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/deluan/rest"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
@@ -498,7 +499,7 @@ var _ = Describe("Library Service", func() {
 				err := repo.Delete(ctx, "1")
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(libraryRepo.Data).To(HaveLen(0))
+				Expect(libraryRepo.Data).To(BeEmpty())
 			})
 
 			It("fails when library doesn't exist", func() {
@@ -657,7 +658,7 @@ var _ = Describe("Library Service", func() {
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify scan was called with correct parameters
 			calls := scanner.GetScanAllCalls()
@@ -683,7 +684,7 @@ var _ = Describe("Library Service", func() {
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify scan was called with correct parameters
 			calls := scanner.GetScanAllCalls()
@@ -704,7 +705,7 @@ var _ = Describe("Library Service", func() {
 			// Wait a bit to ensure no scan was triggered
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("triggers scan when updating the library PID config", func() {
@@ -715,7 +716,7 @@ var _ = Describe("Library Service", func() {
 
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 			// A quick scan: the scanner itself rescans this library in full
 			Expect(scanner.GetScanAllCalls()[0].FullScan).To(BeFalse())
 		})
@@ -729,7 +730,7 @@ var _ = Describe("Library Service", func() {
 
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("waits for a running scan before triggering a new one", func() {
@@ -741,12 +742,12 @@ var _ = Describe("Library Service", func() {
 
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "200ms", "20ms").Should(Equal(0))
+			}, 200*time.Millisecond, 20*time.Millisecond).Should(Equal(0))
 
 			scanner.SetScanning(false)
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "3s", "20ms").Should(Equal(1))
+			}, 3*time.Second, 20*time.Millisecond).Should(Equal(1))
 		})
 
 		It("does not trigger scan when library creation fails", func() {
@@ -759,7 +760,7 @@ var _ = Describe("Library Service", func() {
 			// Ensure no scan was triggered since creation failed
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("does not trigger scan when library update fails", func() {
@@ -776,7 +777,7 @@ var _ = Describe("Library Service", func() {
 			// Ensure no scan was triggered since update failed
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("triggers scan when deleting a library", func() {
@@ -792,7 +793,7 @@ var _ = Describe("Library Service", func() {
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify scan was called with correct parameters
 			calls := scanner.GetScanAllCalls()
@@ -807,7 +808,7 @@ var _ = Describe("Library Service", func() {
 			// Ensure no scan was triggered since deletion failed
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		Context("Watcher Integration", func() {
@@ -820,7 +821,7 @@ var _ = Describe("Library Service", func() {
 				// Verify watcher was started
 				Eventually(func() int {
 					return watcherManager.lenStarted()
-				}, "1s", "10ms").Should(Equal(1))
+				}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 				Expect(watcherManager.StartedWatchers[0].ID).To(Equal(1))
 				Expect(watcherManager.StartedWatchers[0].Name).To(Equal("New Library"))
@@ -849,7 +850,7 @@ var _ = Describe("Library Service", func() {
 				// Verify watcher was restarted
 				Eventually(func() int {
 					return watcherManager.lenRestarted()
-				}, "1s", "10ms").Should(Equal(1))
+				}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 				Expect(watcherManager.RestartedWatchers[0].ID).To(Equal(1))
 				Expect(watcherManager.RestartedWatchers[0].Path).To(Equal(newTempDir))
@@ -869,7 +870,7 @@ var _ = Describe("Library Service", func() {
 				// Verify watcher was NOT restarted (since path didn't change)
 				Consistently(func() int {
 					return watcherManager.lenRestarted()
-				}, "100ms", "10ms").Should(Equal(0))
+				}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 			})
 
 			It("stops watcher when library is deleted", func() {
@@ -884,7 +885,7 @@ var _ = Describe("Library Service", func() {
 				// Verify watcher was stopped
 				Eventually(func() int {
 					return watcherManager.lenStopped()
-				}, "1s", "10ms").Should(Equal(1))
+				}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 				Expect(watcherManager.StoppedWatchers[0]).To(Equal(1))
 			})
@@ -902,7 +903,7 @@ var _ = Describe("Library Service", func() {
 				// Verify watcher was NOT stopped since deletion failed
 				Consistently(func() int {
 					return watcherManager.lenStopped()
-				}, "100ms", "10ms").Should(Equal(0))
+				}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 			})
 		})
 	})
