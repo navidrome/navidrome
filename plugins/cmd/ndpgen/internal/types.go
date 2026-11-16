@@ -688,6 +688,10 @@ var rustKeywords = map[string]bool{
 
 func rustIdentifier(name string) string {
 	identifier := ToSnakeCase(name)
+	// Raw identifiers cannot be used for these path/type keywords.
+	if identifier == "self" || identifier == "crate" || identifier == "super" {
+		return identifier + "_"
+	}
 	if rustKeywords[identifier] {
 		return "r#" + identifier
 	}

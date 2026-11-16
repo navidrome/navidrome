@@ -464,7 +464,8 @@ export const selectLyricLayers = (
   // text. Only older responses without source attribution can be a fallback.
   const scopedLayer = (kind) => {
     const entries = grouped[kind]
-    if (!selectedVariant || entries.length === 0) return entries
+    if (!selectedVariant) return []
+    if (entries.length === 0) return entries
     const scoped = entries.filter((lyric) => {
       if (variantKey(lyric?.source, lyric) === selectedVariant.key) return true
       if (lyric?.selection || selectedVariant.lyric?.selection) return false

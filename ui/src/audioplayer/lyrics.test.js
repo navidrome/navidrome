@@ -787,3 +787,32 @@ describe('invalid assessed match statuses', () => {
     )
   })
 })
+
+describe('suggestion-only auxiliary layers', () => {
+  it('returns no main, translation or pronunciation layers for an unselected suggestion', () => {
+    const suggestion = {
+      kind: 'main',
+      lang: 'en',
+      synced: true,
+      line: [{ start: 0, value: 'suggested main' }],
+      match: { status: 'ambiguous' },
+    }
+    const translation = {
+      kind: 'translation',
+      lang: 'es',
+      synced: true,
+      line: [{ start: 0, value: 'suggested translation' }],
+      match: { status: 'ambiguous' },
+    }
+    const pronunciation = {
+      kind: 'pronunciation',
+      lang: 'en',
+      synced: true,
+      line: [{ start: 0, value: 'suggested pronunciation' }],
+      match: { status: 'ambiguous' },
+    }
+    expect(
+      selectLyricLayers([suggestion, translation, pronunciation], 'en'),
+    ).toEqual({ main: null, translation: null, pronunciation: null })
+  })
+})
