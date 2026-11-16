@@ -32,12 +32,20 @@ func (f *fakeOriginalsLyrics) GetLyricsVariants(context.Context, *model.MediaFil
 	return nil, nil
 }
 
+func (f *fakeOriginalsLyrics) GetLyricsVariantsResult(context.Context, *model.MediaFile, bool) (model.LyricsResult, error) {
+	return model.LyricsResult{}, nil
+}
+
 func (f *fakeOriginalsLyrics) GetLyricsByArtistTitle(context.Context, string, string) (model.LyricList, error) {
 	return nil, nil
 }
 
 func (f *fakeOriginalsLyrics) ListLyricsVariants(context.Context, *model.MediaFile) ([]model.LyricsVariant, error) {
 	return f.variants, nil
+}
+
+func (f *fakeOriginalsLyrics) ListLyricsVariantsResult(context.Context, *model.MediaFile) ([]model.LyricsVariant, []model.LyricsEvidence, error) {
+	return f.variants, nil, nil
 }
 
 func (f *fakeOriginalsLyrics) GetLyricsOriginal(_ context.Context, _ *model.MediaFile, plugin string, identity model.LyricsVariantIdentity) (model.LyricsOriginal, error) {

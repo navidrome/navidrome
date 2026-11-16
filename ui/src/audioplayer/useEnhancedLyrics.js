@@ -51,11 +51,16 @@ const rememberRetryWait = (
   return waiting
 }
 
+const EMPTY_EVIDENCE = []
+
 const normalizeStructuredLyrics = (lyrics) =>
   Array.isArray(lyrics) ? lyrics : []
 
 const readStructuredLyrics = (response) =>
   response?.json?.['subsonic-response']?.lyricsList?.structuredLyrics || []
+
+const readInstrumentalEvidence = (response) =>
+  response?.json?.['subsonic-response']?.lyricsList?.instrumentalEvidence || []
 
 const retryDelayFromError = (error) => {
   const serverMessage =
@@ -72,11 +77,17 @@ const buildCacheKey = ({ trackId, preferredLanguage, updatedAt }) =>
 const rememberLyrics = (
   cacheKey,
   structuredLyrics,
+  evidence = [],
   expiresAt = null,
   sourcesIncomplete = false,
 ) => {
   cache.delete(cacheKey)
-  cache.set(cacheKey, { structuredLyrics, expiresAt, sourcesIncomplete })
+  cache.set(cacheKey, {
+    structuredLyrics,
+    evidence,
+    expiresAt,
+    sourcesIncomplete,
+  })
   while (cache.size > MAX_LYRIC_CACHE_ENTRIES) {
     const oldestCacheKey = cache.keys().next().value
     cache.delete(oldestCacheKey)
@@ -92,7 +103,7 @@ const readCachedLyrics = (cacheKey) => {
   }
   cache.delete(cacheKey)
   cache.set(cacheKey, cached)
-  return cached.structuredLyrics
+  return cached
 }
 
 // Servers re-serialize identical payloads per request, so a refreshed response
@@ -115,7 +126,7 @@ const mergePartialSources = (previous, incoming) => {
   const group = (entries) => {
     const sources = new Map()
     for (const entry of entries || []) {
-      const key = variantKey(entry.source)
+      const key = variantKey(entry.source, entry)
       if (!sources.has(key)) sources.set(key, [])
       sources.get(key).push(entry)
     }
@@ -148,17 +159,26 @@ const createLyricsRequest = ({ trackId, cacheKey, allSources }) => {
     .getLyricsBySongId(trackId, { signal: controller.signal, allSources })
     .then((response) => {
       const incoming = normalizeStructuredLyrics(readStructuredLyrics(response))
+      const incomingEvidence = Array.isArray(readInstrumentalEvidence(response))
+        ? readInstrumentalEvidence(response)
+        : []
       const sourcesIncomplete =
         response?.json?.['subsonic-response']?.lyricsList?.sourcesIncomplete ===
         true
       const structuredLyrics = sourcesIncomplete
         ? mergePartialSources(cache.get(cacheKey)?.structuredLyrics, incoming)
         : incoming
+      const evidence = sourcesIncomplete
+        ? [...(cache.get(cacheKey)?.evidence || []), ...incomingEvidence]
+        : incomingEvidence
       const hasAnyLyric = structuredLyrics.some(hasStructuredLyricContent)
       rememberLyrics(
         cacheKey,
         structuredLyrics,
-        hasAnyLyric ? null : Date.now() + NEGATIVE_CACHE_TTL_MS,
+        evidence,
+        hasAnyLyric || evidence.length > 0
+          ? null
+          : Date.now() + NEGATIVE_CACHE_TTL_MS,
         sourcesIncomplete,
       )
       const seconds =
@@ -168,7 +188,7 @@ const createLyricsRequest = ({ trackId, cacheKey, allSources }) => {
           ? rememberRetryWait(cacheKey, seconds * 1000).retryAt
           : null
       if (retryAt == null) retryWaits.delete(cacheKey)
-      return { structuredLyrics, sourcesIncomplete, retryAt }
+      return { structuredLyrics, evidence, sourcesIncomplete, retryAt }
     })
     .finally(() => {
       entry.settled = true
@@ -207,6 +227,7 @@ const acquireLyricsRequest = ({ trackId, cacheKey, allSources }) => {
 const emptyLyricsState = (cacheKey) => ({
   cacheKey,
   structuredLyrics: null,
+  evidence: [],
   loading: false,
   refreshing: false,
   error: null,
@@ -275,10 +296,11 @@ const useEnhancedLyrics = ({
       const cached = readCachedLyrics(cacheKey)
       setState({
         ...emptyLyricsState(cacheKey),
-        structuredLyrics: cached,
+        structuredLyrics: cached?.structuredLyrics || null,
+        evidence: cached?.evidence || [],
         sourcesIncomplete:
           cache.get(cacheKey)?.sourcesIncomplete || Boolean(waiting.error),
-        error: cached?.length ? null : waiting.error,
+        error: cached?.structuredLyrics?.length ? null : waiting.error,
         retryAt: waiting.retryAt,
       })
       return undefined
@@ -289,7 +311,8 @@ const useEnhancedLyrics = ({
       if (cached !== null) {
         setState({
           cacheKey,
-          structuredLyrics: cached,
+          structuredLyrics: cached.structuredLyrics,
+          evidence: cached.evidence || [],
           sourcesIncomplete: cache.get(cacheKey)?.sourcesIncomplete || false,
           loading: false,
           refreshing: false,
@@ -319,6 +342,7 @@ const useEnhancedLyrics = ({
         : {
             cacheKey,
             structuredLyrics: null,
+            evidence: [],
             loading: true,
             refreshing: false,
             error: null,
@@ -327,12 +351,20 @@ const useEnhancedLyrics = ({
     )
 
     request.promise
-      .then(({ structuredLyrics, sourcesIncomplete, retryAt }) => {
+      .then(({ structuredLyrics, evidence, sourcesIncomplete, retryAt }) => {
         if (!active) return
         autoRetryRef.current = { cacheKey, attempts: 0 }
         setAutoRetry(null)
-        if (keepingContent && structuredLyrics.length === 0) {
-          rememberLyrics(cacheKey, stateRef.current.structuredLyrics)
+        if (
+          keepingContent &&
+          structuredLyrics.length === 0 &&
+          evidence.length === 0
+        ) {
+          rememberLyrics(
+            cacheKey,
+            stateRef.current.structuredLyrics,
+            stateRef.current.evidence,
+          )
           setState((current) => ({ ...current, refreshing: false }))
           return
         }
@@ -343,6 +375,7 @@ const useEnhancedLyrics = ({
             sameStructuredLyrics(current.structuredLyrics, structuredLyrics)
               ? current.structuredLyrics
               : structuredLyrics,
+          evidence,
           loading: false,
           refreshing: false,
           error: null,
@@ -508,6 +541,7 @@ const useEnhancedLyrics = ({
     return {
       variants: [],
       layers: emptyLyricLayers,
+      evidence: [],
       loading: Boolean(trackId && !disabled && requested),
       refreshing: false,
       error: null,
@@ -519,6 +553,7 @@ const useEnhancedLyrics = ({
   return {
     variants,
     layers,
+    evidence: state.evidence || EMPTY_EVIDENCE,
     loading: state.loading,
     refreshing: state.refreshing,
     sourcesIncomplete: Boolean(state.sourcesIncomplete),

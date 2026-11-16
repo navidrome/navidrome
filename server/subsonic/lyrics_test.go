@@ -1101,3 +1101,40 @@ type failingLyricsProvider struct{ err error }
 func (p failingLyricsProvider) GetLyrics(context.Context, *model.MediaFile) (model.LyricList, error) {
 	return nil, p.err
 }
+
+var _ = Describe("lyrics recording evidence responses", func() {
+	It("serializes match and typed evidence without adding lyric entries", func() {
+		mf := &model.MediaFile{ID: "track-1", Title: "Song", Artist: "Artist"}
+		match := &model.LyricsMatch{Status: model.LyricsMatchAmbiguous, Reasons: []string{"version-unconfirmed"}}
+		list := buildLyricsList(mf, model.LyricList{{
+			Kind: model.LyricKindMain, Lang: "en", Synced: true,
+			Line:  []model.Line{{Value: "line one", Start: int64Ptr(0)}},
+			Match: match,
+		}}, []model.LyricsEvidence{{
+			PluginID: "nd-better-lyrics", Kind: "instrumental", Provider: "LRCLib",
+			Recording: "rec-1", Match: &model.LyricsMatch{Status: model.LyricsMatchValidated},
+		}}, true)
+
+		Expect(list.StructuredLyrics).To(HaveLen(1))
+		Expect(list.StructuredLyrics[0].Match).ToNot(BeNil())
+		Expect(list.StructuredLyrics[0].Match.Status).To(Equal(model.LyricsMatchAmbiguous))
+		Expect(list.StructuredLyrics[0].Match.AutoSave).To(BeFalse())
+		Expect(list.InstrumentalEvidence).To(HaveLen(1))
+		Expect(list.InstrumentalEvidence[0].PluginID).To(Equal("nd-better-lyrics"))
+		Expect(list.InstrumentalEvidence[0].Provider).To(Equal("LRCLib"))
+	})
+
+	It("does not attach match or evidence to the legacy non-enhanced response", func() {
+		mf := &model.MediaFile{ID: "track-1", Title: "Song", Artist: "Artist"}
+		list := buildLyricsList(mf, model.LyricList{{
+			Kind: model.LyricKindMain, Lang: "en", Synced: true,
+			Line:  []model.Line{{Value: "line one", Start: int64Ptr(0)}},
+			Match: &model.LyricsMatch{Status: model.LyricsMatchValidated},
+		}}, []model.LyricsEvidence{{Kind: "instrumental", Provider: "LRCLib"}}, false)
+		Expect(list.StructuredLyrics).To(HaveLen(1))
+		Expect(list.StructuredLyrics[0].Match).To(BeNil())
+		Expect(list.InstrumentalEvidence).To(BeEmpty())
+	})
+})
+
+func int64Ptr(value int64) *int64 { return &value }

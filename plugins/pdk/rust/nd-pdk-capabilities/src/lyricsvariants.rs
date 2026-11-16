@@ -90,6 +90,8 @@ pub struct GetLyricsV2Response {
     pub lyrics: Vec<LyricsV2Text>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<LyricsSource>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence: Vec<LyricsEvidence>,
 }
 /// GetLyricsVariantsRequest represents the GetLyricsVariantsRequest data structure.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -104,6 +106,41 @@ pub struct GetLyricsVariantsRequest {
 pub struct GetLyricsVariantsResponse {
     #[serde(default)]
     pub variants: Vec<LyricsVariantEntry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence: Vec<LyricsEvidence>,
+}
+/// LyricsEvidence is a typed, attributed provider observation separate from
+/// playable lyric entries.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LyricsEvidence {
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub provider: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub recording: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub match: Option<LyricsMatch>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub reason: String,
+}
+/// LyricsMatch is the recording-identity assessment, independent of timing
+/// richness and content state. AutoSaveEligible is true only for a validated
+/// recording.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LyricsMatch {
+    #[serde(default)]
+    pub status: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reasons: Vec<String>,
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub duration_delta: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub recording: String,
+    #[serde(default)]
+    pub auto_save: bool,
 }
 /// LyricsOriginalInfo reports whether an exact native document is retrievable.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -147,6 +184,8 @@ pub struct LyricsV2Text {
     pub source: Option<LyricsSource>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<LyricsVariant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub match: Option<LyricsMatch>,
 }
 /// LyricsVariant is the versioned identity of one playback representation.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -184,6 +223,8 @@ pub struct LyricsVariantEntry {
     pub playback_index: i32,
     #[serde(default)]
     pub original: LyricsOriginalInfo,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub match: Option<LyricsMatch>,
 }
 /// TrackInfo contains track metadata.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

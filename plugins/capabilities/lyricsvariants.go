@@ -23,8 +23,9 @@ type GetLyricsV2Request struct {
 }
 
 type GetLyricsV2Response struct {
-	Lyrics []LyricsV2Text `json:"lyrics"`
-	Source *LyricsSource  `json:"source,omitempty"`
+	Lyrics   []LyricsV2Text   `json:"lyrics"`
+	Source   *LyricsSource    `json:"source,omitempty"`
+	Evidence []LyricsEvidence `json:"evidence,omitempty"`
 }
 
 // LyricsV2Text is one playback entry with its optional addressable identity.
@@ -33,6 +34,28 @@ type LyricsV2Text struct {
 	Text    string         `json:"text"`
 	Source  *LyricsSource  `json:"source,omitempty"`
 	Variant *LyricsVariant `json:"variant,omitempty"`
+	Match   *LyricsMatch   `json:"match,omitempty"`
+}
+
+// LyricsMatch is the recording-identity assessment, independent of timing
+// richness and content state. AutoSaveEligible is true only for a validated
+// recording.
+type LyricsMatch struct {
+	Status        string   `json:"status"`
+	Reasons       []string `json:"reasons,omitempty"`
+	DurationDelta float64  `json:"durationDelta,omitempty"`
+	Recording     string   `json:"recording,omitempty"`
+	AutoSave      bool     `json:"autoSaveEligible"`
+}
+
+// LyricsEvidence is a typed, attributed provider observation separate from
+// playable lyric entries.
+type LyricsEvidence struct {
+	Kind      string       `json:"kind"`
+	Provider  string       `json:"provider,omitempty"`
+	Recording string       `json:"recording,omitempty"`
+	Match     *LyricsMatch `json:"match,omitempty"`
+	Reason    string       `json:"reason,omitempty"`
 }
 
 // LyricsVariant is the versioned identity of one playback representation.
@@ -51,6 +74,7 @@ type GetLyricsVariantsRequest struct {
 
 type GetLyricsVariantsResponse struct {
 	Variants []LyricsVariantEntry `json:"variants"`
+	Evidence []LyricsEvidence     `json:"evidence,omitempty"`
 }
 
 // LyricsVariantEntry is one listing row. PlaybackIndex is advisory: the
@@ -63,6 +87,7 @@ type LyricsVariantEntry struct {
 	Format        string             `json:"format,omitempty"`
 	PlaybackIndex int                `json:"playbackIndex"`
 	Original      LyricsOriginalInfo `json:"original"`
+	Match         *LyricsMatch       `json:"match,omitempty"`
 }
 
 // LyricsOriginalInfo reports whether an exact native document is retrievable.

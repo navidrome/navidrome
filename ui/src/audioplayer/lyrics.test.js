@@ -4,6 +4,7 @@ import {
   clampLyricsOffset,
   collectLyricVariants,
   formatLyricsOffset,
+  findLyricVariant,
   getPreferredLyricLanguage,
   hasNudgeableTiming,
   hasStructuredLyricContent,
@@ -637,5 +638,56 @@ describe('lyrics variants', () => {
     expect(
       selectLyricLayers([main, otherProvider], 'en').pronunciation,
     ).toBeNull()
+  })
+})
+
+describe('recording match selection', () => {
+  const matched = (value, status, selection, extra = {}) => ({
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value }],
+    selection,
+    match: { status, autoSaveEligible: status === 'validated' },
+    ...extra,
+  })
+
+  it('never auto-selects an ambiguous suggestion', () => {
+    const layers = selectLyricLayers(
+      [
+        matched('Wrong live words', 'ambiguous', 'sel-live'),
+        matched('Right studio words', 'validated', 'sel-studio'),
+      ],
+      'en',
+    )
+    expect(layers.main.line[0].value).toBe('Right studio words')
+  })
+
+  it('does not auto-select when only ambiguous suggestions exist', () => {
+    const layers = selectLyricLayers(
+      [matched('Wrong live words', 'ambiguous', 'sel-live')],
+      'en',
+    )
+    expect(layers.main).toBeNull()
+  })
+
+  it('allows an ambiguous suggestion to be selected explicitly', () => {
+    const entries = [matched('Wrong live words', 'ambiguous', 'sel-live')]
+    const layers = selectLyricLayers(entries, 'en', 'selection:sel-live')
+    expect(layers.main.line[0].value).toBe('Wrong live words')
+    expect(
+      findLyricVariant(collectLyricVariants(entries), 'selection:sel-live')
+        ?.suggestion,
+    ).toBe(true)
+  })
+
+  it('keeps two selections from one source individually addressable', () => {
+    const variants = collectLyricVariants([
+      matched('First recording', 'validated', 'sel-a'),
+      matched('Second recording', 'ambiguous', 'sel-b'),
+    ])
+    expect(variants).toHaveLength(2)
+    expect(variants[0].key).toBe('selection:sel-a')
+    expect(variants[1].key).toBe('selection:sel-b')
   })
 })

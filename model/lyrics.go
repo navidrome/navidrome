@@ -56,6 +56,7 @@ type Lyrics struct {
 	Source        *LyricsSource          `structs:"source,omitempty"        json:"source,omitempty"`
 	Variant       *LyricsVariantIdentity `structs:"variant,omitempty"       json:"variant,omitempty"`
 	Selection     string                 `structs:"selection,omitempty"     json:"selection,omitempty"`
+	Match         *LyricsMatch           `structs:"match,omitempty"         json:"match,omitempty"`
 	Synced        bool                   `structs:"synced"                  json:"synced"`
 }
 
@@ -88,6 +89,13 @@ func (l Lyrics) EffectiveKind() string {
 }
 
 type LyricList []Lyrics
+
+// LyricsResult is the typed enhanced result: playable entries plus attributed
+// evidence that is not a lyric entry.
+type LyricsResult struct {
+	Lyrics   LyricList
+	Evidence []LyricsEvidence
+}
 
 // MarshalJSON keeps the lyrics column invariant: empty/nil serializes to [], never null.
 func (ll LyricList) MarshalJSON() ([]byte, error) {

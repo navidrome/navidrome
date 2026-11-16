@@ -243,3 +243,28 @@ describe('<LyricsLayerControls />', () => {
     ).toBeDisabled()
   })
 })
+
+describe('<LyricsLayerControls /> suggestions', () => {
+  afterEach(cleanup)
+
+  it('labels an ambiguous identity as a suggestion', async () => {
+    renderControls({
+      labels: { ...labels, suggestion: 'Suggestion' },
+      variants: [
+        {
+          key: 'selection:live',
+          source: {
+            type: 'plugin',
+            name: 'Better Lyrics',
+            provider: 'LRCLib',
+            format: 'lrc',
+          },
+          sync: 'word',
+          suggestion: true,
+        },
+      ],
+    })
+    openSourceMenu()
+    expect(await screen.findByText(/Suggestion/)).toBeTruthy()
+  })
+})

@@ -690,3 +690,35 @@ describe('useEnhancedLyrics', () => {
     second.unmount()
   })
 })
+
+describe('useEnhancedLyrics recording evidence', () => {
+  it('keeps the evidence reference stable across an empty cached rerender', async () => {
+    subsonic.getLyricsBySongId.mockResolvedValue(responseForEntries([]))
+    const { result, rerender } = renderLyrics({ trackId: 'evidence-empty' })
+    await act(async () => {})
+    const evidence = result.current.evidence
+    rerender({ trackId: 'evidence-empty' })
+    await act(async () => {})
+    expect(result.current.evidence).toBe(evidence)
+  })
+
+  it('normalizes and caches typed instrumental evidence separately', async () => {
+    const response = responseForEntries([])
+    response.json['subsonic-response'].lyricsList.instrumentalEvidence = [
+      {
+        kind: 'instrumental',
+        provider: 'LRCLib',
+        match: { status: 'validated', autoSaveEligible: true },
+      },
+    ]
+    subsonic.getLyricsBySongId.mockResolvedValue(response)
+    const first = renderLyrics({ trackId: 'evidence-cache' })
+    await act(async () => {})
+    expect(first.result.current.evidence).toHaveLength(1)
+    expect(first.result.current.layers.main).toBeNull()
+    first.unmount()
+    const second = renderLyrics({ trackId: 'evidence-cache' })
+    await act(async () => {})
+    expect(second.result.current.evidence).toHaveLength(1)
+  })
+})

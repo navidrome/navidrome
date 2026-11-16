@@ -1448,3 +1448,45 @@ describe('<LyricsPanel />', () => {
     },
   )
 })
+
+const structuredMain = () => ({
+  kind: 'main',
+  lang: 'en',
+  synced: true,
+  line: [{ start: 0, value: 'line one' }],
+})
+
+describe('LyricsPanel evidence', () => {
+  it('shows attributed instrumental state without a dummy lyric entry', () => {
+    renderPanel({
+      mainLyric: null,
+      evidence: [
+        {
+          kind: 'instrumental',
+          provider: 'LRCLib',
+          match: { status: 'validated' },
+        },
+      ],
+    })
+    expect(screen.getByTestId('lyrics-empty-state').textContent).toContain(
+      'LRCLib reports this recording is instrumental',
+    )
+  })
+
+  it('shows a conflict note without hiding valid lyrics', () => {
+    renderPanel({
+      mainLyric: structuredMain(),
+      evidence: [
+        {
+          kind: 'instrumental',
+          provider: 'LRCLib',
+          match: { status: 'validated' },
+        },
+      ],
+    })
+    expect(screen.getByTestId('lyrics-evidence-note').textContent).toContain(
+      'reports an instrumental recording',
+    )
+    expect(screen.getByTestId('lyrics-line-group')).toBeTruthy()
+  })
+})

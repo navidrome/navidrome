@@ -29,8 +29,10 @@ type Provider interface {
 type Lyrics interface {
 	Provider
 	GetLyricsVariants(ctx context.Context, mf *model.MediaFile, allSources bool) (model.LyricList, error)
+	GetLyricsVariantsResult(ctx context.Context, mf *model.MediaFile, allSources bool) (model.LyricsResult, error)
 	GetLyricsByArtistTitle(ctx context.Context, artist, title string) (model.LyricList, error)
 	ListLyricsVariants(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, error)
+	ListLyricsVariantsResult(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, []model.LyricsEvidence, error)
 	GetLyricsOriginal(ctx context.Context, mf *model.MediaFile, plugin string, identity model.LyricsVariantIdentity) (model.LyricsOriginal, error)
 }
 
@@ -39,6 +41,16 @@ type Lyrics interface {
 type DetailedProvider interface {
 	Provider
 	GetLyricsDetailed(ctx context.Context, mf *model.MediaFile) (model.LyricList, error)
+}
+
+// DetailedResultProvider exposes typed evidence alongside enhanced playback.
+type DetailedResultProvider interface {
+	GetLyricsDetailedResult(ctx context.Context, mf *model.MediaFile) (model.LyricsResult, error)
+}
+
+// VariantsResultProvider exposes typed evidence alongside the variant listing.
+type VariantsResultProvider interface {
+	ListLyricsVariantsResult(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, []model.LyricsEvidence, error)
 }
 
 // OriginalsProvider is the optional plugin surface for variant listings and
@@ -76,8 +88,13 @@ func (l *lyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (mod
 // remaining plugins, for background discovery while clients display lyrics.
 // Discovery can return both variants and an error when only some sources succeed.
 func (l *lyricsService) GetLyricsVariants(ctx context.Context, mf *model.MediaFile, allSources bool) (model.LyricList, error) {
+	result, err := l.GetLyricsVariantsResult(ctx, mf, allSources)
+	return result.Lyrics, err
+}
+
+func (l *lyricsService) GetLyricsVariantsResult(ctx context.Context, mf *model.MediaFile, allSources bool) (model.LyricsResult, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return model.LyricsResult{}, err
 	}
 	patterns := []string{}
 	seen := map[string]bool{}
@@ -97,20 +114,21 @@ func (l *lyricsService) GetLyricsVariants(ctx context.Context, mf *model.MediaFi
 		found := false
 		for i, pattern := range patterns {
 			if err := ctx.Err(); err != nil {
-				return nil, err
+				return model.LyricsResult{}, err
 			}
 			if found && !isLocalSource(pattern) {
 				continue
 			}
-			list, err := l.getLyricsFromSource(ctx, mf, pattern, true)
-			results[i] = sourceResult{lyrics: list, err: err}
-			found = found || (err == nil && len(list) > 0)
+			result, err := l.getLyricsFromSourceResult(ctx, mf, pattern, true)
+			results[i] = sourceResult{lyrics: result.Lyrics, evidence: result.Evidence, err: err}
+			found = found || (err == nil && len(result.Lyrics) > 0)
 		}
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return model.LyricsResult{}, err
 	}
 	var variants model.LyricList
+	var evidence []model.LyricsEvidence
 	pluginErr := discoveryErr
 	partialErr := discoveryErr
 	for i, entry := range results {
@@ -123,21 +141,24 @@ func (l *lyricsService) GetLyricsVariants(ctx context.Context, mf *model.MediaFi
 			continue
 		}
 		variants = append(variants, entry.lyrics...)
+		evidence = append(evidence, entry.evidence...)
 	}
-	if len(variants) > 0 {
+	result := model.LyricsResult{Lyrics: variants, Evidence: evidence}
+	if len(variants) > 0 || len(evidence) > 0 {
 		if allSources {
-			return variants, partialErr
+			return result, partialErr
 		}
-		return variants, nil
+		return result, nil
 	}
-	return nil, pluginErr
+	return model.LyricsResult{}, pluginErr
 }
 
 // Results retain source priority independently of completion order.
 type sourceResult struct {
-	index  int
-	lyrics model.LyricList
-	err    error
+	index    int
+	lyrics   model.LyricList
+	evidence []model.LyricsEvidence
+	err      error
 }
 
 func (l *lyricsService) discoverSources(ctx context.Context, mf *model.MediaFile, patterns []string, detailed bool) ([]sourceResult, error) {
@@ -149,8 +170,8 @@ func (l *lyricsService) discoverSources(ctx context.Context, mf *model.MediaFile
 	completed := make(chan sourceResult, len(patterns))
 	for i, pattern := range patterns {
 		go func() {
-			list, err := l.getLyricsFromSource(ctx, mf, pattern, detailed)
-			completed <- sourceResult{index: i, lyrics: list, err: err}
+			result, err := l.getLyricsFromSourceResult(ctx, mf, pattern, detailed)
+			completed <- sourceResult{index: i, lyrics: result.Lyrics, evidence: result.Evidence, err: err}
 		}()
 	}
 	for remaining := len(patterns); remaining > 0; remaining-- {
@@ -244,12 +265,19 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 }
 
 func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string, detailed bool) (model.LyricList, error) {
+	result, err := l.getLyricsFromSourceResult(ctx, mf, pattern, detailed)
+	return result.Lyrics, err
+}
+
+func (l *lyricsService) getLyricsFromSourceResult(ctx context.Context, mf *model.MediaFile, pattern string, detailed bool) (model.LyricsResult, error) {
 	switch {
 	case strings.EqualFold(pattern, "embedded"):
-		return fromEmbedded(ctx, mf)
+		list, err := fromEmbedded(ctx, mf)
+		return model.LyricsResult{Lyrics: list}, err
 	case strings.HasPrefix(pattern, "."):
-		return fromExternalFile(ctx, mf, pattern)
+		list, err := fromExternalFile(ctx, mf, pattern)
+		return model.LyricsResult{Lyrics: list}, err
 	default:
-		return l.fromPlugin(ctx, mf, pattern, detailed)
+		return l.fromPluginResult(ctx, mf, pattern, detailed)
 	}
 }

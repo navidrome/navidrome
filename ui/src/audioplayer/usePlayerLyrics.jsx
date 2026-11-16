@@ -55,6 +55,7 @@ const usePlayerLyrics = ({
 
   const {
     variants,
+    evidence,
     layers: lyricLayers,
     loading: lyricsLoading,
     refreshing: lyricsRefreshing,
@@ -76,7 +77,7 @@ const usePlayerLyrics = ({
   const resolvedVariantKey = useMemo(() => {
     return (
       findLyricVariant(variants, selectedSourceKey)?.key ??
-      variants[0]?.key ??
+      variants.find((variant) => !variant.suggestion)?.key ??
       null
     )
   }, [selectedSourceKey, variants])
@@ -221,6 +222,12 @@ const usePlayerLyrics = ({
       sidecarSource: translate('player.sidecarLyricsSourceText'),
       pluginSource: translate('player.pluginLyricsSourceText'),
       autoSource: translate('player.autoLyricsSourceText'),
+      suggestion: translate('player.lyricsSuggestionText'),
+      instrumentalTrack: translate('player.instrumentalTrackText'),
+      instrumentalSimilar: translate('player.instrumentalSimilarText'),
+      instrumentalOther: translate('player.instrumentalOtherText'),
+      instrumentalMatched: translate('player.instrumentalMatchedText'),
+      instrumentalConflict: translate('player.instrumentalConflictText'),
       refreshingSources: translate('player.refreshingLyricsSourcesText'),
       wordSynced: translate('player.wordSyncedLyricText'),
       lineSynced: translate('player.lineSyncedLyricText'),
@@ -362,6 +369,7 @@ const usePlayerLyrics = ({
       mainLyric: lyricLayers.main,
       translationLyric: lyricLayers.translation,
       pronunciationLyric: lyricLayers.pronunciation,
+      evidence,
       showTranslation,
       showPronunciation,
       letterWave: letterWavePreference,
@@ -391,6 +399,7 @@ const usePlayerLyrics = ({
       lyricLayers.main,
       lyricLayers.pronunciation,
       lyricLayers.translation,
+      evidence,
       lyricsError,
       waitingForLyrics,
       lyricsVisible,
@@ -420,6 +429,7 @@ const usePlayerLyrics = ({
           mainLyric={lyricLayers.main}
           translationLyric={lyricLayers.translation}
           pronunciationLyric={lyricLayers.pronunciation}
+          evidence={evidence}
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
           letterWave={letterWavePreference}
@@ -459,6 +469,7 @@ const usePlayerLyrics = ({
       lyricLayers.main,
       lyricLayers.pronunciation,
       lyricLayers.translation,
+      evidence,
       lyricsError,
       waitingForLyrics,
       obscuredByQueue,

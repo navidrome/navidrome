@@ -37,24 +37,30 @@ func (t *testLyricsOriginals) GetLyrics(lyrics.GetLyricsRequest) (lyrics.GetLyri
 func (t *testLyricsOriginals) GetLyricsV2(lyricsvariants.GetLyricsV2Request) (lyricsvariants.GetLyricsV2Response, error) {
 	return lyricsvariants.GetLyricsV2Response{
 		Lyrics: []lyricsvariants.LyricsV2Text{
-			{Text: elrcPlayback, Variant: qrcIdentity()},
-			{Text: ttmlDocument, Variant: ttmlIdentity()},
+			{Text: elrcPlayback, Variant: qrcIdentity(), Match: validatedMatch()},
+			{Text: ttmlDocument, Variant: ttmlIdentity(), Match: ambiguousMatch()},
 		},
-		Source: &lyricsvariants.LyricsSource{Provider: providerName, Format: "elrc"},
+		Source:   &lyricsvariants.LyricsSource{Provider: providerName, Format: "elrc"},
+		Evidence: []lyricsvariants.LyricsEvidence{{Kind: "instrumental", Provider: "LRCLib", Recording: "rec-instrumental", Match: validatedMatch(), Reason: "provider declared instrumental"}},
 	}, nil
 }
 
 func (t *testLyricsOriginals) GetLyricsVariants(lyricsvariants.GetLyricsVariantsRequest) (lyricsvariants.GetLyricsVariantsResponse, error) {
-	return lyricsvariants.GetLyricsVariantsResponse{Variants: []lyricsvariants.LyricsVariantEntry{
-		{
-			Identity: *qrcIdentity(), Provider: providerName, Role: "main", Format: "elrc", PlaybackIndex: 0,
-			Original: lyricsvariants.LyricsOriginalInfo{Available: true, Format: "qrc", Provenance: "supplied", MediaType: "application/xml", Extension: ".qrc", Size: len(qrcDocument)},
+	return lyricsvariants.GetLyricsVariantsResponse{
+		Variants: []lyricsvariants.LyricsVariantEntry{
+			{
+				Identity: *qrcIdentity(), Provider: providerName, Role: "main", Format: "elrc", PlaybackIndex: 0,
+				Original: lyricsvariants.LyricsOriginalInfo{Available: true, Format: "qrc", Provenance: "supplied", MediaType: "application/xml", Extension: ".qrc", Size: len(qrcDocument)},
+				Match:    validatedMatch(),
+			},
+			{
+				Identity: *ttmlIdentity(), Provider: providerName, Role: "main", Format: "ttml", PlaybackIndex: 1,
+				Original: lyricsvariants.LyricsOriginalInfo{Available: true, Format: "ttml", Provenance: "supplied", MediaType: "application/ttml+xml", Extension: ".ttml", Size: len(ttmlDocument)},
+				Match:    ambiguousMatch(),
+			},
 		},
-		{
-			Identity: *ttmlIdentity(), Provider: providerName, Role: "main", Format: "ttml", PlaybackIndex: 1,
-			Original: lyricsvariants.LyricsOriginalInfo{Available: true, Format: "ttml", Provenance: "supplied", MediaType: "application/ttml+xml", Extension: ".ttml", Size: len(ttmlDocument)},
-		},
-	}}, nil
+		Evidence: []lyricsvariants.LyricsEvidence{{Kind: "instrumental", Provider: "LRCLib", Recording: "rec-instrumental", Match: validatedMatch(), Reason: "provider declared instrumental"}},
+	}, nil
 }
 
 func (t *testLyricsOriginals) GetLyricsOriginal(request lyricsvariants.GetLyricsOriginalRequest) (lyricsvariants.GetLyricsOriginalResponse, error) {
@@ -78,6 +84,14 @@ func (t *testLyricsOriginals) GetLyricsOriginal(request lyricsvariants.GetLyrics
 		response.UnavailableReason = "selection no longer offered"
 	}
 	return response, nil
+}
+
+func validatedMatch() *lyricsvariants.LyricsMatch {
+	return &lyricsvariants.LyricsMatch{Status: "validated", Reasons: []string{"duration-within-2s"}, AutoSave: true}
+}
+
+func ambiguousMatch() *lyricsvariants.LyricsMatch {
+	return &lyricsvariants.LyricsMatch{Status: "ambiguous", Reasons: []string{"version-unconfirmed"}, AutoSave: false}
 }
 
 func qrcIdentity() *lyricsvariants.LyricsVariant {

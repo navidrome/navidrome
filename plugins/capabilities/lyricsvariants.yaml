@@ -74,6 +74,10 @@ components:
                 source:
                     $ref: '#/components/schemas/LyricsSource'
                     nullable: true
+                evidence:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LyricsEvidence'
             required:
                 - lyrics
         GetLyricsVariantsRequest:
@@ -88,8 +92,52 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LyricsVariantEntry'
+                evidence:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LyricsEvidence'
             required:
                 - variants
+        LyricsEvidence:
+            description: |-
+                LyricsEvidence is a typed, attributed provider observation separate from
+                playable lyric entries.
+            properties:
+                kind:
+                    type: string
+                provider:
+                    type: string
+                recording:
+                    type: string
+                match:
+                    $ref: '#/components/schemas/LyricsMatch'
+                    nullable: true
+                reason:
+                    type: string
+            required:
+                - kind
+        LyricsMatch:
+            description: |-
+                LyricsMatch is the recording-identity assessment, independent of timing
+                richness and content state. AutoSaveEligible is true only for a validated
+                recording.
+            properties:
+                status:
+                    type: string
+                reasons:
+                    type: array
+                    items:
+                        type: string
+                durationDelta:
+                    type: number
+                    format: float
+                recording:
+                    type: string
+                autoSaveEligible:
+                    type: boolean
+            required:
+                - status
+                - autoSaveEligible
         LyricsOriginalInfo:
             description: LyricsOriginalInfo reports whether an exact native document is retrievable.
             properties:
@@ -133,6 +181,9 @@ components:
                 variant:
                     $ref: '#/components/schemas/LyricsVariant'
                     nullable: true
+                match:
+                    $ref: '#/components/schemas/LyricsMatch'
+                    nullable: true
             required:
                 - text
         LyricsVariant:
@@ -173,6 +224,9 @@ components:
                     format: int32
                 original:
                     $ref: '#/components/schemas/LyricsOriginalInfo'
+                match:
+                    $ref: '#/components/schemas/LyricsMatch'
+                    nullable: true
             required:
                 - identity
                 - playbackIndex

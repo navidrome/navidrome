@@ -40,8 +40,9 @@ type GetLyricsV2Request struct {
 
 // GetLyricsV2Response represents the GetLyricsV2Response data structure.
 type GetLyricsV2Response struct {
-	Lyrics []LyricsV2Text `json:"lyrics"`
-	Source *LyricsSource  `json:"source,omitempty"`
+	Lyrics   []LyricsV2Text   `json:"lyrics"`
+	Source   *LyricsSource    `json:"source,omitempty"`
+	Evidence []LyricsEvidence `json:"evidence,omitempty"`
 }
 
 // GetLyricsVariantsRequest represents the GetLyricsVariantsRequest data structure.
@@ -52,6 +53,28 @@ type GetLyricsVariantsRequest struct {
 // GetLyricsVariantsResponse represents the GetLyricsVariantsResponse data structure.
 type GetLyricsVariantsResponse struct {
 	Variants []LyricsVariantEntry `json:"variants"`
+	Evidence []LyricsEvidence     `json:"evidence,omitempty"`
+}
+
+// LyricsEvidence is a typed, attributed provider observation separate from
+// playable lyric entries.
+type LyricsEvidence struct {
+	Kind      string       `json:"kind"`
+	Provider  string       `json:"provider,omitempty"`
+	Recording string       `json:"recording,omitempty"`
+	Match     *LyricsMatch `json:"match,omitempty"`
+	Reason    string       `json:"reason,omitempty"`
+}
+
+// LyricsMatch is the recording-identity assessment, independent of timing
+// richness and content state. AutoSaveEligible is true only for a validated
+// recording.
+type LyricsMatch struct {
+	Status        string   `json:"status"`
+	Reasons       []string `json:"reasons,omitempty"`
+	DurationDelta float64  `json:"durationDelta,omitempty"`
+	Recording     string   `json:"recording,omitempty"`
+	AutoSave      bool     `json:"autoSaveEligible"`
 }
 
 // LyricsOriginalInfo reports whether an exact native document is retrievable.
@@ -79,6 +102,7 @@ type LyricsV2Text struct {
 	Text    string         `json:"text"`
 	Source  *LyricsSource  `json:"source,omitempty"`
 	Variant *LyricsVariant `json:"variant,omitempty"`
+	Match   *LyricsMatch   `json:"match,omitempty"`
 }
 
 // LyricsVariant is the versioned identity of one playback representation.
@@ -101,6 +125,7 @@ type LyricsVariantEntry struct {
 	Format        string             `json:"format,omitempty"`
 	PlaybackIndex int                `json:"playbackIndex"`
 	Original      LyricsOriginalInfo `json:"original"`
+	Match         *LyricsMatch       `json:"match,omitempty"`
 }
 
 // TrackInfo contains track metadata.

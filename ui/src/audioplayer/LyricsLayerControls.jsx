@@ -317,6 +317,9 @@ const LyricsLayerControls = ({
                 </span>
                 <span className={classes.variantMeta}>
                   {[
+                    variant.suggestion
+                      ? labels.suggestion || 'Suggestion'
+                      : null,
                     formatSourceValue(variant.source?.format),
                     syncLabelFor(variant.sync, labels),
                   ]

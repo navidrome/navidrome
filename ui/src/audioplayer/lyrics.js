@@ -290,10 +290,14 @@ export const hasStructuredLyricContent = (structuredLyric) =>
       hasCueTiming(structuredLyric)),
   )
 
-// variantKey identifies a lyrics source for selection and persistence. The
-// sidecar format distinguishes separate files; a plugin name scopes upstream
-// provider labels so two plugins can use the same provider independently.
-export const variantKey = (source) => {
+// variantKey identifies an addressable lyrics representation for selection and
+// persistence. A plugin selection token names one exact identity, so two
+// recordings from one provider stay individually selectable. Responses without
+// an identity keep the legacy source-level key for saved preferences.
+export const variantKey = (source, lyric = null) => {
+  if (lyric?.selection) {
+    return `selection:${lyric.selection}`
+  }
   if (source?.type === 'sidecar' && source.format) {
     return `sidecar:${source.format.trim().toLowerCase()}`
   }
@@ -322,6 +326,17 @@ export const findLyricVariant = (variants, key) => {
   return matches.length === 1 ? matches[0] : undefined
 }
 
+// lyricMatchStatus reads the optional recording-identity assessment. Older
+// hosts/plugins have no match object and keep the legacy playable path.
+export const lyricMatchStatus = (lyric) => lyric?.match?.status || 'unassessed'
+
+export const isPlayableMatch = (lyric) => {
+  const status = lyricMatchStatus(lyric)
+  return status !== 'ambiguous' && status !== 'mismatch'
+}
+
+export const isSuggestion = (lyric) => lyricMatchStatus(lyric) === 'ambiguous'
+
 // variantSync grades a variant for its badge: word timing from cue lines,
 // line timing from synced line starts, plain otherwise.
 export const variantSync = (lyric) => {
@@ -346,13 +361,15 @@ const groupLyricVariants = (entries) => {
   const variants = []
   const byKey = new Map()
   for (const lyric of entries) {
-    const key = variantKey(lyric?.source)
+    const key = variantKey(lyric?.source, lyric)
     let variant = byKey.get(key)
     if (!variant) {
       variant = {
         key,
         source: lyric?.source || null,
         sync: variantSync(lyric),
+        matchStatus: lyricMatchStatus(lyric),
+        suggestion: isSuggestion(lyric),
         lyric,
         entries: [],
       }
@@ -412,8 +429,11 @@ export const selectLyricLayers = (
   }
 
   const variants = groupLyricVariants(mainKindEntries(available))
+  const explicitlySelected = findLyricVariant(variants, selectedSourceKey)
   const selectedVariant =
-    findLyricVariant(variants, selectedSourceKey) || variants[0] || null
+    explicitlySelected ||
+    variants.find((variant) => !variant.suggestion) ||
+    null
   const mainCandidates = selectedVariant ? selectedVariant.entries : []
 
   // A different provider's auxiliary track can have incompatible timing or
