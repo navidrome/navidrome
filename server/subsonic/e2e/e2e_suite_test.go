@@ -278,9 +278,8 @@ func doRawReqWithUser(user model.User, endpoint string, params ...string) *httpt
 
 // buildReq creates a GET request with Subsonic auth params (u, p, v, c, f=json).
 func buildReq(user model.User, endpoint string, params ...string) *http.Request {
-	if len(params)%2 != 0 {
-		panic("buildReq: odd number of parameters")
-	}
+	GinkgoHelper()
+	Expect(len(params)%2).To(BeZero(), "buildReq: odd number of parameters")
 	q := url.Values{}
 	q.Add("u", user.UserName)
 	q.Add("p", "password")

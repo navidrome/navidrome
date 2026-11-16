@@ -50,7 +50,7 @@ var _ = Describe("ThrottleBacklog", func() {
 		r.Use(middleware.Recoverer)
 		r.Use(m)
 		r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
-			panic("boom")
+			panic("boom") //nolint:forbidigo
 		})
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("ok"))

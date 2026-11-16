@@ -148,7 +148,7 @@ type panickingAlbumRepo struct {
 
 func (r *panickingAlbumRepo) Get(ctx context.Context, id string) (*model.Album, error) {
 	if id == r.panicID {
-		panic("boom")
+		panic("boom") //nolint:forbidigo
 	}
 	return r.MockAlbumRepo.Get(ctx, id)
 }

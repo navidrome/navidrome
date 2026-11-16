@@ -280,15 +280,12 @@ var _ = Describe("JWT Authentication", func() {
 
 // createTestJWT creates a valid JWT token for testing purposes
 func createTestJWT(expiresIn time.Duration) string {
+	GinkgoHelper()
 	token, err := jwt.NewBuilder().
 		Expiration(time.Now().Add(expiresIn)).
 		Build()
-	if err != nil {
-		panic(fmt.Sprintf("failed to create test JWT: %v", err))
-	}
+	Expect(err).ToNot(HaveOccurred())
 	signed, err := jwt.Sign(token, jwt.WithInsecureNoSignature())
-	if err != nil {
-		panic(fmt.Sprintf("failed to sign test JWT: %v", err))
-	}
+	Expect(err).ToNot(HaveOccurred())
 	return string(signed)
 }
