@@ -24,7 +24,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -112,7 +112,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			username, isInternalAuth := fromInternalOrProxyAuth(r)
 			switch {
 			case username != "":
-				authType := If(isInternalAuth, "internal", "reverse-proxy")
+				authType := gg.If(isInternalAuth, "internal", "reverse-proxy")
 				usr, err = ds.User().FindByUsername(ctx, username)
 				if errors.Is(err, context.Canceled) {
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)

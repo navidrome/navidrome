@@ -63,8 +63,8 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Album.FolderIDs = ids
 	}
-	a.Album.RGAlbumGain = a.RgAlbumGain
-	a.Album.RGAlbumPeak = a.RgAlbumPeak
+	a.RGAlbumGain = a.RgAlbumGain
+	a.RGAlbumPeak = a.RgAlbumPeak
 	return nil
 }
 

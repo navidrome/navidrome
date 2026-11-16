@@ -17,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
@@ -125,7 +125,7 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 		return nil, err
 	}
 
-	updatedAt := V(album.ExternalInfoUpdatedAt)
+	updatedAt := gg.V(album.ExternalInfoUpdatedAt)
 	albumName := album.Name()
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", albumName)
@@ -232,7 +232,7 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 	}
 
 	// If we don't have any info, retrieves it now
-	updatedAt := V(artist.ExternalInfoUpdatedAt)
+	updatedAt := gg.V(artist.ExternalInfoUpdatedAt)
 	artistName := artist.Name()
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", artistName)

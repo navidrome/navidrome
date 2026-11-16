@@ -110,9 +110,10 @@ var _ = Describe("phaseMissingTracks", func() {
 				// Both PID A and PID B should be produced even without matches
 				var pidA, pidB *missingTracks
 				for _, p := range produced {
-					if p.pid == "A" {
+					switch p.pid {
+					case "A":
 						pidA = p
-					} else if p.pid == "B" {
+					case "B":
 						pidB = p
 					}
 				}

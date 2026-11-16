@@ -26,11 +26,10 @@ linters:
     - nilerr
     - nolintlint
     - rowserrcheck
+    - staticcheck
     - unconvert
     - usetesting
     - whitespace
-  disable:
-    - staticcheck
   settings:
     depguard:
       rules:
@@ -153,6 +152,9 @@ linters:
     govet:
       enable:
         - nilness
+    staticcheck:
+      dot-import-whitelist:
+        - github.com/Masterminds/squirrel
   exclusions:
     rules:
       - linters:
@@ -171,6 +173,11 @@ linters:
         linters:
           - forbidigo
         text: "in tests use"
+      # the host must keep reading and writing these deprecated fields for older plugins
+      - path: ^plugins/
+        linters:
+          - staticcheck
+        text: 'SA1019: \(github\.com/navidrome/navidrome/plugins/types\.SongRef\)\.(Artist|ArtistMBID|Duration) is deprecated'
     generated: lax
     presets:
       - comments

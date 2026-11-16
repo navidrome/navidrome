@@ -74,8 +74,8 @@ func (pls *Playlist) refreshStats() {
 	pls.Duration = 0
 	pls.Size = 0
 	for _, t := range pls.Tracks {
-		pls.Duration += t.MediaFile.Duration
-		pls.Size += t.MediaFile.Size
+		pls.Duration += t.Duration
+		pls.Size += t.Size
 	}
 }
 

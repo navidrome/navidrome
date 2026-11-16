@@ -739,10 +739,7 @@ func (fd *fakeDirFile) ReadDir(int) ([]fs.DirEntry, error) {
 		fd.entries, _ = fd.File.(fs.ReadDirFile).ReadDir(-1)
 	}
 	var dirs []fs.DirEntry
-	for {
-		if fd.pos >= len(fd.entries) {
-			break
-		}
+	for fd.pos < len(fd.entries) {
 		e := fd.entries[fd.pos]
 		fd.pos++
 		if e.Name() == fd.fail {

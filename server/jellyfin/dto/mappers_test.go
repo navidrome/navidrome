@@ -552,8 +552,7 @@ var _ = Describe("mappers", func() {
 		})
 
 		It("falls back to the album once the track's art is known absent", func() {
-			mf := model.MediaFile{ID: testID("mf-3"), AlbumID: testID("alb-1"), HasCoverArt: true}
-			mf.ItemImage.ImageAbsent = true
+			mf := model.MediaFile{ID: testID("mf-3"), AlbumID: testID("alb-1"), HasCoverArt: true, ImageAbsent: true}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"
 
 			item := SongToBaseItem(mf, nil)

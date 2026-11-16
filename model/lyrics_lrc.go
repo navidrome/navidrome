@@ -408,9 +408,10 @@ func parseTime(line string, match []int) (int64, error) {
 
 		length := msEnd - msStart
 
-		if length == 3 {
+		switch length {
+		case 3:
 			millis *= 10
-		} else if length == 2 {
+		case 2:
 			millis *= 100
 		}
 	}

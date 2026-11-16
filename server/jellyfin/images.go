@@ -72,7 +72,7 @@ func hashFromTag(r *http.Request) string {
 		return ""
 	}
 	for _, c := range tag {
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			return ""
 		}
 	}

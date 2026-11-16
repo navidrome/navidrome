@@ -35,7 +35,7 @@ type dbUser struct {
 
 func (u *dbUser) PostScan() error {
 	if u.LibrariesJSON != "" {
-		if err := json.Unmarshal([]byte(u.LibrariesJSON), &u.User.Libraries); err != nil {
+		if err := json.Unmarshal([]byte(u.LibrariesJSON), &u.Libraries); err != nil {
 			return fmt.Errorf("parsing user libraries from db: %w", err)
 		}
 	}

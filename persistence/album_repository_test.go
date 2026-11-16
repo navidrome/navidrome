@@ -726,10 +726,10 @@ var _ = Describe("AlbumRepository", func() {
 			}
 			albums := dba.toModels()
 			for i := range dba {
-				Expect(albums[i].ID).To(Equal(dba[i].Album.ID))
-				Expect(albums[i].Name).To(Equal(dba[i].Album.Name))
-				Expect(albums[i].SongCount).To(Equal(dba[i].Album.SongCount))
-				Expect(albums[i].PlayCount).To(Equal(dba[i].Album.PlayCount))
+				Expect(albums[i].ID).To(Equal(dba[i].ID))
+				Expect(albums[i].Name).To(Equal(dba[i].Name))
+				Expect(albums[i].SongCount).To(Equal(dba[i].SongCount))
+				Expect(albums[i].PlayCount).To(Equal(dba[i].PlayCount))
 			}
 		})
 	})
@@ -1315,7 +1315,7 @@ var _ = Describe("AlbumRepository", func() {
 func _p(id, name string, sortName ...string) model.Participant {
 	p := model.Participant{ID: id, Name: name}
 	if len(sortName) > 0 {
-		p.Artist.SortArtistName = sortName[0]
+		p.SortArtistName = sortName[0]
 	}
 	return p
 }

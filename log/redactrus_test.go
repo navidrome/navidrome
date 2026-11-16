@@ -54,7 +54,7 @@ type levelThresholdTest struct {
 // above and including the level given. If the provided level does not exit,
 // an empty slice is returned.
 func levelThreshold(l logrus.Level) []logrus.Level {
-	if l < 0 || int(l) > len(logrus.AllLevels) {
+	if int(l) >= len(logrus.AllLevels) {
 		return []logrus.Level{}
 	}
 	return logrus.AllLevels[:l+1]
@@ -67,6 +67,12 @@ func TestLevelThreshold(t *testing.T) {
 			level:       logrus.Level(100),
 			expected:    []logrus.Level{},
 			description: "An empty Level slice was expected but was not returned",
+		},
+		{
+			name:        "levelPastLast",
+			level:       logrus.Level(len(logrus.AllLevels)),
+			expected:    []logrus.Level{},
+			description: "An empty Level slice was expected for the first level past TraceLevel",
 		},
 		{
 			name:        "errorLogLevel",
