@@ -239,8 +239,7 @@ const wrapperDataProvider = {
     httpClient(`${REST_URL}/metadata/${REFRESH_KIND[resource]}/${id}/refresh`, {
       method: 'POST',
     }).then(() => ({ data: { id } })),
-  // useDataProvider forwards only two arguments when the first is a string, so id and file share one.
-  uploadImage: (resource, { id, file }) => {
+  uploadImage: (resource, id, file) => {
     const formData = new FormData()
     formData.append('image', file)
     return fetchData(`${REST_URL}/${resource}/${id}/image`, {

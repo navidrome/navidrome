@@ -46,8 +46,8 @@ describe('useDirectDataProvider', () => {
     const provider = { uploadImage: vi.fn().mockRejectedValue(error) }
     const { result } = renderWithOptimistic(provider, false)
 
-    await expect(
-      result.current.uploadImage('playlist', { id: 'pl-1' }),
-    ).rejects.toBe(error)
+    await expect(result.current.uploadImage('playlist', 'pl-1')).rejects.toBe(
+      error,
+    )
   })
 })

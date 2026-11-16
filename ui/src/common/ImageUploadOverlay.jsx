@@ -64,7 +64,7 @@ export const ImageUploadOverlay = ({
       if (!file || !entityId) return
 
       try {
-        await dataProvider.uploadImage(entityType, { id: entityId, file })
+        await dataProvider.uploadImage(entityType, entityId, file)
         notify(`message.coverUploaded`, 'success')
         if (onImageChange) onImageChange()
         refresh()
