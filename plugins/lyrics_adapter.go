@@ -97,31 +97,37 @@ func (l *LyricsPlugin) ListLyricsVariants(ctx context.Context, mf *model.MediaFi
 		if !ok {
 			continue
 		}
+		originalFormat := strings.ToLower(boundedText(entry.Original.Format, 16))
+		original := model.LyricsOriginalInfo{
+			Available:  entry.Original.Available,
+			Format:     originalFormat,
+			Provenance: boundedProvenance(entry.Original.Provenance),
+			Reason:     boundedText(entry.Original.Reason, 160),
+			Size:       max(entry.Original.Size, 0),
+		}
+		if original.Available && model.LyricsOriginalExtension(originalFormat) == "" {
+			original.Available = false
+			original.Format = ""
+			if original.Reason == "" {
+				original.Reason = "unsupported document format"
+			}
+		}
+		if original.Available {
+			original.MediaType = model.LyricsOriginalMediaType(originalFormat)
+			original.Extension = model.LyricsOriginalExtension(originalFormat)
+		}
 		variants = append(variants, model.LyricsVariant{
 			PluginID:      l.name,
 			PluginName:    l.displayName,
 			Identity:      identity,
 			Selection:     selection,
-			Provider:      strings.TrimSpace(entry.Provider),
-			Language:      strings.TrimSpace(entry.Language),
-			Role:          strings.TrimSpace(entry.Role),
-			Format:        strings.ToLower(strings.TrimSpace(entry.Format)),
+			Provider:      boundedText(entry.Provider, 128),
+			Language:      boundedText(entry.Language, 64),
+			Role:          boundedText(entry.Role, 32),
+			Format:        strings.ToLower(boundedText(entry.Format, 16)),
 			PlaybackIndex: entry.PlaybackIndex,
-			Original: model.LyricsOriginalInfo{
-				Available:  entry.Original.Available,
-				Format:     strings.ToLower(strings.TrimSpace(entry.Original.Format)),
-				Provenance: boundedProvenance(entry.Original.Provenance),
-				Reason:     strings.TrimSpace(entry.Original.Reason),
-				Size:       entry.Original.Size,
-			},
+			Original:      original,
 		})
-		if model.LyricsOriginalExtension(variants[len(variants)-1].Original.Format) == "" {
-			variants[len(variants)-1].Original.Available = false
-		}
-		if variants[len(variants)-1].Original.Available {
-			variants[len(variants)-1].Original.MediaType = model.LyricsOriginalMediaType(variants[len(variants)-1].Original.Format)
-			variants[len(variants)-1].Original.Extension = model.LyricsOriginalExtension(variants[len(variants)-1].Original.Format)
-		}
 		if len(variants) >= model.MaxLyricsVariants {
 			break
 		}
@@ -328,6 +334,14 @@ func capabilityLyricsVariant(identity model.LyricsVariantIdentity) capabilities.
 
 func unsupportedPluginFunction(err error) bool {
 	return errors.Is(err, errFunctionNotFound) || errors.Is(err, errNotImplemented)
+}
+
+func boundedText(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if runes := []rune(value); len(runes) > limit {
+		return string(runes[:limit])
+	}
+	return value
 }
 
 func boundedProvenance(provenance string) string {
