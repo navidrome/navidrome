@@ -43,7 +43,7 @@ var _ = Describe("parseTTML", func() {
 	})
 
 	Describe("Unsupported cue handling", func() {
-		It("should skip wallclock cues and keep valid ones", func() {
+		It("should retain text with invalid wallclock timing and keep valid cues", func() {
 			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml">
   <body xml:lang="eng">
@@ -57,9 +57,11 @@ var _ = Describe("parseTTML", func() {
 			list, err := parseTTML("xxx", content)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(HaveLen(1))
-			Expect(list[0].Line).To(HaveLen(1))
-			Expect(list[0].Line[0].Start).To(Equal(new(int64(1000))))
-			Expect(list[0].Line[0].Value).To(Equal("Keep me"))
+			Expect(list[0].Line).To(HaveLen(2))
+			Expect(list[0].Line[0].Start).To(BeNil())
+			Expect(list[0].Line[0].Value).To(Equal("Skip me"))
+			Expect(list[0].Line[1].Start).To(Equal(new(int64(1000))))
+			Expect(list[0].Line[1].Value).To(Equal("Keep me"))
 		})
 	})
 
@@ -547,5 +549,46 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.Cue[1]).To(Equal(Cue{Start: new(int64(3018)), End: new(int64(3179)), Value: "woke", ByteStart: 2, ByteEnd: 5}))
 			Expect(line.Cue[2]).To(Equal(Cue{Start: new(int64(3179)), End: new(int64(3582)), Value: "up", ByteStart: 7, ByteEnd: 8}))
 		})
+	})
+
+	It("retains line text but drops enhanced cues for invalid paragraph timing", func() {
+		content := []byte(`<tt xmlns="http://www.w3.org/ns/ttml"><body><div>
+  <p begin="00:00:02.000" end="00:00:01.000"><span begin="00:00:02.000" end="00:00:03.000">Still visible</span></p>
+</div></body></tt>`)
+
+		list, err := parseTTML("eng", content)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]Line{{Value: "Still visible"}}))
+	})
+
+	It("drops only the affected line's cues for invalid span timing", func() {
+		content := []byte(`<tt xmlns="http://www.w3.org/ns/ttml"><body><div>
+  <p begin="1s" end="3s"><span begin="1s" end="2s">Good</span> <span begin="wallclock(now)">text</span></p>
+  <p begin="4s" end="5s"><span begin="4s" end="5s">Timed</span></p>
+</div></body></tt>`)
+
+		list, err := parseTTML("eng", content)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(HaveLen(2))
+		Expect(list[0].Line[0].Value).To(Equal("Good text"))
+		Expect(list[0].Line[0].Cue).To(BeNil())
+		Expect(list[0].Line[1].Value).To(Equal("Timed"))
+		Expect(list[0].Line[1].Cue).To(HaveLen(1))
+	})
+
+	It("retains text when an end-only span has no usable cue start", func() {
+		content := []byte(`<tt xmlns="http://www.w3.org/ns/ttml"><body><div>
+  <p><span end="2s">Still visible</span></p>
+</div></body></tt>`)
+
+		list, err := parseTTML("eng", content)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]Line{{Value: "Still visible"}}))
 	})
 })
