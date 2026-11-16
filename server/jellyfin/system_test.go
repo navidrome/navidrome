@@ -25,7 +25,7 @@ var _ = Describe("System", func() {
 		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Info/Public", nil)
 		api.getPublicSystemInfo(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -42,7 +42,7 @@ var _ = Describe("System", func() {
 		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Info", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Info", nil)
 		api.getSystemInfo(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -61,7 +61,7 @@ var _ = Describe("System", func() {
 	It("advertises a LocalAddress with the request scheme, host and Jellyfin base path", func() {
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Info/Public", nil)
 		r.Host = "music.example.com:4599"
 		api.getPublicSystemInfo(w, r)
 
@@ -76,7 +76,7 @@ var _ = Describe("System", func() {
 		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Ping", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Ping", nil)
 		api.ping(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -88,7 +88,7 @@ var _ = Describe("System", func() {
 	DescribeTable("reports the caller's network location on /System/Endpoint",
 		func(remoteAddr string, isLocal, isInNetwork bool) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+			r := httptest.NewRequest(http.MethodGet, "/System/Endpoint", nil)
 			r.RemoteAddr = remoteAddr
 			api.getEndpointInfo(w, r)
 
@@ -115,7 +115,7 @@ var _ = Describe("System", func() {
 
 	It("reports IsLocal when the caller shares the connection's local address", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Endpoint", nil)
 		r.RemoteAddr = "192.168.1.20:54321"
 		ctx := context.WithValue(r.Context(), http.LocalAddrContextKey,
 			&net.TCPAddr{IP: net.ParseIP("192.168.1.20"), Port: 4533})
@@ -128,7 +128,7 @@ var _ = Describe("System", func() {
 
 	It("does not report IsLocal for a different host on the same LAN", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Endpoint", nil)
 		r.RemoteAddr = "192.168.1.99:54321"
 		ctx := context.WithValue(r.Context(), http.LocalAddrContextKey,
 			&net.TCPAddr{IP: net.ParseIP("192.168.1.20"), Port: 4533})

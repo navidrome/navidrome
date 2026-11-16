@@ -50,7 +50,7 @@ var _ = Describe("handleImages", func() {
 	newImageRequest := func(claimID string) *http.Request {
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
 		token, _ := auth.CreatePublicToken(auth.Claims{ID: claimID})
-		return httptest.NewRequest("GET", "/img?:id="+url.QueryEscape(token), nil)
+		return httptest.NewRequest(http.MethodGet, "/img?:id="+url.QueryEscape(token), nil)
 	}
 
 	// The handler re-checks that the entity behind the token still exists, so "1" must be live.

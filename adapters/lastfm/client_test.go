@@ -30,7 +30,7 @@ var _ = Describe("client", func() {
 	Describe("albumGetInfo", func() {
 		It("returns an album on successful response", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			album, err := client.albumGetInfo(ctx, "Believe", "U2", "mbid-1234", "pt")
 			Expect(err).ToNot(HaveOccurred())
@@ -40,7 +40,7 @@ var _ = Describe("client", func() {
 
 		It("does not double-encode plus signs", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			_, err := client.albumGetInfo(ctx, "Lungs", "Florence + the Machine", "", "en")
 			Expect(err).ToNot(HaveOccurred())
@@ -51,7 +51,7 @@ var _ = Describe("client", func() {
 	Describe("artistGetInfo", func() {
 		It("returns an artist for a successful response", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			artist, err := client.artistGetInfo(ctx, "U2", "pt")
 			Expect(err).ToNot(HaveOccurred())
@@ -61,7 +61,7 @@ var _ = Describe("client", func() {
 
 		It("double-encodes plus signs in the artist name", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			_, err := client.artistGetInfo(ctx, "Florence + the Machine", "en")
 			Expect(err).ToNot(HaveOccurred())
@@ -71,7 +71,7 @@ var _ = Describe("client", func() {
 		It("fails if Last.fm returns an http status != 200", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Internal Server Error`)),
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 			}
 
 			_, err := client.artistGetInfo(ctx, "U2", "pt")
@@ -81,7 +81,7 @@ var _ = Describe("client", func() {
 		It("fails if Last.fm returns an http status != 200", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"error":3,"message":"Invalid Method - No method with that name in this package"}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 
 			_, err := client.artistGetInfo(ctx, "U2", "pt")
@@ -91,7 +91,7 @@ var _ = Describe("client", func() {
 		It("fails if Last.fm returns an error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"error":6,"message":"The artist you supplied could not be found"}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			_, err := client.artistGetInfo(ctx, "U2", "pt")
@@ -108,7 +108,7 @@ var _ = Describe("client", func() {
 		It("fails if returned body is not a valid JSON", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`<xml>NOT_VALID_JSON</xml>`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			_, err := client.artistGetInfo(ctx, "U2", "pt")
@@ -120,7 +120,7 @@ var _ = Describe("client", func() {
 	Describe("artistGetSimilar", func() {
 		It("returns an artist for a successful response", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			similar, err := client.artistGetSimilar(ctx, "U2", 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -130,7 +130,7 @@ var _ = Describe("client", func() {
 
 		It("double-encodes plus signs in the artist name", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			_, err := client.artistGetSimilar(ctx, "+44", 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -141,7 +141,7 @@ var _ = Describe("client", func() {
 	Describe("artistGetTopTracks", func() {
 		It("returns top tracks for a successful response", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			top, err := client.artistGetTopTracks(ctx, "U2", 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -151,7 +151,7 @@ var _ = Describe("client", func() {
 
 		It("double-encodes plus signs in the artist name", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			_, err := client.artistGetTopTracks(ctx, "C+C Music Factory", 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -162,7 +162,7 @@ var _ = Describe("client", func() {
 	Describe("trackGetSimilar", func() {
 		It("returns similar tracks for a successful response", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			similar, err := client.trackGetSimilar(ctx, "Just Can't Get Enough", "Depeche Mode", 5)
 			Expect(err).ToNot(HaveOccurred())
@@ -175,7 +175,7 @@ var _ = Describe("client", func() {
 
 		It("double-encodes plus signs in the track and artist names", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			_, err := client.trackGetSimilar(ctx, "1+1", "Queen + Paul Rodgers", 5)
 			Expect(err).ToNot(HaveOccurred())
@@ -186,7 +186,7 @@ var _ = Describe("client", func() {
 
 		It("returns empty list when no similar tracks found", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.unknown.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			similar, err := client.trackGetSimilar(ctx, "UnknownTrack", "UnknownArtist", 3)
 			Expect(err).ToNot(HaveOccurred())
@@ -198,7 +198,7 @@ var _ = Describe("client", func() {
 		It("returns a token when the request is successful", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"token":"TOKEN"}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			Expect(client.GetToken(ctx)).To(Equal("TOKEN"))
@@ -214,7 +214,7 @@ var _ = Describe("client", func() {
 		It("returns a session key when the request is successful", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"session":{"name":"Navidrome","key":"SESSION_KEY","subscriber":0}}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			Expect(client.getSession(ctx, "TOKEN")).To(Equal("SESSION_KEY"))
@@ -231,7 +231,7 @@ var _ = Describe("client", func() {
 		It("sends parameters in request body for POST", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"scrobbles":{"scrobble":{"ignoredMessage":{"code":"0"}},"@attr":{"accepted":1}}}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			info := ScrobbleInfo{
@@ -265,7 +265,7 @@ var _ = Describe("client", func() {
 		It("sends parameters in request body for POST", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"nowplaying":{"ignoredMessage":{"code":"0"}}}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			info := ScrobbleInfo{

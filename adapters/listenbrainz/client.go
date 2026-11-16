@@ -191,7 +191,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 
 	var response listenBrainzResponse
 	jsonErr := decoder.Decode(&response)
-	if resp.StatusCode != 200 && jsonErr != nil {
+	if resp.StatusCode != http.StatusOK && jsonErr != nil {
 		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
 	}
 	if jsonErr != nil {
@@ -226,7 +226,7 @@ func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint
 	}
 
 	// On a 200 code, there is no code. Decode using using error message if it exists
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusTooManyRequests {
 			return nil, retryLaterErr(resp.Header)
