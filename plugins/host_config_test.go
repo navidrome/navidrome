@@ -98,7 +98,10 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 		}
 		defer instance.Close(ctx)
 
-		inputBytes, _ := json.Marshal(input)
+		inputBytes, err := json.Marshal(input)
+		if err != nil {
+			return nil, err
+		}
 		_, outputBytes, err := instance.Call("nd_test_config", inputBytes)
 		if err != nil {
 			return nil, err

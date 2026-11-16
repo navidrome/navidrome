@@ -47,15 +47,18 @@ func participantIDFilter(table string, artistID any, negate bool, roles []model.
 	return Expr(table+".id"+op+sql+")", args...)
 }
 
-func marshalParticipants(participants model.Participants) string {
+func marshalParticipants(participants model.Participants) (string, error) {
 	dbParticipants := make(map[model.Role][]participant)
 	for role, artists := range participants {
 		for _, artist := range artists {
 			dbParticipants[role] = append(dbParticipants[role], participant{ID: artist.ID, SubRole: artist.SubRole, Name: artist.Name})
 		}
 	}
-	res, _ := json.Marshal(dbParticipants)
-	return string(res)
+	res, err := json.Marshal(dbParticipants)
+	if err != nil {
+		return "", fmt.Errorf("marshalling participants: %w", err)
+	}
+	return string(res), nil
 }
 
 func unmarshalParticipants(data string) (model.Participants, error) {

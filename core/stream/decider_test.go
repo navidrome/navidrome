@@ -26,7 +26,8 @@ func withProbe(mf *model.MediaFile) *model.MediaFile {
 		BitDepth:   gg.V(mf.BitDepth),
 		Channels:   mf.Channels,
 	}
-	data, _ := json.Marshal(probe)
+	data, err := json.Marshal(probe)
+	Expect(err).ToNot(HaveOccurred())
 	mf.ProbeData = string(data)
 	return mf
 }

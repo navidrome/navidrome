@@ -102,7 +102,10 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	for _, s := range a.Artist.SimilarArtists {
 		sa = append(sa, dbSimilarArtist{ID: s.ID, Name: s.Name})
 	}
-	similarArtists, _ := json.Marshal(sa)
+	similarArtists, err := json.Marshal(sa)
+	if err != nil {
+		return fmt.Errorf("marshalling similar artists: %w", err)
+	}
 	m["similar_artists"] = string(similarArtists)
 	// When adding a derived column here, also add it to the scanner's artist Put column list
 	// in phase_1_folders.go, or rescans will never update it (how search_normalized went stale).

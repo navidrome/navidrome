@@ -247,7 +247,10 @@ func runList(ctx context.Context) {
 			display[idx].Public = playlist.Public
 		}
 
-		j, _ := json.Marshal(display)
+		j, err := json.Marshal(display)
+		if err != nil {
+			log.Fatal(ctx, "Failed to encode playlists", err)
+		}
 		fmt.Printf("%s\n", j)
 	}
 }

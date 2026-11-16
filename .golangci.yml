@@ -14,6 +14,7 @@ linters:
     - depguard
     - dogsled
     - durationcheck
+    - errchkjson
     - errorlint
     - forbidigo
     - gocritic
@@ -124,6 +125,8 @@ linters:
     errcheck:
       exclude-functions:
         - (*github.com/zeebo/xxh3.Hasher).Write
+    errchkjson:
+      report-no-exported: true
     gocritic:
       disable-all: true
       enabled-checks:

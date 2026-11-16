@@ -162,7 +162,10 @@ func (c *client) path(endpoint string) (string, error) {
 }
 
 func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
-	b, _ := json.Marshal(r.Body)
+	b, err := json.Marshal(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("encoding request body: %w", err)
+	}
 	uri, err := c.path(endpoint)
 	if err != nil {
 		return nil, err

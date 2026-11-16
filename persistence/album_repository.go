@@ -79,8 +79,13 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	args["search_participants"] = strings.Join(participantNames, " ")
 	args["search_normalized"] = str.NormalizeForFTS(a.Name, a.AlbumArtist)
 
-	args["tags"] = marshalTags(a.Album.Tags)
-	args["participants"] = marshalParticipants(a.Album.Participants)
+	var err error
+	if args["tags"], err = marshalTags(a.Album.Tags); err != nil {
+		return err
+	}
+	if args["participants"], err = marshalParticipants(a.Album.Participants); err != nil {
+		return err
+	}
 
 	folderIDs, err := json.Marshal(a.Album.FolderIDs)
 	if err != nil {

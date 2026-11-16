@@ -359,7 +359,7 @@ func sendResponseWithStatus(w http.ResponseWriter, r *http.Request, payload *res
 			errResp := newResponse()
 			errResp.Status = responses.StatusFailed
 			errResp.Error = &responses.Error{Code: responses.ErrorGeneric, Message: "invalid callback parameter"}
-			response, _ = json.Marshal(responses.JsonWrapper{Subsonic: *errResp})
+			response, err = json.Marshal(responses.JsonWrapper{Subsonic: *errResp})
 			break
 		}
 		w.Header().Set("Content-Type", "application/javascript")
