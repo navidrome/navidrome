@@ -8,6 +8,7 @@ import {
   useDataProvider,
   useNotify,
 } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
@@ -15,7 +16,6 @@ import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import ShareIcon from '@material-ui/icons/Share'
-import { httpClient } from '../dataProvider'
 import {
   playNext,
   addTracks,
@@ -25,7 +25,7 @@ import {
   DOWNLOAD_MENU_PLAY,
   openShareMenu,
 } from '../actions'
-import { M3U_MIME_TYPE, REST_URL } from '../consts'
+import { M3U_MIME_TYPE } from '../consts'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
 import config from '../config'
@@ -40,6 +40,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const translate = useTranslate()
   const classes = useStyles()
   const dataProvider = useDataProvider()
+  const directDataProvider = useDirectDataProvider()
   const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
@@ -96,10 +97,8 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
 
   const handleExport = React.useCallback(
     () =>
-      httpClient(`${REST_URL}/playlist/${record.id}/tracks`, {
-        headers: new Headers({ Accept: M3U_MIME_TYPE }),
-      }).then((res) => {
-        const blob = new Blob([res.body], { type: M3U_MIME_TYPE })
+      directDataProvider.exportPlaylist(record.id).then((res) => {
+        const blob = new Blob([res.data], { type: M3U_MIME_TYPE })
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
@@ -108,7 +107,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
         link.click()
         link.parentNode.removeChild(link)
       }),
-    [record],
+    [directDataProvider, record],
   )
 
   return (

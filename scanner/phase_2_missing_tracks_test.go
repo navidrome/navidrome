@@ -25,7 +25,7 @@ var _ = Describe("phaseMissingTracks", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		mr = tests.CreateMockMediaFileRepo()
 		lr = &tests.MockLibraryRepo{}
 		lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})

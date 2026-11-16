@@ -21,7 +21,7 @@ var _ = Describe("TagRepository", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		tagRepo := NewTagRepository(GetDBXBuilder())
 		repo = tagRepo
 		restRepo = tagRepo

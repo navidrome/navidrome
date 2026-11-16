@@ -23,7 +23,7 @@ var _ = Describe("BufferedScrobbler", func() {
 	var buffer *tests.MockedScrobbleBufferRepo
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		buffer = tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
 		Expect(userRepo.Put(ctx, &model.User{ID: "user1", UserName: "alice"})).To(Succeed())
@@ -142,7 +142,7 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		// Let the loop settle on the empty buffer, then enqueue a scrobble.
 		synctest.Wait()
 		track := model.MediaFile{ID: "123", Title: "Test Track", Artist: "Test Artist"}
-		g.Expect(bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: track, TimeStamp: time.Now()})).To(Succeed())
+		g.Expect(bs.Scrobble(t.Context(), "user1", Scrobble{MediaFile: track, TimeStamp: time.Now()})).To(Succeed())
 
 		// First attempt fires immediately on the enqueue wake and is left buffered.
 		synctest.Wait()
@@ -184,7 +184,7 @@ func TestBufferedScrobblerBackoffWindow(t *testing.T) {
 		defer bs.Stop()
 
 		// First enqueue: one immediate attempt, then a 5s window opens.
-		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
+		_ = bs.Scrobble(t.Context(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
 		synctest.Wait()
 		if got := scr.ScrobbleAttempts(); got != 1 {
 			t.Fatalf("expected 1 attempt after first enqueue, got %d", got)
@@ -192,7 +192,7 @@ func TestBufferedScrobblerBackoffWindow(t *testing.T) {
 
 		// A wake inside the window must NOT trigger an early attempt.
 		time.Sleep(1 * time.Second)
-		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "2"}, TimeStamp: time.Now()})
+		_ = bs.Scrobble(t.Context(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "2"}, TimeStamp: time.Now()})
 		synctest.Wait()
 		if got := scr.ScrobbleAttempts(); got != 1 {
 			t.Fatalf("wake during backoff drained early: %d attempts", got)
@@ -218,7 +218,7 @@ func TestBufferedScrobblerHonorsServerDelay(t *testing.T) {
 		bs := newBufferedScrobbler(ds, scr, "test")
 		defer bs.Stop()
 
-		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
+		_ = bs.Scrobble(t.Context(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
 		synctest.Wait()
 		if got := scr.ScrobbleAttempts(); got != 1 {
 			t.Fatalf("expected 1 attempt, got %d", got)

@@ -62,7 +62,7 @@ func (sfs *spreadFS) Reload(f func(key string, name string)) error {
 			case os.IsNotExist(statErr):
 				// No completion marker: this is a partial left by a crash. Discard it.
 				log.Debug("Removing incomplete cache file", "file", absoluteFilePath)
-				_ = os.Remove(absoluteFilePath) //nolint:gosec // best-effort cleanup; re-swept on next Reload
+				_ = os.Remove(absoluteFilePath)
 				return
 			default:
 				// Marker may exist but is unreadable (transient I/O, permissions):

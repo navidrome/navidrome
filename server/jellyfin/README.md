@@ -283,7 +283,8 @@ track and Feishin on every song change, so lyric-less tracks are the hot path.
 
 Finamp opens its lyrics view only when the track has a `Lyric` `MediaStream` (`HasLyrics` is just a
 list badge). Browse lists set both from embedded lyrics only. `PlaybackInfo` runs the full pipeline
-per track, so sidecar and plugin lyrics show up there. Feishin also requires server version ≥ 10.9
+per track with a short timeout bound, so sidecar and cached/fast plugin lyrics show up there without
+stalling playback start on a slow cold plugin lookup. Feishin also requires server version ≥ 10.9
 (we advertise 12.1.0).
 
 ## AudioMuse-AI compatible endpoints

@@ -28,9 +28,10 @@ var _ = Describe("MediaStreamer", func() {
 	var streamer stream.MediaStreamer
 	var ds model.DataStore
 	ffmpeg := tests.NewMockFFmpeg("fake data")
-	ctx := log.NewContext(context.TODO())
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = log.NewContext(GinkgoT().Context())
 		cacheDir, _ := os.MkdirTemp("", "file_caches")
 		conf.Update(func(c *conf.Options) {
 			c.CacheFolder = conf.NewDir(cacheDir)
@@ -41,7 +42,7 @@ var _ = Describe("MediaStreamer", func() {
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
 		testCache := stream.NewTranscodingCache()
-		Eventually(func() bool { return testCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
+		Eventually(func() bool { return testCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
@@ -85,7 +86,7 @@ var _ = Describe("MediaStreamer", func() {
 				c.Transcoding.MaxConcurrentPerUser = 0
 			})
 			tightCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
+			Eventually(func() bool { return tightCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, blockingFFmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
@@ -104,7 +105,7 @@ var _ = Describe("MediaStreamer", func() {
 				c.Transcoding.MaxConcurrentPerUser = 0
 			})
 			tightCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
+			Eventually(func() bool { return tightCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
@@ -126,7 +127,7 @@ var _ = Describe("MediaStreamer", func() {
 				c.Transcoding.MaxConcurrentPerUser = 0
 			})
 			tightCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
+			Eventually(func() bool { return tightCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")

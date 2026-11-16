@@ -13,6 +13,12 @@ import (
 )
 
 var _ = Describe("Disc Artwork Reader", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("extractDiscNumber", func() {
 		DescribeTable("extracts disc number from filename based on glob pattern",
 			func(pattern, filename string, expectedNum int, expectedOk bool) {
@@ -66,13 +72,9 @@ var _ = Describe("Disc Artwork Reader", func() {
 	})
 
 	Describe("fromExternalFile", func() {
-		var (
-			ctx    context.Context
-			tmpDir string
-		)
+		var tmpDir string
 
 		BeforeEach(func() {
-			ctx = context.Background()
 			tmpDir = GinkgoT().TempDir()
 		})
 
@@ -349,13 +351,9 @@ var _ = Describe("Disc Artwork Reader", func() {
 	})
 
 	Describe("fromDiscSubtitle", func() {
-		var (
-			ctx    context.Context
-			tmpDir string
-		)
+		var tmpDir string
 
 		BeforeEach(func() {
-			ctx = context.Background()
 			tmpDir = GinkgoT().TempDir()
 		})
 
@@ -453,10 +451,10 @@ var _ = Describe("Disc Artwork Reader", func() {
 
 		Describe("selectImage", func() {
 			It("abandons the walk when the context is cancelled", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				cancelled, cancel := context.WithCancel(ctx)
 				cancel()
 
-				res, err := reader.selectImage(ctx, nil, "disc*.*, cover.*", &chainState{})
+				res, err := reader.selectImage(cancelled, nil, "disc*.*, cover.*", &chainState{})
 
 				Expect(err).To(MatchError(context.Canceled))
 				Expect(res.reader).To(BeNil())
@@ -470,7 +468,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				Expect(os.MkdirAll(filepath.Dir(track), 0755)).To(Succeed())
 				Expect(os.WriteFile(track, []byte("not audio"), 0600)).To(Succeed())
 
-				res, err := reader.selectImage(context.Background(), tests.NewMockFFmpeg(""), "embedded",
+				res, err := reader.selectImage(ctx, tests.NewMockFFmpeg(""), "embedded",
 					&chainState{trace: trace})
 
 				Expect(err).ToNot(HaveOccurred())
@@ -482,7 +480,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				trace := &ChainTrace{}
 				reader.firstTrackRel = ""
 
-				res, err := reader.selectImage(context.Background(), tests.NewMockFFmpeg(""), "embedded",
+				res, err := reader.selectImage(ctx, tests.NewMockFFmpeg(""), "embedded",
 					&chainState{trace: trace})
 
 				Expect(err).ToNot(HaveOccurred())
@@ -493,19 +491,19 @@ var _ = Describe("Disc Artwork Reader", func() {
 
 		Describe("discCandidates", func() {
 			It("returns a resolvable candidate for glob patterns", func() {
-				cc := reader.discCandidates(context.Background(), nil, "disc*.*")
+				cc := reader.discCandidates(ctx, nil, "disc*.*")
 				Expect(cc).To(HaveLen(1))
 				Expect(cc[0].resolve).ToNot(BeNil())
 			})
 
 			It("returns one candidate per entry, in order", func() {
-				cc := reader.discCandidates(context.Background(), nil, "disc*.*, cd*.*, embedded")
+				cc := reader.discCandidates(ctx, nil, "disc*.*, cd*.*, embedded")
 				Expect(slice.Map(cc, func(c discCandidate) string { return c.pattern })).
 					To(Equal([]string{"disc*.*", "cd*.*", "embedded"}))
 			})
 
 			It("skips an empty entry rather than building a glob that matches nothing", func() {
-				cc := reader.discCandidates(context.Background(), nil, "disc*.*,")
+				cc := reader.discCandidates(ctx, nil, "disc*.*,")
 				Expect(cc).To(HaveLen(1))
 			})
 
@@ -514,7 +512,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 			DescribeTable("keeps an entry that maps to no source, with its reason",
 				func(setup func(), priority, reason string) {
 					setup()
-					cc := reader.discCandidates(context.Background(), nil, priority)
+					cc := reader.discCandidates(ctx, nil, priority)
 					Expect(cc).To(HaveLen(1))
 					Expect(cc[0].resolve).To(BeNil())
 					Expect(cc[0].skip).To(Equal(reason))
@@ -530,7 +528,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 
 			It("returns source func for discsubtitle pattern", func() {
 				reader.album = model.Album{Discs: model.Discs{2: "Bonus Tracks"}}
-				cc := reader.discCandidates(context.Background(), nil, "discsubtitle")
+				cc := reader.discCandidates(ctx, nil, "discsubtitle")
 				Expect(cc).To(HaveLen(1))
 				Expect(cc[0].resolve).ToNot(BeNil())
 			})

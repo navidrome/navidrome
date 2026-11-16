@@ -70,7 +70,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 
 		db.Init(ctx)
 		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
+			Expect(tests.ClearDB(ctx)).To(Succeed())
 		})
 
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}

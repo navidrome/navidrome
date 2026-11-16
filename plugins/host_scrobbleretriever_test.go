@@ -56,7 +56,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 		db.Init(ctx)
 		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
+			Expect(tests.ClearDB(ctx)).To(Succeed())
 		})
 		dataStore = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 

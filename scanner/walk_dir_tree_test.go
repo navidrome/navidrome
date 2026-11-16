@@ -754,13 +754,15 @@ func (fd *fakeDirFile) ReadDir(int) ([]fs.DirEntry, error) {
 }
 
 func getDirEntry(baseDir, name string) os.DirEntry {
+	GinkgoHelper()
 	dirEntries, _ := os.ReadDir(baseDir)
 	for _, entry := range dirEntries {
 		if entry.Name() == name {
 			return entry
 		}
 	}
-	panic(fmt.Sprintf("Could not find %s in %s", name, baseDir))
+	Fail(fmt.Sprintf("Could not find %s in %s", name, baseDir))
+	return nil
 }
 
 // newLocalMusicFS returns the production local storage MusicFS rooted at libRoot

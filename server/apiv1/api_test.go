@@ -55,7 +55,7 @@ var _ = Describe("Router", func() {
 	})
 
 	panicking := func(v any) http.Handler {
-		return problemRecoverer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic(v) }))
+		return problemRecoverer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic(v) })) //nolint:forbidigo
 	}
 
 	It("turns a handler panic into a 500 problem", func() {

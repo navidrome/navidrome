@@ -21,7 +21,7 @@ var _ = Describe("deezerAgent", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.Deezer.Enabled = true })
 	})
 
@@ -290,5 +290,6 @@ func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
 		}, nil
 	}
 
-	panic("URL not mocked: " + req.URL.String())
+	Fail("URL not mocked: " + req.URL.String())
+	return nil, nil
 }

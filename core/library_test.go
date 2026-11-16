@@ -34,7 +34,7 @@ var _ = Describe("Library Service", func() {
 	var pluginManager *mockPluginUnloader
 
 	BeforeEach(func() {
-
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		libraryRepo = &tests.MockLibraryRepo{}
 		userRepo = tests.CreateMockUserRepo()
@@ -52,7 +52,6 @@ var _ = Describe("Library Service", func() {
 		// Create a mock plugin unloader
 		pluginManager = &mockPluginUnloader{}
 		service = core.NewLibrary(ds, scanner, watcherManager, broker, pluginManager)
-		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
 		var err error

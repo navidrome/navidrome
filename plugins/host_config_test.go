@@ -122,7 +122,7 @@ var _ = Describe("ConfigService", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 	})
 
 	Describe("newConfigService", func() {

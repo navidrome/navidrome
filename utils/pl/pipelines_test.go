@@ -18,6 +18,11 @@ func TestPipeline(t *testing.T) {
 }
 
 var _ = Describe("Pipeline", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("Stage", func() {
 		Context("happy path", func() {
 			It("calls the 'transform' function and returns values and errors", func() {
@@ -27,7 +32,7 @@ var _ = Describe("Pipeline", func() {
 				}
 				close(inC)
 
-				outC, errC := pl.Stage(context.Background(), 1, inC, func(ctx context.Context, i int) (int, error) {
+				outC, errC := pl.Stage(ctx, 1, inC, func(ctx context.Context, i int) (int, error) {
 					if i%2 == 0 {
 						return 0, errors.New("even number")
 					}
@@ -56,7 +61,7 @@ var _ = Describe("Pipeline", func() {
 				current := atomic.Int32{}
 				count := atomic.Int32{}
 				max := atomic.Int32{}
-				outC, _ := pl.Stage(context.Background(), maxWorkers, inC, func(ctx context.Context, in int) (int, error) {
+				outC, _ := pl.Stage(ctx, maxWorkers, inC, func(ctx context.Context, in int) (int, error) {
 					defer current.Add(-1)
 					c := current.Add(1)
 					count.Add(1)
@@ -77,7 +82,7 @@ var _ = Describe("Pipeline", func() {
 		})
 		When("the context is canceled", func() {
 			It("closes its output", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(ctx)
 				inC := make(chan int)
 				outC, errC := pl.Stage(ctx, 1, inC, func(ctx context.Context, i int) (int, error) {
 					return i, nil
@@ -104,7 +109,7 @@ var _ = Describe("Pipeline", func() {
 		When("ranging through the output channel", func() {
 			It("copies values from all input channels to its output channel", func() {
 				var values []int
-				for v := range pl.Merge(context.Background(), in1, in2) {
+				for v := range pl.Merge(ctx, in1, in2) {
 					values = append(values, v)
 				}
 
@@ -113,7 +118,7 @@ var _ = Describe("Pipeline", func() {
 		})
 		When("there's a blocked channel and the context is closed", func() {
 			It("closes its output", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(ctx)
 				in3 := make(chan int)
 				out := pl.Merge(ctx, in1, in2, in3)
 				cancel()
@@ -125,7 +130,7 @@ var _ = Describe("Pipeline", func() {
 		When("values are sent", func() {
 			It("copies them to its output channel", func() {
 				in := make(chan int)
-				out := pl.ReadOrDone(context.Background(), in)
+				out := pl.ReadOrDone(ctx, in)
 				for i := range 4 {
 					in <- i
 					j := <-out
@@ -137,7 +142,7 @@ var _ = Describe("Pipeline", func() {
 		})
 		When("the context is canceled", func() {
 			It("closes its output", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(ctx)
 				in := make(chan int)
 				out := pl.ReadOrDone(ctx, in)
 				cancel()
@@ -150,13 +155,13 @@ var _ = Describe("Pipeline", func() {
 			It("puts the value in the channel", func() {
 				out := make(chan int)
 				value := 1234
-				go pl.SendOrDone(context.Background(), out, value)
+				go pl.SendOrDone(ctx, out, value)
 				Eventually(out).Should(Receive(&value))
 			})
 		})
 		When("out is blocked", func() {
 			It("can be canceled by the context", func() {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(ctx)
 				out := make(chan int)
 				go pl.SendOrDone(ctx, out, 1234)
 				cancel()

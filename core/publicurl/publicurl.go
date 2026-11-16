@@ -29,6 +29,10 @@ func ImageURL(ctx context.Context, artID model.ArtworkID, size int) string {
 	return PublicURL(ctx, uri, params)
 }
 
+func ShareURL(ctx context.Context, id string) string {
+	return PublicURL(ctx, path.Join(consts.URLPathPublic, id), nil)
+}
+
 // PublicURL builds a full URL for public-facing resources.
 // It uses ShareURL from config if available, otherwise falls back to the address the
 // client used to reach the server, recorded in the context.

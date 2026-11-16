@@ -145,7 +145,7 @@ var _ = Describe("System", func() {
 		var ds *tests.MockDataStore
 
 		BeforeEach(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			ds = &tests.MockDataStore{}
 		})
 

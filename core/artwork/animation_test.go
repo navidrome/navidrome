@@ -65,6 +65,7 @@ var _ = Describe("Animation detection", func() {
 
 // createAnimatedGIF creates a minimal animated GIF with the given number of frames.
 func createAnimatedGIF(frames int) []byte {
+	GinkgoHelper()
 	g := &gif.GIF{
 		LoopCount: 0,
 	}
@@ -74,10 +75,7 @@ func createAnimatedGIF(frames int) []byte {
 		g.Delay = append(g.Delay, 10)
 	}
 	var buf bytes.Buffer
-	err := gif.EncodeAll(&buf, g)
-	if err != nil {
-		panic(err)
-	}
+	Expect(gif.EncodeAll(&buf, g)).To(Succeed())
 	return buf.Bytes()
 }
 
@@ -151,11 +149,9 @@ func createAPNGBytes() []byte {
 
 // createStaticPNGBytes creates a minimal valid static PNG.
 func createStaticPNGBytes() []byte {
+	GinkgoHelper()
 	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
 	var buf bytes.Buffer
-	err := png.Encode(&buf, img)
-	if err != nil {
-		panic(err)
-	}
+	Expect(png.Encode(&buf, img)).To(Succeed())
 	return buf.Bytes()
 }

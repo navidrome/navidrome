@@ -109,7 +109,7 @@ var _ = Describe("Uploader", func() {
 		})
 
 		It("is a no-op for an unknown entity type", func() {
-			svc.EnqueueArtwork(context.Background(), "unknown", "x-1")
+			svc.EnqueueArtwork(ctx, "unknown", "x-1")
 			Expect(queueRepo.DequeueBatch(ctx, 1000)).To(BeEmpty())
 		})
 	})

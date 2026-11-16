@@ -18,6 +18,10 @@ var _ = Describe("ScrobbleRepository", func() {
 	var repo model.ScrobbleRepository
 	var ctx context.Context
 
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("RecordScrobble", func() {
 		var fileID string
 		var userID string
@@ -26,7 +30,7 @@ var _ = Describe("ScrobbleRepository", func() {
 		BeforeEach(func() {
 			fileID = id.NewRandom()
 			userID = id.NewRandom()
-			ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: userID, UserName: "johndoe", IsAdmin: true})
+			ctx = request.WithUser(log.NewContext(ctx), model.User{ID: userID, UserName: "johndoe", IsAdmin: true})
 			db := GetDBXBuilder()
 			repo = NewScrobbleRepository(db)
 
@@ -85,7 +89,7 @@ var _ = Describe("ScrobbleRepository", func() {
 
 	Context("admin user (id userid)", func() {
 		BeforeEach(func() {
-			ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
+			ctx = request.WithUser(log.NewContext(ctx), adminUser)
 			repo = NewScrobbleRepository(GetDBXBuilder())
 		})
 
@@ -154,7 +158,7 @@ var _ = Describe("ScrobbleRepository", func() {
 
 	Context("non-admin user", func() {
 		BeforeEach(func() {
-			ctx = request.WithUser(log.NewContext(context.TODO()), regularUser)
+			ctx = request.WithUser(log.NewContext(ctx), regularUser)
 			repo = NewScrobbleRepository(GetDBXBuilder())
 		})
 

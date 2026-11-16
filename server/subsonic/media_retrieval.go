@@ -56,7 +56,7 @@ func (api *Router) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) 
 func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	// If context is already canceled, discard request without further processing
 	if r.Context().Err() != nil {
-		return nil, nil //nolint:nilerr
+		return nil, nil
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
