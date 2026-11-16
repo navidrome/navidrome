@@ -97,6 +97,20 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
 		})
 
+		It("transcodes a lossy source to an explicitly requested lossless format", func() {
+			w := doRawReq("stream", "id", trackID, "format", "flac")
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("flac"))
+		})
+
+		It("falls back to the default downsampling format when a bitrate limit is also requested", func() {
+			w := doRawReq("stream", "id", trackID, "format", "flac", "maxBitRate", "1000")
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+		})
+
 		It("passes timeOffset through", func() {
 			w := doRawReq("stream", "id", trackID, "format", "opus", "maxBitRate", "128", "timeOffset", "30")
 
