@@ -105,6 +105,7 @@ func Split(input string) ([]string, error) {
 		return nil, ErrUnterminatedSingleQuote
 	case stateDoubleQuoted:
 		return nil, ErrUnterminatedDoubleQuote
+	case stateUnquoted:
 	}
 
 	if inWord {

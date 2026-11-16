@@ -217,5 +217,6 @@ func (m *Manager) processPluginEvent(pluginName string) {
 		if err := m.removePluginFromDB(ctx, repo, dbPlugin); err != nil {
 			log.Error(m.ctx, "Failed to delete plugin from DB", "plugin", pluginName, err)
 		}
+	case actionNone:
 	}
 }

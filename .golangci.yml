@@ -16,6 +16,7 @@ linters:
     - durationcheck
     - errchkjson
     - errorlint
+    - exhaustive
     - forbidigo
     - gocritic
     - gocyclo
@@ -137,6 +138,9 @@ linters:
         - G401
         - G505
         - G115
+    exhaustive:
+      # third-party enums: listing every value only adds noise; our own enums must be listed in full
+      ignore-enum-types: ^(reflect\.Kind|go\.senan\.xyz/taglib\.FileFormat)$
     forbidigo:
       forbid:
         - pattern: 'tx\.Exec$'

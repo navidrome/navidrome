@@ -643,6 +643,7 @@ func (p *encoderProbe) has(cmdPath, encoder string) bool {
 		return true
 	case encoderProbeUnavailable:
 		return false
+	case encoderProbeUnknown:
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
