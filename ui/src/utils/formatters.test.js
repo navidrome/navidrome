@@ -16,6 +16,12 @@ describe('formatBytes', () => {
     expect(formatBytes(1024 * 1024 * 1024)).toEqual('1 GB')
     expect(formatBytes(1024 * 1024 * 1024 * 1024)).toEqual('1 TB')
   })
+
+  it('moves to the next unit when the value rounds up to 1024', () => {
+    expect(formatBytes(1024 * 1024 - 1)).toEqual('1 MB')
+    expect(formatBytes(1024 * 1024 * 1024 - 1)).toEqual('1 GB')
+    expect(formatBytes(1024 * 1024 - 6)).toEqual('1023.99 KB')
+  })
 })
 
 const day = 86400

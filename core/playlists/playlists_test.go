@@ -21,9 +21,10 @@ var _ = Describe("Playlists", func() {
 	var ds *tests.MockDataStore
 	var ps playlists.Playlists
 	var mockPlsRepo *tests.MockPlaylistRepo
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		ds = &tests.MockDataStore{
 			MockedPlaylist: mockPlsRepo,

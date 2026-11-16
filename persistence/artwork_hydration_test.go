@@ -50,9 +50,9 @@ var _ = Describe("Artwork hydration", func() {
 	}
 
 	BeforeEach(func() {
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		clearArtworkTables()
 		DeferCleanup(clearArtworkTables)
-		ctx = request.WithUser(log.NewContext(context.Background()), adminUser)
 		aw = NewArtworkRepository(GetDBXBuilder())
 	})
 
@@ -571,7 +571,7 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("keeps a non-admin from streaming another user's private playlists", func() {
-			otherCtx := request.WithUser(log.NewContext(context.Background()), regularUser)
+			otherCtx := request.WithUser(ctx, regularUser)
 			repo := NewPlaylistRepository(GetDBXBuilder())
 			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
 

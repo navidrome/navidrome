@@ -123,14 +123,6 @@ func isImageHash(s string) bool {
 	return true
 }
 
-func MustParseArtworkID(id string) ArtworkID {
-	artID, err := ParseArtworkID(id)
-	if err != nil {
-		panic(artID)
-	}
-	return artID
-}
-
 func DiscArtworkID(albumID string, discNumber int) string {
 	return fmt.Sprintf("%s:%d", albumID, discNumber)
 }

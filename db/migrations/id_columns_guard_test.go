@@ -18,7 +18,7 @@ const idColumnsMigrationVersion = 20260720015443
 
 var _ = Describe("idColumns inventory", func() {
 	It("covers every id-bearing column present at the migration version", func() {
-		ctx := context.Background()
+		ctx := GinkgoT().Context()
 		db, err := sql.Open("sqlite3", "file::memory:")
 		Expect(err).ToNot(HaveOccurred())
 		db.SetMaxOpenConns(1) // non-shared :memory: — a second conn would be an empty DB

@@ -35,7 +35,6 @@ var _ = Describe("MediaRepository", func() {
 		var albumRoot, disc1, sibling *model.Folder
 
 		BeforeEach(func() {
-			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
 			libPtr, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			lib = *libPtr
@@ -384,7 +383,7 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Put(ctx, &new2)).To(Succeed())
 		Expect(mr.MarkMissing(ctx, true, &new1, &new2)).To(Succeed())
 
-		adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", IsAdmin: true})
+		adminCtx := request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
 		adminRepo := NewMediaFileRepository(GetDBXBuilder())
 
 		// Ensure the files are marked as missing and we have 2 of them
@@ -920,7 +919,6 @@ var _ = Describe("MediaRepository", func() {
 		var pls model.Playlist
 
 		BeforeEach(func() {
-			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
 			pr = NewPlaylistRepository(GetDBXBuilder())
 			prev = model.MediaFile{ID: "reassign-prev", LibraryID: 1, Path: "reassign/prev.mp3", Title: "Prev"}
 			next = model.MediaFile{ID: "reassign-next", LibraryID: 1, Path: "reassign/next.mp3", Title: "Next"}
@@ -962,7 +960,6 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("moves scrobbles and buffered scrobbles onto the new id", func() {
-			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
 			scrobbles := NewScrobbleRepository(GetDBXBuilder())
 			buffer := NewScrobbleBufferRepository(GetDBXBuilder())
 			Expect(scrobbles.RecordScrobble(ctx, prev.ID, time.Now())).To(Succeed())

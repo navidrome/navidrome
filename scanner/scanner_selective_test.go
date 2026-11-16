@@ -56,7 +56,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 		db.Init(ctx)
 		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
+			Expect(tests.ClearDB(ctx)).To(Succeed())
 		})
 
 		ds = persistence.New(db.Db())

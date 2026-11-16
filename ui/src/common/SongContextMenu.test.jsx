@@ -5,10 +5,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SongContextMenu } from './SongContextMenu'
 import subsonic from '../subsonic'
 
-vi.mock('../dataProvider', () => ({
-  httpClient: vi.fn(),
-}))
-
 vi.mock('../subsonic', () => ({
   default: { getSimilarSongs2: vi.fn() },
 }))

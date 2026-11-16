@@ -24,9 +24,9 @@ var _ = Describe("buildPlaylist", func() {
 	var playlist model.Playlist
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		ctx = context.Background()
 	})
 
 	Describe("normal playlist", func() {

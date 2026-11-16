@@ -54,7 +54,6 @@ type levelThresholdTest struct {
 // above and including the level given. If the provided level does not exit,
 // an empty slice is returned.
 func levelThreshold(l logrus.Level) []logrus.Level {
-	//nolint
 	if l < 0 || int(l) > len(logrus.AllLevels) {
 		return []logrus.Level{}
 	}
@@ -100,7 +99,7 @@ type EntryDataValuesTest struct {
 	redactionList []string
 	logFields     logrus.Fields
 	expected      logrus.Fields
-	description   string //nolint
+	description   string
 }
 
 // Test that any occurrence of a redaction pattern

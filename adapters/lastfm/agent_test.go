@@ -29,8 +29,8 @@ var _ = Describe("lastfmAgent", func() {
 	var ds model.DataStore
 	var ctx context.Context
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		ctx = context.Background()
 		conf.Update(func(c *conf.Options) {
 			c.LastFM.Enabled = true
 			c.LastFM.ApiKey = "123"
@@ -47,24 +47,21 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(agent.languages).To(Equal([]string{"pt", "en"}))
 			})
 		})
-		When("Agent is disabled", func() {
-			It("returns nil", func() {
-				conf.Update(func(c *conf.Options) { c.LastFM.Enabled = false })
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
+	})
+
+	Describe("lastFMEnabled", func() {
+		It("is true when enabled with an api key and secret", func() {
+			Expect(lastFMEnabled()).To(BeTrue())
 		})
-		When("ApiKey is empty", func() {
-			It("returns nil", func() {
-				conf.Update(func(c *conf.Options) { c.LastFM.ApiKey = "" })
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
-		})
-		When("Secret is empty", func() {
-			It("returns nil", func() {
-				conf.Update(func(c *conf.Options) { c.LastFM.Secret = "" })
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
-		})
+		DescribeTable("is false when the configuration is incomplete",
+			func(change func(*conf.Options)) {
+				conf.Update(change)
+				Expect(lastFMEnabled()).To(BeFalse())
+			},
+			Entry("disabled", func(c *conf.Options) { c.LastFM.Enabled = false }),
+			Entry("no api key", func(c *conf.Options) { c.LastFM.ApiKey = "" }),
+			Entry("no secret", func(c *conf.Options) { c.LastFM.Secret = "" }),
+		)
 	})
 
 	Describe("GetArtistBiography", func() {

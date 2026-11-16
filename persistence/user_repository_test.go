@@ -749,8 +749,7 @@ var _ = Describe("UserRepository", func() {
 			var wg sync.WaitGroup
 			for range callers {
 				wg.Go(func() {
-					ctx := log.NewContext(context.TODO())
-					ctx = request.WithUser(ctx, model.User{ID: usr.ID})
+					ctx := request.WithUser(ctx, model.User{ID: usr.ID})
 					ctx = request.WithTokenEpochHolder(ctx)
 					own := NewUserRepository(GetDBXBuilder())
 
@@ -777,8 +776,7 @@ var _ = Describe("UserRepository", func() {
 
 	Describe("Put and the token epoch", func() {
 		newRepo := func(actingUserID string) (context.Context, model.UserRepository) {
-			ctx := log.NewContext(context.TODO())
-			ctx = request.WithUser(ctx, model.User{ID: actingUserID, IsAdmin: true})
+			ctx := request.WithUser(ctx, model.User{ID: actingUserID, IsAdmin: true})
 			ctx = request.WithTokenEpochHolder(ctx)
 			return ctx, NewUserRepository(GetDBXBuilder())
 		}

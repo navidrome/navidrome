@@ -44,7 +44,7 @@ var _ = Describe("Agents", func() {
 	var ds model.DataStore
 	var mfRepo *tests.MockMediaFileRepo
 	BeforeEach(func() {
-		ctx, cancel = context.WithCancel(context.Background())
+		ctx, cancel = context.WithCancel(GinkgoT().Context())
 		mfRepo = tests.CreateMockMediaFileRepo()
 		ds = &tests.MockDataStore{MockedMediaFile: mfRepo}
 	})

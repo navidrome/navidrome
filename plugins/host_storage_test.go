@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -43,7 +42,7 @@ var _ = Describe("utility functions", Ordered, func() {
 	Describe("GetStoragePath", func() {
 		It("should return the fixed path", func() {
 			impl := storageServiceImpl{}
-			Expect(impl.GetStoragePath(context.TODO())).To(Equal("/storage"))
+			Expect(impl.GetStoragePath(GinkgoT().Context())).To(Equal("/storage"))
 		})
 	})
 

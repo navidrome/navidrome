@@ -11,10 +11,14 @@ import (
 )
 
 var _ = Describe("SessionKeys", func() {
-	ctx := context.Background()
+	var ctx context.Context
 	user := model.User{ID: "u-1"}
 	ds := &tests.MockDataStore{MockedUserProps: &tests.MockedUserPropsRepo{}}
 	sk := SessionKeys{DataStore: ds, KeyName: "fakeSessionKey"}
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	It("uses the assigned key name", func() {
 		Expect(sk.KeyName).To(Equal("fakeSessionKey"))

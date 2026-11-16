@@ -104,11 +104,10 @@ var _ = Describe("FS", func() {
 })
 
 func _f(dir, name string, content ...string) string {
+	GinkgoHelper()
 	path := filepath.Join(dir, name)
 	file, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	if len(content) > 0 {
 		_, _ = file.WriteString(content[0])
 	}

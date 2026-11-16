@@ -54,16 +54,18 @@ func (f *fakePlayers) Register(_ context.Context, id, client, _, _ string) (*mod
 }
 
 var _ = Describe("Sessions", func() {
+	var ctx context.Context
 	var api *Router
 	var pt *fakePlayTracker
 
 	authed := func(r *http.Request) *http.Request {
-		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
-		ctx = request.WithPlayer(ctx, model.Player{ID: testID("p1"), Client: "Finamp"})
-		return r.WithContext(ctx)
+		userCtx := request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"})
+		userCtx = request.WithPlayer(userCtx, model.Player{ID: testID("p1"), Client: "Finamp"})
+		return r.WithContext(userCtx)
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		pt = &fakePlayTracker{}
 		api = &Router{ds: &tests.MockDataStore{}, scrobbler: pt}
 	})

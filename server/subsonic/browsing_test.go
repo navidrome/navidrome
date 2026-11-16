@@ -32,10 +32,10 @@ var _ = Describe("Browsing", func() {
 	var ds model.DataStore
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		api = &Router{ds: ds}
-		ctx = context.Background()
 	})
 
 	Describe("GetMusicFolders", func() {

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 )
 
 // Use this in migrations that need to communicate something important (breaking changes, forced reindexes, etc...)
@@ -38,25 +39,14 @@ var (
 
 func isDBInitialized(ctx context.Context, tx *sql.Tx) bool {
 	once.Do(func() {
-		rows, err := tx.QueryContext(ctx, "select count(*) from property where id=?", consts.InitialSetupFlagKey)
-		checkErr(err)
-		initialized = checkCount(rows) > 0
+		var count int
+		err := tx.QueryRowContext(ctx, "select count(*) from property where id=?", consts.InitialSetupFlagKey).Scan(&count)
+		if err != nil {
+			log.Error(ctx, "Could not check if the database is initialized", err)
+		}
+		initialized = count > 0
 	})
 	return initialized
-}
-
-func checkCount(rows *sql.Rows) (count int) {
-	for rows.Next() {
-		err := rows.Scan(&count)
-		checkErr(err)
-	}
-	return count
-}
-
-func checkErr(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 type (

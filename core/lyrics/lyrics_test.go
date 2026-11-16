@@ -365,6 +365,77 @@ var _ = Describe("Lyrics", func() {
 		})
 	})
 
+	Context("caching", func() {
+		var mockLoader *mockPluginLoader
+		var svc lyrics.Lyrics
+
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.LyricsPriority = "test-lyrics-plugin" })
+			mockLoader = &mockPluginLoader{}
+			svc = lyrics.NewLyrics(nil, mockLoader)
+			mf.ID = "mf-1"
+		})
+
+		It("serves a repeated request for the same track from the cache", func() {
+			mockLoader.lyrics = unsyncedLyrics
+			_, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(unsyncedLyrics))
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("caches a miss, so a track without lyrics does not reach the plugin again", func() {
+			for range 2 {
+				list, err := svc.GetLyrics(ctx, &mf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(list).To(BeEmpty())
+			}
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("caches a plugin error as a miss, since some plugins report no lyrics as an error", func() {
+			mockLoader.err = fmt.Errorf("no lyrics found from any provider")
+			for range 2 {
+				list, err := svc.GetLyrics(ctx, &mf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(list).To(BeEmpty())
+			}
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("looks up each track separately", func() {
+			other := mf
+			other.ID = "mf-2"
+			_, _ = svc.GetLyrics(ctx, &mf)
+			_, _ = svc.GetLyrics(ctx, &other)
+			Expect(mockLoader.calls).To(Equal(2))
+		})
+
+		It("finishes and caches the lookup when the caller's request is cancelled", func() {
+			mockLoader.lyrics = unsyncedLyrics
+			cancelled, cancel := context.WithCancel(ctx)
+			cancel()
+
+			list, err := svc.GetLyrics(cancelled, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(unsyncedLyrics))
+
+			list, err = svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(unsyncedLyrics))
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("bounds the lookup with a deadline", func() {
+			_, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockLoader.hadDeadline).To(BeTrue())
+		})
+	})
+
 	var _ = Describe("GetLyricsByArtistTitle", func() {
 		var svc lyrics.Lyrics
 		var repo *tests.MockMediaFileRepo
@@ -410,10 +481,12 @@ var _ = Describe("Lyrics", func() {
 })
 
 type mockPluginLoader struct {
-	lyrics     model.LyricList
-	err        error
-	notFound   bool
-	pluginName string // expected plugin name (exact match, like real manager)
+	lyrics      model.LyricList
+	err         error
+	notFound    bool
+	pluginName  string // expected plugin name (exact match, like real manager)
+	calls       int
+	hadDeadline bool
 }
 
 func (m *mockPluginLoader) PluginNames(_ string) []string {
@@ -431,14 +504,18 @@ func (m *mockPluginLoader) LoadLyricsProvider(name string) (lyrics.Provider, boo
 	if m.pluginName != "" && name != m.pluginName {
 		return nil, false
 	}
-	return &mockLyricsProvider{lyrics: m.lyrics, err: m.err}, true
+	return &mockLyricsProvider{loader: m}, true
 }
 
 type mockLyricsProvider struct {
-	lyrics model.LyricList
-	err    error
+	loader *mockPluginLoader
 }
 
-func (m *mockLyricsProvider) GetLyrics(_ context.Context, _ *model.MediaFile) (model.LyricList, error) {
-	return m.lyrics, m.err
+func (m *mockLyricsProvider) GetLyrics(ctx context.Context, _ *model.MediaFile) (model.LyricList, error) {
+	m.loader.calls++
+	_, m.loader.hadDeadline = ctx.Deadline()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return m.loader.lyrics, m.loader.err
 }

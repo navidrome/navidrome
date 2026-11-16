@@ -15,9 +15,10 @@ import (
 
 var _ = Describe("parseNSP", func() {
 	var s *playlists
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		s = &playlists{}
 	})
 
