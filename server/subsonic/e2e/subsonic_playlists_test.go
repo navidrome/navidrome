@@ -732,7 +732,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 		})
 
 		It("ignores an index past the end of the visible list", func() {
-			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "1")
+			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "99")
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			ids, err := ds.Playlist().Tracks(ctx, playlistID, false).
