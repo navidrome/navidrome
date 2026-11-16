@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -707,38 +708,35 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Expect(ds.MediaFile().MarkMissing(ctx, true, &songs[1])).To(Succeed())
 		})
 
-		It("getPlaylist hides the missing track", func() {
-			resp := doReq("getPlaylist", "id", playlistID)
-			Expect(resp.Status).To(Equal(responses.StatusOK))
-			Expect(resp.Playlist.Entry).To(HaveLen(2))
-			Expect(resp.Playlist.Entry[0].Id).To(Equal(songs[0].ID))
-			Expect(resp.Playlist.Entry[1].Id).To(Equal(songs[2].ID))
-		})
+		storedIDs := func() []string {
+			ids, err := ds.Playlist().Tracks(ctx, playlistID, false).GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			return ids
+		}
 
 		It("songIndexToRemove counts only the tracks getPlaylist returns", func() {
-			// Index 1 is the third song, as the client sees it
-			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "1")
+			By("getPlaylist hiding the missing track")
+			resp := doReq("getPlaylist", "id", playlistID)
+			Expect(resp.Playlist.Entry).To(HaveLen(2))
+			Expect(resp.Playlist.Entry[1].Id).To(Equal(songs[2].ID))
+
+			resp = doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "1")
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			resp = doReq("getPlaylist", "id", playlistID)
 			Expect(resp.Playlist.Entry).To(HaveLen(1))
 			Expect(resp.Playlist.Entry[0].Id).To(Equal(songs[0].ID))
-
-			// The hidden missing track must still be stored
-			ids, err := ds.Playlist().Tracks(ctx, playlistID, false).
-				GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(Equal([]string{songs[0].ID, songs[1].ID}))
+			Expect(storedIDs()).To(Equal([]string{songs[0].ID, songs[1].ID}), "the hidden missing track must be kept")
 		})
 
 		It("ignores an index past the end of the visible list", func() {
-			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "99")
-			Expect(resp.Status).To(Equal(responses.StatusOK))
+			before := storedIDs()
+			visible := doReq("getPlaylist", "id", playlistID).Playlist.Entry
+			Expect(len(visible)).To(BeNumerically("<", len(before)))
 
-			ids, err := ds.Playlist().Tracks(ctx, playlistID, false).
-				GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(Equal([]string{songs[0].ID, songs[1].ID}))
+			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", strconv.Itoa(len(visible)))
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(storedIDs()).To(Equal(before))
 		})
 	})
 })

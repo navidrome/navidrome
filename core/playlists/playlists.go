@@ -190,9 +190,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 
 		if len(idxToRemove) > 0 {
 			tracksRepo := repo.Tracks(ctx, playlistID, false)
-			// Indices refer to the list GetWithTracks returns, which hides missing tracks and tracks
-			// from libraries the user can't access, so map them onto that list's position ids
-			// (loading ids only, not track data). Out-of-range indices are ignored.
+			// Indexes refer to GetWithTracks' list, which hides missing and inaccessible-library tracks.
 			visible, err := tracksRepo.GetPositionIDs(ctx, model.QueryOptions{Sort: "id", Filters: squirrel.Eq{"missing": false}})
 			if err != nil {
 				return err
@@ -203,8 +201,10 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 					positions = append(positions, visible[idx])
 				}
 			}
-			if err := tracksRepo.Delete(ctx, positions...); err != nil {
-				return err
+			if len(positions) > 0 {
+				if err := tracksRepo.Delete(ctx, positions...); err != nil {
+					return err
+				}
 			}
 			if len(idsToAdd) > 0 {
 				if _, err := tracksRepo.Add(ctx, idsToAdd); err != nil {
