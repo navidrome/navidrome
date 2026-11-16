@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -109,6 +110,16 @@ var _ = Describe("LyricsPlugin originals", Ordered, func() {
 		Expect(variants[0].Original.Format).To(Equal("qrc"))
 		Expect(variants[1].Original.Format).To(Equal("ttml"))
 		Expect(variants[0].Selection).ToNot(BeEmpty())
+	})
+
+	It("normalizes an invalid assessed status to non-playable ambiguity", func() {
+		for _, status := range []string{"", "pending"} {
+			match := modelLyricsMatch(&capabilities.LyricsMatch{Status: status, AutoSaveEligible: true})
+			Expect(match).ToNot(BeNil())
+			Expect(match.Status).To(Equal(model.LyricsMatchAmbiguous))
+			Expect(match.AutoSave).To(BeFalse())
+			Expect(match.Reasons).To(ContainElement("invalid-match-status"))
+		}
 	})
 
 	It("retrieves exact native documents by selection and rejects replacements", func() {

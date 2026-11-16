@@ -756,3 +756,34 @@ describe('invalid match status auto-selection', () => {
     )
   })
 })
+
+describe('invalid assessed match statuses', () => {
+  const matched = (status) => ({
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value: 'assessed entry' }],
+    match: status === undefined ? {} : { status },
+  })
+
+  it('fails closed for a present match object with no status', () => {
+    expect(selectLyricLayers([matched()], 'en').main).toBeNull()
+  })
+
+  it('fails closed for a present match object with an empty status', () => {
+    expect(selectLyricLayers([matched('')], 'en').main).toBeNull()
+  })
+
+  it('fails closed for an unknown assessed status while keeping legacy absence compatible', () => {
+    expect(selectLyricLayers([matched('pending')], 'en').main).toBeNull()
+    const legacy = {
+      kind: 'main',
+      lang: 'en',
+      synced: true,
+      line: [{ start: 0, value: 'legacy entry' }],
+    }
+    expect(selectLyricLayers([legacy], 'en').main.line[0].value).toBe(
+      'legacy entry',
+    )
+  })
+})

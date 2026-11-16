@@ -350,6 +350,13 @@ func modelLyricsMatch(match *capabilities.LyricsMatch) *model.LyricsMatch {
 		out.Reasons = append(out.Reasons, boundedBytes(reason, model.MaxLyricsMatchReasonBytes))
 	}
 	if !out.Valid() {
+		out.Status = model.LyricsMatchAmbiguous
+		out.AutoSave = false
+		if len(out.Reasons) < model.MaxLyricsMatchReasons {
+			out.Reasons = append(out.Reasons, "invalid-match-status")
+		}
+	}
+	if !out.Valid() {
 		return nil
 	}
 	return out

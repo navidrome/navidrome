@@ -334,7 +334,14 @@ export const findLyricVariant = (variants, key) => {
 
 // lyricMatchStatus reads the optional recording-identity assessment. Older
 // hosts/plugins have no match object and keep the legacy playable path.
-export const lyricMatchStatus = (lyric) => lyric?.match?.status || 'unassessed'
+export const lyricMatchStatus = (lyric) => {
+  if (!lyric?.match) return 'unassessed'
+  const status =
+    typeof lyric.match.status === 'string'
+      ? lyric.match.status.trim().toLowerCase()
+      : ''
+  return status || 'invalid'
+}
 
 export const isPlayableMatch = (lyric) => {
   if (!lyric?.match) return true
