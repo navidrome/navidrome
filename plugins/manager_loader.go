@@ -30,15 +30,9 @@ type serviceContext struct {
 }
 
 // baseCtx returns the manager's lifecycle context, for host services that
-// outlive the plugin call that created them. It falls back to
-// context.Background() when the manager was never started, which is the case
-// for CLI commands (e.g. `navidrome plugin enable`) that load plugins without
-// calling Start.
+// outlive the plugin call that created them.
 func (c *serviceContext) baseCtx() context.Context {
-	if c.manager.ctx == nil {
-		return context.Background()
-	}
-	return c.manager.ctx
+	return c.manager.lifecycleCtx()
 }
 
 // hostServiceEntry defines a host service for table-driven registration.

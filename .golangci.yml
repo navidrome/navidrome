@@ -204,6 +204,11 @@ linters:
         linters:
           - contextcheck
         text: "Function `loadPluginWithConfig` should pass the context parameter"
+      # scheduled callbacks run on the manager's lifecycle ctx; the scheduling call's ctx would pin its plugin instance
+      - path: ^plugins/host_scheduler\.go$
+        linters:
+          - contextcheck
+        text: "Function `Schedule(OneTime|Recurring)\\$1` should pass the context parameter"
       # websocket read loops outlive Connect and are bounded by the service's base ctx
       - path: ^plugins/host_websocket\.go$
         linters:
