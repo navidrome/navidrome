@@ -41,7 +41,7 @@ func mf(mf model.MediaFile) model.MediaFile {
 	mf.LibraryName = "Music Library"
 	mf.Participants = model.Participants{
 		model.RoleArtist: model.ParticipantList{
-			model.Participant{Artist: model.Artist{ID: mf.ArtistID, Name: mf.Artist}},
+			model.Participant{ID: mf.ArtistID, Name: mf.Artist},
 		},
 	}
 	if mf.Lyrics == "" {

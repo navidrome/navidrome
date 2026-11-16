@@ -370,12 +370,12 @@ var _ = Describe("lastfmAgent", func() {
 				MbzRecordingID: "mbz-123",
 				Participants: map[model.Role]model.ParticipantList{
 					model.RoleArtist: []model.Participant{
-						{Artist: model.Artist{ID: "ar-1", Name: "First Artist"}},
-						{Artist: model.Artist{ID: "ar-2", Name: "Second Artist"}},
+						{ID: "ar-1", Name: "First Artist"},
+						{ID: "ar-2", Name: "Second Artist"},
 					},
 					model.RoleAlbumArtist: []model.Participant{
-						{Artist: model.Artist{ID: "ar-1", Name: "First Album Artist"}},
-						{Artist: model.Artist{ID: "ar-2", Name: "Second Album Artist"}},
+						{ID: "ar-1", Name: "First Album Artist"},
+						{ID: "ar-2", Name: "Second Album Artist"},
 					},
 				},
 			}

@@ -255,8 +255,8 @@ var _ = Describe("ShareRepository", func() {
 			// Secondary is a co-album-artist (not the first): album_artist_id points at
 			// primary, so the legacy-column filter would miss both tracks.
 			aaParticipants := model.Participants{model.RoleAlbumArtist: {
-				{Artist: model.Artist{ID: primaryID, Name: "AA Primary"}},
-				{Artist: model.Artist{ID: secondaryID, Name: "AA Secondary"}},
+				{ID: primaryID, Name: "AA Primary"},
+				{ID: secondaryID, Name: "AA Secondary"},
 			}}
 			alr := NewAlbumRepository(b)
 			Expect(alr.Put(ctx, &model.Album{ID: "art-album-ok", LibraryID: 1, Name: "Art Album OK", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())

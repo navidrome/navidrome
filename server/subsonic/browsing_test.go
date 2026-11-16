@@ -169,7 +169,7 @@ var _ = Describe("Browsing", func() {
 			Expect(resp.AlbumInfo.LargeImageUrl).ToNot(BeEmpty())
 		})
 		It("omits image URLs when the album artwork is known absent", func() {
-			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
+			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ImageAbsent: true}}
 			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
 			resp, err := api.GetAlbumInfo(r)
 			Expect(err).ToNot(HaveOccurred())
@@ -188,7 +188,7 @@ var _ = Describe("Browsing", func() {
 			Expect(resp.ArtistInfo.SmallImageUrl).ToNot(BeEmpty())
 		})
 		It("omits image URLs when the artist artwork is known absent", func() {
-			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ImageAbsent: true}}
 			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())

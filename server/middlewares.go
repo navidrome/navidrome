@@ -223,7 +223,7 @@ func peerHost(r *http.Request) string {
 // exactly one hop.
 func trustedProxyPrefixes(list string) []string {
 	var prefixes []string
-	for _, entry := range strings.Split(list, ",") {
+	for entry := range strings.SplitSeq(list, ",") {
 		entry = strings.TrimSpace(entry)
 		if _, err := netip.ParsePrefix(entry); err == nil {
 			prefixes = append(prefixes, entry)

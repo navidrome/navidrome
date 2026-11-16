@@ -189,8 +189,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			// the host without port
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
@@ -327,8 +327,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
@@ -431,8 +431,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
@@ -566,8 +566,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 

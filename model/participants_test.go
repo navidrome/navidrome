@@ -206,7 +206,7 @@ var _ = Describe("ParticipantList", func() {
 })
 
 func _p(id, name string, sortName ...string) Participant {
-	p := Participant{Artist: Artist{ID: id, Name: name}}
+	p := Participant{ID: id, Name: name}
 	if len(sortName) > 0 {
 		p.Artist.SortArtistName = sortName[0]
 	}

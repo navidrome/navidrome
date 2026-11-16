@@ -395,7 +395,7 @@ var _ = Describe("Maintenance", func() {
 
 		It("preserves the target's participants on the remapped track", func() {
 			participant := model.Participant{
-				Artist: model.Artist{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"},
+				ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist",
 			}
 			mfRepo.SetData(model.MediaFiles{
 				{ID: "m1", AlbumID: "album1", Missing: true},

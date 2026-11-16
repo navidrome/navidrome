@@ -221,7 +221,7 @@ var _ = Describe("Search", func() {
 
 		It("omits coverArt and imageUrl for a known-absent artist", func() {
 			mockArtistRepo.SetData(model.Artists{
-				{ID: "ar-1", Name: "Absent Artist", ItemImage: model.ItemImage{ImageAbsent: true}},
+				{ID: "ar-1", Name: "Absent Artist", ImageAbsent: true},
 			})
 			resp, err := router.Search2(newSearchRequest())
 			Expect(err).ToNot(HaveOccurred())

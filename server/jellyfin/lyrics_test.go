@@ -47,8 +47,6 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 	return nil, nil
 }
 
-func p(ms int64) *int64 { return &ms }
-
 var _ = Describe("getLyrics", func() {
 	var ctx context.Context
 	var api *Router
@@ -81,7 +79,7 @@ var _ = Describe("getLyrics", func() {
 
 	It("returns 200 with a LyricDto for a track with synced lyrics", func() {
 		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "hello"}}},
 		}
 		w := doRequest(testID("s1"))
 
@@ -96,8 +94,8 @@ var _ = Describe("getLyrics", func() {
 
 	It("serves the main-kind lyric when a translation is also present", func() {
 		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "translation", Synced: true, Line: []model.Line{{Start: p(1000), Value: "bonjour"}}},
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+			{Kind: "translation", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "bonjour"}}},
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "hello"}}},
 		}
 		w := doRequest(testID("s1"))
 

@@ -315,7 +315,7 @@ var _ = Describe("Archiver", func() {
 	Context("ZipPlaylist", func() {
 		It("names the entries and the M3U lines after the resolved format", func() {
 			pls := &model.Playlist{ID: "1", Name: "Test Playlist", Tracks: []model.PlaylistTrack{
-				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.flac", Suffix: "flac", Artist: "Artist 1", Title: "track1"}},
+				{Path: "test_data/01 - track1.flac", Suffix: "flac", Artist: "Artist 1", Title: "track1"},
 			}}
 			plRepo := &mockPlaylistRepository{}
 			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
@@ -339,8 +339,8 @@ var _ = Describe("Archiver", func() {
 
 		It("zips a playlist correctly", func() {
 			tracks := []model.PlaylistTrack{
-				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "AC/DC", Title: "track1"}},
-				{MediaFile: model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "Artist 2", Title: "track2"}},
+				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "AC/DC", Title: "track1"},
+				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "Artist 2", Title: "track2"},
 			}
 
 			pls := &model.Playlist{
@@ -454,7 +454,7 @@ var _ = Describe("Archiver", func() {
 				ID:   "1",
 				Name: "Test Playlist",
 				Tracks: []model.PlaylistTrack{
-					{MediaFile: model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Artist: "Artist 1", Title: "track1"}},
+					{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Artist: "Artist 1", Title: "track1"},
 				},
 			}, nil)
 			ds.On("Playlist", mock.Anything).Return(plRepo)

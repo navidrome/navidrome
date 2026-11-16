@@ -68,7 +68,7 @@ func unmarshalParticipants(data string) (model.Participants, error) {
 	participants := make(model.Participants, len(dbParticipants))
 	for role, participantList := range dbParticipants {
 		artists := slice.Map(participantList, func(p participant) model.Participant {
-			return model.Participant{Artist: model.Artist{ID: p.ID, Name: p.Name}, SubRole: p.SubRole}
+			return model.Participant{ID: p.ID, Name: p.Name, SubRole: p.SubRole}
 		})
 		participants[role] = artists
 	}

@@ -73,7 +73,7 @@ var _ = Describe("Streaming", func() {
 
 			// Fetch the advertised segment like an HLS player would.
 			var segment string
-			for _, line := range strings.Split(body, "\n") {
+			for line := range strings.SplitSeq(body, "\n") {
 				if line != "" && !strings.HasPrefix(line, "#") {
 					segment = line
 				}

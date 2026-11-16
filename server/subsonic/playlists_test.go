@@ -303,9 +303,9 @@ var _ = Describe("buildPlaylist", func() {
 
 	Describe("annotation leakage", func() {
 		It("does not serialize starred/rating even when the model carries them", func() {
-			p := model.Playlist{ID: "pl-1", Name: "My Playlist"}
-			p.Starred = true
-			p.Rating = 5
+			p := model.Playlist{ID: "pl-1", Name: "My Playlist",
+				Starred: true,
+				Rating:  5}
 
 			resp := router.buildPlaylist(ctx, p)
 
