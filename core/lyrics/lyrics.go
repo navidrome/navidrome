@@ -30,6 +30,23 @@ type Lyrics interface {
 	Provider
 	GetLyricsVariants(ctx context.Context, mf *model.MediaFile, allSources bool) (model.LyricList, error)
 	GetLyricsByArtistTitle(ctx context.Context, artist, title string) (model.LyricList, error)
+	ListLyricsVariants(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, error)
+	GetLyricsOriginal(ctx context.Context, mf *model.MediaFile, plugin string, identity model.LyricsVariantIdentity) (model.LyricsOriginal, error)
+}
+
+// DetailedProvider is implemented by providers that expose every cached
+// playback representation with its addressable identity.
+type DetailedProvider interface {
+	Provider
+	GetLyricsDetailed(ctx context.Context, mf *model.MediaFile) (model.LyricList, error)
+}
+
+// OriginalsProvider is the optional plugin surface for variant listings and
+// exact source-native documents. Providers without it keep working.
+type OriginalsProvider interface {
+	DetailedProvider
+	ListLyricsVariants(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, error)
+	GetOriginal(ctx context.Context, mf *model.MediaFile, identity model.LyricsVariantIdentity) (model.LyricsOriginal, error)
 }
 
 // PluginLoader discovers and loads lyrics provider plugins.
@@ -75,7 +92,7 @@ func (l *lyricsService) GetLyricsVariants(ctx context.Context, mf *model.MediaFi
 	results := make([]sourceResult, len(patterns))
 	var discoveryErr error
 	if allSources {
-		results, discoveryErr = l.discoverSources(ctx, mf, patterns)
+		results, discoveryErr = l.discoverSources(ctx, mf, patterns, true)
 	} else {
 		found := false
 		for i, pattern := range patterns {
@@ -85,7 +102,7 @@ func (l *lyricsService) GetLyricsVariants(ctx context.Context, mf *model.MediaFi
 			if found && !isLocalSource(pattern) {
 				continue
 			}
-			list, err := l.getLyricsFromSource(ctx, mf, pattern)
+			list, err := l.getLyricsFromSource(ctx, mf, pattern, true)
 			results[i] = sourceResult{lyrics: list, err: err}
 			found = found || (err == nil && len(list) > 0)
 		}
@@ -123,7 +140,7 @@ type sourceResult struct {
 	err    error
 }
 
-func (l *lyricsService) discoverSources(ctx context.Context, mf *model.MediaFile, patterns []string) ([]sourceResult, error) {
+func (l *lyricsService) discoverSources(ctx context.Context, mf *model.MediaFile, patterns []string, detailed bool) ([]sourceResult, error) {
 	// Match the plugin host's normal call budget; providers need no special
 	// caching or fast-response protocol to participate in source discovery.
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -132,7 +149,7 @@ func (l *lyricsService) discoverSources(ctx context.Context, mf *model.MediaFile
 	completed := make(chan sourceResult, len(patterns))
 	for i, pattern := range patterns {
 		go func() {
-			list, err := l.getLyricsFromSource(ctx, mf, pattern)
+			list, err := l.getLyricsFromSource(ctx, mf, pattern, detailed)
 			completed <- sourceResult{index: i, lyrics: list, err: err}
 		}()
 	}
@@ -208,7 +225,7 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 				continue
 			}
 
-			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern)
+			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern, false)
 			if err != nil {
 				log.Error(ctx, "error getting lyrics", "source", pattern, err)
 				if !strings.EqualFold(pattern, "embedded") && !strings.HasPrefix(pattern, ".") {
@@ -226,13 +243,13 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 	return nil, pluginErr
 }
 
-func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string) (model.LyricList, error) {
+func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string, detailed bool) (model.LyricList, error) {
 	switch {
 	case strings.EqualFold(pattern, "embedded"):
 		return fromEmbedded(ctx, mf)
 	case strings.HasPrefix(pattern, "."):
 		return fromExternalFile(ctx, mf, pattern)
 	default:
-		return l.fromPlugin(ctx, mf, pattern)
+		return l.fromPlugin(ctx, mf, pattern, detailed)
 	}
 }

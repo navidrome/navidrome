@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"strings"
 	"time"
@@ -155,4 +156,84 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 	}
 
 	return response, nil
+}
+
+// GetLyricsVariants lists the addressable playback representations for one
+// track. It performs no fetch and never returns document bytes.
+func (api *Router) GetLyricsVariants(r *http.Request) (*responses.Subsonic, error) {
+	id, err := req.Params(r).String("id")
+	if err != nil {
+		return nil, err
+	}
+	mediaFile, err := api.ds.MediaFile().Get(r.Context(), id)
+	if err != nil {
+		return nil, err
+	}
+	variants, err := api.lyrics.ListLyricsVariants(r.Context(), mediaFile)
+	if err != nil {
+		log.Error(r.Context(), "Error listing lyrics variants", "id", id, err)
+	}
+	response := newResponse()
+	response.LyricsVariants = buildLyricsVariants(variants)
+	return response, nil
+}
+
+// GetLyricsOriginal retrieves one exact source-native document for an opaque
+// selection token. Login and the existing media-file library authorization both
+// apply before the plugin is asked for bytes.
+func (api *Router) GetLyricsOriginal(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	params := req.Params(r)
+	id, err := params.String("id")
+	if err != nil {
+		return nil, err
+	}
+	selection, err := params.String("selection")
+	if err != nil {
+		return nil, err
+	}
+	plugin, identity, ok := model.DecodeLyricsSelection(selection)
+	if !ok {
+		return nil, newError(responses.ErrorGeneric, "invalid lyrics selection")
+	}
+	mediaFile, err := api.ds.MediaFile().Get(r.Context(), id)
+	if err != nil {
+		return nil, err
+	}
+	original, err := api.lyrics.GetLyricsOriginal(r.Context(), mediaFile, plugin, identity)
+	if err != nil {
+		if errors.Is(err, model.ErrLyricsOriginalUnavailable) {
+			return nil, newError(responses.ErrorDataNotFound, "lyrics original unavailable")
+		}
+		return nil, err
+	}
+	w.Header().Set("Content-Type", original.MediaType)
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{
+		"filename": lyricsOriginalFilename(mediaFile, original.Extension),
+	}))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+	if _, err := w.Write(original.Document); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func lyricsOriginalFilename(mf *model.MediaFile, extension string) string {
+	base := strings.TrimSpace(mf.Title)
+	if artist := strings.TrimSpace(mf.Artist); artist != "" && base != "" {
+		base = artist + " - " + base
+	}
+	if base == "" {
+		base = "lyrics"
+	}
+	base = strings.Map(func(char rune) rune {
+		if char < 32 || strings.ContainsRune(`/\:*?"<>|`, char) {
+			return '_'
+		}
+		return char
+	}, base)
+	if runes := []rune(base); len(runes) > 120 {
+		base = string(runes[:120])
+	}
+	return base + extension
 }

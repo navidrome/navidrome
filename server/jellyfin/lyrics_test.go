@@ -43,6 +43,14 @@ func (f *fakeLyricsService) GetLyricsVariants(ctx context.Context, mf *model.Med
 	return f.GetLyrics(ctx, mf)
 }
 
+func (f *fakeLyricsService) ListLyricsVariants(context.Context, *model.MediaFile) ([]model.LyricsVariant, error) {
+	return nil, nil
+}
+
+func (f *fakeLyricsService) GetLyricsOriginal(context.Context, *model.MediaFile, string, model.LyricsVariantIdentity) (model.LyricsOriginal, error) {
+	return model.LyricsOriginal{}, model.ErrLyricsOriginalUnavailable
+}
+
 func p(ms int64) *int64 { return &ms }
 
 func newTestLyricsCache() cache.SimpleCache[string, model.LyricList] {

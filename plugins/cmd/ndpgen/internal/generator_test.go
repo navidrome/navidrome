@@ -1216,6 +1216,7 @@ var _ = Describe("Rust Generation", func() {
 		})
 
 		It("should return is_zero_* functions for numeric types", func() {
+			Expect(skipSerializingFunc("int")).To(Equal("is_zero_i32"))
 			Expect(skipSerializingFunc("int32")).To(Equal("is_zero_i32"))
 			Expect(skipSerializingFunc("uint32")).To(Equal("is_zero_u32"))
 			Expect(skipSerializingFunc("int64")).To(Equal("is_zero_i64"))

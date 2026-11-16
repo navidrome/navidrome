@@ -606,7 +606,7 @@ func skipSerializingFunc(goType string) string {
 		return "String::is_empty"
 	case "bool":
 		return "std::ops::Not::not"
-	case "int32":
+	case "int", "int32":
 		return "is_zero_i32"
 	case "uint32":
 		return "is_zero_u32"

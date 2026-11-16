@@ -55,8 +55,9 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(result[0].Line).ToNot(BeEmpty())
 			Expect(result[0].Line[0].Value).To(ContainSubstring("Test Song"))
 			Expect(result[0].Source).To(Equal(&model.LyricsSource{
-				Type: model.LyricsSourcePlugin,
-				Name: "Test Lyrics",
+				Type:     model.LyricsSourcePlugin,
+				Name:     "Test Lyrics",
+				PluginID: "test-lyrics",
 			}))
 		})
 
@@ -94,6 +95,7 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(result[0].Source).To(Equal(&model.LyricsSource{
 				Type:     model.LyricsSourcePlugin,
 				Name:     "Test Lyrics",
+				PluginID: "test-lyrics",
 				Provider: "unison",
 				Format:   "ttml",
 			}))
@@ -120,12 +122,14 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(result[0].Source).To(Equal(&model.LyricsSource{
 				Type:     model.LyricsSourcePlugin,
 				Name:     "Test Lyrics",
+				PluginID: "test-lyrics",
 				Provider: "Alpha",
 				Format:   "lrc",
 			}))
 			Expect(result[1].Source).To(Equal(&model.LyricsSource{
 				Type:     model.LyricsSourcePlugin,
 				Name:     "Test Lyrics",
+				PluginID: "test-lyrics",
 				Provider: "Beta",
 				Format:   "lrc",
 			}))
@@ -152,12 +156,14 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(result[0].Source).To(Equal(&model.LyricsSource{
 				Type:     model.LyricsSourcePlugin,
 				Name:     "Test Lyrics",
+				PluginID: "test-lyrics",
 				Provider: "Alpha",
 				Format:   "lrc",
 			}))
 			Expect(result[1].Source).To(Equal(&model.LyricsSource{
 				Type:     model.LyricsSourcePlugin,
 				Name:     "Test Lyrics",
+				PluginID: "test-lyrics",
 				Provider: "Fallback",
 				Format:   "lrc",
 			}))
@@ -180,8 +186,9 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(result).To(HaveLen(2))
 			for _, lyric := range result {
 				Expect(lyric.Source).To(Equal(&model.LyricsSource{
-					Type: model.LyricsSourcePlugin,
-					Name: "Test Lyrics",
+					Type:     model.LyricsSourcePlugin,
+					Name:     "Test Lyrics",
+					PluginID: "test-lyrics",
 				}))
 			}
 		})

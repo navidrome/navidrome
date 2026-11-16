@@ -60,6 +60,7 @@ type Subsonic struct {
 	// OpenSubsonic extensions
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
+	LyricsVariants         *LyricsVariants         `xml:"lyricsVariants,omitempty"          json:"lyricsVariants,omitempty"`
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
@@ -576,21 +577,24 @@ type CueLine struct {
 type LyricsSource struct {
 	Type     string `xml:"type,attr"               json:"type"`
 	Name     string `xml:"name,attr,omitempty"     json:"name,omitempty"`
+	PluginID string `xml:"pluginId,attr,omitempty" json:"pluginId,omitempty"`
 	Provider string `xml:"provider,attr,omitempty" json:"provider,omitempty"`
 	Format   string `xml:"format,attr,omitempty"   json:"format,omitempty"`
 }
 
 type StructuredLyric struct {
-	DisplayArtist string        `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
-	DisplayTitle  string        `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
-	Kind          string        `xml:"kind,attr,omitempty"          json:"kind,omitempty"`
-	Lang          string        `xml:"lang,attr"                    json:"lang"`
-	Line          []Line        `xml:"line"                         json:"line"`
-	Agents        []Agent       `xml:"agent,omitempty"              json:"agents,omitempty"`
-	CueLine       []CueLine     `xml:"cueLine,omitempty"     json:"cueLine,omitempty"`
-	Offset        *int64        `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
-	Source        *LyricsSource `xml:"source,omitempty"         json:"source,omitempty"`
-	Synced        bool          `xml:"synced,attr"                  json:"synced"`
+	DisplayArtist string                 `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string                 `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string                 `xml:"kind,attr,omitempty"          json:"kind,omitempty"`
+	Lang          string                 `xml:"lang,attr"                    json:"lang"`
+	Line          []Line                 `xml:"line"                         json:"line"`
+	Agents        []Agent                `xml:"agent,omitempty"              json:"agents,omitempty"`
+	CueLine       []CueLine              `xml:"cueLine,omitempty"     json:"cueLine,omitempty"`
+	Offset        *int64                 `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
+	Source        *LyricsSource          `xml:"source,omitempty"             json:"source,omitempty"`
+	Variant       *LyricsVariantIdentity `xml:"variant,omitempty"            json:"variant,omitempty"`
+	Selection     string                 `xml:"selection,attr,omitempty"     json:"selection,omitempty"`
+	Synced        bool                   `xml:"synced,attr"                  json:"synced"`
 }
 
 type StructuredLyrics []StructuredLyric
@@ -598,6 +602,48 @@ type LyricsList struct {
 	StructuredLyrics  []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
 	SourcesIncomplete bool              `xml:"sourcesIncomplete,attr,omitempty" json:"sourcesIncomplete,omitempty"`
 	RetryAfterSeconds int               `xml:"retryAfterSeconds,attr,omitempty" json:"retryAfterSeconds,omitempty"`
+}
+
+// LyricsVariants lists the addressable playback representations. Documents are
+// retrieved separately by selection.
+type LyricsVariants struct {
+	Variants []LyricsVariant `xml:"variant,omitempty" json:"variant,omitempty"`
+}
+
+// LyricsVariantIdentity is the versioned identity of one playback entry.
+type LyricsVariantIdentity struct {
+	Version   int    `xml:"version,attr"            json:"version"`
+	Instance  string `xml:"instance,attr,omitempty" json:"instance,omitempty"`
+	Recording string `xml:"recording,attr,omitempty" json:"recording,omitempty"`
+	Language  string `xml:"language,attr,omitempty" json:"language,omitempty"`
+	Role      string `xml:"role,attr,omitempty"     json:"role,omitempty"`
+	Format    string `xml:"format,attr,omitempty"   json:"format,omitempty"`
+}
+
+// LyricsOriginalInfo reports whether an exact native document is retrievable.
+type LyricsOriginalInfo struct {
+	Available  bool   `xml:"available,attr"                    json:"available"`
+	Format     string `xml:"format,attr,omitempty"             json:"format,omitempty"`
+	Provenance string `xml:"provenance,attr,omitempty"         json:"provenance,omitempty"`
+	MediaType  string `xml:"mediaType,attr,omitempty"          json:"mediaType,omitempty"`
+	Extension  string `xml:"extension,attr,omitempty"          json:"extension,omitempty"`
+	Size       int    `xml:"size,attr,omitempty"               json:"size,omitempty"`
+	Reason     string `xml:"reason,attr,omitempty"             json:"reason,omitempty"`
+}
+
+// LyricsVariant is one addressable playback representation. PlaybackIndex is
+// advisory; the selection token is the exact retrieval address.
+type LyricsVariant struct {
+	PluginID      string                `xml:"pluginId,attr"              json:"pluginId"`
+	PluginName    string                `xml:"pluginName,attr,omitempty"  json:"pluginName,omitempty"`
+	Identity      LyricsVariantIdentity `xml:"identity"                   json:"identity"`
+	Selection     string                `xml:"selection,attr,omitempty"    json:"selection,omitempty"`
+	Provider      string                `xml:"provider,attr,omitempty"     json:"provider,omitempty"`
+	Language      string                `xml:"language,attr,omitempty"     json:"language,omitempty"`
+	Role          string                `xml:"role,attr,omitempty"         json:"role,omitempty"`
+	Format        string                `xml:"format,attr,omitempty"       json:"format,omitempty"`
+	PlaybackIndex int                   `xml:"playbackIndex,attr"          json:"playbackIndex"`
+	Original      LyricsOriginalInfo    `xml:"original"                    json:"original"`
 }
 
 type OpenSubsonicExtension struct {
