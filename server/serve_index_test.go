@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -324,18 +323,15 @@ var _ = Describe("addShareData", func() {
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__=(.*);</script>`)
 
 func extractAppConfig(body string) map[string]any {
+	GinkgoHelper()
 	config := make(map[string]any)
 	match := appConfigRegex.FindStringSubmatch(body)
 	if match == nil {
 		return config
 	}
 	str, err := strconv.Unquote(match[1])
-	if err != nil {
-		panic(fmt.Sprintf("%s: %s", match[1], err))
-	}
-	if err := json.Unmarshal([]byte(str), &config); err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred(), match[1])
+	Expect(json.Unmarshal([]byte(str), &config)).To(Succeed())
 	return config
 }
 

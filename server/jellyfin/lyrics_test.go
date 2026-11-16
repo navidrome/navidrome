@@ -35,7 +35,7 @@ func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) 
 		}
 	}
 	if f.panicVal != nil {
-		panic(f.panicVal)
+		panic(f.panicVal) //nolint:forbidigo
 	}
 	if f.err != nil {
 		return nil, f.err

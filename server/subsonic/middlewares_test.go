@@ -33,10 +33,9 @@ func newGetRequest(queryParams ...string) *http.Request {
 }
 
 func newPostRequest(queryParam string, formFields ...string) *http.Request {
+	GinkgoHelper()
 	r, err := http.NewRequest("POST", "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
@@ -789,9 +788,7 @@ var _ = Describe("Middlewares", func() {
 
 			var err error
 			usr, err = ur.FindByUsernameWithPassword(ctx, "admin")
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("Plaintext password", func() {
@@ -836,9 +833,7 @@ var _ = Describe("Middlewares", func() {
 				usr = &model.User{UserName: "admin"}
 				var err error
 				validToken, err = auth.CreateToken(usr)
-				if err != nil {
-					panic(err)
-				}
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("authenticates with JWT token based authentication", func() {
