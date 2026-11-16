@@ -8,8 +8,10 @@ import (
 
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 )
@@ -78,4 +80,11 @@ func LogHook() (*test.Hook, func()) {
 		// Restore default logger after test
 		log.SetDefaultLogger(logrus.New())
 	}
+}
+
+func MustParseArtworkID(id string) model.ArtworkID {
+	ginkgo.GinkgoHelper()
+	artID, err := model.ParseArtworkID(id)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	return artID
 }

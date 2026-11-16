@@ -290,5 +290,6 @@ func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
 		}, nil
 	}
 
-	panic("URL not mocked: " + req.URL.String())
+	Fail("URL not mocked: " + req.URL.String())
+	return nil, nil
 }

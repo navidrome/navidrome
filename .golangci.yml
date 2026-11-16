@@ -143,6 +143,8 @@ linters:
           msg: "use tx.QueryRowContext(ctx, ...) in migrations to propagate context"
         - pattern: '^context\.(Background|TODO)$'
           msg: "in tests use the spec's ctx (from GinkgoT().Context()), t.Context() or b.Context()"
+        - pattern: '^panic$'
+          msg: "don't panic: return an error, or Expect(...)/Fail(...) in tests; log.Fatal only for startup failures that must stop the server"
     nolintlint:
       require-specific: true
       allow-unused: false

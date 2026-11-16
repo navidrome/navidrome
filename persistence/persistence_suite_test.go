@@ -201,43 +201,20 @@ var _ = BeforeSuite(func() {
 
 	ur := NewUserRepository(conn)
 	for i := range testUsers {
-		err := ur.Put(ctx, &testUsers[i])
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Associate users with library 1 (default test library)
-	for i := range testUsers {
-		err := ur.SetUserLibraries(ctx, testUsers[i].ID, []int{1})
-		if err != nil {
-			panic(err)
-		}
+		Expect(ur.Put(ctx, &testUsers[i])).To(Succeed())
+		Expect(ur.SetUserLibraries(ctx, testUsers[i].ID, []int{1})).To(Succeed())
 	}
 
 	alr := NewAlbumRepository(conn).(*albumRepository)
 	for i := range testAlbums {
-		err := alr.Put(ctx, new(testAlbums[i]))
-		if err != nil {
-			panic(err)
-		}
+		Expect(alr.Put(ctx, new(testAlbums[i]))).To(Succeed())
 	}
 
 	arr := NewArtistRepository(conn)
-	for i := range testArtists {
-		err := arr.Put(ctx, new(testArtists[i]))
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Associate artists with library 1 (default test library)
 	lr := NewLibraryRepository(conn)
 	for i := range testArtists {
-		err := lr.AddArtist(ctx, 1, testArtists[i].ID)
-		if err != nil {
-			panic(err)
-		}
+		Expect(arr.Put(ctx, new(testArtists[i]))).To(Succeed())
+		Expect(lr.AddArtist(ctx, 1, testArtists[i].ID)).To(Succeed())
 	}
 
 	// Populate album_artists based on the AlbumArtistID relationships in testAlbums
@@ -256,25 +233,17 @@ var _ = BeforeSuite(func() {
 			"role":      "artist",
 			"sub_role":  "",
 		}))
-		if err != nil {
-			panic(err)
-		}
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	mr := NewMediaFileRepository(conn)
 	for i := range testSongs {
-		err := mr.Put(ctx, &testSongs[i])
-		if err != nil {
-			panic(err)
-		}
+		Expect(mr.Put(ctx, &testSongs[i])).To(Succeed())
 	}
 
 	rar := NewRadioRepository(conn)
 	for i := range testRadios {
-		err := rar.Put(ctx, new(testRadios[i]))
-		if err != nil {
-			panic(err)
-		}
+		Expect(rar.Put(ctx, new(testRadios[i]))).To(Succeed())
 	}
 
 	plsBest = model.Playlist{
@@ -292,48 +261,29 @@ var _ = BeforeSuite(func() {
 
 	pr := NewPlaylistRepository(conn)
 	for i := range testPlaylists {
-		err := pr.Put(ctx, testPlaylists[i])
-		if err != nil {
-			panic(err)
-		}
+		Expect(pr.Put(ctx, testPlaylists[i])).To(Succeed())
 	}
 
 	// Prepare annotations
-	if err := arr.SetStar(ctx, true, artistBeatles.ID); err != nil {
-		panic(err)
-	}
+	Expect(arr.SetStar(ctx, true, artistBeatles.ID)).To(Succeed())
 	ar, err := arr.Get(ctx, artistBeatles.ID)
-	if err != nil {
-		panic(err)
-	}
-	if ar == nil {
-		panic("artist not found after SetStar")
-	}
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ar).ToNot(BeNil(), "artist not found after SetStar")
 	artistBeatles.Starred = true
 	artistBeatles.StarredAt = ar.StarredAt
 	testArtists[1] = artistBeatles
 
-	if err := alr.SetStar(ctx, true, albumRadioactivity.ID); err != nil {
-		panic(err)
-	}
+	Expect(alr.SetStar(ctx, true, albumRadioactivity.ID)).To(Succeed())
 	al, err := alr.Get(ctx, albumRadioactivity.ID)
-	if err != nil {
-		panic(err)
-	}
-	if al == nil {
-		panic("album not found after SetStar")
-	}
+	Expect(err).ToNot(HaveOccurred())
+	Expect(al).ToNot(BeNil(), "album not found after SetStar")
 	albumRadioactivity.Starred = true
 	albumRadioactivity.StarredAt = al.StarredAt
 	testAlbums[2] = albumRadioactivity
 
-	if err := mr.SetStar(ctx, true, songComeTogether.ID); err != nil {
-		panic(err)
-	}
+	Expect(mr.SetStar(ctx, true, songComeTogether.ID)).To(Succeed())
 	mf, err := mr.Get(ctx, songComeTogether.ID)
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	songComeTogether.Starred = true
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
@@ -345,9 +295,7 @@ var _ = BeforeSuite(func() {
 			"user_id":         s.UserID,
 			"submission_time": s.SubmissionTime,
 		}))
-		if err != nil {
-			panic(err)
-		}
+		Expect(err).ToNot(HaveOccurred())
 	}
 })
 
