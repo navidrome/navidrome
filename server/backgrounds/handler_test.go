@@ -34,9 +34,11 @@ func (t stubTransport) RoundTrip(*http.Request) (*http.Response, error) {
 }
 
 var _ = Describe("serveImage", func() {
+	var ctx context.Context
 	var closed bool
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		closed = false
 	})
 
@@ -49,7 +51,7 @@ var _ = Describe("serveImage", func() {
 	It("closes the response body when the hosting service returns an error", func() {
 		stubStatus(http.StatusNotFound)
 
-		_, err := (&Handler{}).serveImage(context.Background(), cacheKey("some-image.webp"))
+		_, err := (&Handler{}).serveImage(ctx, cacheKey("some-image.webp"))
 
 		Expect(err).To(MatchError(ContainSubstring("unexpected status code")))
 		Expect(closed).To(BeTrue(), "response body was left open")
@@ -58,7 +60,7 @@ var _ = Describe("serveImage", func() {
 	It("hands the still-open body to the caller on success", func() {
 		stubStatus(http.StatusOK)
 
-		reader, err := (&Handler{}).serveImage(context.Background(), cacheKey("some-image.webp"))
+		reader, err := (&Handler{}).serveImage(ctx, cacheKey("some-image.webp"))
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(closed).To(BeFalse(), "response body must stay open for the CachedStream wrapper")

@@ -17,7 +17,7 @@ var _ = Describe("localAgent GetSimilarSongsByTrack", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		mfRepo = &tests.MockMediaFileRepo{}
 		ds = &tests.MockDataStore{MockedMediaFile: mfRepo}
 		agent = &localAgent{ds: ds}

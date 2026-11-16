@@ -186,9 +186,9 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 			BeforeEach(func() {
 				mediaFileRepo := tests.CreateMockMediaFileRepo()
-				mf := model.MediaFile{ID: "mf-1", Title: "Hit", Artist: "Band", LibraryID: 1}
-				mf.Starred = true
-				mf.Rating = 5
+				mf := model.MediaFile{ID: "mf-1", Title: "Hit", Artist: "Band", LibraryID: 1,
+					Starred: true,
+					Rating:  5}
 				mediaFileRepo.SetData(model.MediaFiles{mf})
 
 				userRepo = tests.CreateMockUserRepo()
@@ -391,8 +391,8 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		}})
 
 		mediaFileRepo := tests.CreateMockMediaFileRepo()
-		hit := model.MediaFile{ID: "mf-hit", Title: "Hit", Artist: "Band"}
-		hit.Starred = true
+		hit := model.MediaFile{ID: "mf-hit", Title: "Hit", Artist: "Band",
+			Starred: true}
 		mediaFileRepo.SetData(model.MediaFiles{hit})
 
 		userRepo := tests.CreateMockUserRepo()

@@ -25,7 +25,7 @@ var _ = Describe("phaseMissingTracks", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		mr = tests.CreateMockMediaFileRepo()
 		lr = &tests.MockLibraryRepo{}
 		lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})
@@ -977,11 +977,9 @@ var _ = Describe("phaseMissingTracks", func() {
 				AlbumID:   oldAlbumID,
 				LibraryID: 1,
 				Missing:   true,
-				Annotations: model.Annotations{
-					PlayCount: 5,
-					Rating:    4,
-					Starred:   true,
-				},
+				PlayCount: 5,
+				Rating:    4,
+				Starred:   true,
 			}
 
 			matchedTrack = model.MediaFile{
@@ -991,11 +989,9 @@ var _ = Describe("phaseMissingTracks", func() {
 				AlbumID:   newAlbumID,
 				LibraryID: 2, // Different library
 				Missing:   false,
-				Annotations: model.Annotations{
-					PlayCount: 2,
-					Rating:    3,
-					Starred:   false,
-				},
+				PlayCount: 2,
+				Rating:    3,
+				Starred:   false,
 			}
 
 			// Store both tracks in the database

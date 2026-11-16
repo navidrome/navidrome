@@ -50,10 +50,10 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	src := dto.MediaSourceFromMediaFile(*mf)
-	// The mapper only sees embedded lyrics; per-track we can afford the full pipeline
-	// (sidecars, plugins) so Finamp's Lyric-stream gate reflects every source.
+	// The mapper only sees embedded lyrics; also check external sources (sidecars, plugins)
+	// within playbackInfoLyricsTimeout so Finamp's Lyric-stream gate reflects them when ready.
 	if !slices.ContainsFunc(src.MediaStreams, func(s dto.MediaStream) bool { return s.Type == "Lyric" }) {
-		if _, found := servableLyric(api.lyricsFor(r.Context(), mf)); found {
+		if _, found := servableLyric(api.playbackLyrics(r.Context(), mf)); found {
 			src.MediaStreams = append(src.MediaStreams, dto.MediaStream{
 				Type: "Lyric", Index: len(src.MediaStreams), IsExternal: true,
 			})

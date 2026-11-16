@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -205,7 +204,7 @@ func (api *Router) withPlayer(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+		ip := middleware.GetClientIP(r.Context())
 		player, trc, err := api.players.Register(ctx, a.DeviceId, a.Client, a.Device, ip)
 		if err != nil {
 			// Fail open, like Subsonic's getPlayer: proceed without a player; reporting handlers

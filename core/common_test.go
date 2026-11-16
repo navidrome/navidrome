@@ -13,14 +13,18 @@ import (
 )
 
 var _ = Describe("common.go", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("userName", func() {
 		It("returns the username from context", func() {
-			ctx := request.WithUser(context.Background(), model.User{UserName: "testuser"})
-			Expect(userName(ctx)).To(Equal("testuser"))
+			Expect(userName(request.WithUser(ctx, model.User{UserName: "testuser"}))).To(Equal("testuser"))
 		})
 
 		It("returns 'UNKNOWN' if no user in context", func() {
-			ctx := context.Background()
 			Expect(userName(ctx)).To(Equal("UNKNOWN"))
 		})
 	})
@@ -42,13 +46,11 @@ var _ = Describe("common.go", func() {
 		})
 
 		It("returns the absolute path when library exists", func() {
-			ctx := context.Background()
 			abs := AbsolutePath(ctx, ds, libId, path)
 			Expect(abs).To(Equal(filepath.FromSlash("/library/root/music/file.mp3")))
 		})
 
 		It("returns the original path if library not found", func() {
-			ctx := context.Background()
 			abs := AbsolutePath(ctx, ds, 999, path)
 			Expect(abs).To(Equal(path))
 		})

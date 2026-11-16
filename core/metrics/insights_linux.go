@@ -24,11 +24,11 @@ func getOSVersion() (string, string) {
 	version := ""
 	distro := ""
 	for _, line := range lines {
-		if strings.HasPrefix(line, "VERSION_ID=") {
-			version = strings.ReplaceAll(strings.TrimPrefix(line, "VERSION_ID="), "\"", "")
+		if v, ok := strings.CutPrefix(line, "VERSION_ID="); ok {
+			version = strings.ReplaceAll(v, "\"", "")
 		}
-		if strings.HasPrefix(line, "ID=") {
-			distro = strings.ReplaceAll(strings.TrimPrefix(line, "ID="), "\"", "")
+		if v, ok := strings.CutPrefix(line, "ID="); ok {
+			distro = strings.ReplaceAll(v, "\"", "")
 		}
 	}
 	return version, distro

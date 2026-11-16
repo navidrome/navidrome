@@ -361,7 +361,7 @@ var _ = Describe("ArtistRepository", func() {
 			It("does not change the shared sort mappings", func() {
 				original := repo.(*artistRepository).sortMappings["song_count"]
 				var wg sync.WaitGroup
-				for i := 0; i < 20; i++ {
+				for i := range 20 {
 					role := "artist"
 					if i%2 == 1 {
 						role = "composer"

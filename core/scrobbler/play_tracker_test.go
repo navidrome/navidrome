@@ -141,6 +141,12 @@ var _ = Describe("PlayTracker", func() {
 			Expect(IsBuiltinScrobbler("fake")).To(BeTrue())
 			Expect(IsBuiltinScrobbler("some-plugin")).To(BeFalse())
 		})
+
+		It("is false after Unregister", func() {
+			Register("to-remove", func(model.DataStore) Scrobbler { return nil })
+			Unregister("to-remove")
+			Expect(IsBuiltinScrobbler("to-remove")).To(BeFalse())
+		})
 	})
 
 	Describe("GetNowPlaying", func() {
@@ -1557,7 +1563,7 @@ func (f *fakeScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession
 }
 
 func _p(id, name string, sortName ...string) model.Participant {
-	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
+	p := model.Participant{ID: id, Name: name}
 	if len(sortName) > 0 {
 		p.Artist.SortArtistName = sortName[0]
 	}

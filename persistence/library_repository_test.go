@@ -21,7 +21,7 @@ var _ = Describe("LibraryRepository", func() {
 	var conn *dbx.DB
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
 		repo = NewLibraryRepository(conn)
 	})
@@ -176,7 +176,7 @@ var _ = Describe("LibraryRepository", func() {
 			DeferCleanup(lockConn.Close)
 			_, err = lockConn.ExecContext(ctx, "BEGIN IMMEDIATE")
 			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { _, _ = lockConn.ExecContext(context.Background(), "ROLLBACK") })
+			DeferCleanup(func() { _, _ = lockConn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK") })
 
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 		})

@@ -105,7 +105,7 @@ func VerifyFTS(ctx context.Context, database *sql.DB) error {
 
 func verifyFTS(ctx context.Context, database execer) error {
 	for _, table := range ftsTables {
-		stmt := fmt.Sprintf("INSERT INTO %[1]s(%[1]s) VALUES('integrity-check')", table) //nolint:gosec // fixed table list
+		stmt := fmt.Sprintf("INSERT INTO %[1]s(%[1]s) VALUES('integrity-check')", table)
 		if _, err := database.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("verifying %s: %w", table, err)
 		}

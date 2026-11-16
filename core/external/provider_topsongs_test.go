@@ -142,7 +142,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		track := model.MediaFile{
 			ID: "song-1", Title: "Song One", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{
-				{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"}},
+				{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"},
 			}},
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
@@ -173,7 +173,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		track := model.MediaFile{
 			ID: "one-track", Title: "Collab Song", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{
-				{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"}},
+				{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"},
 			}},
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
@@ -332,7 +332,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
 
 		// Title track-fetch: tracks must carry RoleArtist participants so back-mapping routes them.
-		participant1 := model.Participant{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}}
+		participant1 := model.Participant{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}
 		song1 := model.MediaFile{
 			ID: "song-1", Title: "Song One", Artist: "Artist One", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{participant1}},
@@ -373,7 +373,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
 
 		// Title track-fetch: song2 must carry RoleArtist participants for back-mapping.
-		participant1 := model.Participant{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}}
+		participant1 := model.Participant{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}
 		song2 := model.MediaFile{
 			ID: "song-2", Title: "Song Two", Artist: "Artist One", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{participant1}},

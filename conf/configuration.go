@@ -207,8 +207,8 @@ type TagConf struct {
 
 type lastfmOptions struct {
 	Enabled                 bool
-	ApiKey                  string //nolint:gosec
-	Secret                  string //nolint:gosec
+	ApiKey                  string
+	Secret                  string
 	Language                string
 	ScrobbleFirstArtistOnly bool
 	MinScrobbleDuration     time.Duration
@@ -253,7 +253,7 @@ type httpHeaderOptions struct {
 type prometheusOptions struct {
 	Enabled     bool
 	MetricsPath string
-	Password    string //nolint:gosec
+	Password    string
 }
 
 type AudioDeviceDefinition []string

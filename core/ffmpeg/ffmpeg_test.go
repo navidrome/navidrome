@@ -27,7 +27,7 @@ func TestFFmpeg(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
 	appPath, _ := filepath.Abs(filepath.Join(filepath.Dir(file), "..", ".."))
 	confPath := filepath.Join(appPath, "tests", "navidrome-test.toml")
-	_ = os.Chdir(appPath)
+	t.Chdir(appPath)
 	conf.LoadFromFile(confPath)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)

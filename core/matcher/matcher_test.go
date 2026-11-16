@@ -353,10 +353,10 @@ var _ = Describe("Matcher", func() {
 					ID: "comp", Title: "Qmart", Artist: "Björk",
 					Participants: model.Participants{
 						model.RoleArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "a-bjork", Name: "Björk", OrderArtistName: "bjork"}},
+							{ID: "a-bjork", Name: "Björk", OrderArtistName: "bjork"},
 						},
 						model.RoleAlbumArtist: model.ParticipantList{
-							{Artist: model.Artist{ID: "a-808", Name: "808 State", OrderArtistName: "808 state"}},
+							{ID: "a-808", Name: "808 State", OrderArtistName: "808 state"},
 						},
 					},
 				}
@@ -545,7 +545,7 @@ var _ = Describe("Matcher", func() {
 				// Shares only Drake (overlap 1) but starred.
 				starredOne := model.MediaFile{
 					ID: "starred-one", Title: "Collab Hit",
-					Annotations:  model.Annotations{Starred: true},
+					Starred:      true,
 					Participants: artistParticipants(model.Artist{ID: "id-drake", Name: "Drake", OrderArtistName: "drake"}),
 				}
 				// Shares both (overlap 2), not starred.
@@ -958,7 +958,7 @@ var _ = Describe("Matcher", func() {
 			}
 			starredTrack := model.MediaFile{
 				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles",
-				Annotations:  model.Annotations{Starred: true},
+				Starred:      true,
 				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			allowTitlePhase(model.MediaFiles{albumMatch, starredTrack})
@@ -979,7 +979,7 @@ var _ = Describe("Matcher", func() {
 			}
 			ratedTrack := model.MediaFile{
 				ID: "rated", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Singles",
-				Annotations:  model.Annotations{Rating: 4},
+				Rating:       4,
 				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			allowTitlePhase(model.MediaFiles{albumMatch, ratedTrack})
@@ -1001,7 +1001,7 @@ var _ = Describe("Matcher", func() {
 			}
 			starred := model.MediaFile{
 				ID: "starred", Title: "Enjoy the Silence", Artist: "Depeche Mode", Album: "Violator",
-				Annotations:  model.Annotations{Starred: true},
+				Starred:      true,
 				Participants: artistParticipants(model.Artist{ID: "dm", Name: "Depeche Mode", OrderArtistName: "depeche mode"}),
 			}
 			allowTitlePhase(model.MediaFiles{plain, starred})

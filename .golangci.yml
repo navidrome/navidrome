@@ -11,6 +11,7 @@ linters:
     - bodyclose
     - containedctx
     - copyloopvar
+    - depguard
     - dogsled
     - durationcheck
     - errorlint
@@ -20,14 +21,107 @@ linters:
     - goprintffuncname
     - gosec
     - misspell
+    - modernize
     - nakedret
     - nilerr
+    - nolintlint
     - rowserrcheck
     - unconvert
+    - usetesting
     - whitespace
   disable:
     - staticcheck
   settings:
+    depguard:
+      rules:
+        api-subsonic:
+          list-mode: lax
+          files:
+            - "**/server/subsonic/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: &api_isolation "API packages must not import each other. Move shared code to a neutral package (for example server/filter or core/publicurl)."
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-nativeapi:
+          list-mode: lax
+          files:
+            - "**/server/nativeapi/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-jellyfin:
+          list-mode: lax
+          files:
+            - "**/server/jellyfin/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-apiv1:
+          list-mode: lax
+          files:
+            - "**/server/apiv1/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-public:
+          list-mode: lax
+          files:
+            - "**/server/public/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+        persistence-layer:
+          list-mode: lax
+          files:
+            - "**/persistence/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/core
+              desc: &persistence_layer "persistence implements the model repositories. Do not depend on business logic or HTTP layers; move the logic to core."
+            - pkg: github.com/navidrome/navidrome/server
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/scanner
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/plugins
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/adapters
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/cmd
+              desc: *persistence_layer
     errcheck:
       exclude-functions:
         - (*github.com/zeebo/xxh3.Hasher).Write
@@ -49,6 +143,13 @@ linters:
           msg: "use tx.QueryContext(ctx, ...) in migrations to propagate context"
         - pattern: 'tx\.QueryRow$'
           msg: "use tx.QueryRowContext(ctx, ...) in migrations to propagate context"
+        - pattern: '^context\.(Background|TODO)$'
+          msg: "in tests use the spec's ctx (from GinkgoT().Context()), t.Context() or b.Context()"
+        - pattern: '^panic$'
+          msg: "don't panic: return an error, or Expect(...)/Fail(...) in tests; log.Fatal only for startup failures that must stop the server"
+    nolintlint:
+      require-specific: true
+      allow-unused: false
     govet:
       enable:
         - nilness
@@ -61,9 +162,15 @@ linters:
       - path: _test\.go
         linters:
           - containedctx
+      # forbidigo rules are scoped by their msg: "in migrations" or "in tests use"
       - path-except: 'db/migrations/'
         linters:
           - forbidigo
+        text: "in migrations"
+      - path-except: '(_test\.go|^tests/)'
+        linters:
+          - forbidigo
+        text: "in tests use"
     generated: lax
     presets:
       - comments

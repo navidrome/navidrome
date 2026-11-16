@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
@@ -19,6 +20,7 @@ import (
 )
 
 var _ = Describe("Stream", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	var streamer *fakeMediaStreamer
@@ -26,10 +28,11 @@ var _ = Describe("Stream", func() {
 
 	// alice has access to library 1 only.
 	ctxUser := func() context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
+		return request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		streamer = &fakeMediaStreamer{}
 		decider = &fakeTranscodeDecider{}
@@ -159,6 +162,55 @@ var _ = Describe("Stream", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.MediaSources).To(HaveLen(1))
 			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID(testID("s-err"))))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
+
+		It("does not block playback info when lyrics lookup is slow", func() {
+			origTimeout := playbackInfoLyricsTimeout
+			playbackInfoLyricsTimeout = 20 * time.Millisecond
+			DeferCleanup(func() { playbackInfoLyricsTimeout = origTimeout })
+
+			blockCh := make(chan struct{})
+			doneCh := make(chan struct{})
+			DeferCleanup(func() {
+				close(blockCh)
+				Eventually(doneCh).Should(BeClosed())
+			})
+
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s1"), Title: "Slow Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{
+				lyrics: map[string]model.LyricList{
+					testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "delayed"}}}},
+				},
+				blockCh: blockCh,
+				doneCh:  doneCh,
+			}
+
+			start := time.Now()
+			res := playbackInfo()
+			duration := time.Since(start)
+			Expect(duration).To(BeNumerically("<", 150*time.Millisecond))
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
+
+		It("recovers panics in detached lyrics lookup and returns 200 without Lyric stream", func() {
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s-panic"), Title: "Panic Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{panicVal: "lyrics plugin crash"}
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("s-panic"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s-panic")))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
 			Expect(lyricStreams(res)).To(BeEmpty())
 		})
 	})

@@ -20,10 +20,10 @@ var _ = Describe("Radio", func() {
 	var radioRepo *tests.MockedRadioRepo
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		api = &Router{ds: ds}
-		ctx = context.Background()
 		radioRepo = tests.CreateMockedRadioRepo()
 		ds.MockedRadio = radioRepo
 	})
@@ -76,8 +76,8 @@ var _ = Describe("Radio", func() {
 
 			It("suffixes coverArt with the content hash when resolved and omits it when known absent", func() {
 				radioRepo.All = model.Radios{
-					{ID: "rd-1", Name: "Radio 1", UploadedImage: "rd-1_cover.jpg", ItemImage: model.ItemImage{ImageHash: "0123456789abcdef"}},
-					{ID: "rd-2", Name: "Radio 2", UploadedImage: "rd-2_cover.jpg", ItemImage: model.ItemImage{ImageAbsent: true}},
+					{ID: "rd-1", Name: "Radio 1", UploadedImage: "rd-1_cover.jpg", ImageHash: "0123456789abcdef"},
+					{ID: "rd-2", Name: "Radio 2", UploadedImage: "rd-2_cover.jpg", ImageAbsent: true},
 				}
 				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)

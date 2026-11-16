@@ -26,7 +26,7 @@ func (t testFileInfo) BirthTime() time.Time {
 var _ = Describe("Extractor", func() {
 	toP := func(name, sortName, mbid string) model.Participant {
 		return model.Participant{
-			Artist: model.Artist{Name: name, SortArtistName: sortName, MbzArtistID: mbid},
+			Name: name, SortArtistName: sortName, MbzArtistID: mbid,
 		}
 	}
 

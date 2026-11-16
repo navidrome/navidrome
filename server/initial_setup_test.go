@@ -80,7 +80,7 @@ var _ = Describe("initialSetup with a real database", Ordered, func() {
 		go func() {
 			defer close(released)
 			time.Sleep(releaseAfter)
-			_, _ = conn.ExecContext(context.Background(), "ROLLBACK")
+			_, _ = conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK")
 			_ = conn.Close()
 		}()
 		DeferCleanup(func() { <-released })

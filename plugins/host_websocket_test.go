@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"context"
 	"crypto/sha256"
 
 	"encoding/hex"
@@ -121,7 +120,6 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		It("should allow hosts matching wildcard patterns", func() {
 			// test-websocket manifest allows *.example.com
 			// The pattern *.example.com matches any host ending with .example.com
-			ctx := context.Background()
 			allowed := testService.isHostAllowed("api.example.com")
 			Expect(allowed).To(BeTrue())
 
@@ -132,7 +130,6 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			// But exact match without subdomain doesn't match *.example.com
 			allowed = testService.isHostAllowed("example.com")
 			Expect(allowed).To(BeFalse())
-			_ = ctx
 		})
 
 		It("should allow exact host matches", func() {
@@ -192,8 +189,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			// the host without port
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
@@ -330,8 +327,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
@@ -434,8 +431,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 		})
@@ -569,8 +566,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 
 			serverURL := strings.TrimPrefix(wsServer.URL, "http://")
 			hostOnly := serverURL
-			if idx := strings.LastIndex(serverURL, ":"); idx != -1 {
-				hostOnly = serverURL[:idx]
+			if before, _, ok := strings.CutLast(serverURL, ":"); ok {
+				hostOnly = before
 			}
 			testService.requiredHosts = append(testService.requiredHosts, hostOnly)
 

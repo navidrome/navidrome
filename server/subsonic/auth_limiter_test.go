@@ -16,7 +16,7 @@ var _ = Describe("authLimiter", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 	})
 
 	acquire := func(l *authLimiter, key string) (*authSlot, bool) {
@@ -78,7 +78,7 @@ var _ = Describe("authLimiter", func() {
 		held, _ := acquire(l, "k")
 		DeferCleanup(func() { held.release(false) })
 
-		canceled, cancel := context.WithCancel(context.Background())
+		canceled, cancel := context.WithCancel(ctx)
 		cancel()
 		_, ok := l.acquire(canceled, "k")
 		Expect(ok).To(BeFalse())
@@ -124,7 +124,7 @@ var _ = Describe("authLimiter", func() {
 func TestAuthLimiterWindow(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		g := NewWithT(t)
-		ctx := context.Background()
+		ctx := t.Context()
 		l := newAuthLimiter(1, 20*time.Second)
 		for _, key := range []string{"a", "b"} {
 			slot, ok := l.acquire(ctx, key)
