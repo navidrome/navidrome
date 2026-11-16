@@ -484,20 +484,23 @@ var _ = Describe("register", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-	})
-
-	JustBeforeEach(func() {
 		delete(agents.Map, listenBrainzAgentName)
-		register()
+		scrobbler.Unregister(listenBrainzAgentName)
 	})
 
 	When("ListenBrainz is disabled", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = false })
+			register()
 		})
 
-		It("still registers the builtin name, but builds no agent", func() {
+		It("still registers the builtin name", func() {
+			Expect(scrobbler.IsBuiltinScrobbler(listenBrainzAgentName)).To(BeTrue())
 			Expect(agents.Map).To(HaveKey(listenBrainzAgentName))
+		})
+
+		It("builds no scrobbler and no agent", func() {
+			Expect(newScrobbler(ds) == nil).To(BeTrue())
 			Expect(agents.Map[listenBrainzAgentName](ds) == nil).To(BeTrue())
 		})
 	})
@@ -505,9 +508,11 @@ var _ = Describe("register", func() {
 	When("ListenBrainz is enabled", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = true })
+			register()
 		})
 
-		It("builds the agent", func() {
+		It("builds the scrobbler and the agent", func() {
+			Expect(newScrobbler(ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
 			Expect(agents.Map[listenBrainzAgentName](ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
 		})
 	})
