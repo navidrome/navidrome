@@ -238,5 +238,6 @@ func (c *fakeHttpClient) Do(req *http.Request) (*http.Response, error) {
 	if resp, ok := c.responses[u.String()]; ok {
 		return resp, nil
 	}
-	panic("URL not mocked: " + u.String())
+	Fail("URL not mocked: " + u.String())
+	return nil, nil
 }

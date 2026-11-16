@@ -56,7 +56,7 @@ const thumbnailSize = 100
 // maxImageBytes caps a resolved image read: a user-editable ExternalImageURL could point at
 // an arbitrarily large endpoint.
 func maxImageBytes() int64 {
-	return parseSize(conf.Server.MaxImageSize, consts.DefaultMaxImageSize)
+	return parseSize(conf.Server().MaxImageSize, consts.DefaultMaxImageSize)
 }
 
 // maxImagePixels guards against decompression bombs: a tiny file can declare a canvas that

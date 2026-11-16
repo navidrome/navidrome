@@ -343,7 +343,7 @@ func runPluginList(ctx context.Context) {
 // requirePluginsEnabled gates DB/manager-backed commands; off-disk .ndp
 // inspection deliberately skips this so it works without a configured server.
 func requirePluginsEnabled(ctx context.Context) {
-	if !conf.Server.Plugins.Enabled {
+	if !conf.Server().Plugins.Enabled {
 		log.Fatal(ctx, "Plugin system is disabled (set Plugins.Enabled to use this command)")
 	}
 }

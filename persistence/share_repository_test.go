@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,7 +19,6 @@ var _ = Describe("ShareRepository", func() {
 	var adminUser = model.User{ID: "admin", UserName: "admin", IsAdmin: true}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		repo = NewShareRepository(GetDBXBuilder())
 
@@ -457,7 +455,7 @@ var _ = Describe("ShareRepository", func() {
 			})
 
 			It("returns not found when updating a nonexistent share", func() {
-				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				ctx := request.WithUser(ctx, ownerUser)
 				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(ctx, "does-not-exist", model.Share{Description: "Ghost"}, "description")
 				Expect(err).To(Equal(rest.ErrNotFound))
@@ -465,7 +463,7 @@ var _ = Describe("ShareRepository", func() {
 
 			It("updates all columns when no specific columns are given", func() {
 				insertShare("all-cols-share", ownerUser.ID)
-				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				ctx := request.WithUser(ctx, ownerUser)
 				repo := NewShareRepository(GetDBXBuilder())
 				// No cols: the update must write every column, not just updated_at.
 				err := repo.Update(ctx, "all-cols-share",
@@ -481,7 +479,7 @@ var _ = Describe("ShareRepository", func() {
 
 			It("does not let an owner reassign their share to another user", func() {
 				insertShare("reassign-share", ownerUser.ID)
-				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
+				ctx := request.WithUser(ctx, ownerUser)
 				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(ctx, "reassign-share",
 					model.Share{UserID: otherUser.ID, Description: "Given away"}, "user_id", "description")

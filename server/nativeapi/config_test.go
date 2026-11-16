@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -27,9 +26,10 @@ var _ = Describe("Config API", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
-		conf.Server.DevUIShowConfig = true // Enable config endpoint for tests
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.DevUIShowConfig = true
+		}) // Enable config endpoint for tests
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
@@ -76,15 +76,17 @@ var _ = Describe("Config API", func() {
 				var resp configResponse
 				Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 				Expect(resp.ID).To(Equal("config"))
-				Expect(resp.ConfigFile).To(Equal(conf.Server.ConfigFile))
+				Expect(resp.ConfigFile).To(Equal(conf.Server().ConfigFile))
 				Expect(resp.Config).ToNot(BeEmpty())
 			})
 
 			It("redacts sensitive fields", func() {
-				conf.Server.LastFM.ApiKey = "secretapikey123"
-				conf.Server.PasswordEncryptionKey = "encryptionkey789"
-				conf.Server.DevAutoCreateAdminPassword = "adminpassword123"
-				conf.Server.Prometheus.Password = "prometheuspass"
+				conf.Update(func(c *conf.Options) {
+					c.LastFM.ApiKey = "secretapikey123"
+					c.PasswordEncryptionKey = "encryptionkey789"
+					c.DevAutoCreateAdminPassword = "adminpassword123"
+					c.Prometheus.Password = "prometheuspass"
+				})
 
 				req := createAuthenticatedConfigRequest(adminToken)
 				w := httptest.NewRecorder()
@@ -113,8 +115,10 @@ var _ = Describe("Config API", func() {
 			})
 
 			It("handles empty sensitive values", func() {
-				conf.Server.LastFM.ApiKey = ""
-				conf.Server.PasswordEncryptionKey = ""
+				conf.Update(func(c *conf.Options) {
+					c.LastFM.ApiKey = ""
+					c.PasswordEncryptionKey = ""
+				})
 
 				req := createAuthenticatedConfigRequest(adminToken)
 				w := httptest.NewRecorder()

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -22,9 +21,10 @@ var _ = Describe("Missing Files Endpoint", func() {
 	var token string
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.SessionTimeout = time.Minute
-		conf.Server.EnableSharing = false
+		conf.Update(func(c *conf.Options) {
+			c.SessionTimeout = time.Minute
+			c.EnableSharing = false
+		})
 
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{

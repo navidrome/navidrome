@@ -29,7 +29,7 @@ type User struct {
 	TokenEpoch int `structs:"-" json:"-"`
 	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
 	// It is received from the UI with the name "password"
-	NewPassword string `structs:"password,omitempty" json:"password,omitempty"` //nolint:gosec
+	NewPassword string `structs:"password,omitempty" json:"password,omitempty"`
 	// If changing the password, this is also required
 	CurrentPassword string `structs:"current_password,omitempty" json:"currentPassword,omitempty"`
 }

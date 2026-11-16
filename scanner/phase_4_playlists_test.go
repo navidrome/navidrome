@@ -8,7 +8,6 @@ import (
 	"sort"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -32,9 +31,8 @@ var _ = Describe("phasePlaylists", func() {
 	var propRepo *tests.MockedPropertyRepo
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AutoImportPlaylists = true
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
+		conf.Update(func(c *conf.Options) { c.AutoImportPlaylists = true })
 		folderRepo = &mockFolderRepository{}
 		userRepo = tests.CreateMockUserRepo()
 		// An admin user exists by default, so playlist import proceeds.

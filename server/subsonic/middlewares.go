@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -99,7 +98,7 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 }
 
 func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
-	limiter := newAuthLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
+	limiter := newAuthLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -294,7 +293,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			ctx := r.Context()
 			userName, _ := request.UsernameFrom(ctx)
 			client, _ := request.ClientFrom(ctx)
-			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			ip := middleware.GetClientIP(r.Context())
 			userAgent := canonicalUserAgent(r)
 
 			var player *model.Player
@@ -326,7 +325,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 					MaxAge:   consts.CookieExpiry,
 					HttpOnly: true,
 					SameSite: http.SameSiteStrictMode,
-					Path:     cmp.Or(conf.Server.BasePath, "/"),
+					Path:     cmp.Or(conf.Server().BasePath, "/"),
 				}
 				http.SetCookie(w, cookie)
 			}

@@ -45,7 +45,7 @@ var _ = Describe("loadArtistFolder", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		updatedAt = time.Now().Truncate(time.Second).Add(5 * time.Minute)
 		repo = &fakeFolderRepo{result: []model.Folder{{ImagesUpdatedAt: updatedAt}}}
 		libRepo := &tests.MockLibraryRepo{}

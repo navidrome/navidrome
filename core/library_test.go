@@ -10,7 +10,6 @@ import (
 
 	"github.com/deluan/rest"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage
 	"github.com/navidrome/navidrome/model"
@@ -35,8 +34,7 @@ var _ = Describe("Library Service", func() {
 	var pluginManager *mockPluginUnloader
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		libraryRepo = &tests.MockLibraryRepo{}
 		userRepo = tests.CreateMockUserRepo()
@@ -54,7 +52,6 @@ var _ = Describe("Library Service", func() {
 		// Create a mock plugin unloader
 		pluginManager = &mockPluginUnloader{}
 		service = core.NewLibrary(ds, scanner, watcherManager, broker, pluginManager)
-		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
 		var err error

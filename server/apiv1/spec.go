@@ -32,7 +32,7 @@ func specHandler(body []byte, contentType string) http.HandlerFunc {
 
 // withBasePath adds BasePath to the advertised server URL, since only the running server knows it.
 func withBasePath(body []byte, key string, quotedInBundle bool) []byte {
-	serverURL := path.Join(conf.Server.BasePath, consts.URLPathAPIv1)
+	serverURL := path.Join(conf.Server().BasePath, consts.URLPathAPIv1)
 	if serverURL == consts.URLPathAPIv1 {
 		return body
 	}

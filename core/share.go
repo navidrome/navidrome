@@ -92,7 +92,7 @@ func (r *shareRepositoryWrapper) Save(ctx context.Context, s *model.Share) (stri
 	}
 	s.ID = id
 	if V(s.ExpiresAt).IsZero() {
-		s.ExpiresAt = new(time.Now().Add(conf.Server.DefaultShareExpiration))
+		s.ExpiresAt = new(time.Now().Add(conf.Server().DefaultShareExpiration))
 	}
 
 	s.ResourceType, err = r.resourceType(ctx, s.ResourceIDs)

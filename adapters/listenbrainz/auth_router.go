@@ -39,7 +39,7 @@ func NewRouter(ds model.DataStore) *Router {
 	}
 	r.Handler = r.routes()
 	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
-	r.client = newClient(conf.Server.ListenBrainz.BaseURL, hc)
+	r.client = newClient(conf.Server().ListenBrainz.BaseURL, hc)
 	return r
 }
 

@@ -20,7 +20,7 @@ import (
 )
 
 // NaturalCollation sorts embedded numbers by value. It is registered on every
-// connection, but only referenced when conf.Server.EnableNaturalSorting is on.
+// connection, but only referenced when conf.Server().EnableNaturalSorting is on.
 const NaturalCollation = "NATSORT"
 
 var (
@@ -50,12 +50,12 @@ func Db() *sql.DB {
 				},
 			})
 		})
-		Path = conf.Server.DbPath
+		Path = conf.Server().DbPath
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
-			conf.Server.DbPath = Path
+			conf.Update(func(c *conf.Options) { c.DbPath = Path })
 		} else {
-			conf.Server.DataFolder.MustPath()
+			conf.Server().DataFolder.MustPath()
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)

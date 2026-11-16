@@ -3,8 +3,10 @@ package public
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"time"
 
 	"github.com/go-chi/jwtauth/v5"
@@ -17,13 +19,17 @@ import (
 )
 
 type mockStreamer struct {
-	req    stream.Request
-	called bool
+	req       stream.Request
+	called    bool
+	newStream func(*model.MediaFile) *stream.Stream
 }
 
-func (m *mockStreamer) NewStream(_ context.Context, _ *model.MediaFile, r stream.Request) (*stream.Stream, error) {
+func (m *mockStreamer) NewStream(_ context.Context, mf *model.MediaFile, r stream.Request) (*stream.Stream, error) {
 	m.called = true
 	m.req = r
+	if m.newStream != nil {
+		return m.newStream(mf), nil
+	}
 	return nil, errors.New("mock: not implemented")
 }
 
@@ -209,6 +215,24 @@ var _ = Describe("handleStream", func() {
 		makeRequest(token)
 
 		Expect(streamer.called).To(BeTrue())
+	})
+
+	It("returns 200 on HEAD for a transcode that is not cached yet", func() {
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", IsAdmin: true},
+			model.MediaFile{ID: "mf-123", Title: "Test Song"},
+		)
+		streamer.newStream = func(mf *model.MediaFile) *stream.Stream {
+			return stream.NewStream(mf, "mp3", 192, io.NopCloser(strings.NewReader("transcoded audio")))
+		}
+
+		claims := auth.Claims{ID: "mf-123", Format: "mp3", BitRate: 192, ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		r := httptest.NewRequest(http.MethodHead, "/public/s/token?%3Aid="+token, nil)
+		w := httptest.NewRecorder()
+		pub.handleStream(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 
 	It("returns 400 for an expired token", func() {

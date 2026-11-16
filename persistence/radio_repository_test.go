@@ -34,10 +34,7 @@ var _ = Describe("RadioRepository", func() {
 			}
 
 			for i := range testRadios {
-				err := repo.Put(ctx, new(testRadios[i]))
-				if err != nil {
-					panic(err)
-				}
+				Expect(repo.Put(ctx, new(testRadios[i]))).To(Succeed())
 			}
 		})
 

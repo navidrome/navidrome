@@ -461,7 +461,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Expect(resp.Playlist.Name).To(Equal("Smart Playlist"))
 			Expect(resp.Playlist.OpenSubsonicPlaylist).ToNot(BeNil())
 			Expect(resp.Playlist.OpenSubsonicPlaylist.Readonly).To(BeTrue())
-			expectedValidUntil := time.Now().Add(conf.Server.SmartPlaylistRefreshDelay)
+			expectedValidUntil := time.Now().Add(conf.Server().SmartPlaylistRefreshDelay)
 			Expect(*resp.Playlist.OpenSubsonicPlaylist.ValidUntil).To(BeTemporally("~", expectedValidUntil, time.Second))
 		})
 
@@ -535,7 +535,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			// Force immediate refresh for all smart playlists
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 
 			// Create smart playlist with boolean true
 			boolPls := &model.Playlist{

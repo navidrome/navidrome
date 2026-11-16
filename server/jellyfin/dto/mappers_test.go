@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -63,10 +62,6 @@ var _ = Describe("mappers", func() {
 			ar := model.Artist{ID: testID("art-1"), Name: "The B-52's", SortArtistName: "B-52's, The", OrderArtistName: "b-52's"}
 			al := model.Album{ID: testID("alb-1"), Name: "The Wall", SortAlbumName: "Wall, The", OrderAlbumName: "wall"}
 
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
-
 			It("is omitted unless Fields=SortName", func() {
 				Expect(SongToBaseItem(song, nil).SortName).To(BeEmpty())
 				Expect(ArtistToBaseItem(ar, nil).SortName).To(BeEmpty())
@@ -81,7 +76,7 @@ var _ = Describe("mappers", func() {
 
 			Context("with PreferSortTags", func() {
 				BeforeEach(func() {
-					conf.Server.PreferSortTags = true
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 				})
 
 				It("prefers the sort tags", func() {
@@ -534,8 +529,7 @@ var _ = Describe("mappers", func() {
 	// advertising just the album image would leave that cover unreachable.
 	Describe("unresolved embedded art", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		})
 
 		It("advertises the track id so the client triggers the read-through", func() {
@@ -568,7 +562,7 @@ var _ = Describe("mappers", func() {
 		})
 
 		It("falls back to the album when per-track art is disabled", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			mf := model.MediaFile{ID: testID("mf-4"), AlbumID: testID("alb-1"), HasCoverArt: true}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"
 

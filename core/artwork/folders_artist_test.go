@@ -21,7 +21,7 @@ var _ = Describe("findImageInFolder", func() {
 	var files fstest.MapFS
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		files = fstest.MapFS{"artist.jpg": &fstest.MapFile{Data: []byte("img")}}
 	})
 

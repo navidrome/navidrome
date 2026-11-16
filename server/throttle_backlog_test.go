@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -51,7 +50,7 @@ var _ = Describe("ThrottleBacklog", func() {
 		r.Use(middleware.Recoverer)
 		r.Use(m)
 		r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
-			panic("boom")
+			panic("boom") //nolint:forbidigo
 		})
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("ok"))
@@ -190,8 +189,7 @@ var _ = Describe("ThrottleBacklog", func() {
 		})
 
 		It("starves concurrent requests with Chi's original middleware", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DevArtworkThrottleBuffered = false
+			conf.Update(func(c *conf.Options) { c.DevArtworkThrottleBuffered = false })
 
 			router, unblocked, reqDone := slowClientTest(ThrottleBacklog(1, 1, 500*time.Millisecond))
 

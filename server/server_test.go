@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -145,7 +144,6 @@ var _ = Describe("TLS support", func() {
 
 		When("server is started with valid TLS certificates", func() {
 			It("accepts HTTPS connections", func() {
-				DeferCleanup(configtest.SetupConfig())
 
 				// Create server with mock dependencies
 				ds := &tests.MockDataStore{}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -19,8 +18,10 @@ import (
 )
 
 var _ = Describe("helpers", func() {
+	var ctx context.Context
+
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		ctx = GinkgoT().Context()
 		auth.TokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test public secret"), nil)
 	})
@@ -60,12 +61,9 @@ var _ = Describe("helpers", func() {
 	})
 
 	Describe("sortName", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 		When("PreferSortTags is false", func() {
 			BeforeEach(func() {
-				conf.Server.PreferSortTags = false
+				conf.Update(func(c *conf.Options) { c.PreferSortTags = false })
 			})
 			It("returns the order name even if sort name is provided", func() {
 				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Order Album Name"))
@@ -76,7 +74,7 @@ var _ = Describe("helpers", func() {
 		})
 		When("PreferSortTags is true", func() {
 			BeforeEach(func() {
-				conf.Server.PreferSortTags = true
+				conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 			})
 			It("returns the sort name if provided", func() {
 				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Sort Album Name"))
@@ -179,13 +177,13 @@ var _ = Describe("helpers", func() {
 		}
 
 		It("Handles album count without artist participations", func() {
-			conf.Server.Subsonic.ArtistParticipations = false
+			conf.Update(func(c *conf.Options) { c.Subsonic.ArtistParticipations = false })
 			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(3)))
 		})
 
 		It("Handles album count without with participations", func() {
-			conf.Server.Subsonic.ArtistParticipations = true
+			conf.Update(func(c *conf.Options) { c.Subsonic.ArtistParticipations = true })
 			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(4)))
 		})
@@ -209,7 +207,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("childFromMediaFile", func() {
 		var mf model.MediaFile
-		var ctx context.Context
 
 		BeforeEach(func() {
 			mf = model.MediaFile{
@@ -227,12 +224,11 @@ var _ = Describe("helpers", func() {
 				Suffix:      "mp3",
 				BitRate:     320,
 			}
-			ctx = context.Background()
 		})
 
 		Context("with minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "minimal-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -267,7 +263,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with non-minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -292,7 +288,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when minimal clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -323,7 +319,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("artwork coverArt emission", func() {
 		const hash = "0123456789abcdef"
-		ctx := context.Background()
 
 		DescribeTable("coverArtOrEmpty",
 			func(id model.ArtworkID, absent bool, expected string) {
@@ -399,7 +394,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("osChildFromMediaFile", func() {
 		var mf model.MediaFile
-		var ctx context.Context
 
 		BeforeEach(func() {
 			mf = model.MediaFile{
@@ -408,12 +402,11 @@ var _ = Describe("helpers", func() {
 				Artist:  "Test Artist",
 				Comment: "Test Comment",
 			}
-			ctx = context.Background()
 		})
 
 		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -426,7 +419,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with non-legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -486,7 +479,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when legacy clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -507,7 +500,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("selectedMusicFolderIds", func() {
 		var user model.User
-		var ctx context.Context
 
 		BeforeEach(func() {
 			user = model.User{
@@ -518,7 +510,7 @@ var _ = Describe("helpers", func() {
 					{ID: 3, Name: "Library 3"},
 				},
 			}
-			ctx = request.WithUser(context.Background(), user)
+			ctx = request.WithUser(ctx, user)
 		})
 
 		Context("when musicFolderId parameter is provided", func() {
@@ -564,7 +556,7 @@ var _ = Describe("helpers", func() {
 
 				It("should return empty slice when user has no libraries", func() {
 					userWithoutLibs := model.User{ID: "no-libs-user", Libraries: []model.Library{}}
-					ctxWithoutLibs := request.WithUser(context.Background(), userWithoutLibs)
+					ctxWithoutLibs := request.WithUser(ctx, userWithoutLibs)
 					r := httptest.NewRequest("GET", "/test", nil)
 					r = r.WithContext(ctxWithoutLibs)
 
@@ -610,11 +602,8 @@ var _ = Describe("helpers", func() {
 	})
 
 	Describe("AverageRating in responses", func() {
-		var ctx context.Context
-
 		BeforeEach(func() {
-			ctx = context.Background()
-			conf.Server.Subsonic.EnableAverageRating = true
+			conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 		})
 
 		Describe("childFromMediaFile", func() {
@@ -665,7 +654,7 @@ var _ = Describe("helpers", func() {
 
 		Describe("toArtist", func() {
 			It("includes averageRating when set", func() {
-				conf.Server.Subsonic.EnableAverageRating = true
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 				r := httptest.NewRequest("GET", "/test", nil)
 				a := model.Artist{
 					ID:   "ar-avg-1",
@@ -681,7 +670,7 @@ var _ = Describe("helpers", func() {
 
 		Describe("toArtistID3", func() {
 			It("includes averageRating when set", func() {
-				conf.Server.Subsonic.EnableAverageRating = true
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 				r := httptest.NewRequest("GET", "/test", nil)
 				a := model.Artist{
 					ID:   "ar-avg-2",
@@ -698,7 +687,7 @@ var _ = Describe("helpers", func() {
 		Describe("buildAlbumID3 Created field", func() {
 			When("RecentlyAddedByModTime is false", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				})
 
 				It("uses CreatedAt when set", func() {
@@ -731,7 +720,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is true", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {
@@ -769,7 +758,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is false", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				})
 
 				It("uses CreatedAt, not BirthTime", func() {
@@ -795,7 +784,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is true", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {
@@ -817,7 +806,7 @@ var _ = Describe("helpers", func() {
 
 		Describe("EnableAverageRating config", func() {
 			It("excludes averageRating when disabled", func() {
-				conf.Server.Subsonic.EnableAverageRating = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = false })
 
 				mf := model.MediaFile{
 					ID:    "mf-cfg-1",

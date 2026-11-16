@@ -61,9 +61,7 @@ var _ = Describe("Criteria", func() {
 	"offset": 10
 }
 `))
-			if err != nil {
-				panic(err)
-			}
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			jsonObj = b.String()
 		})
 		It("marshals to JSON", func() {

@@ -25,7 +25,7 @@ var _ = Describe("MediaAnnotationController", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}

@@ -1,5 +1,7 @@
 import { createDecisionService } from './decisionService'
-import { fetchTranscodeDecision } from './fetchDecision'
+import subsonic from '../subsonic'
 export { detectBrowserProfile } from './browserProfile'
 
-export const decisionService = createDecisionService(fetchTranscodeDecision)
+export const decisionService = createDecisionService(
+  subsonic.getTranscodeDecision,
+)

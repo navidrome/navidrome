@@ -13,9 +13,10 @@ var _ = Describe("pathResolver", func() {
 	var ds *tests.MockDataStore
 	var mockLibRepo *tests.MockLibraryRepo
 	var resolver *pathResolver
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{

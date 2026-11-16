@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 )
 
 type benchItem struct {
@@ -27,8 +26,8 @@ func setupBenchCache(b *testing.B, cacheSize string, getReader ReadFunc) (*fileC
 	if err != nil {
 		b.Fatal(err)
 	}
-	b.Cleanup(configtest.SetupConfig())
-	conf.Server.CacheFolder = conf.NewDir(tmpDir)
+	b.Cleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) { c.CacheFolder = conf.NewDir(tmpDir) })
 
 	fc := NewFileCache("bench", cacheSize, "bench", 0, getReader).(*fileCache)
 
@@ -56,7 +55,7 @@ func BenchmarkCacheWrite(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("write-bench-%d", i)
-		s, err := fc.Get(context.Background(), &benchItem{key: key})
+		s, err := fc.Get(b.Context(), &benchItem{key: key})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -75,7 +74,7 @@ func BenchmarkCacheRead(b *testing.B) {
 
 	// Pre-populate cache
 	item := &benchItem{key: "read-bench"}
-	s, err := fc.Get(context.Background(), item)
+	s, err := fc.Get(b.Context(), item)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -85,7 +84,7 @@ func BenchmarkCacheRead(b *testing.B) {
 	b.SetBytes(int64(len(imageData)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s, err := fc.Get(context.Background(), item)
+		s, err := fc.Get(b.Context(), item)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -104,7 +103,7 @@ func BenchmarkConcurrentCacheRead(b *testing.B) {
 
 	// Pre-populate cache
 	item := &benchItem{key: "concurrent-read"}
-	s, _ := fc.Get(context.Background(), item)
+	s, _ := fc.Get(b.Context(), item)
 	_, _ = io.ReadAll(s)
 	s.Close()
 
@@ -119,7 +118,7 @@ func BenchmarkConcurrentCacheRead(b *testing.B) {
 				for range n {
 					go func() {
 						defer wg.Done()
-						s, err := fc.Get(context.Background(), item)
+						s, err := fc.Get(b.Context(), item)
 						if err != nil {
 							b.Error(err)
 							return
@@ -155,7 +154,7 @@ func BenchmarkConcurrentCacheMiss(b *testing.B) {
 				for range n {
 					go func() {
 						defer wg.Done()
-						s, err := fc.Get(context.Background(), item)
+						s, err := fc.Get(b.Context(), item)
 						if err != nil {
 							b.Error(err)
 							return

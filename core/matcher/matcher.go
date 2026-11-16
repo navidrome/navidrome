@@ -340,7 +340,7 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 	}
 
 	tracksByQuery := resolved.bucketTracks(tracks)
-	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
+	threshold := float64(conf.Server().Matcher.FuzzyThreshold) / 100.0
 	for _, iq := range queries {
 		sanitized := tracksByQuery[iq.index]
 		if mf, found := m.findBestMatch(iq.query, sanitized, threshold); found {
@@ -571,7 +571,7 @@ func (m *Matcher) findBestMatch(q songQuery, candidates []scoredTrack, threshold
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
 
-	preferStarred := conf.Server.Matcher.PreferStarred
+	preferStarred := conf.Server().Matcher.PreferStarred
 	for _, c := range candidates {
 		titleSim := similarityRatio(q.title, c.title)
 		if titleSim < threshold {

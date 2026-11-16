@@ -85,7 +85,7 @@ func newStore() *quickConnect {
 
 // Enabled reports whether users can approve codes from the web UI, which needs the Jellyfin API.
 func Enabled() bool {
-	return conf.Server.Jellyfin.Enabled && conf.Server.Jellyfin.QuickConnect
+	return conf.Server().Jellyfin.Enabled && conf.Server().Jellyfin.QuickConnect
 }
 
 func (qc *quickConnect) Initiate(device Device) (Request, error) {

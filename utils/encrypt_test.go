@@ -9,14 +9,19 @@ import (
 )
 
 var _ = Describe("encrypt", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("decrypts correctly when using the same encryption key", func() {
 		sum := sha256.Sum256([]byte("password"))
 		encKey := sum[0:]
 		data := "Can you keep a secret?"
 
-		encrypted, err := Encrypt(context.Background(), encKey, data)
+		encrypted, err := Encrypt(ctx, encKey, data)
 		Expect(err).ToNot(HaveOccurred())
-		decrypted, err := Decrypt(context.Background(), encKey, encrypted)
+		decrypted, err := Decrypt(ctx, encKey, encrypted)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(decrypted).To(Equal(data))
@@ -27,12 +32,12 @@ var _ = Describe("encrypt", func() {
 		encKey := sum[0:]
 		data := "Can you keep a secret?"
 
-		encrypted, err := Encrypt(context.Background(), encKey, data)
+		encrypted, err := Encrypt(ctx, encKey, data)
 		Expect(err).ToNot(HaveOccurred())
 
 		sum = sha256.Sum256([]byte("different password"))
 		encKey = sum[0:]
-		_, err = Decrypt(context.Background(), encKey, encrypted)
+		_, err = Decrypt(ctx, encKey, encrypted)
 		Expect(err).To(MatchError("cipher: message authentication failed"))
 	})
 })

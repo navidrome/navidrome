@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -19,8 +18,7 @@ var _ = Describe("PlayQueueRepository", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		ctx = log.NewContext(context.TODO())
+		ctx = log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlayQueueRepository(GetDBXBuilder())
 	})
@@ -399,11 +397,10 @@ var _ = Describe("PlayQueueRepository", func() {
 })
 
 func countPlayQueues(repo model.PlayQueueRepository, userId string) int {
+	GinkgoHelper()
 	r := repo.(*playQueueRepository)
 	c, err := r.count(GinkgoT().Context(), squirrel.Select().Where(squirrel.Eq{"user_id": userId}))
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	return int(c)
 }
 

@@ -131,6 +131,19 @@ const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
 }
 
+const getTranscodeDecision = async (songId, browserProfile) => {
+  const { json } = await httpClient(
+    url('getTranscodeDecision', null, { mediaId: songId, mediaType: 'song' }),
+    { method: 'POST', body: JSON.stringify(browserProfile) },
+  )
+  const subsonicResponse = json['subsonic-response']
+  if (subsonicResponse.status !== 'ok') {
+    const err = subsonicResponse.error || {}
+    throw new Error(`getTranscodeDecision error: ${err.code} ${err.message}`)
+  }
+  return subsonicResponse.transcodeDecision
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -160,4 +173,5 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getTranscodeDecision,
 }

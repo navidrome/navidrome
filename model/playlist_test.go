@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
@@ -52,8 +51,7 @@ var _ = Describe("Playlist", func() {
 
 	Describe("RefreshDelay", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SmartPlaylistRefreshDelay = 5 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = 5 * time.Second })
 		})
 
 		It("returns the global config value when rules have no refreshDelay", func() {

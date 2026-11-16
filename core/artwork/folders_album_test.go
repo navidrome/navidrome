@@ -23,7 +23,7 @@ var _ = Describe("loadAlbumFoldersPaths", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		now = time.Now().Truncate(time.Second)
 		repo = &fakeFolderRepo{}
 		ds = &tests.MockDataStore{MockedFolder: repo}

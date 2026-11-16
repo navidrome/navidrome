@@ -25,7 +25,7 @@ var _ = Describe("doctor", func() {
 	// A file-backed DB so specs can corrupt raw pages; a table named like a real FTS
 	// search table so IsFTSCorruptionOnly matches, plus a parent/child pair for FK checks.
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		dbPath = filepath.Join(GinkgoT().TempDir(), "doctor.db")
 		reopen = func() {
 			var err error
