@@ -157,7 +157,7 @@ func (a *Agents) getAgent(ea enabledAgent) Interface {
 			if agent != nil {
 				return agent
 			}
-			log.Debug("Built-in agent not available. Missing configuration?", "name", ea.name)
+			log.Debug("Built-in agent not available. Disabled or missing configuration?", "name", ea.name)
 		}
 	}
 

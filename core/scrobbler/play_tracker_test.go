@@ -141,6 +141,12 @@ var _ = Describe("PlayTracker", func() {
 			Expect(IsBuiltinScrobbler("fake")).To(BeTrue())
 			Expect(IsBuiltinScrobbler("some-plugin")).To(BeFalse())
 		})
+
+		It("is false after Unregister", func() {
+			Register("to-remove", func(model.DataStore) Scrobbler { return nil })
+			Unregister("to-remove")
+			Expect(IsBuiltinScrobbler("to-remove")).To(BeFalse())
+		})
 	})
 
 	Describe("GetNowPlaying", func() {

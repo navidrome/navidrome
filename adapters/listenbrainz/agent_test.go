@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -474,6 +475,45 @@ var _ = Describe("listenBrainzAgent", func() {
 					Duration:  0,
 				},
 			}))
+		})
+	})
+})
+
+var _ = Describe("register", func() {
+	var ds model.DataStore
+
+	BeforeEach(func() {
+		ds = &tests.MockDataStore{}
+		delete(agents.Map, listenBrainzAgentName)
+		scrobbler.Unregister(listenBrainzAgentName)
+	})
+
+	When("ListenBrainz is disabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = false })
+			register()
+		})
+
+		It("still registers the builtin name", func() {
+			Expect(scrobbler.IsBuiltinScrobbler(listenBrainzAgentName)).To(BeTrue())
+			Expect(agents.Map).To(HaveKey(listenBrainzAgentName))
+		})
+
+		It("builds no scrobbler and no agent", func() {
+			Expect(newScrobbler(ds) == nil).To(BeTrue())
+			Expect(agents.Map[listenBrainzAgentName](ds) == nil).To(BeTrue())
+		})
+	})
+
+	When("ListenBrainz is enabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = true })
+			register()
+		})
+
+		It("builds the scrobbler and the agent", func() {
+			Expect(newScrobbler(ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
+			Expect(agents.Map[listenBrainzAgentName](ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
 		})
 	})
 })
