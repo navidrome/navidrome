@@ -47,8 +47,8 @@ var _ = Describe("listenBrainzAgent", func() {
 			Duration:          142.2,
 			Participants: map[model.Role]model.ParticipantList{
 				model.RoleArtist: []model.Participant{
-					{Artist: model.Artist{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"}},
-					{Artist: model.Artist{ID: "ar-2", Name: "Artist 2", MbzArtistID: "mbz-222"}},
+					{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"},
+					{ID: "ar-2", Name: "Artist 2", MbzArtistID: "mbz-222"},
 				},
 			},
 		}

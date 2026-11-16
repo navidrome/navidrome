@@ -977,11 +977,9 @@ var _ = Describe("phaseMissingTracks", func() {
 				AlbumID:   oldAlbumID,
 				LibraryID: 1,
 				Missing:   true,
-				Annotations: model.Annotations{
-					PlayCount: 5,
-					Rating:    4,
-					Starred:   true,
-				},
+				PlayCount: 5,
+				Rating:    4,
+				Starred:   true,
 			}
 
 			matchedTrack = model.MediaFile{
@@ -991,11 +989,9 @@ var _ = Describe("phaseMissingTracks", func() {
 				AlbumID:   newAlbumID,
 				LibraryID: 2, // Different library
 				Missing:   false,
-				Annotations: model.Annotations{
-					PlayCount: 2,
-					Rating:    3,
-					Starred:   false,
-				},
+				PlayCount: 2,
+				Rating:    3,
+				Starred:   false,
 			}
 
 			// Store both tracks in the database

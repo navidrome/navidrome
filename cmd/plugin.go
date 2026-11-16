@@ -504,7 +504,7 @@ func usersToJSON(value string) (string, error) {
 		return value, nil
 	}
 	var names []string
-	for _, u := range strings.Split(value, ",") {
+	for u := range strings.SplitSeq(value, ",") {
 		if u = strings.TrimSpace(u); u != "" {
 			names = append(names, u)
 		}
@@ -526,7 +526,7 @@ func librariesToJSON(value string) (string, error) {
 		return value, nil
 	}
 	ids := []int{}
-	for _, l := range strings.Split(value, ",") {
+	for l := range strings.SplitSeq(value, ",") {
 		if l = strings.TrimSpace(l); l != "" {
 			id, err := strconv.Atoi(l)
 			if err != nil {

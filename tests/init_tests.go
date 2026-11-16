@@ -12,7 +12,10 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-var once sync.Once
+var (
+	once    sync.Once
+	appPath string
+)
 
 func Init(t testing.TB, skipOnShort bool) {
 	if skipOnShort && testing.Short() {
@@ -20,10 +23,9 @@ func Init(t testing.TB, skipOnShort bool) {
 	}
 	once.Do(func() {
 		_, file, _, _ := runtime.Caller(0)
-		appPath, _ := filepath.Abs(filepath.Join(filepath.Dir(file), ".."))
-		confPath, _ := filepath.Abs(filepath.Join(appPath, "tests", "navidrome-test.toml"))
+		appPath, _ = filepath.Abs(filepath.Join(filepath.Dir(file), ".."))
+		confPath := filepath.Join(appPath, "tests", "navidrome-test.toml")
 		println("Loading test configuration file from " + confPath)
-		_ = os.Chdir(appPath)
 		conf.LoadFromFile(confPath)
 
 		noLog := os.Getenv("NOLOG")
@@ -31,4 +33,5 @@ func Init(t testing.TB, skipOnShort bool) {
 			log.SetLevel(log.LevelError)
 		}
 	})
+	t.Chdir(appPath)
 }

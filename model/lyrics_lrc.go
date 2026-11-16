@@ -305,10 +305,7 @@ func parseEnhancedLine(text string) (string, []Cue) {
 	finalRaw := rawValue.String()
 	leftTrimBytes := len(finalRaw) - len(strings.TrimLeftFunc(finalRaw, unicode.IsSpace))
 	rightTrimBytes := len(finalRaw) - len(strings.TrimRightFunc(finalRaw, unicode.IsSpace))
-	trimmedEnd := len(finalRaw) - rightTrimBytes
-	if trimmedEnd < leftTrimBytes {
-		trimmedEnd = leftTrimBytes
-	}
+	trimmedEnd := max(len(finalRaw)-rightTrimBytes, leftTrimBytes)
 
 	cues := make([]Cue, 0, len(segments))
 	for _, seg := range segments {

@@ -121,7 +121,7 @@ var shareableKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwor
 // ride along behind a valid first one, and requires all IDs to be of the same kind.
 func (r *shareRepositoryWrapper) resourceType(ctx context.Context, resourceIDs string) (string, error) {
 	resourceType := ""
-	for _, id := range strings.Split(resourceIDs, ",") {
+	for id := range strings.SplitSeq(resourceIDs, ",") {
 		kind, err := model.GetEntityKindByID(ctx, r.ds, id)
 		if err != nil {
 			return "", err

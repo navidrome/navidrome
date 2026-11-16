@@ -395,7 +395,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
-			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "My Mix", Annotations: model.Annotations{Starred: true}}})
+			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "My Mix", Starred: true}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)

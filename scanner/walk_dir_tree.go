@@ -273,7 +273,7 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 		return resolved, true
 	}
 	cur := linkPath
-	for hop := 0; hop < maxSymlinkHops; hop++ {
+	for hop := range maxSymlinkHops {
 		target, err := fs.ReadLink(fsys, cur)
 		if err != nil {
 			if hop == 0 {

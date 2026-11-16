@@ -21,11 +21,13 @@ linters:
     - goprintffuncname
     - gosec
     - misspell
+    - modernize
     - nakedret
     - nilerr
     - nolintlint
     - rowserrcheck
     - unconvert
+    - usetesting
     - whitespace
   disable:
     - staticcheck

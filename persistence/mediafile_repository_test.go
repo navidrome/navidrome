@@ -1373,8 +1373,8 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("keeps the album state independent of the track's own art", func() {
-			mf := model.MediaFile{ID: "mf-2", AlbumID: "al-2"}
-			mf.ImageHash = "aaaaaaaaaaaaaaaa" // the track's own art
+			mf := model.MediaFile{ID: "mf-2", AlbumID: "al-2",
+				ImageHash: "aaaaaaaaaaaaaaaa"} // the track's own art
 			applyItemImage(
 				map[string]model.ItemArtworkInfo{"al-2": {ItemID: "al-2", Hash: "bbbbbbbbbbbbbbbb"}},
 				mf.AlbumID, &mf.AlbumImage,

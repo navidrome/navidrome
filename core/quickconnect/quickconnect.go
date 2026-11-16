@@ -100,7 +100,7 @@ func (qc *quickConnect) Initiate(device Device) (Request, error) {
 		App: strings.Clone(device.App), AppVersion: strings.Clone(device.AppVersion)}
 	now := time.Now()
 	e := &entry{
-		Request:   Request{Device: device, Secret: newSecret(), Code: qc.newCode(), DateAdded: now},
+		Device: device, Secret: newSecret(), Code: qc.newCode(), DateAdded: now,
 		expiresAt: now.Add(timeout),
 	}
 	qc.bySecret[e.Secret] = e
