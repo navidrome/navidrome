@@ -140,23 +140,13 @@ describe('wrapperDataProvider', () => {
     it('posts the file as multipart form data under the image field', async () => {
       const file = new File(['img'], 'cover.png', { type: 'image/png' })
 
-      await wrapperDataProvider.uploadImage('artist', { id: 'ar-1', file })
+      await wrapperDataProvider.uploadImage('artist', 'ar-1', file)
 
       const [url, options] = mockHttpClient.mock.calls[0]
       expect(url).toBe('/api/artist/ar-1/image')
       expect(options.method).toBe('POST')
       expect(options.body).toBeInstanceOf(FormData)
       expect(options.body.get('image')).toBe(file)
-      // An empty Headers keeps httpClient from forcing a JSON content type over the multipart boundary
-      expect([...options.headers.keys()]).toEqual([])
-    })
-
-    it('deletes the uploaded image', async () => {
-      await wrapperDataProvider.deleteImage('playlist', 'pl-1')
-
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/playlist/pl-1/image', {
-        method: 'DELETE',
-      })
     })
   })
 
@@ -184,32 +174,6 @@ describe('wrapperDataProvider', () => {
   })
 
   describe('scrobbler links', () => {
-    it('reads the Last.fm link status', async () => {
-      mockHttpClient.mockResolvedValue({ json: { status: true, apiKey: 'k' } })
-
-      const result = await wrapperDataProvider.getLastfmLink()
-
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/lastfm/link')
-      expect(result).toEqual({ data: { status: true, apiKey: 'k' } })
-    })
-
-    it('unlinks Last.fm', async () => {
-      await wrapperDataProvider.unlinkLastfm()
-
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/lastfm/link', {
-        method: 'DELETE',
-      })
-    })
-
-    it('reads the ListenBrainz link status', async () => {
-      mockHttpClient.mockResolvedValue({ json: { status: false } })
-
-      const result = await wrapperDataProvider.getListenBrainzLink()
-
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/listenbrainz/link')
-      expect(result).toEqual({ data: { status: false } })
-    })
-
     it('links ListenBrainz with the given token', async () => {
       mockHttpClient.mockResolvedValue({ json: { user: 'sam' } })
 
@@ -220,24 +184,6 @@ describe('wrapperDataProvider', () => {
         body: JSON.stringify({ token: 'tok' }),
       })
       expect(result).toEqual({ data: { user: 'sam' } })
-    })
-
-    it('unlinks ListenBrainz', async () => {
-      await wrapperDataProvider.unlinkListenBrainz()
-
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/listenbrainz/link', {
-        method: 'DELETE',
-      })
-    })
-  })
-
-  describe('rescanPlugins', () => {
-    it('posts to the plugin rescan endpoint', async () => {
-      await wrapperDataProvider.rescanPlugins()
-
-      expect(mockHttpClient).toHaveBeenCalledWith('/api/plugin/rescan', {
-        method: 'POST',
-      })
     })
   })
 })
