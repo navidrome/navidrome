@@ -33,6 +33,7 @@ const (
 type LyricsSource struct {
 	Type     LyricsSourceType `structs:"type"               json:"type"`
 	Name     string           `structs:"name,omitempty"     json:"name,omitempty"`
+	PluginID string           `structs:"pluginId,omitempty" json:"pluginId,omitempty"`
 	Provider string           `structs:"provider,omitempty" json:"provider,omitempty"`
 	Format   string           `structs:"format,omitempty"   json:"format,omitempty"`
 }
@@ -45,15 +46,17 @@ type Line struct {
 }
 
 type Lyrics struct {
-	DisplayArtist string        `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
-	DisplayTitle  string        `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
-	Kind          string        `structs:"kind,omitempty"          json:"kind,omitempty"`
-	Lang          string        `structs:"lang"                    json:"lang"`
-	Agents        []Agent       `structs:"agents,omitempty"       json:"agents,omitempty"`
-	Line          []Line        `structs:"line"                    json:"line"`
-	Offset        *int64        `structs:"offset,omitempty"        json:"offset,omitempty"`
-	Source        *LyricsSource `structs:"source,omitempty"        json:"source,omitempty"`
-	Synced        bool          `structs:"synced"                  json:"synced"`
+	DisplayArtist string                 `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string                 `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string                 `structs:"kind,omitempty"          json:"kind,omitempty"`
+	Lang          string                 `structs:"lang"                    json:"lang"`
+	Agents        []Agent                `structs:"agents,omitempty"       json:"agents,omitempty"`
+	Line          []Line                 `structs:"line"                    json:"line"`
+	Offset        *int64                 `structs:"offset,omitempty"        json:"offset,omitempty"`
+	Source        *LyricsSource          `structs:"source,omitempty"        json:"source,omitempty"`
+	Variant       *LyricsVariantIdentity `structs:"variant,omitempty"       json:"variant,omitempty"`
+	Selection     string                 `structs:"selection,omitempty"     json:"selection,omitempty"`
+	Synced        bool                   `structs:"synced"                  json:"synced"`
 }
 
 // Lyric kinds, as defined by the OpenSubsonic songLyrics v2 contract. These are

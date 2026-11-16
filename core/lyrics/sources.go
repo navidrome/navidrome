@@ -74,7 +74,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name.
-func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, pluginName string) (model.LyricList, error) {
+func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, pluginName string, detailed bool) (model.LyricList, error) {
 	if l.pluginLoader == nil {
 		log.Debug(ctx, "Invalid lyric source", "source", pluginName)
 		return nil, nil
@@ -86,7 +86,17 @@ func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, plu
 		return nil, nil
 	}
 
-	lyricsList, err := provider.GetLyrics(ctx, mf)
+	var lyricsList model.LyricList
+	var err error
+	if detailed {
+		if detailedProvider, ok := provider.(DetailedProvider); ok {
+			lyricsList, err = detailedProvider.GetLyricsDetailed(ctx, mf)
+		} else {
+			lyricsList, err = provider.GetLyrics(ctx, mf)
+		}
+	} else {
+		lyricsList, err = provider.GetLyrics(ctx, mf)
+	}
 	if err != nil {
 		return nil, err
 	}

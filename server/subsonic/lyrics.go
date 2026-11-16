@@ -60,6 +60,42 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced b
 	return &responses.LyricsList{StructuredLyrics: lyricList}
 }
 
+// buildLyricsVariants maps the addressable variant listing. Documents are not
+// included; clients retrieve one exact selection separately.
+func buildLyricsVariants(variants []model.LyricsVariant) *responses.LyricsVariants {
+	rows := make([]responses.LyricsVariant, 0, len(variants))
+	for _, variant := range variants {
+		rows = append(rows, responses.LyricsVariant{
+			PluginID:   variant.PluginID,
+			PluginName: variant.PluginName,
+			Identity: responses.LyricsVariantIdentity{
+				Version:   variant.Identity.Version,
+				Instance:  variant.Identity.Instance,
+				Recording: variant.Identity.Recording,
+				Language:  variant.Identity.Language,
+				Role:      variant.Identity.Role,
+				Format:    variant.Identity.Format,
+			},
+			Selection:     variant.Selection,
+			Provider:      variant.Provider,
+			Language:      variant.Language,
+			Role:          variant.Role,
+			Format:        variant.Format,
+			PlaybackIndex: variant.PlaybackIndex,
+			Original: responses.LyricsOriginalInfo{
+				Available:  variant.Original.Available,
+				Format:     variant.Original.Format,
+				Provenance: variant.Original.Provenance,
+				MediaType:  variant.Original.MediaType,
+				Extension:  variant.Original.Extension,
+				Size:       variant.Original.Size,
+				Reason:     variant.Original.Reason,
+			},
+		})
+	}
+	return &responses.LyricsVariants{Variants: rows}
+}
+
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
 	agents := newLyricAgents(lyrics.Agents)
 
@@ -88,9 +124,21 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 			structured.Source = &responses.LyricsSource{
 				Type:     string(lyrics.Source.Type),
 				Name:     lyrics.Source.Name,
+				PluginID: lyrics.Source.PluginID,
 				Provider: lyrics.Source.Provider,
 				Format:   lyrics.Source.Format,
 			}
+		}
+		if lyrics.Variant != nil {
+			structured.Variant = &responses.LyricsVariantIdentity{
+				Version:   lyrics.Variant.Version,
+				Instance:  lyrics.Variant.Instance,
+				Recording: lyrics.Variant.Recording,
+				Language:  lyrics.Variant.Language,
+				Role:      lyrics.Variant.Role,
+				Format:    lyrics.Variant.Format,
+			}
+			structured.Selection = lyrics.Selection
 		}
 		if len(cueLines) > 0 && len(agents.response) > 0 {
 			structured.Agents = agents.response

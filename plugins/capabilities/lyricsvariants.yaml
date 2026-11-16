@@ -1,0 +1,281 @@
+version: v1-draft
+exports:
+    nd_lyrics_get_lyrics_v2:
+        description: |-
+            Playback v2 returns the same playback entries as GetLyrics plus a
+            versioned identity and every cached representation from each source.
+        input:
+            $ref: '#/components/schemas/GetLyricsV2Request'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/GetLyricsV2Response'
+            contentType: application/json
+    nd_lyrics_get_variants:
+        description: List returns the currently cached, addressable representations.
+        input:
+            $ref: '#/components/schemas/GetLyricsVariantsRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/GetLyricsVariantsResponse'
+            contentType: application/json
+    nd_lyrics_get_original:
+        description: Original returns one exact native document for one selection.
+        input:
+            $ref: '#/components/schemas/GetLyricsOriginalRequest'
+            contentType: application/json
+        output:
+            $ref: '#/components/schemas/GetLyricsOriginalResponse'
+            contentType: application/json
+components:
+    schemas:
+        GetLyricsOriginalRequest:
+            properties:
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+                identity:
+                    $ref: '#/components/schemas/LyricsVariant'
+            required:
+                - track
+                - identity
+        GetLyricsOriginalResponse:
+            properties:
+                identity:
+                    $ref: '#/components/schemas/LyricsVariant'
+                available:
+                    type: boolean
+                format:
+                    type: string
+                provenance:
+                    type: string
+                mediaType:
+                    type: string
+                extension:
+                    type: string
+                document:
+                    type: string
+                    format: byte
+                unavailableReason:
+                    type: string
+            required:
+                - identity
+                - available
+        GetLyricsV2Request:
+            properties:
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+            required:
+                - track
+        GetLyricsV2Response:
+            properties:
+                lyrics:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LyricsV2Text'
+                source:
+                    $ref: '#/components/schemas/LyricsSource'
+                    nullable: true
+            required:
+                - lyrics
+        GetLyricsVariantsRequest:
+            properties:
+                track:
+                    $ref: '#/components/schemas/TrackInfo'
+            required:
+                - track
+        GetLyricsVariantsResponse:
+            properties:
+                variants:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LyricsVariantEntry'
+            required:
+                - variants
+        LyricsOriginalInfo:
+            description: LyricsOriginalInfo reports whether an exact native document is retrievable.
+            properties:
+                available:
+                    type: boolean
+                format:
+                    type: string
+                provenance:
+                    type: string
+                mediaType:
+                    type: string
+                extension:
+                    type: string
+                size:
+                    type: integer
+                    format: int32
+                reason:
+                    type: string
+            required:
+                - available
+        LyricsSource:
+            description: |-
+                LyricsSource identifies the optional upstream provider and format selected
+                by a plugin. Navidrome supplies the plugin name and source type itself.
+                The response-level value is the default for entries without their own.
+            properties:
+                provider:
+                    type: string
+                format:
+                    type: string
+        LyricsV2Text:
+            description: LyricsV2Text is one playback entry with its optional addressable identity.
+            properties:
+                lang:
+                    type: string
+                text:
+                    type: string
+                source:
+                    $ref: '#/components/schemas/LyricsSource'
+                    nullable: true
+                variant:
+                    $ref: '#/components/schemas/LyricsVariant'
+                    nullable: true
+            required:
+                - text
+        LyricsVariant:
+            description: LyricsVariant is the versioned identity of one playback representation.
+            properties:
+                version:
+                    type: integer
+                    format: int32
+                instance:
+                    type: string
+                recording:
+                    type: string
+                language:
+                    type: string
+                role:
+                    type: string
+                format:
+                    type: string
+            required:
+                - version
+        LyricsVariantEntry:
+            description: |-
+                LyricsVariantEntry is one listing row. PlaybackIndex is advisory: the
+                identity is the stable link to the playback entry.
+            properties:
+                identity:
+                    $ref: '#/components/schemas/LyricsVariant'
+                provider:
+                    type: string
+                language:
+                    type: string
+                role:
+                    type: string
+                format:
+                    type: string
+                playbackIndex:
+                    type: integer
+                    format: int32
+                original:
+                    $ref: '#/components/schemas/LyricsOriginalInfo'
+            required:
+                - identity
+                - playbackIndex
+                - original
+        TrackInfo:
+            description: TrackInfo contains track metadata.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome track ID.
+                title:
+                    type: string
+                    description: Title is the track title.
+                album:
+                    type: string
+                    description: Album is the album name.
+                artist:
+                    type: string
+                    description: Artist is the formatted artist name for display (e.g., "Artist1 • Artist2").
+                albumArtist:
+                    type: string
+                    description: AlbumArtist is the formatted album artist name for display.
+                artists:
+                    type: array
+                    description: Artists is the list of track artists.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
+                albumArtists:
+                    type: array
+                    description: AlbumArtists is the list of album artists.
+                    items:
+                        $ref: '#/components/schemas/ArtistRef'
+                duration:
+                    type: number
+                    format: float
+                    description: Duration is the track duration in seconds.
+                trackNumber:
+                    type: integer
+                    format: int32
+                    description: TrackNumber is the track number on the album.
+                discNumber:
+                    type: integer
+                    format: int32
+                    description: DiscNumber is the disc number.
+                mbzRecordingId:
+                    type: string
+                    description: MBZRecordingID is the MusicBrainz recording ID.
+                mbzAlbumId:
+                    type: string
+                    description: MBZAlbumID is the MusicBrainz album/release ID.
+                mbzReleaseGroupId:
+                    type: string
+                    description: MBZReleaseGroupID is the MusicBrainz release group ID.
+                mbzReleaseTrackId:
+                    type: string
+                    description: MBZReleaseTrackID is the MusicBrainz release track ID.
+                libraryId:
+                    type: integer
+                    format: int32
+                    description: |-
+                        LibraryID is the ID of the library the track belongs to.
+                        Only included if the plugin has library permission with filesystem access for the track's library.
+                path:
+                    type: string
+                    description: |-
+                        Path is the full path to the track file, relative to the library root.
+                        Only included if the plugin has library permission with filesystem access for the track's library.
+            required:
+                - id
+                - title
+                - album
+                - artist
+                - albumArtist
+                - artists
+                - albumArtists
+                - duration
+                - trackNumber
+                - discNumber
+        ArtistRef:
+            description: |-
+                ArtistRef is the minimal information a plugin returns for Navidrome to match an
+                artist against the library. It is a reference, not a full artist entity: it
+                carries only matching keys (name and optional internal/MusicBrainz IDs) plus a
+                few projection fields used when describing a track's participants, never
+                descriptive data such as biographies or images.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+                sortName:
+                    type: string
+                    description: SortName is the artist name used for sorting (if known).
+                role:
+                    type: string
+                    description: Role is the participation category (e.g. "artist", "composer", "performer").
+                subRole:
+                    type: string
+                    description: SubRole is a specialization within Role (e.g. the instrument for a performer).
+            required:
+                - name
