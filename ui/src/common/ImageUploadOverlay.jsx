@@ -3,10 +3,9 @@ import { makeStyles } from '@material-ui/core/styles'
 import PhotoCameraIcon from '@material-ui/icons/PhotoCamera'
 import DeleteIcon from '@material-ui/icons/Delete'
 import { useTranslate, useNotify, useRefresh } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { useCallback, useRef } from 'react'
 import config from '../config'
-import { REST_URL } from '../consts'
-import { httpClient } from '../dataProvider'
 
 const useStyles = makeStyles(() => ({
   coverOverlay: {
@@ -45,6 +44,7 @@ export const ImageUploadOverlay = ({
   const translate = useTranslate()
   const notify = useNotify()
   const refresh = useRefresh()
+  const dataProvider = useDirectDataProvider()
   const classes = useStyles()
   const fileInputRef = useRef(null)
 
@@ -63,15 +63,8 @@ export const ImageUploadOverlay = ({
       const file = e.target.files[0]
       if (!file || !entityId) return
 
-      const formData = new FormData()
-      formData.append('image', file)
-
       try {
-        await httpClient(`${REST_URL}/${entityType}/${entityId}/image`, {
-          method: 'POST',
-          headers: new Headers({}),
-          body: formData,
-        })
+        await dataProvider.uploadImage(entityType, { id: entityId, file })
         notify(`message.coverUploaded`, 'success')
         if (onImageChange) onImageChange()
         refresh()
@@ -81,7 +74,7 @@ export const ImageUploadOverlay = ({
 
       e.target.value = ''
     },
-    [entityType, entityId, notify, refresh, onImageChange],
+    [dataProvider, entityType, entityId, notify, refresh, onImageChange],
   )
 
   const handleRemoveCover = useCallback(
@@ -90,9 +83,7 @@ export const ImageUploadOverlay = ({
       if (!entityId) return
 
       try {
-        await httpClient(`${REST_URL}/${entityType}/${entityId}/image`, {
-          method: 'DELETE',
-        })
+        await dataProvider.deleteImage(entityType, entityId)
         notify(`message.coverRemoved`, 'success')
         if (onImageChange) onImageChange()
         refresh()
@@ -100,7 +91,7 @@ export const ImageUploadOverlay = ({
         notify(`message.coverRemoveError`, 'warning')
       }
     },
-    [entityType, entityId, notify, refresh, onImageChange],
+    [dataProvider, entityType, entityId, notify, refresh, onImageChange],
   )
 
   if (!canEdit) return null
