@@ -119,7 +119,7 @@ pub struct LyricsOriginalInfo {
     pub media_type: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub extension: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "is_zero_i32")]
     pub size: i32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub reason: String,
