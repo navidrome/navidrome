@@ -41,11 +41,11 @@ type LyricsV2Text struct {
 // richness and content state. AutoSaveEligible is true only for a validated
 // recording.
 type LyricsMatch struct {
-	Status        string   `json:"status"`
-	Reasons       []string `json:"reasons,omitempty"`
-	DurationDelta float64  `json:"durationDelta,omitempty"`
-	Recording     string   `json:"recording,omitempty"`
-	AutoSave      bool     `json:"autoSaveEligible"`
+	Status           string   `json:"status"`
+	Reasons          []string `json:"reasons,omitempty"`
+	DurationDelta    float64  `json:"durationDelta,omitempty"`
+	Recording        string   `json:"recording,omitempty"`
+	AutoSaveEligible bool     `json:"autoSaveEligible"`
 }
 
 // LyricsEvidence is a typed, attributed provider observation separate from

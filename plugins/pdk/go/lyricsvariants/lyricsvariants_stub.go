@@ -68,11 +68,11 @@ type LyricsEvidence struct {
 // richness and content state. AutoSaveEligible is true only for a validated
 // recording.
 type LyricsMatch struct {
-	Status        string   `json:"status"`
-	Reasons       []string `json:"reasons,omitempty"`
-	DurationDelta float64  `json:"durationDelta,omitempty"`
-	Recording     string   `json:"recording,omitempty"`
-	AutoSave      bool     `json:"autoSaveEligible"`
+	Status           string   `json:"status"`
+	Reasons          []string `json:"reasons,omitempty"`
+	DurationDelta    float64  `json:"durationDelta,omitempty"`
+	Recording        string   `json:"recording,omitempty"`
+	AutoSaveEligible bool     `json:"autoSaveEligible"`
 }
 
 // LyricsOriginalInfo reports whether an exact native document is retrievable.

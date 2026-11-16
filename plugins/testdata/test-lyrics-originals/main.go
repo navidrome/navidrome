@@ -87,11 +87,11 @@ func (t *testLyricsOriginals) GetLyricsOriginal(request lyricsvariants.GetLyrics
 }
 
 func validatedMatch() *lyricsvariants.LyricsMatch {
-	return &lyricsvariants.LyricsMatch{Status: "validated", Reasons: []string{"duration-within-2s"}, AutoSave: true}
+	return &lyricsvariants.LyricsMatch{Status: "validated", Reasons: []string{"duration-within-2s"}, AutoSaveEligible: true}
 }
 
 func ambiguousMatch() *lyricsvariants.LyricsMatch {
-	return &lyricsvariants.LyricsMatch{Status: "ambiguous", Reasons: []string{"version-unconfirmed"}, AutoSave: false}
+	return &lyricsvariants.LyricsMatch{Status: "ambiguous", Reasons: []string{"version-unconfirmed"}, AutoSaveEligible: false}
 }
 
 func qrcIdentity() *lyricsvariants.LyricsVariant {

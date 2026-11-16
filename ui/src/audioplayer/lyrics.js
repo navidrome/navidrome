@@ -320,6 +320,12 @@ export const legacyVariantKey = (source) => {
 export const findLyricVariant = (variants, key) => {
   const exact = variants.find((variant) => variant.key === key)
   if (exact || !key) return exact
+  // Preferences saved before selections were addressable used the composite
+  // source key. Resolve that before the older label-only fallback.
+  const sourceMatches = variants.filter(
+    (variant) => variantKey(variant.source) === key,
+  )
+  if (sourceMatches.length === 1) return sourceMatches[0]
   const matches = variants.filter(
     (variant) => legacyVariantKey(variant.source) === key,
   )
@@ -441,9 +447,11 @@ export const selectLyricLayers = (
   const scopedLayer = (kind) => {
     const entries = grouped[kind]
     if (!selectedVariant || entries.length === 0) return entries
-    const scoped = entries.filter(
-      (lyric) => variantKey(lyric?.source) === selectedVariant.key,
-    )
+    const scoped = entries.filter((lyric) => {
+      if (variantKey(lyric?.source, lyric) === selectedVariant.key) return true
+      if (lyric?.selection || selectedVariant.lyric?.selection) return false
+      return variantKey(lyric?.source) === variantKey(selectedVariant.source)
+    })
     return scoped.length > 0
       ? scoped
       : entries.filter(

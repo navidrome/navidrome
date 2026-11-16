@@ -657,7 +657,7 @@ func (p Param) RustParamTypeWithShared(knownStructs map[string]bool, shared map[
 
 // RustName returns the snake_case Rust name for this parameter.
 func (p Param) RustName() string {
-	return ToSnakeCase(p.Name)
+	return rustIdentifier(p.Name)
 }
 
 // NeedsToOwned returns true if the parameter needs .to_owned() when used.
@@ -672,7 +672,26 @@ func (f FieldDef) RustType(knownStructs map[string]bool) string {
 
 // RustName returns the snake_case Rust name for this field.
 func (f FieldDef) RustName() string {
-	return ToSnakeCase(f.Name)
+	return rustIdentifier(f.Name)
+}
+
+var rustKeywords = map[string]bool{
+	"as": true, "break": true, "const": true, "continue": true, "crate": true,
+	"else": true, "enum": true, "extern": true, "false": true, "fn": true,
+	"for": true, "if": true, "impl": true, "in": true, "let": true, "loop": true,
+	"match": true, "mod": true, "move": true, "mut": true, "pub": true,
+	"ref": true, "return": true, "self": true, "static": true, "struct": true,
+	"super": true, "trait": true, "true": true, "type": true, "unsafe": true,
+	"use": true, "where": true, "while": true, "async": true, "await": true,
+	"dyn": true,
+}
+
+func rustIdentifier(name string) string {
+	identifier := ToSnakeCase(name)
+	if rustKeywords[identifier] {
+		return "r#" + identifier
+	}
+	return identifier
 }
 
 // NeedsDefault returns true if the field needs #[serde(default)] attribute.

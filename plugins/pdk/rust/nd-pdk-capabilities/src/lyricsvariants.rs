@@ -121,7 +121,7 @@ pub struct LyricsEvidence {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub recording: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub match: Option<LyricsMatch>,
+    pub r#match: Option<LyricsMatch>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub reason: String,
 }
@@ -140,7 +140,7 @@ pub struct LyricsMatch {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub recording: String,
     #[serde(default)]
-    pub auto_save: bool,
+    pub auto_save_eligible: bool,
 }
 /// LyricsOriginalInfo reports whether an exact native document is retrievable.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -185,7 +185,7 @@ pub struct LyricsV2Text {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<LyricsVariant>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub match: Option<LyricsMatch>,
+    pub r#match: Option<LyricsMatch>,
 }
 /// LyricsVariant is the versioned identity of one playback representation.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -224,7 +224,7 @@ pub struct LyricsVariantEntry {
     #[serde(default)]
     pub original: LyricsOriginalInfo,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub match: Option<LyricsMatch>,
+    pub r#match: Option<LyricsMatch>,
 }
 /// TrackInfo contains track metadata.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

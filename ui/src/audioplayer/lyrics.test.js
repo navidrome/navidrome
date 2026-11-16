@@ -691,3 +691,38 @@ describe('recording match selection', () => {
     expect(variants[1].key).toBe('selection:sel-b')
   })
 })
+
+describe('selection preference compatibility', () => {
+  const main = {
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value: 'selected main' }],
+    selection: 'sel-main',
+    match: { status: 'validated', autoSaveEligible: true },
+    source: { type: 'plugin', name: 'Better Lyrics', provider: 'LRCLib' },
+  }
+
+  it('resolves a preference saved with the old composite source key', () => {
+    const oldKey = 'plugin:better%20lyrics:lrclib'
+    expect(findLyricVariant(collectLyricVariants([main]), oldKey)).toBeTruthy()
+  })
+
+  it('scopes an auxiliary layer that shares the main selection', () => {
+    const translation = {
+      kind: 'translation',
+      lang: 'es',
+      synced: true,
+      line: [{ start: 0, value: 'traducción' }],
+      selection: 'sel-main',
+      source: { type: 'plugin', name: 'Better Lyrics', provider: 'LRCLib' },
+    }
+    const layers = selectLyricLayers(
+      [main, translation],
+      'en',
+      'selection:sel-main',
+    )
+    expect(layers.main.line[0].value).toBe('selected main')
+    expect(layers.translation.line[0].value).toBe('traducción')
+  })
+})

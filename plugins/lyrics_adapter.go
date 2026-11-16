@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -335,17 +336,18 @@ func modelLyricsMatch(match *capabilities.LyricsMatch) *model.LyricsMatch {
 	if match == nil {
 		return nil
 	}
+	status := boundedBytes(match.Status, 32)
 	out := &model.LyricsMatch{
-		Status:        boundedText(match.Status, 32),
+		Status:        status,
 		DurationDelta: match.DurationDelta,
-		Recording:     boundedText(match.Recording, model.MaxLyricsVariantRecordingBytes),
-		AutoSave:      match.AutoSave,
+		Recording:     boundedBytes(match.Recording, model.MaxLyricsVariantRecordingBytes),
+		AutoSave:      match.AutoSaveEligible && status == model.LyricsMatchValidated,
 	}
 	for _, reason := range match.Reasons {
 		if len(out.Reasons) >= model.MaxLyricsMatchReasons {
 			break
 		}
-		out.Reasons = append(out.Reasons, boundedText(reason, model.MaxLyricsMatchReasonBytes))
+		out.Reasons = append(out.Reasons, boundedBytes(reason, model.MaxLyricsMatchReasonBytes))
 	}
 	if !out.Valid() {
 		return nil
@@ -358,11 +360,11 @@ func modelLyricsEvidence(pluginID string, evidence []capabilities.LyricsEvidence
 	for _, entry := range evidence {
 		mapped := model.LyricsEvidence{
 			PluginID:  pluginID,
-			Kind:      boundedText(entry.Kind, model.MaxLyricsEvidenceKindBytes),
-			Provider:  boundedText(entry.Provider, 128),
-			Recording: boundedText(entry.Recording, model.MaxLyricsVariantRecordingBytes),
+			Kind:      boundedBytes(entry.Kind, model.MaxLyricsEvidenceKindBytes),
+			Provider:  boundedBytes(entry.Provider, 128),
+			Recording: boundedBytes(entry.Recording, model.MaxLyricsVariantRecordingBytes),
 			Match:     modelLyricsMatch(entry.Match),
-			Reason:    boundedText(entry.Reason, 160),
+			Reason:    boundedBytes(entry.Reason, 160),
 		}
 		if !mapped.Valid() {
 			continue
@@ -406,6 +408,19 @@ func boundedText(value string, limit int) string {
 	value = strings.TrimSpace(value)
 	if runes := []rune(value); len(runes) > limit {
 		return string(runes[:limit])
+	}
+	return value
+}
+
+// boundedBytes limits a UTF-8 string by bytes without splitting a rune.
+func boundedBytes(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if limit <= 0 || len(value) <= limit {
+		return value
+	}
+	for len(value) > limit {
+		_, size := utf8.DecodeLastRuneInString(value)
+		value = value[:len(value)-size]
 	}
 	return value
 }
