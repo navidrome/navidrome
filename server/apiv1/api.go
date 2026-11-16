@@ -56,7 +56,7 @@ func problemRecoverer(next http.Handler) http.Handler {
 				return
 			}
 			if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
-				panic(rec)
+				panic(rec) //nolint:forbidigo
 			}
 			log.Error(r.Context(), "API v1: panic in handler", "panic", rec, "stack", string(debug.Stack()))
 			writeProblemStatus(w, r, http.StatusInternalServerError, ProblemCodeInternal, "")

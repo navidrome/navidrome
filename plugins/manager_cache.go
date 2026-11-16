@@ -35,7 +35,7 @@ func purgeCacheBySize(ctx context.Context, dir, maxSize string) {
 	walk := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			log.Trace(ctx, "Failed to access plugin cache entry", "path", path, err)
-			return nil //nolint:nilerr
+			return nil
 		}
 		if d.IsDir() {
 			return nil
@@ -43,7 +43,7 @@ func purgeCacheBySize(ctx context.Context, dir, maxSize string) {
 		info, err := d.Info()
 		if err != nil {
 			log.Trace(ctx, "Failed to get file info for plugin cache entry", "path", path, err)
-			return nil //nolint:nilerr
+			return nil
 		}
 		files = append(files, fileInfo{
 			path: path,

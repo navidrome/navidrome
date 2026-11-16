@@ -55,10 +55,12 @@ var _ ArtistMBIDRetriever = (*MockAgent)(nil)
 var _ PluginLoader = (*MockPluginLoader)(nil)
 
 var _ = Describe("Agents with Plugin Loading", func() {
+	var ctx context.Context
 	var mockLoader *MockPluginLoader
 	var agents *Agents
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		mockLoader = NewMockPluginLoader()
 
 		// Create the agents instance with our mock loader
@@ -144,8 +146,6 @@ var _ = Describe("Agents with Plugin Loading", func() {
 		})
 
 		It("should load plugin agents on demand", func() {
-			ctx := context.Background()
-
 			// Configure to use our plugin
 			conf.Update(func(c *conf.Options) { c.Agents = "plugin_agent" })
 
@@ -236,8 +236,6 @@ var _ = Describe("Agents with Plugin Loading", func() {
 		})
 
 		It("should NOT call LoadMediaAgent for built-in agents", func() {
-			ctx := context.Background()
-
 			// Create a mock built-in agent
 			Register("builtin_agent", func(ds model.DataStore) Interface {
 				return &MockAgent{
@@ -263,8 +261,6 @@ var _ = Describe("Agents with Plugin Loading", func() {
 		})
 
 		It("should NOT call LoadMediaAgent for invalid agent names", func() {
-			ctx := context.Background()
-
 			// Configure with an invalid agent name (not built-in, not a plugin)
 			conf.Update(func(c *conf.Options) { c.Agents = "invalid_agent" })
 

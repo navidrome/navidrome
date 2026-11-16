@@ -16,12 +16,14 @@ import (
 )
 
 var _ = Describe("Album Lists", func() {
+	var ctx context.Context
 	var router *Router
 	var ds model.DataStore
 	var mockRepo *tests.MockAlbumRepo
 	var w *httptest.ResponseRecorder
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		mockRepo = ds.Album().(*tests.MockAlbumRepo)
@@ -66,7 +68,6 @@ var _ = Describe("Album Lists", func() {
 
 		Context("with musicFolderId parameter", func() {
 			var user model.User
-			var ctx context.Context
 
 			BeforeEach(func() {
 				user = model.User{
@@ -77,7 +78,7 @@ var _ = Describe("Album Lists", func() {
 						{ID: 3, Name: "Library 3"},
 					},
 				}
-				ctx = request.WithUser(context.Background(), user)
+				ctx = request.WithUser(ctx, user)
 			})
 
 			It("should filter albums by specific library when musicFolderId is provided", func() {
@@ -171,7 +172,6 @@ var _ = Describe("Album Lists", func() {
 
 		Context("with musicFolderId parameter", func() {
 			var user model.User
-			var ctx context.Context
 
 			BeforeEach(func() {
 				user = model.User{
@@ -182,7 +182,7 @@ var _ = Describe("Album Lists", func() {
 						{ID: 3, Name: "Library 3"},
 					},
 				}
-				ctx = request.WithUser(context.Background(), user)
+				ctx = request.WithUser(ctx, user)
 			})
 
 			It("should filter albums by specific library when musicFolderId is provided", func() {
@@ -252,7 +252,6 @@ var _ = Describe("Album Lists", func() {
 
 		Context("with musicFolderId parameter", func() {
 			var user model.User
-			var ctx context.Context
 
 			BeforeEach(func() {
 				user = model.User{
@@ -263,7 +262,7 @@ var _ = Describe("Album Lists", func() {
 						{ID: 3, Name: "Library 3"},
 					},
 				}
-				ctx = request.WithUser(context.Background(), user)
+				ctx = request.WithUser(ctx, user)
 			})
 
 			It("should filter songs by specific library when musicFolderId is provided", func() {
@@ -344,7 +343,6 @@ var _ = Describe("Album Lists", func() {
 
 		Context("with musicFolderId parameter", func() {
 			var user model.User
-			var ctx context.Context
 
 			BeforeEach(func() {
 				user = model.User{
@@ -355,7 +353,7 @@ var _ = Describe("Album Lists", func() {
 						{ID: 3, Name: "Library 3"},
 					},
 				}
-				ctx = request.WithUser(context.Background(), user)
+				ctx = request.WithUser(ctx, user)
 			})
 
 			It("should filter songs by specific library when musicFolderId is provided", func() {
@@ -441,7 +439,6 @@ var _ = Describe("Album Lists", func() {
 
 		Context("with musicFolderId parameter", func() {
 			var user model.User
-			var ctx context.Context
 
 			BeforeEach(func() {
 				user = model.User{
@@ -452,7 +449,7 @@ var _ = Describe("Album Lists", func() {
 						{ID: 3, Name: "Library 3"},
 					},
 				}
-				ctx = request.WithUser(context.Background(), user)
+				ctx = request.WithUser(ctx, user)
 			})
 
 			It("should filter starred items by specific library when musicFolderId is provided", func() {
@@ -503,7 +500,6 @@ var _ = Describe("Album Lists", func() {
 
 		Context("with musicFolderId parameter", func() {
 			var user model.User
-			var ctx context.Context
 
 			BeforeEach(func() {
 				user = model.User{
@@ -514,7 +510,7 @@ var _ = Describe("Album Lists", func() {
 						{ID: 3, Name: "Library 3"},
 					},
 				}
-				ctx = request.WithUser(context.Background(), user)
+				ctx = request.WithUser(ctx, user)
 			})
 
 			It("should filter starred items by specific library when musicFolderId is provided", func() {

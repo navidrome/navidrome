@@ -96,7 +96,7 @@ var _ = Describe("RebuildFTS schema guard", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 	})
 
 	It("refuses to run on a schema older than the FTS migration", func() {
@@ -129,7 +129,7 @@ var _ = Describe("Repair", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		database = newDB(ctx, 0)
 
 		for _, stmt := range []string{

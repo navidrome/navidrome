@@ -25,8 +25,8 @@ var _ = Describe("LibraryService", Ordered, func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(conf.SnapshotConfig())
-		ctx = context.Background()
 		ds = &tests.MockDataStore{}
 	})
 
@@ -291,7 +291,6 @@ var _ = Describe("LibraryService", Ordered, func() {
 			// We can't fully test without a real WASM plugin, but we can verify the setup
 			Expect(manager.ds).ToNot(BeNil())
 
-			ctx := context.Background()
 			libs, err := manager.ds.Library().GetAll(adminContext(ctx))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(libs).To(HaveLen(1))

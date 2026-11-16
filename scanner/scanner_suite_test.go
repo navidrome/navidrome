@@ -1,7 +1,6 @@
 package scanner_test
 
 import (
-	"context"
 	"io/fs"
 	"testing"
 
@@ -42,7 +41,7 @@ func TestScanner(t *testing.T) {
 	)
 
 	tests.Init(t, true)
-	defer db.Close(context.Background())
+	defer db.Close(t.Context())
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scanner Suite")

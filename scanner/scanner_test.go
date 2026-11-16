@@ -59,6 +59,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		tmpDir, err := os.MkdirTemp("", "scanner-test")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
+		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL") })
 		log.Warn("Using DB at " + conf.Server().DbPath)
 		//conf.Server.DbPath = ":memory:"
@@ -74,7 +75,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 		db.Init(ctx)
 		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
+			Expect(tests.ClearDB(ctx)).To(Succeed())
 		})
 
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}

@@ -109,7 +109,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := hc.Do(req) //nolint:gosec
+	resp, err := hc.Do(req)
 	if err != nil {
 		log.Trace(ctx, "Could not send Insights data", err)
 		return

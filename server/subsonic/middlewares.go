@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -294,7 +293,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			ctx := r.Context()
 			userName, _ := request.UsernameFrom(ctx)
 			client, _ := request.ClientFrom(ctx)
-			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			ip := middleware.GetClientIP(r.Context())
 			userAgent := canonicalUserAgent(r)
 
 			var player *model.Player

@@ -23,6 +23,7 @@ import (
 
 var _ = Describe("Archiver", func() {
 	var (
+		ctx  context.Context
 		arch core.Archiver
 		ms   *mockMediaStreamer
 		dc   *fakeDecider
@@ -32,6 +33,7 @@ var _ = Describe("Archiver", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ms = &mockMediaStreamer{}
 		dc = &fakeDecider{}
 		sh = &mockShare{}
@@ -57,7 +59,7 @@ var _ = Describe("Archiver", func() {
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(3)
 
 			out := new(bytes.Buffer)
-			err := arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)
+			err := arch.ZipAlbum(ctx, "1", "mp3", 128, out)
 			Expect(err).To(BeNil())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
@@ -106,7 +108,7 @@ var _ = Describe("Archiver", func() {
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
-			err := arch.ZipArtist(context.Background(), "1", "mp3", 128, out)
+			err := arch.ZipArtist(ctx, "1", "mp3", 128, out)
 			Expect(err).To(BeNil())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
@@ -127,7 +129,7 @@ var _ = Describe("Archiver", func() {
 				ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
 
 				out := new(bytes.Buffer)
-				Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+				Expect(arch.ZipArtist(ctx, "1", "mp3", 128, out)).To(Succeed())
 				zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
 				Expect(err).To(BeNil())
 				names := make([]string, len(zr.File))
@@ -267,7 +269,7 @@ var _ = Describe("Archiver", func() {
 				Return(nil, stream.ErrTooManyTranscodes).Once()
 
 			out := new(bytes.Buffer)
-			err := arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)
+			err := arch.ZipAlbum(ctx, "1", "mp3", 128, out)
 			Expect(err).To(MatchError(stream.ErrTooManyTranscodes))
 			// NewStream should only have been called once: the loop must bail
 			// out on the rejection instead of trying every remaining track.
@@ -293,7 +295,7 @@ var _ = Describe("Archiver", func() {
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
-			err := arch.ZipShare(context.Background(), share, out)
+			err := arch.ZipShare(ctx, share, out)
 			Expect(err).To(BeNil())
 
 			// Share.Load records a visit; re-loading here would double-count
@@ -353,7 +355,7 @@ var _ = Describe("Archiver", func() {
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
-			err := arch.ZipPlaylist(context.Background(), "1", "mp3", 128, out)
+			err := arch.ZipPlaylist(ctx, "1", "mp3", 128, out)
 			Expect(err).To(BeNil())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
@@ -396,7 +398,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+			Expect(arch.ZipAlbum(ctx, "1", "mp3", 128, out)).To(Succeed())
 
 			files := readZip(out)
 			Expect(files).To(HaveLen(2))
@@ -417,7 +419,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+			Expect(arch.ZipArtist(ctx, "1", "mp3", 128, out)).To(Succeed())
 
 			files := readZip(out)
 			Expect(files).To(HaveLen(5))
@@ -438,7 +440,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+			Expect(arch.ZipArtist(ctx, "1", "mp3", 128, out)).To(Succeed())
 
 			files := readZip(out)
 			Expect(files).To(HaveKeyWithValue("Greatest Hits [2001]/folder.jpg", jpegData))
@@ -459,7 +461,7 @@ var _ = Describe("Archiver", func() {
 			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipPlaylist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+			Expect(arch.ZipPlaylist(ctx, "1", "mp3", 128, out)).To(Succeed())
 
 			files := readZip(out)
 			Expect(files).To(HaveLen(3))
@@ -483,7 +485,7 @@ var _ = Describe("Archiver", func() {
 			}
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipShare(context.Background(), share, out)).To(Succeed())
+			Expect(arch.ZipShare(ctx, share, out)).To(Succeed())
 
 			files := readZip(out)
 			Expect(files).To(HaveLen(2))
@@ -498,7 +500,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+			Expect(arch.ZipAlbum(ctx, "1", "mp3", 128, out)).To(Succeed())
 
 			files := readZip(out)
 			Expect(files).To(HaveLen(1))

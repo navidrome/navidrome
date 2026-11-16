@@ -63,19 +63,11 @@ const createTestUtils = (mockDataProvider) =>
     </DataProviderContext.Provider>,
   )
 
-vi.mock('../dataProvider', () => ({
-  ...vi.importActual('../dataProvider'),
-  httpClient: vi.fn(),
-}))
-
 describe('AddToPlaylistDialog', () => {
   beforeAll(() => localStorage.setItem('userId', 'admin'))
   afterEach(cleanup)
 
   it('adds distinct songs to already existing playlists', async () => {
-    const dataProvider = await import('../dataProvider')
-    vi.spyOn(dataProvider, 'httpClient').mockResolvedValue({ data: mockData })
-
     const mockDataProvider = {
       getList: vi
         .fn()
@@ -84,6 +76,7 @@ describe('AddToPlaylistDialog', () => {
       create: vi.fn().mockResolvedValue({
         data: { id: 'created-id', name: 'created-name' },
       }),
+      getPlaylistTracks: vi.fn().mockResolvedValue({ data: [] }),
     }
 
     createTestUtils(mockDataProvider)
@@ -103,6 +96,9 @@ describe('AddToPlaylistDialog', () => {
     await waitFor(() => {
       expect(screen.getByTestId('playlist-add')).not.toBeDisabled()
     })
+    expect(
+      mockDataProvider.getPlaylistTracks.mock.calls.map(([id]) => id),
+    ).toEqual(['sample-id1', 'sample-id2'])
     fireEvent.click(screen.getByTestId('playlist-add'))
     await waitFor(() => {
       expect(mockDataProvider.create).toHaveBeenNthCalledWith(

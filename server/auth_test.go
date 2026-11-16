@@ -76,7 +76,7 @@ var _ = Describe("Auth", func() {
 		Describe("createAdminUser", func() {
 			It("returns the error when the user cannot be saved", func() {
 				ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: errors.New("db is down")}}
-				err := createAdminUser(context.Background(), ds, "johndoe", "secret")
+				err := createAdminUser(ctx, ds, "johndoe", "secret")
 				Expect(err).To(MatchError(ContainSubstring("db is down")))
 			})
 		})

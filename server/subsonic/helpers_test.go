@@ -18,7 +18,10 @@ import (
 )
 
 var _ = Describe("helpers", func() {
+	var ctx context.Context
+
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		auth.TokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test public secret"), nil)
 	})
@@ -204,7 +207,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("childFromMediaFile", func() {
 		var mf model.MediaFile
-		var ctx context.Context
 
 		BeforeEach(func() {
 			mf = model.MediaFile{
@@ -222,7 +224,6 @@ var _ = Describe("helpers", func() {
 				Suffix:      "mp3",
 				BitRate:     320,
 			}
-			ctx = context.Background()
 		})
 
 		Context("with minimal client", func() {
@@ -318,7 +319,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("artwork coverArt emission", func() {
 		const hash = "0123456789abcdef"
-		ctx := context.Background()
 
 		DescribeTable("coverArtOrEmpty",
 			func(id model.ArtworkID, absent bool, expected string) {
@@ -394,7 +394,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("osChildFromMediaFile", func() {
 		var mf model.MediaFile
-		var ctx context.Context
 
 		BeforeEach(func() {
 			mf = model.MediaFile{
@@ -403,7 +402,6 @@ var _ = Describe("helpers", func() {
 				Artist:  "Test Artist",
 				Comment: "Test Comment",
 			}
-			ctx = context.Background()
 		})
 
 		Context("with legacy client", func() {
@@ -502,7 +500,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("selectedMusicFolderIds", func() {
 		var user model.User
-		var ctx context.Context
 
 		BeforeEach(func() {
 			user = model.User{
@@ -513,7 +510,7 @@ var _ = Describe("helpers", func() {
 					{ID: 3, Name: "Library 3"},
 				},
 			}
-			ctx = request.WithUser(context.Background(), user)
+			ctx = request.WithUser(ctx, user)
 		})
 
 		Context("when musicFolderId parameter is provided", func() {
@@ -559,7 +556,7 @@ var _ = Describe("helpers", func() {
 
 				It("should return empty slice when user has no libraries", func() {
 					userWithoutLibs := model.User{ID: "no-libs-user", Libraries: []model.Library{}}
-					ctxWithoutLibs := request.WithUser(context.Background(), userWithoutLibs)
+					ctxWithoutLibs := request.WithUser(ctx, userWithoutLibs)
 					r := httptest.NewRequest("GET", "/test", nil)
 					r = r.WithContext(ctxWithoutLibs)
 
@@ -605,10 +602,7 @@ var _ = Describe("helpers", func() {
 	})
 
 	Describe("AverageRating in responses", func() {
-		var ctx context.Context
-
 		BeforeEach(func() {
-			ctx = context.Background()
 			conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 		})
 
