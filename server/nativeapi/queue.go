@@ -193,9 +193,16 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 					if !validateCurrentIndex(w, visible.Current, len(*payload.Ids)) {
 						return
 					}
-					pq.Current = visible.Current
-					cols = append(cols, "current")
-					if payload.Position == nil {
+					stored, ok := retrieveQueue(ctx, w, user.ID, repo.Retrieve)
+					if !ok {
+						return
+					}
+					// Write only what GET changed, so a concurrent position update is not overwritten
+					if visible.Current != stored.Current {
+						pq.Current = visible.Current
+						cols = append(cols, "current")
+					}
+					if payload.Position == nil && visible.Position != stored.Position {
 						pq.Position = visible.Position
 						cols = append(cols, "position")
 					}

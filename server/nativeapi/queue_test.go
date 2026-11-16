@@ -207,8 +207,7 @@ var _ = Describe("Queue Endpoints", func() {
 			updateQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue.Items).To(HaveLen(2))
-			Expect(repo.Queue.Current).To(Equal(1))
-			Expect(repo.LastCols).To(ConsistOf("items", "current", "position"))
+			Expect(repo.LastCols).To(ConsistOf("items"))
 		})
 
 		Context("when the stored queue has tracks the user can't see", func() {
@@ -265,6 +264,15 @@ var _ = Describe("Queue Endpoints", func() {
 				Expect(repo.Queue.Current).To(Equal(1))
 				Expect(repo.Queue.Position).To(BeZero())
 				Expect(repo.LastCols).To(ConsistOf("items", "current", "position"))
+			})
+
+			It("writes only the current index when the current track is visible and only ids change", func() {
+				repo.Queue.Current = 1
+				repo.QueueWithMediaFiles.Current = 0
+				repo.QueueWithMediaFiles.Position = 45
+				Expect(put(updateQueuePayload{Ids: new([]string{"s1", "s2"})})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(BeZero())
+				Expect(repo.LastCols).To(ConsistOf("items", "current"))
 			})
 
 			It("uses the position from the request when ids and position change", func() {
