@@ -47,7 +47,7 @@ func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.Data
 // If setJSON is true, the 'f=json' query parameter is added.
 func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string, setJSON bool) (*httptest.ResponseRecorder, error) {
 	if s.router == nil {
-		return nil, fmt.Errorf("SubsonicAPI router not available")
+		return nil, errors.New("SubsonicAPI router not available")
 	}
 
 	// Parse the input URL
@@ -62,7 +62,7 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 	// Validate that 'u' (username) parameter is present
 	username := query.Get("u")
 	if username == "" {
-		return nil, fmt.Errorf("missing required parameter 'u' (username)")
+		return nil, errors.New("missing required parameter 'u' (username)")
 	}
 
 	if err := s.checkPermissions(ctx, username); err != nil {

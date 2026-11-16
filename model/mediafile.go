@@ -3,6 +3,7 @@ package model
 import (
 	"cmp"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -238,7 +239,7 @@ func (mf MediaFile) Hash() string {
 	sum.Write(fmt.Appendf(nil, "%d", hash))
 	sum.Write(mf.Tags.Hash())
 	sum.Write(mf.Participants.Hash())
-	return fmt.Sprintf("%x", sum.Sum(nil))
+	return hex.EncodeToString(sum.Sum(nil))
 }
 
 // Equals compares two MediaFiles by their hash. It does not consider the ID, PID, Path and other identifier fields.

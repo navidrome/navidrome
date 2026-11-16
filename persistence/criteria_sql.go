@@ -209,7 +209,7 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	field, value, info, ok := singleField(values)
 	if !ok {
 		if len(values) != 1 {
-			return nil, fmt.Errorf("invalid field in criteria: isMissing/isPresent requires exactly one field")
+			return nil, errors.New("invalid field in criteria: isMissing/isPresent requires exactly one field")
 		}
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}

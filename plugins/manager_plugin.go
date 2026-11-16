@@ -124,7 +124,7 @@ func (a userAccess) allows(userID string) bool {
 // the error text (username enumeration).
 func (a userAccess) resolve(ctx context.Context, ds model.DataStore, username string) (*model.User, error) {
 	if !a.allUsers && len(a.userIDSet) == 0 {
-		return nil, fmt.Errorf("plugin is not authorized to scope by user")
+		return nil, errors.New("plugin is not authorized to scope by user")
 	}
 	usr, err := ds.User().FindByUsername(ctx, username)
 	if err != nil {

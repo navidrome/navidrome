@@ -28,6 +28,7 @@ linters:
     - nakedret
     - nilerr
     - nolintlint
+    - perfsprint
     - rowserrcheck
     - staticcheck
     - thelper

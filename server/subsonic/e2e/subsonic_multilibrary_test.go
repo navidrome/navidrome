@@ -1,7 +1,7 @@
 package e2e
 
 import (
-	"fmt"
+	"strconv"
 	"testing/fstest"
 
 	"github.com/Masterminds/squirrel"
@@ -90,7 +90,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("getArtists - library filtering", func() {
 		It("returns only lib1 artists when musicFolderId=1", func() {
-			resp := doReqWithUser(adminWithLibs, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib.ID))
+			resp := doReqWithUser(adminWithLibs, "getArtists", "musicFolderId", strconv.Itoa(lib.ID))
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Artist).ToNot(BeNil())
@@ -106,7 +106,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("returns only lib2 artists when musicFolderId=2", func() {
-			resp := doReqWithUser(adminWithLibs, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
+			resp := doReqWithUser(adminWithLibs, "getArtists", "musicFolderId", strconv.Itoa(lib2.ID))
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.Artist).ToNot(BeNil())
@@ -138,7 +138,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("getAlbumList - library filtering", func() {
 		It("returns only lib1 albums when musicFolderId=1", func() {
-			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib.ID))
+			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", strconv.Itoa(lib.ID))
 
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(8))
@@ -148,7 +148,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("returns only lib2 albums when musicFolderId=2", func() {
-			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
+			resp := doReqWithUser(adminWithLibs, "getAlbumList", "type", "alphabeticalByName", "musicFolderId", strconv.Itoa(lib2.ID))
 
 			Expect(resp.AlbumList).ToNot(BeNil())
 			Expect(resp.AlbumList.Album).To(HaveLen(1))
@@ -158,7 +158,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("search3 - library filtering", func() {
 		It("does not find lib1 content when searching in lib2 only", func() {
-			resp := doReqWithUser(adminWithLibs, "search3", "query", "Beatles", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
+			resp := doReqWithUser(adminWithLibs, "search3", "query", "Beatles", "musicFolderId", strconv.Itoa(lib2.ID))
 
 			Expect(resp.SearchResult3).ToNot(BeNil())
 			Expect(resp.SearchResult3.Artist).To(BeEmpty())
@@ -167,7 +167,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 
 		It("finds lib2 content when searching in lib2", func() {
-			resp := doReqWithUser(adminWithLibs, "search3", "query", "Beethoven", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
+			resp := doReqWithUser(adminWithLibs, "search3", "query", "Beethoven", "musicFolderId", strconv.Itoa(lib2.ID))
 
 			Expect(resp.SearchResult3).ToNot(BeNil())
 			Expect(resp.SearchResult3.Artist).ToNot(BeEmpty())
@@ -314,7 +314,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 	Describe("Library access control", func() {
 		It("returns error when non-admin user requests inaccessible library", func() {
-			resp := doReqWithUser(userLib1Only, "getArtists", "musicFolderId", fmt.Sprintf("%d", lib2.ID))
+			resp := doReqWithUser(userLib1Only, "getArtists", "musicFolderId", strconv.Itoa(lib2.ID))
 
 			Expect(resp.Status).To(Equal(responses.StatusFailed))
 			Expect(resp.Error).ToNot(BeNil())

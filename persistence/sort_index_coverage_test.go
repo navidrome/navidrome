@@ -99,7 +99,7 @@ var _ = Describe("Sort index coverage", func() {
 	}
 
 	for _, c := range cases {
-		It(fmt.Sprintf("uses an index for every sort mapping on %s", c.table), func() {
+		It("uses an index for every sort mapping on "+c.table, func() {
 			r := c.newRepo(newCtx())
 			for _, sort := range slices.Sorted(maps.Keys(r.sortMappings)) {
 				if _, ok := c.exceptions[sort]; ok {
@@ -114,7 +114,7 @@ var _ = Describe("Sort index coverage", func() {
 			}
 		})
 
-		It(fmt.Sprintf("has no stale exceptions entries for %s", c.table), func() {
+		It("has no stale exceptions entries for "+c.table, func() {
 			r := c.newRepo(newCtx())
 			for _, sort := range slices.Sorted(maps.Keys(c.exceptions)) {
 				Expect(r.sortMappings).To(HaveKey(sort),

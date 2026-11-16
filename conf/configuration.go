@@ -3,6 +3,7 @@ package conf
 import (
 	"cmp"
 	"encoding"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -392,7 +393,7 @@ func Load(noConfigDump bool) {
 	out := os.Stderr
 	if s.LogFile != "" {
 		if mkErr := os.MkdirAll(filepath.Dir(s.LogFile), os.ModePerm); mkErr != nil {
-			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+			logFatal("Error creating log file directory: " + mkErr.Error())
 		}
 		out, err = os.OpenFile(s.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
@@ -863,7 +864,7 @@ func (s *Options) validateEnforceNonRootUser() error {
 	}
 
 	if getEUID() == 0 {
-		return fmt.Errorf("EnforceNonRootUser is enabled but Navidrome is running as root")
+		return errors.New("EnforceNonRootUser is enabled but Navidrome is running as root")
 	}
 
 	return nil

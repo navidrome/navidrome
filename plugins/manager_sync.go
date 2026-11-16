@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -140,7 +141,7 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 // - Removed plugins are deleted from DB (after unloading if enabled)
 func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)

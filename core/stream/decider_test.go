@@ -3,7 +3,7 @@ package stream
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
@@ -1282,7 +1282,7 @@ var _ = Describe("Decider", func() {
 			mf := withProbe(&model.MediaFile{ID: "probe-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2})
 
 			// Set error on mock — if ffprobe were called, this would fail
-			ff.Error = fmt.Errorf("should not be called")
+			ff.Error = errors.New("should not be called")
 
 			svc := NewTranscodeDecider(ds, ff).(*deciderService)
 			probe, err := svc.ensureProbed(ctx, mf)
@@ -1292,7 +1292,7 @@ var _ = Describe("Decider", func() {
 
 		It("returns error when ffprobe fails", func() {
 			mf := &model.MediaFile{ID: "probe-3", Suffix: "mp3"}
-			ff.Error = fmt.Errorf("ffprobe not found")
+			ff.Error = errors.New("ffprobe not found")
 
 			svc := NewTranscodeDecider(ds, ff).(*deciderService)
 			_, err := svc.ensureProbed(ctx, mf)

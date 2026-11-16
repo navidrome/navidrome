@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -193,7 +194,7 @@ var hostServices = []hostServiceEntry{
 // Unlike the old implementation, this does NOT compile the wasm - just reads the manifest JSON.
 func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 	if m.stopped.Load() {
-		return nil, fmt.Errorf("manager is stopped")
+		return nil, errors.New("manager is stopped")
 	}
 
 	manifest, err := ReadManifest(ndpPath)
@@ -215,7 +216,7 @@ func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 // loadEnabledPlugins loads all enabled plugins from the database.
 func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
@@ -295,7 +296,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	ctx := log.NewContext(m.ctx, "plugin", p.ID)
 
 	if m.stopped.Load() {
-		return fmt.Errorf("manager is stopped")
+		return errors.New("manager is stopped")
 	}
 
 	if !validPluginID(p.ID) {
@@ -307,7 +308,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	defer m.loadWg.Done()
 
 	if m.stopped.Load() {
-		return fmt.Errorf("manager is stopped")
+		return errors.New("manager is stopped")
 	}
 
 	// Parse config from JSON

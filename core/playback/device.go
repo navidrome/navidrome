@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/navidrome/navidrome/core/playback/mpv"
@@ -222,7 +223,7 @@ func (pd *playbackDevice) Remove(ctx context.Context, index int) (DeviceStatus, 
 	if index > -1 && index < pd.PlaybackQueue.Size() {
 		pd.PlaybackQueue.Remove(index)
 	} else {
-		log.Error(ctx, "Index to remove out of range: "+fmt.Sprint(index))
+		log.Error(ctx, "Index to remove out of range: "+strconv.Itoa(index))
 	}
 	return pd.getStatus(), nil
 }
