@@ -18,6 +18,7 @@ var (
 )
 
 func Init(t testing.TB, skipOnShort bool) {
+	t.Helper()
 	if skipOnShort && testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}

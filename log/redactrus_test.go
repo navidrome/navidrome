@@ -33,13 +33,11 @@ func TestLevels(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fn := func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			h.AcceptedLevels = test.acceptedLevels
 			levels := h.Levels()
 			assert.Equal(t, test.expected, levels, test.description)
-		}
-
-		t.Run(test.name, fn)
+		})
 	}
 }
 
@@ -83,12 +81,10 @@ func TestLevelThreshold(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fn := func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			levels := levelThreshold(test.level)
 			assert.Equal(t, test.expected, levels, test.description)
-		}
-
-		t.Run(test.name, fn)
+		})
 	}
 }
 
@@ -136,7 +132,7 @@ func TestEntryDataValues(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fn := func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			logEntry := &logrus.Entry{
 				Data: test.logFields,
 			}
@@ -145,8 +141,7 @@ func TestEntryDataValues(t *testing.T) {
 
 			assert.Nil(t, err)
 			assert.Equal(t, test.expected, logEntry.Data)
-		}
-		t.Run(test.name, fn)
+		})
 	}
 }
 
