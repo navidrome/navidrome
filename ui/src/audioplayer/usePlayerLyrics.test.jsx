@@ -111,6 +111,21 @@ const renderPlayerLyrics = (props = {}) =>
     }),
   )
 
+const renderPlayerLyricsWithProps = (initialProps = {}) =>
+  renderHook(
+    (props) =>
+      usePlayerLyrics({
+        trackId: 'song-1',
+        trackUpdatedAt: undefined,
+        isRadio: false,
+        audioInstance: null,
+        isDesktop: true,
+        translate,
+        ...props,
+      }),
+    { initialProps },
+  )
+
 const showLyrics = async (result) => {
   act(() => result.current.toolbarLyricsProps.onToggleLyrics())
   await waitFor(() =>
@@ -813,6 +828,271 @@ describe('usePlayerLyrics', () => {
     expect(onExportError).toHaveBeenCalledWith(
       'player.downloadLyricsUnavailableLegacyText',
     )
+  })
+
+  it('drops a pending original and listing when the track changes, then serves the new target', async () => {
+    subsonic.getLyricsBySongId.mockImplementation((id) =>
+      Promise.resolve(
+        id === 'song-1'
+          ? {
+              json: {
+                'subsonic-response': {
+                  lyricsList: {
+                    structuredLyrics: [
+                      selectedEntry('NetEase', 'Track A', {
+                        selection: 'selection-A',
+                      }),
+                    ],
+                  },
+                },
+              },
+            }
+          : {
+              json: {
+                'subsonic-response': {
+                  lyricsList: {
+                    structuredLyrics: [
+                      selectedEntry('NetEase', 'Track B', {
+                        selection: 'selection-B',
+                        start: 2000,
+                      }),
+                    ],
+                  },
+                },
+              },
+            },
+      ),
+    )
+    const pendingOriginal = deferred()
+    subsonic.getLyricsOriginal.mockReturnValue(pendingOriginal.promise)
+    const listingA = deferred()
+    const listingB = deferred()
+    subsonic.getLyricsVariants
+      .mockReturnValueOnce(listingA.promise)
+      .mockReturnValueOnce(listingB.promise)
+    const onExportError = vi.fn()
+
+    const { result, rerender } = renderPlayerLyricsWithProps({
+      trackId: 'song-1',
+      onExportError,
+    })
+    await showLyrics(result)
+    let originalDownload
+    act(() => {
+      originalDownload =
+        result.current.desktopLyricsProps.onDownload('original')
+    })
+    await waitFor(() => expect(subsonic.getLyricsOriginal).toHaveBeenCalled())
+
+    await act(async () => {
+      result.current.desktopLyricsProps.onDownloadMenuOpenChange(true)
+    })
+    await waitFor(() =>
+      expect(subsonic.getLyricsVariants).toHaveBeenCalledTimes(1),
+    )
+
+    await act(async () => {
+      rerender({ trackId: 'song-2', onExportError })
+    })
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric?.line[0].value).toBe(
+        'Track B',
+      ),
+    )
+    await act(async () => {
+      result.current.desktopLyricsProps.onDownloadMenuOpenChange(true)
+    })
+    await waitFor(() =>
+      expect(subsonic.getLyricsVariants).toHaveBeenCalledTimes(2),
+    )
+
+    await act(async () => {
+      pendingOriginal.resolve({
+        blob: new Blob(['stale original']),
+        filename: 'stale.qrc',
+        mediaType: 'application/xml',
+      })
+      await originalDownload
+      listingA.reject(new Error('stale listing failure'))
+      await listingA.promise.catch(() => {})
+    })
+    expect(downloadOriginalLyrics).not.toHaveBeenCalled()
+    expect(onExportError).not.toHaveBeenCalled()
+    expect(result.current.desktopLyricsProps.originalInfo).not.toEqual(
+      expect.objectContaining({ selection: 'selection-A' }),
+    )
+
+    await act(async () => {
+      listingB.resolve(
+        listingResponse([
+          {
+            selection: 'selection-B',
+            original: { available: true, format: 'ttml', extension: '.ttml' },
+          },
+        ]),
+      )
+      await listingB.promise
+    })
+    expect(result.current.desktopLyricsProps.originalInfo).toEqual(
+      expect.objectContaining({
+        status: 'available',
+        selection: 'selection-B',
+      }),
+    )
+
+    await act(async () => {
+      await result.current.desktopLyricsProps.onDownload('converted')
+    })
+    expect(await blobText(downloadBlob.mock.calls[0][0])).toBe(
+      '[00:02.00]Track B',
+    )
+  })
+
+  it('suppresses a late original error after the track changes', async () => {
+    subsonic.getLyricsBySongId.mockImplementation((id) =>
+      Promise.resolve(
+        id === 'song-1'
+          ? selectedVariantsResponse()
+          : {
+              json: {
+                'subsonic-response': {
+                  lyricsList: {
+                    structuredLyrics: [
+                      selectedEntry('NetEase', 'Track B', {
+                        selection: 'selection-B',
+                        start: 2000,
+                      }),
+                    ],
+                  },
+                },
+              },
+            },
+      ),
+    )
+    const pending = deferred()
+    subsonic.getLyricsOriginal.mockReturnValue(pending.promise)
+    const onExportError = vi.fn()
+
+    const { result, rerender } = renderPlayerLyricsWithProps({
+      trackId: 'song-1',
+      onExportError,
+    })
+    await showLyrics(result)
+    let download
+    act(() => {
+      download = result.current.desktopLyricsProps.onDownload('original')
+    })
+    await waitFor(() => expect(subsonic.getLyricsOriginal).toHaveBeenCalled())
+
+    await act(async () => {
+      rerender({ trackId: 'song-2', onExportError })
+    })
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric?.line[0].value).toBe(
+        'Track B',
+      ),
+    )
+
+    await act(async () => {
+      pending.reject(new Error('late original diagnostic'))
+      await download.catch(() => {})
+    })
+    expect(downloadOriginalLyrics).not.toHaveBeenCalled()
+    expect(onExportError).not.toHaveBeenCalled()
+    expect(result.current.desktopLyricsProps.originalInfo).not.toEqual(
+      expect.objectContaining({ status: 'unavailable' }),
+    )
+  })
+
+  it('commits only the newest overlapping original export', async () => {
+    subsonic.getLyricsBySongId.mockResolvedValue(selectedVariantsResponse())
+    const first = deferred()
+    const second = deferred()
+    subsonic.getLyricsOriginal
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+    const onExportError = vi.fn()
+
+    const { result } = renderPlayerLyrics({ onExportError })
+    await showLyrics(result)
+    let firstDownload
+    let secondDownload
+    act(() => {
+      firstDownload = result.current.desktopLyricsProps.onDownload('original')
+    })
+    await waitFor(() =>
+      expect(subsonic.getLyricsOriginal).toHaveBeenCalledTimes(1),
+    )
+    act(() => {
+      secondDownload = result.current.desktopLyricsProps.onDownload('original')
+    })
+    await waitFor(() =>
+      expect(subsonic.getLyricsOriginal).toHaveBeenCalledTimes(2),
+    )
+
+    await act(async () => {
+      second.resolve({
+        blob: new Blob(['newest original']),
+        filename: 'newest.qrc',
+        mediaType: 'application/xml',
+      })
+      await secondDownload
+    })
+    expect(downloadOriginalLyrics).toHaveBeenCalledTimes(1)
+    expect(downloadOriginalLyrics.mock.calls[0][0].filename).toBe('newest.qrc')
+
+    await act(async () => {
+      first.reject(new Error('late original failure'))
+      await firstDownload.catch(() => {})
+    })
+    expect(downloadOriginalLyrics).toHaveBeenCalledTimes(1)
+    expect(onExportError).not.toHaveBeenCalled()
+  })
+
+  it('keeps a listing and an original export independent while both are pending', async () => {
+    subsonic.getLyricsBySongId.mockResolvedValue(selectedVariantsResponse())
+    const original = deferred()
+    const listing = deferred()
+    subsonic.getLyricsOriginal.mockReturnValue(original.promise)
+    subsonic.getLyricsVariants.mockReturnValue(listing.promise)
+
+    const { result } = renderPlayerLyrics()
+    await showLyrics(result)
+    let download
+    act(() => {
+      download = result.current.desktopLyricsProps.onDownload('original')
+    })
+    await waitFor(() => expect(subsonic.getLyricsOriginal).toHaveBeenCalled())
+
+    await act(async () => {
+      result.current.desktopLyricsProps.onDownloadMenuOpenChange(true)
+    })
+    await waitFor(() => expect(subsonic.getLyricsVariants).toHaveBeenCalled())
+
+    await act(async () => {
+      listing.resolve(
+        listingResponse([
+          {
+            selection: 'selection-NetEase',
+            original: { available: true, format: 'qrc', extension: '.qrc' },
+          },
+        ]),
+      )
+      await listing.promise
+    })
+    expect(result.current.desktopLyricsProps.originalInfo).toEqual(
+      expect.objectContaining({ status: 'available' }),
+    )
+
+    await act(async () => {
+      original.resolve({
+        blob: new Blob(['exact']),
+        filename: 'Artist - Song.qrc',
+        mediaType: 'application/xml',
+      })
+      await download
+    })
+    expect(downloadOriginalLyrics).toHaveBeenCalledTimes(1)
   })
 })
 
