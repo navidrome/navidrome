@@ -77,7 +77,7 @@ func buildAuthPayload(user *model.User) map[string]any {
 		"username": user.UserName,
 		"isAdmin":  user.IsAdmin,
 	}
-	if conf.Server.EnableGravatar && user.Email != "" {
+	if conf.Server().EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
 	}
 
@@ -210,7 +210,7 @@ func UsernameFromToken(r *http.Request) string {
 }
 
 func UsernameFromExtAuthHeader(r *http.Request) string {
-	if conf.Server.ExtAuth.TrustedSources == "" {
+	if conf.Server().ExtAuth.TrustedSources == "" {
 		return ""
 	}
 	reverseProxyIp, ok := request.ReverseProxyIpFrom(r.Context())
@@ -218,11 +218,11 @@ func UsernameFromExtAuthHeader(r *http.Request) string {
 		log.Error("ExtAuth enabled but no proxy IP found in request context. Please report this error.")
 		return ""
 	}
-	username := r.Header.Get(conf.Server.ExtAuth.UserHeader)
+	username := r.Header.Get(conf.Server().ExtAuth.UserHeader)
 	if username == "" {
 		return ""
 	}
-	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
+	if !validateIPAgainstList(reverseProxyIp, conf.Server().ExtAuth.TrustedSources) {
 		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
@@ -240,7 +240,7 @@ func InternalAuth(r *http.Request) string {
 }
 
 func UsernameFromConfig(*http.Request) string {
-	return conf.Server.DevAutoLoginUsername
+	return conf.Server().DevAutoLoginUsername
 }
 
 func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
@@ -424,7 +424,7 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 
 	// Per https://github.com/golang/go/issues/49825, the remote address
 	// on a unix socket is '@'
-	if ip == "@" && strings.HasPrefix(conf.Server.Address, "unix:") {
+	if ip == "@" && strings.HasPrefix(conf.Server().Address, "unix:") {
 		return slices.Contains(cidrs, "@")
 	}
 

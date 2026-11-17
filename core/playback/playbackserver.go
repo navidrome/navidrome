@@ -38,7 +38,7 @@ func GetInstance(ds model.DataStore) PlaybackServer {
 func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.ctx = &ctx
 
-	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	devices, err := ps.initDeviceStatus(ctx, conf.Server().Jukebox.Devices, conf.Server().Jukebox.Default)
 	if err != nil {
 		return err
 	}

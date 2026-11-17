@@ -73,7 +73,11 @@ var _ = Describe("WriteImageHeaders", func() {
 				Expect(h.Get("ETag")).To(BeEmpty(), "placeholder must not set an ETag")
 				Expect(h.Get("Last-Modified")).To(BeEmpty(), "placeholder must not set Last-Modified")
 			}
-			Expect(h.Get("Last-Modified") != "").To(Equal(c.wantLastMod))
+			if c.wantLastMod {
+				Expect(h.Get("Last-Modified")).ToNot(BeEmpty())
+			} else {
+				Expect(h.Get("Last-Modified")).To(BeEmpty())
+			}
 			if c.want304 {
 				Expect(w.Code).To(Equal(http.StatusNotModified))
 				Expect(w.Body.Len()).To(BeZero(), "a 304 must have an empty body")

@@ -19,9 +19,9 @@ var _ = Describe("ImageStore", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		root = GinkgoT().TempDir()
 		store = NewImageStore(root)
-		ctx = context.Background()
 	})
 
 	It("hashes deterministically", func() {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -344,7 +344,7 @@ var _ = Describe("MetadataAgent partial implementation", Ordered, func() {
 
 var _ = Describe("songRefToAgentSong multi-artist", func() {
 	It("maps ArtistRef to agents.Artist", func() {
-		ref := capabilities.SongRef{Name: "Collab", Artist: "Drake", Artists: []capabilities.ArtistRef{
+		ref := types.SongRef{Name: "Collab", Artist: "Drake", Artists: []types.ArtistRef{
 			{ID: "id-drake", Name: "Drake", MBID: "m-drake"},
 			{Name: "Future", MBID: "m-future"},
 		}}
@@ -355,17 +355,17 @@ var _ = Describe("songRefToAgentSong multi-artist", func() {
 		}))
 	})
 	It("folds the single Artist/ArtistMBID into a one-element Artists when no Artists provided", func() {
-		ref := capabilities.SongRef{Name: "Solo", Artist: "Drake", ArtistMBID: "m-drake"}
+		ref := types.SongRef{Name: "Solo", Artist: "Drake", ArtistMBID: "m-drake"}
 		got := songRefToAgentSong(ref)
 		Expect(got.Artists).To(Equal([]agents.Artist{{Name: "Drake", MBID: "m-drake"}}))
 	})
 	It("folds an MBID-only single artist (empty name) so the MBID is not dropped", func() {
-		ref := capabilities.SongRef{Name: "Solo", ArtistMBID: "m-drake"}
+		ref := types.SongRef{Name: "Solo", ArtistMBID: "m-drake"}
 		got := songRefToAgentSong(ref)
 		Expect(got.Artists).To(Equal([]agents.Artist{{MBID: "m-drake"}}))
 	})
 	It("leaves Artists nil when neither Artists nor the single Artist/ArtistMBID are provided", func() {
-		got := songRefToAgentSong(capabilities.SongRef{Name: "Anon"})
+		got := songRefToAgentSong(types.SongRef{Name: "Anon"})
 		Expect(got.Artists).To(BeNil())
 	})
 })

@@ -99,7 +99,7 @@ var _ = Describe("Annotations", func() {
 
 		It("unstars a song and returns IsFavorite=false", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
-			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Annotations: model.Annotations{Starred: true}}})
+			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Starred: true}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -224,7 +224,7 @@ var _ = Describe("Annotations", func() {
 
 		It("removes a rating", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
-			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Annotations: model.Annotations{Rating: 4}}})
+			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Rating: 4}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Users/u1/Items/s1/Rating", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -260,7 +260,7 @@ var _ = Describe("Annotations", func() {
 
 		It("stores the minimum star for Rating=1 instead of clearing the rating", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
-			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Annotations: model.Annotations{Rating: 4}}})
+			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Rating: 4}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))

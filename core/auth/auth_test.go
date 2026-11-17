@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -20,12 +21,14 @@ func TestAuth(t *testing.T) {
 	RunSpecs(t, "Auth Test Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 const (
 	oneDay = 24 * time.Hour
 )
 
 var _ = BeforeSuite(func() {
-	conf.Server.SessionTimeout = 2 * oneDay
+	conf.Update(func(c *conf.Options) { c.SessionTimeout = 2 * oneDay })
 })
 
 var _ = Describe("Auth", func() {
@@ -84,7 +87,7 @@ var _ = Describe("Auth", func() {
 			Expect(claims.Issuer).To(Equal(consts.JWTIssuer))
 			Expect(claims.Subject).To(Equal("johndoe"))
 			Expect(claims.UserID).To(Equal("123"))
-			Expect(claims.IsAdmin).To(Equal(true))
+			Expect(claims.IsAdmin).To(BeTrue())
 			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
 		})
 	})

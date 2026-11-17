@@ -16,11 +16,13 @@ import (
 
 var _ = Describe("httpServiceImpl", func() {
 	var (
+		ctx context.Context
 		svc *httpServiceImpl
 		ts  *httptest.Server
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		stubLocalhostDNS()
 	})
 
@@ -39,7 +41,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(200)
 			}))
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -54,7 +56,7 @@ var _ = Describe("httpServiceImpl", func() {
 			}))
 			// The trailing dot passes the pre-flight string check; only the dial-time guard catches it.
 			_, port, _ := net.SplitHostPort(strings.TrimPrefix(ts.URL, "http://"))
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://localhost.:" + port + "/test",
 				TimeoutMs: 1000,
@@ -64,7 +66,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should block requests to localhost by name", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://localhost:12345/test",
 				TimeoutMs: 1000,
@@ -74,7 +76,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should block requests to private IPs (10.x)", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://10.0.0.1/test",
 				TimeoutMs: 1000,
@@ -84,7 +86,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should block requests to private IPs (192.168.x)", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://192.168.1.1/test",
 				TimeoutMs: 1000,
@@ -94,7 +96,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should block requests to private IPs (172.16.x)", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://172.16.0.1/test",
 				TimeoutMs: 1000,
@@ -104,7 +106,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should block requests to link-local IPs (169.254.x)", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://169.254.169.254/latest/meta-data/",
 				TimeoutMs: 1000,
@@ -114,7 +116,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should block requests to IPv6 loopback with port", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://[::1]:8080/test",
 				TimeoutMs: 1000,
@@ -124,7 +126,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should block requests to IPv6 loopback without port", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://[::1]/test",
 				TimeoutMs: 1000,
@@ -136,7 +138,7 @@ var _ = Describe("httpServiceImpl", func() {
 		It("should allow requests to public hostnames", func() {
 			// This will fail at the network level (connection refused or DNS),
 			// but it should NOT fail with a "private/loopback" error
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://203.0.113.1:1/test", // TEST-NET-3, non-routable but not private
 				TimeoutMs: 100,
@@ -148,7 +150,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should return error for invalid URL", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method: "GET",
 				URL:    "://bad-url",
 			})
@@ -156,7 +158,7 @@ var _ = Describe("httpServiceImpl", func() {
 		})
 
 		It("should reject non-http/https URL schemes", func() {
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method: "GET",
 				URL:    "ftp://example.com/file",
 			})
@@ -179,7 +181,7 @@ var _ = Describe("httpServiceImpl", func() {
 				w.WriteHeader(201)
 				_, _ = w.Write([]byte("hello"))
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				Headers:   map[string]string{"Accept": "text/plain"},
@@ -197,7 +199,7 @@ var _ = Describe("httpServiceImpl", func() {
 				b, _ := io.ReadAll(r.Body)
 				_, _ = w.Write([]byte("got:" + string(b)))
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "POST",
 				URL:       ts.URL,
 				Body:      []byte("abc"),
@@ -213,7 +215,7 @@ var _ = Describe("httpServiceImpl", func() {
 				b, _ := io.ReadAll(r.Body)
 				_, _ = w.Write([]byte("put:" + string(b)))
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "PUT",
 				URL:       ts.URL,
 				Body:      []byte("xyz"),
@@ -228,7 +230,7 @@ var _ = Describe("httpServiceImpl", func() {
 				Expect(r.Method).To(Equal("DELETE"))
 				w.WriteHeader(204)
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "DELETE",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -243,7 +245,7 @@ var _ = Describe("httpServiceImpl", func() {
 				b, _ := io.ReadAll(r.Body)
 				_, _ = w.Write([]byte("del:" + string(b)))
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "DELETE",
 				URL:       ts.URL,
 				Body:      []byte(`{"id":"123"}`),
@@ -259,7 +261,7 @@ var _ = Describe("httpServiceImpl", func() {
 				b, _ := io.ReadAll(r.Body)
 				_, _ = w.Write([]byte("patch:" + string(b)))
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "PATCH",
 				URL:       ts.URL,
 				Body:      []byte("data"),
@@ -275,7 +277,7 @@ var _ = Describe("httpServiceImpl", func() {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(200)
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "HEAD",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -290,7 +292,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(200)
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method: "GET",
 				URL:    ts.URL,
 			})
@@ -302,7 +304,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				time.Sleep(50 * time.Millisecond)
 			}))
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1,
@@ -315,7 +317,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				time.Sleep(50 * time.Millisecond)
 			}))
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(ctx)
 			go func() {
 				time.Sleep(1 * time.Millisecond)
 				cancel()
@@ -337,7 +339,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, dest.URL, http.StatusFound)
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:            "GET",
 				URL:               ts.URL,
 				TimeoutMs:         1000,
@@ -353,7 +355,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.Header.Get("X-Custom")))
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				Headers:   map[string]string{"X-Custom": "myvalue"},
@@ -376,7 +378,7 @@ var _ = Describe("httpServiceImpl", func() {
 				w.WriteHeader(200)
 			}))
 			// httptest server is on 127.0.0.1 which is not in requiredHosts
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -397,7 +399,7 @@ var _ = Describe("httpServiceImpl", func() {
 			}))
 			// Allow both servers (both on 127.0.0.1)
 			svc.requiredHosts = []string{"127.0.0.1"}
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -414,7 +416,7 @@ var _ = Describe("httpServiceImpl", func() {
 			}))
 			// Override requiredHosts to allow the test server
 			svc.requiredHosts = []string{"127.0.0.1"}
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -430,7 +432,7 @@ var _ = Describe("httpServiceImpl", func() {
 			}))
 			// Allow the test server; redirect to 10.0.0.1 is blocked by allowlist
 			svc.requiredHosts = []string{"127.0.0.1"}
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -474,7 +476,7 @@ var _ = Describe("httpServiceImpl", func() {
 			}
 			ts.Start()
 			svc.requiredHosts = []string{"127.0.0.1"}
-			_, err := svc.Send(context.Background(), host.HTTPRequest{Method: "GET", URL: ts.URL, TimeoutMs: 1000})
+			_, err := svc.Send(ctx, host.HTTPRequest{Method: "GET", URL: ts.URL, TimeoutMs: 1000})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(svc.Close()).To(Succeed())
 			Eventually(closed).Should(BeClosed())
@@ -486,7 +488,7 @@ var _ = Describe("httpServiceImpl", func() {
 			}))
 			// The literal IP is what authorizes the loopback dial under the private-IP guard.
 			svc.requiredHosts = []string{"*.0.0.1", "127.0.0.1"}
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 1000,
@@ -497,7 +499,7 @@ var _ = Describe("httpServiceImpl", func() {
 
 		It("should reject hosts not matching wildcard patterns", func() {
 			svc.requiredHosts = []string{"*.example.com"}
-			_, err := svc.Send(context.Background(), host.HTTPRequest{
+			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       "http://evil.other.com/test",
 				TimeoutMs: 1000,
@@ -520,13 +522,13 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(oversizedBody))
 			}))
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
 				TimeoutMs: 5000,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(resp.Body)).To(Equal(httpClientMaxResponseBodyLen))
+			Expect(resp.Body).To(HaveLen(httpClientMaxResponseBodyLen))
 		})
 	})
 
@@ -542,7 +544,7 @@ var _ = Describe("httpServiceImpl", func() {
 				_, _ = w.Write([]byte("method:" + r.Method))
 			}))
 			// Empty method — Go's http.NewRequestWithContext normalizes "" to "GET"
-			resp, err := svc.Send(context.Background(), host.HTTPRequest{
+			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "",
 				URL:       ts.URL,
 				TimeoutMs: 1000,

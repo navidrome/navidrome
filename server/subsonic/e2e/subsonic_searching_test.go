@@ -3,7 +3,6 @@ package e2e
 import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -84,7 +83,7 @@ var _ = Describe("Search Endpoints", func() {
 				resp2 := doReq("search2", "query", "Beatles", "songOffset", "1", "songCount", "500")
 
 				Expect(resp2.SearchResult2).ToNot(BeNil())
-				Expect(len(resp2.SearchResult2.Song)).To(Equal(len(allSongs) - 1))
+				Expect(resp2.SearchResult2.Song).To(HaveLen(len(allSongs) - 1))
 			}
 		})
 
@@ -251,8 +250,7 @@ var _ = Describe("Search Endpoints", func() {
 
 		Describe("Legacy backend", func() {
 			It("returns results using legacy LIKE-based search when configured", func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Search.Backend = "legacy"
+				conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 
 				resp := doReq("search3", "query", "Beatles")
 

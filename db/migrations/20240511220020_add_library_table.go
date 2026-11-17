@@ -30,7 +30,7 @@ func upAddLibraryTable(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, `
 		insert into library(id, name, path) values(1, 'Music Library', ?);
 		delete from property where id like 'LastScan-%';
-`, conf.Server.MusicFolder)
+`, conf.Server().MusicFolder)
 	if err != nil {
 		return err
 	}

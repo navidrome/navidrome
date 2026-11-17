@@ -17,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
@@ -54,7 +54,7 @@ type auxAlbum struct {
 // Name returns the appropriate album name for external API calls
 // based on the DevPreserveUnicodeInExternalCalls configuration option
 func (a *auxAlbum) Name() string {
-	if conf.Server.DevPreserveUnicodeInExternalCalls {
+	if conf.Server().DevPreserveUnicodeInExternalCalls {
 		return a.Album.Name
 	}
 	return str.Clear(a.Album.Name)
@@ -67,7 +67,7 @@ type auxArtist struct {
 // Name returns the appropriate artist name for external API calls
 // based on the DevPreserveUnicodeInExternalCalls configuration option
 func (a *auxArtist) Name() string {
-	if conf.Server.DevPreserveUnicodeInExternalCalls {
+	if conf.Server().DevPreserveUnicodeInExternalCalls {
 		return a.Artist.Name
 	}
 	return str.Clear(a.Artist.Name)
@@ -125,7 +125,7 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 		return nil, err
 	}
 
-	updatedAt := V(album.ExternalInfoUpdatedAt)
+	updatedAt := gg.V(album.ExternalInfoUpdatedAt)
 	albumName := album.Name()
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", albumName)
@@ -136,7 +136,7 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 	}
 
 	// If info is expired, trigger a populateAlbumInfo in the background
-	if time.Since(updatedAt) > conf.Server.DevAlbumInfoTimeToLive {
+	if time.Since(updatedAt) > conf.Server().DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", albumName)
 		e.albumQueue.enqueue(&album)
 	}
@@ -232,7 +232,7 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 	}
 
 	// If we don't have any info, retrieves it now
-	updatedAt := V(artist.ExternalInfoUpdatedAt)
+	updatedAt := gg.V(artist.ExternalInfoUpdatedAt)
 	artistName := artist.Name()
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", artistName)
@@ -243,7 +243,7 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 	}
 
 	// If info is expired, trigger a populateArtistInfo in the background
-	if time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
+	if time.Since(updatedAt) > conf.Server().DevArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artistName)
 		e.artistQueue.enqueue(&artist)
 	}

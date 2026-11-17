@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
@@ -58,7 +59,7 @@ var _ = Describe("Queue Endpoints", func() {
 			saveQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue).ToNot(BeNil())
-			Expect(repo.Queue.Items).To(HaveLen(0))
+			Expect(repo.Queue.Items).To(BeEmpty())
 		})
 
 		It("returns bad request for invalid current index (negative)", func() {
@@ -151,6 +152,20 @@ var _ = Describe("Queue Endpoints", func() {
 			Expect(resp.Position).To(Equal(int64(0)))
 		})
 
+		It("returns the loaded tracks when some of them fail to load", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "track1"}}}
+			repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
+			req := httptest.NewRequest("GET", "/queue", nil)
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			getQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var resp model.PlayQueue
+			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Items).To(HaveLen(1))
+		})
+
 		It("returns internal server error when retrieve fails", func() {
 			repo.Err = true
 			req := httptest.NewRequest("GET", "/queue", nil)
@@ -193,6 +208,95 @@ var _ = Describe("Queue Endpoints", func() {
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue.Items).To(HaveLen(2))
 			Expect(repo.LastCols).To(ConsistOf("items"))
+		})
+
+		It("updates only ids when some tracks fail to load", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 1, Position: 45,
+				Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}, {ID: "s3"}}}
+			repo.QueueWithMediaFiles = &model.PlayQueue{UserID: user.ID, Current: 1, Position: 45,
+				Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}}}
+			repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
+			body, _ := json.Marshal(updateQueuePayload{Ids: new([]string{"s1", "s2", "s3", "s4"})})
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue.Items).To(HaveLen(4))
+			Expect(repo.LastCols).To(ConsistOf("items"))
+		})
+
+		Context("when the stored queue has tracks the user can't see", func() {
+			BeforeEach(func() {
+				repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2, Position: 45,
+					Items: model.MediaFiles{{ID: "gone1"}, {ID: "s1"}, {ID: "gone2"}, {ID: "s2"}}}
+				repo.QueueWithMediaFiles = &model.PlayQueue{UserID: user.ID, Current: 1, Position: 0,
+					Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}}}
+				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(repo.QueueWithMediaFiles.Items)
+			})
+
+			put := func(payload updateQueuePayload) int {
+				body, _ := json.Marshal(payload)
+				req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+				req = req.WithContext(request.WithUser(req.Context(), user))
+				w := httptest.NewRecorder()
+				updateQueue(ds)(w, req)
+				return w.Code
+			}
+
+			It("stores current as the index of the same track in the stored queue", func() {
+				Expect(put(updateQueuePayload{Current: new(1)})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(3))
+				Expect(repo.LastCols).To(ConsistOf("current"))
+			})
+
+			It("rejects a current that is only valid for the stored queue", func() {
+				Expect(put(updateQueuePayload{Current: new(2)})).To(Equal(http.StatusBadRequest))
+			})
+
+			It("moves current to the track the client saw when only position changes", func() {
+				Expect(put(updateQueuePayload{Position: new(int64(30))})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(3))
+				Expect(repo.Queue.Position).To(Equal(int64(30)))
+				Expect(repo.LastCols).To(ConsistOf("current", "position"))
+			})
+
+			It("writes only position when the stored current track is visible", func() {
+				repo.Queue.Current = 1
+				repo.QueueWithMediaFiles.Current = 0
+				Expect(put(updateQueuePayload{Position: new(int64(30))})).To(Equal(http.StatusNoContent))
+				Expect(repo.LastCols).To(ConsistOf("position"))
+			})
+
+			It("refuses to update current when the tracks fail to load", func() {
+				repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
+				Expect(put(updateQueuePayload{Current: new(0)})).To(Equal(http.StatusInternalServerError))
+				Expect(repo.LastCols).To(BeNil())
+				Expect(repo.Queue.Current).To(Equal(2))
+			})
+
+			It("keeps the current track and position the client saw when only ids change", func() {
+				Expect(put(updateQueuePayload{Ids: new([]string{"s1", "s2", "s3"})})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(1))
+				Expect(repo.Queue.Position).To(BeZero())
+				Expect(repo.LastCols).To(ConsistOf("items", "current", "position"))
+			})
+
+			It("writes only the current index when the current track is visible and only ids change", func() {
+				repo.Queue.Current = 1
+				repo.QueueWithMediaFiles.Current = 0
+				repo.QueueWithMediaFiles.Position = 45
+				Expect(put(updateQueuePayload{Ids: new([]string{"s1", "s2"})})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(BeZero())
+				Expect(repo.LastCols).To(ConsistOf("items", "current"))
+			})
+
+			It("uses the position from the request when ids and position change", func() {
+				Expect(put(updateQueuePayload{Ids: new([]string{"s1", "s2"}), Position: new(int64(10))})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(1))
+				Expect(repo.Queue.Position).To(Equal(int64(10)))
+			})
 		})
 
 		It("updates ids and current", func() {

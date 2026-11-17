@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -29,9 +28,10 @@ var _ = Describe("Playlists - Import", func() {
 	var ps playlists.Playlists
 	var mockPlsRepo *tests.MockPlaylistRepo
 	var mockLibRepo *tests.MockLibraryRepo
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
@@ -44,7 +44,6 @@ var _ = Describe("Playlists - Import", func() {
 	Describe("ImportFromFolder", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
@@ -101,7 +100,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("parses #EXTALBUMARTURL with HTTP URL", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "pls-with-art-url.m3u")
 				Expect(err).ToNot(HaveOccurred())
@@ -255,7 +254,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("ignores HTTP #EXTALBUMARTURL when EnableM3UExternalAlbumArt is false", func() {
-				conf.Server.EnableM3UExternalAlbumArt = false
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = false })
 
 				tmpDir := GinkgoT().TempDir()
 				m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\ntest.mp3\n"
@@ -273,7 +272,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("updates ExternalImageURL on re-scan even when UploadedImage is set", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
@@ -411,7 +410,7 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Public).To(BeFalse())
 			})
 			It("uses server default when public field is absent", func() {
-				conf.Server.DefaultPlaylistPublicVisibility = true
+				conf.Update(func(c *conf.Options) { c.DefaultPlaylistPublicVisibility = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
@@ -770,7 +769,6 @@ var _ = Describe("Playlists - Import", func() {
 
 	Describe("ImportFile", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
 		})
 
@@ -1012,7 +1010,7 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("parses #EXTALBUMARTURL with HTTP URL via ImportM3U", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 			repo.data = []string{"tests/test.mp3"}
 			m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\n/music/tests/test.mp3\n"
@@ -1121,7 +1119,6 @@ var _ = Describe("Playlists - Import", func() {
 		var folder model.Folder
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			folder = model.Folder{
 				LibraryPath: "/music",
 				Path:        "playlists/abc",
@@ -1130,17 +1127,19 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if PlaylistsPath is empty", func() {
-			conf.Server.PlaylistsPath = ""
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if PlaylistsPath is any (**/**)", func() {
-			conf.Server.PlaylistsPath = "**/**"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "**/**" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
-			conf.Server.PlaylistsPath = strings.Join([]string{"other/**", "playlists/**"}, string(filepath.ListSeparator))
+			conf.Update(func(c *conf.Options) {
+				c.PlaylistsPath = strings.Join([]string{"other/**", "playlists/**"}, string(filepath.ListSeparator))
+			})
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
@@ -1150,7 +1149,7 @@ var _ = Describe("Playlists - Import", func() {
 				Path:        "Playlists",
 				Name:        "navidrome",
 			}
-			conf.Server.PlaylistsPath = filepath.Join("Playlists", "navidrome")
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = filepath.Join("Playlists", "navidrome") })
 			Expect(playlists.InPath(nsp)).To(BeTrue())
 		})
 
@@ -1160,7 +1159,7 @@ var _ = Describe("Playlists - Import", func() {
 				Path:        "Playlists",
 				Name:        "navidrome",
 			}
-			conf.Server.PlaylistsPath = "Playlists/navidrome"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "Playlists/navidrome" })
 			Expect(playlists.InPath(nsp)).To(BeTrue())
 		})
 
@@ -1170,13 +1169,13 @@ var _ = Describe("Playlists - Import", func() {
 				Path:        "Playlists",
 				Name:        "navidrome",
 			}
-			conf.Server.PlaylistsPath = `Playlists\navidrome`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\navidrome` })
 			Expect(playlists.InPath(nsp)).To(BeTrue())
 
-			conf.Server.PlaylistsPath = `Playlists\navidrome\`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\navidrome\` })
 			Expect(playlists.InPath(nsp)).To(BeTrue())
 
-			conf.Server.PlaylistsPath = `Playlists\**`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\**` })
 			Expect(playlists.InPath(nsp)).To(BeTrue())
 		})
 
@@ -1186,10 +1185,10 @@ var _ = Describe("Playlists - Import", func() {
 				Path:        "",
 				Name:        "[Mix]",
 			}
-			conf.Server.PlaylistsPath = `\[Mix\]`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `\[Mix\]` })
 			Expect(playlists.InPath(mix)).To(BeTrue())
 
-			conf.Server.PlaylistsPath = `\[Mix\]\**`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `\[Mix\]\**` })
 			Expect(playlists.InPath(mix)).To(BeTrue())
 		})
 
@@ -1199,18 +1198,18 @@ var _ = Describe("Playlists - Import", func() {
 				Path:        "Playlists",
 				Name:        "Rock",
 			}
-			conf.Server.PlaylistsPath = `Playlists\[QR]ock`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\[QR]ock` })
 			Expect(playlists.InPath(nested)).To(BeTrue())
 
-			conf.Server.PlaylistsPath = `Playlists\{Rock,Jazz}`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\{Rock,Jazz}` })
 			Expect(playlists.InPath(nested)).To(BeTrue())
 
-			conf.Server.PlaylistsPath = `Playlists\{Pop,Jazz}`
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\{Pop,Jazz}` })
 			Expect(playlists.InPath(nested)).To(BeFalse())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
-			conf.Server.PlaylistsPath = "other"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other" })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 		})
 
@@ -1225,15 +1224,15 @@ var _ = Describe("Playlists - Import", func() {
 				Path:        "Playlists",
 				Name:        "other",
 			}
-			conf.Server.PlaylistsPath = filepath.Join("Other", "dir")
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = filepath.Join("Other", "dir") })
 			Expect(playlists.InPath(nsp)).To(BeFalse())
 
-			conf.Server.PlaylistsPath = filepath.Join("Playlists", "navidrome", "**")
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = filepath.Join("Playlists", "navidrome", "**") })
 			Expect(playlists.InPath(sibling)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
-			conf.Server.PlaylistsPath = "."
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "." })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 
 			folder2 := model.Folder{

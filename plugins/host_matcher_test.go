@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/host"
@@ -24,7 +23,7 @@ import (
 
 var _ = Describe("MatcherService", Ordered, func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 	})
 
 	// newConverter returns the service as its concrete type so converter unit
@@ -187,9 +186,9 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 			BeforeEach(func() {
 				mediaFileRepo := tests.CreateMockMediaFileRepo()
-				mf := model.MediaFile{ID: "mf-1", Title: "Hit", Artist: "Band", LibraryID: 1}
-				mf.Starred = true
-				mf.Rating = 5
+				mf := model.MediaFile{ID: "mf-1", Title: "Hit", Artist: "Band", LibraryID: 1,
+					Starred: true,
+					Rating:  5}
 				mediaFileRepo.SetData(model.MediaFiles{mf})
 
 				userRepo = tests.CreateMockUserRepo()
@@ -372,10 +371,12 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		hash := sha256.Sum256(data)
 		hashHex := hex.EncodeToString(hash[:])
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		mockPluginRepo := tests.CreateMockPluginRepo()
 		mockPluginRepo.Permitted = true
@@ -390,8 +391,8 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		}})
 
 		mediaFileRepo := tests.CreateMockMediaFileRepo()
-		hit := model.MediaFile{ID: "mf-hit", Title: "Hit", Artist: "Band"}
-		hit.Starred = true
+		hit := model.MediaFile{ID: "mf-hit", Title: "Hit", Artist: "Band",
+			Starred: true}
 		mediaFileRepo.SetData(model.MediaFiles{hit})
 
 		userRepo := tests.CreateMockUserRepo()

@@ -21,7 +21,7 @@ var _ = Describe("Maintenance", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ctx = request.WithUser(ctx, model.User{ID: "user1", IsAdmin: true})
 
 		ds = createTestDataStore()
@@ -395,7 +395,7 @@ var _ = Describe("Maintenance", func() {
 
 		It("preserves the target's participants on the remapped track", func() {
 			participant := model.Participant{
-				Artist: model.Artist{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"},
+				ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist",
 			}
 			mfRepo.SetData(model.MediaFiles{
 				{ID: "m1", AlbumID: "album1", Missing: true},

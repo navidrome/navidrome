@@ -16,8 +16,8 @@ var _ = Describe("SQLStore", func() {
 	var ds model.DataStore
 	var ctx context.Context
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = New(db.Db())
-		ctx = context.Background()
 	})
 	Describe("WithTx", func() {
 		Context("When block returns nil", func() {

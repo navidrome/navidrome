@@ -257,9 +257,12 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 
 	targetIsLossless := isLosslessFormat(targetFormat)
 
-	// Reject lossy to lossless conversion
-	if !src.IsLossless && targetIsLossless {
-		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
+	lossyToLossless := !src.IsLossless && targetIsLossless
+	// Lossless output from a lossy source is far larger than the source, so no bitrate cap can be honored
+	lossyToLosslessAllowed := clientInfo.AllowLossyToLossless && clientInfo.MaxAudioBitrate == 0
+	if lossyToLossless && !lossyToLosslessAllowed {
+		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "sourceCodec", src.Codec,
+			"targetFormat", targetFormat, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		return nil, ""
 	}
 
@@ -274,7 +277,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 		Codec:      targetCodec,
 		SampleRate: targetSampleRate(src.SampleRate, src.Codec, capDSD),
 		Channels:   src.Channels,
-		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
+		BitDepth:   targetBitDepth(src, targetIsLossless),
 		IsLossless: targetIsLossless,
 	}
 
@@ -386,7 +389,7 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *Details, targe
 				return false
 			}
 		}
-	} else {
+	} else if !targetIsLossless {
 		ts.Bitrate = src.Bitrate
 	}
 
@@ -427,7 +430,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	if mf.ProbeData != "" {
 		return nil, nil
 	}
-	if !conf.Server.DevEnableMediaFileProbe {
+	if !conf.Server().DevEnableMediaFileProbe {
 		return nil, nil
 	}
 

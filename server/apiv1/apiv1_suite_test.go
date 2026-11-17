@@ -14,6 +14,7 @@ import (
 	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/api"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -26,6 +27,8 @@ func TestAPIv1(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "API v1 Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 var specRouter routers.Router
 

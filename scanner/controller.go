@@ -36,10 +36,10 @@ func New(rootCtx context.Context, ds model.DataStore, broker events.Broker,
 		broker:             broker,
 		pls:                pls,
 		metrics:            m,
-		devExternalScanner: conf.Server.DevExternalScanner,
+		devExternalScanner: conf.Server().DevExternalScanner,
 	}
 	if !c.devExternalScanner {
-		c.limiter = new(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
+		c.limiter = new(rate.Sometimes{Interval: conf.Server().DevActivityPanelUpdateRate})
 	}
 	return c
 }

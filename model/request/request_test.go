@@ -8,14 +8,19 @@ import (
 )
 
 var _ = Describe("Token epoch holder", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("reports nothing when unset", func() {
-		ctx := WithTokenEpochHolder(context.TODO())
+		ctx = WithTokenEpochHolder(ctx)
 		_, ok := TokenEpochFrom(ctx)
 		Expect(ok).To(BeFalse())
 	})
 
 	It("round-trips a value set by the handler", func() {
-		ctx := WithTokenEpochHolder(context.TODO())
+		ctx = WithTokenEpochHolder(ctx)
 		SetTokenEpoch(ctx, 7)
 
 		epoch, ok := TokenEpochFrom(ctx)
@@ -24,7 +29,7 @@ var _ = Describe("Token epoch holder", func() {
 	})
 
 	It("survives being wrapped in a derived context", func() {
-		ctx := WithTokenEpochHolder(context.TODO())
+		ctx = WithTokenEpochHolder(ctx)
 		SetTokenEpoch(context.WithValue(ctx, contextKey("unrelated"), 1), 3)
 
 		epoch, ok := TokenEpochFrom(ctx)
@@ -33,20 +38,25 @@ var _ = Describe("Token epoch holder", func() {
 	})
 
 	It("is a no-op with no holder installed", func() {
-		Expect(func() { SetTokenEpoch(context.TODO(), 5) }).ToNot(Panic())
-		_, ok := TokenEpochFrom(context.TODO())
+		Expect(func() { SetTokenEpoch(ctx, 5) }).ToNot(Panic())
+		_, ok := TokenEpochFrom(ctx)
 		Expect(ok).To(BeFalse())
 	})
 })
 
 var _ = Describe("Server address", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("reports nothing when unset", func() {
-		_, _, ok := ServerAddressFrom(context.TODO())
+		_, _, ok := ServerAddressFrom(ctx)
 		Expect(ok).To(BeFalse())
 	})
 
 	It("round-trips the scheme and host", func() {
-		ctx := WithServerAddress(context.TODO(), "https", "music.example.com")
+		ctx = WithServerAddress(ctx, "https", "music.example.com")
 
 		scheme, host, ok := ServerAddressFrom(ctx)
 		Expect(ok).To(BeTrue())
@@ -55,16 +65,16 @@ var _ = Describe("Server address", func() {
 	})
 
 	It("reports nothing when the host is empty", func() {
-		ctx := WithServerAddress(context.TODO(), "https", "")
+		ctx = WithServerAddress(ctx, "https", "")
 
 		_, _, ok := ServerAddressFrom(ctx)
 		Expect(ok).To(BeFalse())
 	})
 
 	It("is carried over to a background context by AddValues", func() {
-		reqCtx := WithServerAddress(context.TODO(), "https", "music.example.com")
+		reqCtx := WithServerAddress(ctx, "https", "music.example.com")
 
-		_, host, ok := ServerAddressFrom(AddValues(context.Background(), reqCtx))
+		_, host, ok := ServerAddressFrom(AddValues(ctx, reqCtx))
 		Expect(ok).To(BeTrue())
 		Expect(host).To(Equal("music.example.com"))
 	})

@@ -20,6 +20,7 @@ func loadLyricFixture(b *testing.B, name string) []byte {
 }
 
 func benchmarkParse(b *testing.B, suffix, fixture string) {
+	b.Helper()
 	contents := loadLyricFixture(b, fixture)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(contents)))

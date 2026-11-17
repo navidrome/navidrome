@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
@@ -19,18 +18,18 @@ var _ = Describe("Playlist", func() {
 		BeforeEach(func() {
 			pls = model.Playlist{Name: "Mellow sunset"}
 			pls.Tracks = model.PlaylistTracks{
-				{MediaFile: model.MediaFile{Artist: "Morcheeba feat. Kurt Wagner", Title: "What New York Couples Fight About",
+				{Artist: "Morcheeba feat. Kurt Wagner", Title: "What New York Couples Fight About",
 					Duration:    377.84,
-					LibraryPath: "/music/library", Path: "Morcheeba/Charango/01-06 What New York Couples Fight About.mp3"}},
-				{MediaFile: model.MediaFile{Artist: "A Tribe Called Quest", Title: "Description of a Fool (Groove Armada's Acoustic mix)",
+					LibraryPath: "/music/library", Path: "Morcheeba/Charango/01-06 What New York Couples Fight About.mp3"},
+				{Artist: "A Tribe Called Quest", Title: "Description of a Fool (Groove Armada's Acoustic mix)",
 					Duration:    374.49,
-					LibraryPath: "/music/library", Path: "Groove Armada/Back to Mine_ Groove Armada/01-01 Description of a Fool (Groove Armada's Acoustic mix).mp3"}},
-				{MediaFile: model.MediaFile{Artist: "Lou Reed", Title: "Walk on the Wild Side",
+					LibraryPath: "/music/library", Path: "Groove Armada/Back to Mine_ Groove Armada/01-01 Description of a Fool (Groove Armada's Acoustic mix).mp3"},
+				{Artist: "Lou Reed", Title: "Walk on the Wild Side",
 					Duration:    253.1,
-					LibraryPath: "/music/library", Path: "Lou Reed/Walk on the Wild Side_ The Best of Lou Reed/01-06 Walk on the Wild Side.m4a"}},
-				{MediaFile: model.MediaFile{Artist: "Legião Urbana", Title: "On the Way Home",
+					LibraryPath: "/music/library", Path: "Lou Reed/Walk on the Wild Side_ The Best of Lou Reed/01-06 Walk on the Wild Side.m4a"},
+				{Artist: "Legião Urbana", Title: "On the Way Home",
 					Duration:    163.89,
-					LibraryPath: "/music/library", Path: "Legião Urbana/Música p_ acampamentos/02-05 On the Way Home.mp3"}},
+					LibraryPath: "/music/library", Path: "Legião Urbana/Música p_ acampamentos/02-05 On the Way Home.mp3"},
 			}
 		})
 		It("generates the correct M3U format", func() {
@@ -52,8 +51,7 @@ var _ = Describe("Playlist", func() {
 
 	Describe("RefreshDelay", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SmartPlaylistRefreshDelay = 5 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = 5 * time.Second })
 		})
 
 		It("returns the global config value when rules have no refreshDelay", func() {

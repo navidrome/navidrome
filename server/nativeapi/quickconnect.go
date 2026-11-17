@@ -26,8 +26,8 @@ func (api *Router) addQuickConnectRoute(r chi.Router) {
 	}
 	r.Route("/quickconnect", func(r chi.Router) {
 		// Throttled like login so a signed-in user cannot enumerate other people's pending codes.
-		if conf.Server.AuthRequestLimit > 0 {
-			r.Use(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		if conf.Server().AuthRequestLimit > 0 {
+			r.Use(server.ClientIPRateLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength))
 		}
 		r.Get("/", lookupQuickConnect(api.quickConnect))
 		r.Post("/authorize", authorizeQuickConnect(api.quickConnect))
@@ -71,6 +71,8 @@ func writeQuickConnectResult(w http.ResponseWriter, r *http.Request, req quickco
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	default:
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(quickConnectDevice{AppName: req.Device.App, AppVersion: req.Device.AppVersion, DeviceName: req.Device.Name})
+		if err := json.NewEncoder(w).Encode(quickConnectDevice{AppName: req.Device.App, AppVersion: req.Device.AppVersion, DeviceName: req.Device.Name}); err != nil {
+			log.Error(r.Context(), "Error encoding Quick Connect response", err)
+		}
 	}
 }

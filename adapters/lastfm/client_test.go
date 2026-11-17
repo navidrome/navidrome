@@ -19,8 +19,10 @@ import (
 var _ = Describe("client", func() {
 	var httpClient *tests.FakeHttpClient
 	var client *client
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		httpClient = &tests.FakeHttpClient{}
 		client = newClient("API_KEY", "SECRET", httpClient)
 	})
@@ -30,8 +32,8 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			album, err := client.albumGetInfo(context.Background(), "Believe", "U2", "mbid-1234", "pt")
-			Expect(err).To(BeNil())
+			album, err := client.albumGetInfo(ctx, "Believe", "U2", "mbid-1234", "pt")
+			Expect(err).ToNot(HaveOccurred())
 			Expect(album.Name).To(Equal("Believe"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
 		})
@@ -40,7 +42,7 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			_, err := client.albumGetInfo(context.Background(), "Lungs", "Florence + the Machine", "", "en")
+			_, err := client.albumGetInfo(ctx, "Lungs", "Florence + the Machine", "", "en")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("Florence + the Machine"))
 		})
@@ -51,8 +53,8 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			artist, err := client.artistGetInfo(context.Background(), "U2", "pt")
-			Expect(err).To(BeNil())
+			artist, err := client.artistGetInfo(ctx, "U2", "pt")
+			Expect(err).ToNot(HaveOccurred())
 			Expect(artist.Name).To(Equal("U2"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
 		})
@@ -61,7 +63,7 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			_, err := client.artistGetInfo(context.Background(), "Florence + the Machine", "en")
+			_, err := client.artistGetInfo(ctx, "Florence + the Machine", "en")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("Florence %2B the Machine"))
 		})
@@ -72,7 +74,7 @@ var _ = Describe("client", func() {
 				StatusCode: 500,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
+			_, err := client.artistGetInfo(ctx, "U2", "pt")
 			Expect(err).To(MatchError("last.fm http status: (500)"))
 		})
 
@@ -82,7 +84,7 @@ var _ = Describe("client", func() {
 				StatusCode: 400,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
+			_, err := client.artistGetInfo(ctx, "U2", "pt")
 			Expect(err).To(MatchError(&lastFMError{Code: 3, Message: "Invalid Method - No method with that name in this package"}))
 		})
 
@@ -92,14 +94,14 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
+			_, err := client.artistGetInfo(ctx, "U2", "pt")
 			Expect(err).To(MatchError(&lastFMError{Code: 6, Message: "The artist you supplied could not be found"}))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.Err = errors.New("generic error")
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
+			_, err := client.artistGetInfo(ctx, "U2", "pt")
 			Expect(err).To(MatchError("generic error"))
 		})
 
@@ -109,7 +111,7 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "pt")
+			_, err := client.artistGetInfo(ctx, "U2", "pt")
 			Expect(err).To(MatchError("invalid character '<' looking for beginning of value"))
 		})
 
@@ -120,9 +122,9 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			similar, err := client.artistGetSimilar(context.Background(), "U2", 2)
-			Expect(err).To(BeNil())
-			Expect(len(similar.Artists)).To(Equal(2))
+			similar, err := client.artistGetSimilar(ctx, "U2", 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(similar.Artists).To(HaveLen(2))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
 		})
 
@@ -130,7 +132,7 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			_, err := client.artistGetSimilar(context.Background(), "+44", 2)
+			_, err := client.artistGetSimilar(ctx, "+44", 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("%2B44"))
 		})
@@ -141,9 +143,9 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			top, err := client.artistGetTopTracks(context.Background(), "U2", 2)
-			Expect(err).To(BeNil())
-			Expect(len(top.Track)).To(Equal(2))
+			top, err := client.artistGetTopTracks(ctx, "U2", 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(top.Track).To(HaveLen(2))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
 		})
 
@@ -151,7 +153,7 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			_, err := client.artistGetTopTracks(context.Background(), "C+C Music Factory", 2)
+			_, err := client.artistGetTopTracks(ctx, "C+C Music Factory", 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("C%2BC Music Factory"))
 		})
@@ -162,9 +164,9 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			similar, err := client.trackGetSimilar(context.Background(), "Just Can't Get Enough", "Depeche Mode", 5)
-			Expect(err).To(BeNil())
-			Expect(len(similar.Track)).To(Equal(5))
+			similar, err := client.trackGetSimilar(ctx, "Just Can't Get Enough", "Depeche Mode", 5)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(similar.Track).To(HaveLen(5))
 			Expect(similar.Track[0].Name).To(Equal("Dreaming of Me"))
 			Expect(similar.Track[0].Artist.Name).To(Equal("Depeche Mode"))
 			Expect(similar.Track[0].Match).To(Equal(1.0))
@@ -175,7 +177,7 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			_, err := client.trackGetSimilar(context.Background(), "1+1", "Queen + Paul Rodgers", 5)
+			_, err := client.trackGetSimilar(ctx, "1+1", "Queen + Paul Rodgers", 5)
 			Expect(err).ToNot(HaveOccurred())
 			query := httpClient.SavedRequest.URL.Query()
 			Expect(query.Get("track")).To(Equal("1%2B1"))
@@ -186,8 +188,8 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.unknown.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			similar, err := client.trackGetSimilar(context.Background(), "UnknownTrack", "UnknownArtist", 3)
-			Expect(err).To(BeNil())
+			similar, err := client.trackGetSimilar(ctx, "UnknownTrack", "UnknownArtist", 3)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(similar.Track).To(BeEmpty())
 		})
 	})
@@ -199,7 +201,7 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			Expect(client.GetToken(context.Background())).To(Equal("TOKEN"))
+			Expect(client.GetToken(ctx)).To(Equal("TOKEN"))
 			queryParams := httpClient.SavedRequest.URL.Query()
 			Expect(queryParams.Get("method")).To(Equal("auth.getToken"))
 			Expect(queryParams.Get("format")).To(Equal("json"))
@@ -215,7 +217,7 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			Expect(client.getSession(context.Background(), "TOKEN")).To(Equal("SESSION_KEY"))
+			Expect(client.getSession(ctx, "TOKEN")).To(Equal("SESSION_KEY"))
 			queryParams := httpClient.SavedRequest.URL.Query()
 			Expect(queryParams.Get("method")).To(Equal("auth.getSession"))
 			Expect(queryParams.Get("format")).To(Equal("json"))
@@ -240,8 +242,8 @@ var _ = Describe("client", func() {
 				duration:    276,
 				albumArtist: "U2",
 			}
-			err := client.scrobble(context.Background(), "SESSION_KEY", info)
-			Expect(err).To(BeNil())
+			err := client.scrobble(ctx, "SESSION_KEY", info)
+			Expect(err).ToNot(HaveOccurred())
 
 			req := httpClient.SavedRequest
 			Expect(req.Method).To(Equal(http.MethodPost))
@@ -274,8 +276,8 @@ var _ = Describe("client", func() {
 				duration:    276,
 				albumArtist: "U2",
 			}
-			err := client.updateNowPlaying(context.Background(), "SESSION_KEY", info)
-			Expect(err).To(BeNil())
+			err := client.updateNowPlaying(ctx, "SESSION_KEY", info)
+			Expect(err).ToNot(HaveOccurred())
 
 			req := httpClient.SavedRequest
 			Expect(req.Method).To(Equal(http.MethodPost))

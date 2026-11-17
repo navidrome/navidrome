@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -41,10 +40,12 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		// Setup mock router and data store
 		router = &fakeSubsonicRouter{}
@@ -458,6 +459,6 @@ func (r *fakeSubsonicRouter) ServeHTTP(w http.ResponseWriter, req *http.Request)
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(response)
+		Expect(json.NewEncoder(w).Encode(response)).To(Succeed())
 	}
 }

@@ -216,6 +216,8 @@ func clean(filePath string, tags model.RawTags) model.Tags {
 		switch mapping.Type {
 		case model.TagTypePair:
 			values = processPairMapping(name, mapping, lowered)
+		case model.TagTypeString, model.TagTypeInteger, model.TagTypeFloat, model.TagTypeDate, model.TagTypeUUID:
+			fallthrough
 		default:
 			values = processRegularMapping(mapping, lowered)
 		}
@@ -409,6 +411,7 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 		// Store the canonical form: uuid.Parse accepts braces, urn: prefixes and any
 		// two-byte wrapper, and a wrapped value would never match an exact-match query
 		value = u.String()
+	case model.TagTypeString, model.TagTypePair:
 	}
 	return value
 }

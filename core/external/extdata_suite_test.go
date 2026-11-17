@@ -3,6 +3,7 @@ package external
 import (
 	"testing"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -15,3 +16,5 @@ func TestExternal(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "External Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()

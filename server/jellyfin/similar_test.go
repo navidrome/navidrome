@@ -19,9 +19,10 @@ import (
 )
 
 var _ = Describe("awaitSimilar", func() {
+	var ctx context.Context
 	var api *Router
 	ctxFor := func(userID string) context.Context {
-		return request.WithUser(context.Background(), model.User{ID: userID})
+		return request.WithUser(ctx, model.User{ID: userID})
 	}
 	shortenWait := func() {
 		old := similarWait
@@ -30,6 +31,7 @@ var _ = Describe("awaitSimilar", func() {
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		api = &Router{}
 	})
 
@@ -68,7 +70,7 @@ var _ = Describe("awaitSimilar", func() {
 		api.awaitSimilar(ctxFor(testID("u1")), "id3", 20, fetch)
 		close(release)
 		Eventually(calls.Load).Should(Equal(int32(1)))
-		Consistently(calls.Load, "50ms").Should(Equal(int32(1)))
+		Consistently(calls.Load, 50*time.Millisecond).Should(Equal(int32(1)))
 	})
 
 	It("does not share fetches across users (items embed the user's annotations)", func() {
@@ -116,6 +118,11 @@ func (p *fakeSimilarProvider) SimilarSongs(_ context.Context, _ string, count in
 }
 
 var _ = Describe("getInstantMix", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("returns the seed track even when the provider fetch exceeds the wait", func() {
 		old := similarWait
 		similarWait = 20 * time.Millisecond
@@ -131,7 +138,7 @@ var _ = Describe("getInstantMix", func() {
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix", nil).
-			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 		api.getInstantMix(w, r)
 
@@ -155,7 +162,7 @@ var _ = Describe("getInstantMix", func() {
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix?limit="+strconv.Itoa(want), nil).
-			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 		api.getInstantMix(w, r)
 
@@ -175,7 +182,7 @@ var _ = Describe("getInstantMix", func() {
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("g1"))+"/InstantMix", nil).
-			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("g1")))
 		api.getInstantMix(w, r)
 
@@ -187,6 +194,11 @@ var _ = Describe("getInstantMix", func() {
 })
 
 var _ = Describe("getSimilarAlbums", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("does not return the seed album as its own similar album", func() {
 		// With no external agent the provider falls back to the album's own tracks, which map
 		// straight back to the requested album.
@@ -200,7 +212,7 @@ var _ = Describe("getSimilarAlbums", func() {
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
-			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
 		api.getSimilarAlbums(w, r)
 
@@ -221,7 +233,7 @@ var _ = Describe("getSimilarAlbums", func() {
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
-			WithContext(request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
 		api.getSimilarAlbums(w, r)
 

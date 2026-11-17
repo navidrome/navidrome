@@ -8,8 +8,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -28,8 +30,8 @@ var _ = Describe("listenBrainzAgent", func() {
 	var track *model.MediaFile
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		ctx = context.Background()
 		_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
 		httpClient = &tests.FakeHttpClient{}
 		agent = listenBrainzConstructor(ds)
@@ -46,8 +48,8 @@ var _ = Describe("listenBrainzAgent", func() {
 			Duration:          142.2,
 			Participants: map[model.Role]model.ParticipantList{
 				model.RoleArtist: []model.Participant{
-					{Artist: model.Artist{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"}},
-					{Artist: model.Artist{ID: "ar-2", Name: "Artist 2", MbzArtistID: "mbz-222"}},
+					{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"},
+					{ID: "ar-2", Name: "Artist 2", MbzArtistID: "mbz-222"},
 				},
 			},
 		}
@@ -474,6 +476,46 @@ var _ = Describe("listenBrainzAgent", func() {
 					Duration:  0,
 				},
 			}))
+		})
+	})
+})
+
+var _ = Describe("register", func() {
+	var ds model.DataStore
+
+	BeforeEach(func() {
+		ds = &tests.MockDataStore{}
+		delete(agents.Map, listenBrainzAgentName)
+		scrobbler.Unregister(listenBrainzAgentName)
+	})
+
+	When("ListenBrainz is disabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = false })
+			register()
+		})
+
+		It("still registers the builtin name", func() {
+			Expect(scrobbler.IsBuiltinScrobbler(listenBrainzAgentName)).To(BeTrue())
+			Expect(agents.Map).To(HaveKey(listenBrainzAgentName))
+		})
+
+		It("builds no scrobbler and no agent", func() {
+			// TypeOf is nil only for an untyped nil; a typed nil would pass callers' != nil checks
+			Expect(reflect.TypeOf(newScrobbler(ds))).To(BeNil())
+			Expect(reflect.TypeOf(agents.Map[listenBrainzAgentName](ds))).To(BeNil())
+		})
+	})
+
+	When("ListenBrainz is enabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = true })
+			register()
+		})
+
+		It("builds the scrobbler and the agent", func() {
+			Expect(newScrobbler(ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
+			Expect(agents.Map[listenBrainzAgentName](ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
 		})
 	})
 })

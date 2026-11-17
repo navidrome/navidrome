@@ -343,7 +343,7 @@ func runPluginList(ctx context.Context) {
 // requirePluginsEnabled gates DB/manager-backed commands; off-disk .ndp
 // inspection deliberately skips this so it works without a configured server.
 func requirePluginsEnabled(ctx context.Context) {
-	if !conf.Server.Plugins.Enabled {
+	if !conf.Server().Plugins.Enabled {
 		log.Fatal(ctx, "Plugin system is disabled (set Plugins.Enabled to use this command)")
 	}
 }
@@ -504,13 +504,13 @@ func usersToJSON(value string) (string, error) {
 		return value, nil
 	}
 	var names []string
-	for _, u := range strings.Split(value, ",") {
+	for u := range strings.SplitSeq(value, ",") {
 		if u = strings.TrimSpace(u); u != "" {
 			names = append(names, u)
 		}
 	}
-	b, _ := json.Marshal(names)
-	return string(b), nil
+	b, err := json.Marshal(names)
+	return string(b), err
 }
 
 // librariesToJSON accepts either a JSON array (starts with '[') or a
@@ -526,7 +526,7 @@ func librariesToJSON(value string) (string, error) {
 		return value, nil
 	}
 	ids := []int{}
-	for _, l := range strings.Split(value, ",") {
+	for l := range strings.SplitSeq(value, ",") {
 		if l = strings.TrimSpace(l); l != "" {
 			id, err := strconv.Atoi(l)
 			if err != nil {
@@ -535,8 +535,8 @@ func librariesToJSON(value string) (string, error) {
 			ids = append(ids, id)
 		}
 	}
-	b, _ := json.Marshal(ids)
-	return string(b), nil
+	b, err := json.Marshal(ids)
+	return string(b), err
 }
 
 var pluginRescanCmd = &cobra.Command{

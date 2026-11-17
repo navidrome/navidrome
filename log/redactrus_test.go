@@ -33,13 +33,11 @@ func TestLevels(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fn := func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			h.AcceptedLevels = test.acceptedLevels
 			levels := h.Levels()
 			assert.Equal(t, test.expected, levels, test.description)
-		}
-
-		t.Run(test.name, fn)
+		})
 	}
 }
 
@@ -54,8 +52,7 @@ type levelThresholdTest struct {
 // above and including the level given. If the provided level does not exit,
 // an empty slice is returned.
 func levelThreshold(l logrus.Level) []logrus.Level {
-	//nolint
-	if l < 0 || int(l) > len(logrus.AllLevels) {
+	if int(l) >= len(logrus.AllLevels) {
 		return []logrus.Level{}
 	}
 	return logrus.AllLevels[:l+1]
@@ -70,6 +67,12 @@ func TestLevelThreshold(t *testing.T) {
 			description: "An empty Level slice was expected but was not returned",
 		},
 		{
+			name:        "levelPastLast",
+			level:       logrus.Level(len(logrus.AllLevels)),
+			expected:    []logrus.Level{},
+			description: "An empty Level slice was expected for the first level past TraceLevel",
+		},
+		{
 			name:        "errorLogLevel",
 			level:       logrus.ErrorLevel,
 			expected:    []logrus.Level{logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel},
@@ -78,12 +81,10 @@ func TestLevelThreshold(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fn := func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			levels := levelThreshold(test.level)
 			assert.Equal(t, test.expected, levels, test.description)
-		}
-
-		t.Run(test.name, fn)
+		})
 	}
 }
 
@@ -100,7 +101,7 @@ type EntryDataValuesTest struct {
 	redactionList []string
 	logFields     logrus.Fields
 	expected      logrus.Fields
-	description   string //nolint
+	description   string
 }
 
 // Test that any occurrence of a redaction pattern
@@ -131,7 +132,7 @@ func TestEntryDataValues(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		fn := func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			logEntry := &logrus.Entry{
 				Data: test.logFields,
 			}
@@ -140,8 +141,7 @@ func TestEntryDataValues(t *testing.T) {
 
 			assert.Nil(t, err)
 			assert.Equal(t, test.expected, logEntry.Data)
-		}
-		t.Run(test.name, fn)
+		})
 	}
 }
 

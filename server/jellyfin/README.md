@@ -162,7 +162,9 @@ in Jellyfin; `Likes` and `Dislikes` are not supported, and `IsFolder`, `IsNotFol
 `IsResumable` have no Navidrome equivalent, so all five are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
 unrecognized keys are skipped, and `Random` always sorts alone);
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
-returns direct children only (no tracks — no track is a library's direct child).
+returns direct children only (no tracks — no track is a library's direct child). With no `ParentId`,
+no `Recursive=true` and none of the filters above, `/Items` lists the user's libraries (the same
+views as `UserViews`), as Jellyfin does at the user root.
 
 ## Implemented endpoints
 
@@ -276,14 +278,13 @@ The stream endpoints reuse the same transcode-decision pipeline as the Subsonic 
 word-level `Cues` when present), resolved through the full `core/lyrics` pipeline (embedded, `.lrc`
 sidecars, plugins per `LyricsPriority`). No lyrics returns `404`, never an empty `200`.
 
-Results, misses included, are cached for 5 minutes: Jellify fetches lyrics for every played track and
-Feishin on every song change, so lyric-less tracks are the hot path. Concurrent misses on the same
-track share one pipeline run. That run is detached from the request, so a cancelled request doesn't
-fail it for other waiters, and its context has a one-minute deadline.
+`core/lyrics` caches plugin results, misses included, for 5 minutes: Jellify fetches lyrics for every played
+track and Feishin on every song change, so lyric-less tracks are the hot path.
 
 Finamp opens its lyrics view only when the track has a `Lyric` `MediaStream` (`HasLyrics` is just a
 list badge). Browse lists set both from embedded lyrics only. `PlaybackInfo` runs the full pipeline
-per track, so sidecar and plugin lyrics show up there. Feishin also requires server version ≥ 10.9
+per track with a short timeout bound, so sidecar and cached/fast plugin lyrics show up there without
+stalling playback start on a slow cold plugin lookup. Feishin also requires server version ≥ 10.9
 (we advertise 12.1.0).
 
 ## AudioMuse-AI compatible endpoints

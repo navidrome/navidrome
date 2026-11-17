@@ -325,11 +325,9 @@ var _ = Describe("throttleStreams", func() {
 
 		var wg sync.WaitGroup
 		for range n {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/Items", nil))
-			}()
+			})
 		}
 		// Give the admitted requests time to pile up before letting them finish.
 		time.Sleep(100 * time.Millisecond)
@@ -352,11 +350,9 @@ var _ = Describe("throttleStreams", func() {
 		}))
 		var wg sync.WaitGroup
 		for range 8 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/Items", nil))
-			}()
+			})
 		}
 		close(release)
 		wg.Wait()

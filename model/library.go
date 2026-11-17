@@ -46,8 +46,8 @@ type PIDConfig struct {
 // the global config.
 func (l Library) EffectivePID() PIDConfig {
 	return PIDConfig{
-		Track: cmp.Or(l.PIDTrack, conf.Server.PID.Track),
-		Album: cmp.Or(l.PIDAlbum, conf.Server.PID.Album),
+		Track: cmp.Or(l.PIDTrack, conf.Server().PID.Track),
+		Album: cmp.Or(l.PIDAlbum, conf.Server().PID.Album),
 	}
 }
 

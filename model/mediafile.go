@@ -107,14 +107,14 @@ type MediaFile struct {
 }
 
 func (mf MediaFile) FullTitle() string {
-	if s := mf.Tags.First(TagSubtitle); conf.Server.Subsonic.AppendSubtitle && s != "" {
+	if s := mf.Tags.First(TagSubtitle); conf.Server().Subsonic.AppendSubtitle && s != "" {
 		return appendSuffix(mf.Title, s)
 	}
 	return mf.Title
 }
 
 func (mf MediaFile) FullAlbumName() string {
-	if v := mf.Tags.First(TagAlbumVersion); conf.Server.Subsonic.AppendAlbumVersion && v != "" {
+	if v := mf.Tags.First(TagAlbumVersion); conf.Server().Subsonic.AppendAlbumVersion && v != "" {
 		return appendSuffix(mf.Album, v)
 	}
 	return mf.Album
@@ -136,7 +136,7 @@ func (mf MediaFile) ContentType() string {
 
 func (mf MediaFile) CoverArtID() ArtworkID {
 	// If it has a cover art, return it (if feature is disabled, skip)
-	if mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+	if mf.HasCoverArt && conf.Server().EnableMediaFileCoverArt {
 		return artworkIDFromMediaFile(mf)
 	}
 	// Otherwise fallback to disc (if available) or album cover
@@ -524,9 +524,9 @@ func firstArtPath(currentPath string, currentDisc int, m MediaFile) (string, int
 func (mfs MediaFiles) ToM3U8(title string, absolutePaths bool) string {
 	buf := strings.Builder{}
 	buf.WriteString("#EXTM3U\n")
-	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", title))
+	fmt.Fprintf(&buf, "#PLAYLIST:%s\n", title)
 	for _, t := range mfs {
-		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		fmt.Fprintf(&buf, "#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title)
 		if absolutePaths {
 			buf.WriteString(t.AbsolutePath() + "\n")
 		} else {

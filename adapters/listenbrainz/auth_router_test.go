@@ -38,8 +38,8 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
-			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-			Expect(parsed["status"]).To(Equal(false))
+			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+			Expect(parsed["status"]).To(BeFalse())
 		})
 
 		It("returns true when there is a stored session key", func() {
@@ -48,8 +48,8 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
-			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-			Expect(parsed["status"]).To(Equal(true))
+			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+			Expect(parsed["status"]).To(BeTrue())
 		})
 	})
 
@@ -81,8 +81,8 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
-			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-			Expect(parsed["status"]).To(Equal(true))
+			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+			Expect(parsed["status"]).To(BeTrue())
 			Expect(parsed["user"]).To(Equal("ListenBrainzUser"))
 		})
 

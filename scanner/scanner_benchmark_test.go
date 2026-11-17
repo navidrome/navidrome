@@ -1,7 +1,6 @@
 package scanner_test
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"path/filepath"
@@ -44,18 +43,20 @@ func BenchmarkScan(b *testing.B) {
 	tests.Init(b, false)
 
 	tmpDir := b.TempDir()
-	conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
-	// The default library is seeded from MusicFolder, and its path cannot be changed afterwards
-	conf.Server.MusicFolder = "fake:///music"
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
+		// The default library is seeded from MusicFolder, and its path cannot be changed afterwards
+		c.MusicFolder = "fake:///music"
+	})
 	// TestScanner may run first and close the shared DB singleton; drop it so db.Init
 	// opens a fresh one whether or not the test suite ran before this benchmark.
 	singleton.DeleteInstance[*sql.DB]()
 	// Close before b.TempDir cleanup runs, or Windows cannot delete the open DB/WAL files.
-	defer db.Init(context.Background())()
+	defer db.Init(b.Context())()
 
 	ds := persistence.New(db.Db())
-	conf.Server.DevExternalScanner = false
-	s := scanner.New(context.Background(), ds, events.NoopBroker(),
+	conf.Update(func(c *conf.Options) { c.DevExternalScanner = false })
+	s := scanner.New(b.Context(), ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 	fs := storagetest.FakeFS{}
@@ -93,7 +94,7 @@ func BenchmarkScan(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := s.ScanAll(context.Background(), true)
+		_, err := s.ScanAll(b.Context(), true)
 		if err != nil {
 			b.Fatal(err)
 		}

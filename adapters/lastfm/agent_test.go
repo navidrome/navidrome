@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
@@ -30,41 +29,39 @@ var _ = Describe("lastfmAgent", func() {
 	var ds model.DataStore
 	var ctx context.Context
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		ctx = context.Background()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LastFM.Enabled = true
-		conf.Server.LastFM.ApiKey = "123"
-		conf.Server.LastFM.Secret = "secret"
+		conf.Update(func(c *conf.Options) {
+			c.LastFM.Enabled = true
+			c.LastFM.ApiKey = "123"
+			c.LastFM.Secret = "secret"
+		})
 	})
 	Describe("lastFMConstructor", func() {
 		When("Agent is properly configured", func() {
 			It("uses configured api key and languages", func() {
-				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"pt", "en"} })
 				agent := lastFMConstructor(ds)
 				Expect(agent.apiKey).To(Equal("123"))
 				Expect(agent.secret).To(Equal("secret"))
 				Expect(agent.languages).To(Equal([]string{"pt", "en"}))
 			})
 		})
-		When("Agent is disabled", func() {
-			It("returns nil", func() {
-				conf.Server.LastFM.Enabled = false
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
+	})
+
+	Describe("lastFMEnabled", func() {
+		It("is true when enabled with an api key and secret", func() {
+			Expect(lastFMEnabled()).To(BeTrue())
 		})
-		When("ApiKey is empty", func() {
-			It("returns nil", func() {
-				conf.Server.LastFM.ApiKey = ""
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
-		})
-		When("Secret is empty", func() {
-			It("returns nil", func() {
-				conf.Server.LastFM.Secret = ""
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
-		})
+		DescribeTable("is false when the configuration is incomplete",
+			func(change func(*conf.Options)) {
+				conf.Update(change)
+				Expect(lastFMEnabled()).To(BeFalse())
+			},
+			Entry("disabled", func(c *conf.Options) { c.LastFM.Enabled = false }),
+			Entry("no api key", func(c *conf.Options) { c.LastFM.ApiKey = "" }),
+			Entry("no secret", func(c *conf.Options) { c.LastFM.Secret = "" }),
+		)
 	})
 
 	Describe("GetArtistBiography", func() {
@@ -121,7 +118,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns content in first language when available (1 API call)", func() {
-				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"pt", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -138,7 +135,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("falls back to second language when first returns empty (2 API calls)", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -159,7 +156,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns ErrNotFound when all languages return empty", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "xx"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -186,7 +183,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("falls back to second language when first returns empty description (2 API calls)", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -208,7 +205,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns album without description when all languages return empty", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "xx"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -373,12 +370,12 @@ var _ = Describe("lastfmAgent", func() {
 				MbzRecordingID: "mbz-123",
 				Participants: map[model.Role]model.ParticipantList{
 					model.RoleArtist: []model.Participant{
-						{Artist: model.Artist{ID: "ar-1", Name: "First Artist"}},
-						{Artist: model.Artist{ID: "ar-2", Name: "Second Artist"}},
+						{ID: "ar-1", Name: "First Artist"},
+						{ID: "ar-2", Name: "Second Artist"},
 					},
 					model.RoleAlbumArtist: []model.Participant{
-						{Artist: model.Artist{ID: "ar-1", Name: "First Album Artist"}},
-						{Artist: model.Artist{ID: "ar-2", Name: "Second Album Artist"}},
+						{ID: "ar-1", Name: "First Album Artist"},
+						{ID: "ar-2", Name: "Second Album Artist"},
 					},
 				},
 			}
@@ -412,7 +409,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			When("ScrobbleFirstArtistOnly is true", func() {
 				BeforeEach(func() {
-					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+					conf.Update(func(c *conf.Options) { c.LastFM.ScrobbleFirstArtistOnly = true })
 				})
 
 				It("uses only the first artist", func() {
@@ -454,7 +451,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			When("ScrobbleFirstArtistOnly is true", func() {
 				BeforeEach(func() {
-					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+					conf.Update(func(c *conf.Options) { c.LastFM.ScrobbleFirstArtistOnly = true })
 				})
 
 				It("uses only the first artist", func() {
@@ -471,14 +468,54 @@ var _ = Describe("lastfmAgent", func() {
 				})
 			})
 
-			It("skips songs with less than 31 seconds", func() {
-				track.Duration = 29
+			It("skips songs at the 30-second minimum", func() {
+				track.Duration = 30
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("sends the duration parameter for a 30.5-second song", func() {
+				track.Duration = 30.5
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"scrobbles":{"scrobble":{"ignoredMessage":{"code":"0"}},"@attr":{"accepted":1}}}`)), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeTrue())
+				Expect(sentParams.Get("duration")).To(Equal("30"))
+			})
+
+			It("skips songs according to the configured minimum duration", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 60 * time.Second })
+				track.Duration = 59
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("does not skip short songs when the minimum duration is disabled", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 0 })
+				track.Duration = 29
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).ToNot(BeNil())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeFalse())
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {

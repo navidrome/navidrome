@@ -94,7 +94,10 @@ func writeMissingList(w io.Writer, format string, mfs model.MediaFileCursor) err
 			if err != nil {
 				return err
 			}
-			j, _ := json.Marshal(displayMissingFile{ID: mf.ID, LibraryID: mf.LibraryID, Title: mf.Title, Album: mf.Album, Artist: mf.Artist, Path: mf.Path})
+			j, err := json.Marshal(displayMissingFile{ID: mf.ID, LibraryID: mf.LibraryID, Title: mf.Title, Album: mf.Album, Artist: mf.Artist, Path: mf.Path})
+			if err != nil {
+				return err
+			}
 			_, _ = fmt.Fprintf(bw, "%s%s", sep, j)
 			sep = ","
 		}

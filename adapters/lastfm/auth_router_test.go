@@ -74,7 +74,7 @@ var _ = Describe("auth_router", func() {
 			var body map[string]any
 			Expect(json.Unmarshal(rec.Body.Bytes(), &body)).To(Succeed())
 			Expect(body["apiKey"]).To(Equal("API_KEY"))
-			Expect(body["status"]).To(Equal(false))
+			Expect(body["status"]).To(BeFalse())
 			token, ok := body["linkToken"].(string)
 			Expect(ok).To(BeTrue())
 			Expect(token).ToNot(BeEmpty())

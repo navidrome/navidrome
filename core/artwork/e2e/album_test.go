@@ -22,7 +22,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── cover.jpg            ← matched by cover.*
 		It("returns the album-root cover", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":      smallPNG("album-root"),
@@ -46,7 +46,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     │   └── cover.jpg
 		//     └── cover.jpg            ← should win (album-root fallback)
 		It("prefers the album-root cover over per-disc covers", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "Track CD2"),
@@ -77,7 +77,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     │   └── folder.jpg
 		//     └── folder.jpg           ← should win (album-root fallback)
 		It("prefers the album-root folder.jpg over per-disc folder.jpg", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "Track CD2"),
@@ -99,7 +99,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     │   └── 01 - Track.mp3
 		//     └── cover.jpg            ← should win (parent-folder fallback)
 		It("uses the parent-folder cover for single-disc-subfolder albums", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/disc1/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":            smallPNG("album-root"),
@@ -120,7 +120,7 @@ var _ = Describe("Album artwork resolution", func() {
 		// │   └── folder.jpg
 		// └── cover.jpg                ← should win (album-root)
 		It("prefers the album-root cover.jpg", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
 				"Album/CD2/01 - Track.mp3": trackFile(1, "Track CD2"),
@@ -139,7 +139,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3      ← has embedded picture (wins via "embedded")
 		//     └── cover.jpg
 		It("returns the embedded image", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.*, folder.*, front.*, external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "embedded, cover.*, folder.*, front.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
 				"Artist/Album/cover.jpg":      smallPNG("external"),
@@ -158,7 +158,7 @@ var _ = Describe("Album artwork resolution", func() {
 		// └── Album/
 		//     └── 01 - Track.mp3      ← has embedded picture (falls through to "embedded")
 		It("falls through to embedded artwork", func() {
-			conf.Server.CoverArtPriority = "external, embedded"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, embedded" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
 			})
@@ -177,7 +177,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── Cover.JPG            ← matched case-insensitively by cover.*
 		It("matches case-insensitively against cover.*", func() {
-			conf.Server.CoverArtPriority = "cover.*, folder.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*, folder.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/Cover.JPG":      smallPNG("case-insensitive"),
@@ -194,7 +194,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── cover.jpg            ← wins (no numeric suffix)
 		//     └── cover.1.jpg
 		It("prefers the file without a numeric suffix", func() {
-			conf.Server.CoverArtPriority = "cover.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":      smallPNG("primary"),
@@ -210,7 +210,7 @@ var _ = Describe("Album artwork resolution", func() {
 		// └── Album/
 		//     └── 01 - Track.mp3       (no image files — settles absent)
 		It("settles absent", func() {
-			conf.Server.CoverArtPriority = "cover.*, folder.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*, folder.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 			})
@@ -228,7 +228,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── folder.jpg           ← matched by folder.*
 		It("falls through to folder.jpg", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/folder.jpg":     smallPNG("folder"),
@@ -244,7 +244,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── front.jpg            ← matched by front.*
 		It("falls through to front.jpg", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/front.jpg":      smallPNG("front"),
@@ -262,7 +262,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── folder.jpg
 		//     └── front.jpg
 		It("prefers cover.* (first in CoverArtPriority)", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":      smallPNG("cover"),
@@ -281,7 +281,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── folder.jpg           ← wins (folder.* comes before front.*)
 		//     └── front.jpg
 		It("prefers folder.* over front.*", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/folder.jpg":     smallPNG("folder"),
@@ -300,7 +300,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── cover.1.jpg
 		//     └── cover.2.jpg
 		It("selects the unsuffixed file first regardless of numeric-suffix order", func() {
-			conf.Server.CoverArtPriority = "cover.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.2.jpg":    smallPNG("second"),
@@ -318,7 +318,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── cover.jpg            ← wins (unknown "bogus.*" is skipped)
 		It("skips the unknown pattern and falls through to the matching one", func() {
-			conf.Server.CoverArtPriority = "bogus.*, cover.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "bogus.*, cover.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":      smallPNG("cover"),
@@ -340,7 +340,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── cover.jpg
 		It("does not use the artist image as album art", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/folder.jpg":             smallPNG("artist-thumbnail"),
 				"Artist/Album A/01 - Track.mp3": trackFile(1, "Track A", map[string]any{"album": "Album A", "albumartist": "Artist"}),
@@ -366,7 +366,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── cover.jpg
 		It("does not use the artist image as album art for the spread album", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/folder.jpg":                   smallPNG("artist-thumbnail"),
 				"Artist/Album A/01 - Track.mp3":       trackFile(1, "Track A1", map[string]any{"album": "Album A", "albumartist": "Artist"}),
@@ -392,7 +392,7 @@ var _ = Describe("Album artwork resolution", func() {
 		// └── CD2/
 		//     └── 01 - Track.mp3
 		It("does not adopt the library-root image as album art", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"cover.jpg":          smallPNG("library-root"),
 				"CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"album": "Rootless", "disc": "1"}),
@@ -412,7 +412,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── cover.jpg            ← should win
 		It("prefers the album's own cover over the shallower artist-folder cover", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/cover.jpg":            smallPNG("artist-image"),
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
@@ -435,7 +435,7 @@ var _ = Describe("Album artwork resolution", func() {
 		// └── Album B/
 		//     └── 01 - Track.mp3       (other-album audio: rejects the artist folder as a root)
 		It("prefers the album's own art over the artist image", func() {
-			conf.Server.CoverArtPriority = defaultCoverPriority
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = defaultCoverPriority })
 			setLayout(fstest.MapFS{
 				"Artist/cover.jpg":                    smallPNG("artist-image"),
 				"Artist/Album A/01 - Track.mp3":       trackFile(1, "Track A1", map[string]any{"album": "Album A", "albumartist": "Artist"}),
@@ -458,7 +458,7 @@ var _ = Describe("Album artwork resolution", func() {
 		//     ├── 01 - Track.mp3       (no embedded picture)
 		//     └── cover.jpg            ← wins (embedded skipped, falls through)
 		It("falls through to the next priority entry", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "embedded, cover.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 				"Artist/Album/cover.jpg":      smallPNG("cover"),

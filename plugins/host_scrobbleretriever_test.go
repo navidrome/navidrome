@@ -11,7 +11,6 @@ import (
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -53,11 +52,11 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "scrobble-retriever-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
+		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL") })
 
 		db.Init(ctx)
 		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
+			Expect(tests.ClearDB(ctx)).To(Succeed())
 		})
 		dataStore = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
@@ -70,10 +69,12 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		userRepo := dataStore.User()
 		// Add test users
@@ -89,23 +90,23 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "1", LibraryID: 1})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "2", LibraryID: 1})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "3", LibraryID: 1})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
 
 		scrobbleRepo := dataStore.Scrobble()
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(0, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "2", time.Unix(1, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(2, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(2, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		// Create and configure manager
 		manager = &Manager{
@@ -304,7 +305,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 			for i := range 5 {
 				err := scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(100, 0))
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				scrobble := host.ScrobbleRef{ID: 5 + int64(i), MediaFileID: "3", SubmissionTime: 100}
 				duplicates[i] = scrobble

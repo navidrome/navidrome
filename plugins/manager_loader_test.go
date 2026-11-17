@@ -87,7 +87,7 @@ var _ = Describe("parsePluginConfig", func() {
 	It("handles empty object", func() {
 		result, err := parsePluginConfig(`{}`)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(result).To(HaveLen(0))
+		Expect(result).To(BeEmpty())
 		Expect(result).ToNot(BeNil())
 	})
 })

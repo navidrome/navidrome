@@ -32,7 +32,7 @@
 // # Fuzzy Matching Details
 //
 // Title+artist matching uses Jaro-Winkler similarity, with a threshold
-// configurable via conf.Server.Matcher.FuzzyThreshold (default 85%). A library
+// configurable via conf.Server().Matcher.FuzzyThreshold (default 85%). A library
 // track must clear the title threshold to be considered. Candidates that clear
 // it are ranked by, in order:
 //
@@ -42,7 +42,7 @@
 //  3. Specificity level (0–5, based on metadata precision; higher is better)
 //  4. Artist overlap (how many of the song's artists the track credits; more
 //     shared artists is better)
-//  5. Preferred-track flag (enabled by conf.Server.Matcher.PreferStarred;
+//  5. Preferred-track flag (enabled by conf.Server().Matcher.PreferStarred;
 //     prioritizes tracks that are starred or rated >= 4, but only among
 //     candidates of equal specificity and overlap)
 //  6. Album similarity (Jaro-Winkler, as the final tiebreaker)
@@ -111,7 +111,7 @@
 //	  {ID: "live",   Title: "Untitled", Artist: "Interpol", Duration: 602}  // 10:02
 //	Result: studio for the first song, live for the second
 //
-// Preferred track — when conf.Server.Matcher.PreferStarred is enabled, a
+// Preferred track — when conf.Server().Matcher.PreferStarred is enabled, a
 // starred (or rating >= 4) track is preferred, but only when specificity and
 // artist overlap are equal. A more specific match always wins regardless of the
 // preferred flag:

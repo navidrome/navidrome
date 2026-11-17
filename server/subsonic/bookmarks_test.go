@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -18,9 +19,9 @@ var _ = Describe("Bookmarks", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "u1", UserName: "u1"})
 		ds = &tests.MockDataStore{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		ctx = request.WithUser(context.Background(), model.User{ID: "u1", UserName: "u1"})
 		mfRepo = ds.MediaFile().(*tests.MockMediaFileRepo)
 		mfRepo.SetData(model.MediaFiles{{ID: "visible"}})
 	})
@@ -43,6 +44,29 @@ var _ = Describe("Bookmarks", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfRepo.BookmarksAdded).To(ConsistOf("visible"))
+		})
+	})
+
+	Context("when some queued tracks fail to load", func() {
+		BeforeEach(func() {
+			ds.MockedPlayQueue = &tests.MockPlayQueueRepo{
+				Queue:             &model.PlayQueue{UserID: "u1", Items: model.MediaFiles{{ID: "visible"}}},
+				WithMediaFilesErr: fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue),
+			}
+		})
+
+		It("getPlayQueue returns the loaded tracks", func() {
+			resp, err := router.GetPlayQueue(newGetRequest().WithContext(ctx))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.PlayQueue.Entry).To(HaveLen(1))
+		})
+
+		It("getPlayQueueByIndex returns the loaded tracks", func() {
+			resp, err := router.GetPlayQueueByIndex(newGetRequest().WithContext(ctx))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.PlayQueueByIndex.Entry).To(HaveLen(1))
 		})
 	})
 })

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/matcher"
@@ -32,8 +31,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DevArtistInfoTimeToLive = 1 * time.Hour
+		conf.Update(func(c *conf.Options) { c.DevArtistInfoTimeToLive = 1 * time.Hour })
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
@@ -155,7 +153,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ExternalUrl:           "http://cached.url",
 			Biography:             "Cached Bio",
 			LargeImageUrl:         "http://cached_large.jpg",
-			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server().DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-similar-present", Name: "Similar Present"},
 				{ID: "ar-similar-absent", Name: "Similar Absent"},
@@ -188,7 +186,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 
 	It("returns cached info and triggers background refresh when info is expired", func() {
 		now := time.Now()
-		expiredTime := now.Add(-conf.Server.DevArtistInfoTimeToLive * 2)
+		expiredTime := now.Add(-conf.Server().DevArtistInfoTimeToLive * 2)
 		originalArtist := &model.Artist{
 			ID:                    "ar-expired",
 			Name:                  "Expired Artist",
@@ -223,7 +221,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		originalArtist := &model.Artist{
 			ID:                    "ar-similar-test",
 			Name:                  "Similar Test Artist",
-			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server().DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-sim-present", Name: "Similar Present"},
 				{ID: "", Name: "Similar Absent Raw"},

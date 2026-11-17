@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -42,7 +43,10 @@ func NewHTTPClient(wrapped httpDoer, ttl time.Duration) *HTTPClient {
 }
 
 func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
-	key := c.serializeReq(req)
+	key, err := c.serializeReq(req)
+	if err != nil {
+		return nil, err
+	}
 	cached := true
 	start := time.Now()
 	respStr, err := c.cache.GetWithLoader(key, func(key string) (string, time.Duration, error) {
@@ -67,7 +71,7 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 	return c.deserializeResponse(req, respStr)
 }
 
-func (c *HTTPClient) serializeReq(req *http.Request) string {
+func (c *HTTPClient) serializeReq(req *http.Request) (string, error) {
 	data := requestData{
 		Method: req.Method,
 		Header: req.Header,
@@ -77,8 +81,11 @@ func (c *HTTPClient) serializeReq(req *http.Request) string {
 		bodyData, _ := io.ReadAll(req.Body)
 		data.Body = new(base64.StdEncoding.EncodeToString(bodyData))
 	}
-	j, _ := json.Marshal(&data)
-	return string(j)
+	j, err := json.Marshal(&data)
+	if err != nil {
+		return "", fmt.Errorf("encoding request cache key: %w", err)
+	}
+	return string(j), nil
 }
 
 func (c *HTTPClient) deserializeReq(reqStr string) (*http.Request, error) {

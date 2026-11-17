@@ -10,7 +10,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -36,7 +35,6 @@ var _ = Describe("MediaRepository", func() {
 		var albumRoot, disc1, sibling *model.Folder
 
 		BeforeEach(func() {
-			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
 			libPtr, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			lib = *libPtr
@@ -195,7 +193,7 @@ var _ = Describe("MediaRepository", func() {
 			},
 		})
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(results).To(HaveLen(3))
 		Expect(results[0].Lyrics).To(Equal(`[{"lang":"xxx","line":[{"value":"This is a set of lyrics"}],"synced":false}]`))
 		for _, item := range results[1:] {
@@ -385,7 +383,7 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Put(ctx, &new2)).To(Succeed())
 		Expect(mr.MarkMissing(ctx, true, &new1, &new2)).To(Succeed())
 
-		adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", IsAdmin: true})
+		adminCtx := request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
 		adminRepo := NewMediaFileRepository(GetDBXBuilder())
 
 		// Ensure the files are marked as missing and we have 2 of them
@@ -406,12 +404,12 @@ var _ = Describe("MediaRepository", func() {
 	Context("Annotations", func() {
 		It("increments play count when the tracks does not have annotations", func() {
 			id := "incplay.firsttime"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
@@ -487,38 +485,38 @@ var _ = Describe("MediaRepository", func() {
 
 		It("preserves play date if and only if provided date is older", func() {
 			id := "incplay.playdate"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
 
 			playDateLate := playDate.AddDate(0, 0, 1)
-			Expect(mr.IncPlayCount(ctx, id, playDateLate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateLate)).To(Succeed())
 			mf, err = mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(2)))
 
 			playDateEarly := playDate.AddDate(0, 0, -1)
-			Expect(mr.IncPlayCount(ctx, id, playDateEarly)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateEarly)).To(Succeed())
 			mf, err = mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(3)))
 		})
 
 		It("increments play count on newly starred items", func() {
 			id := "star.incplay"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
-			Expect(mr.SetStar(ctx, true, id)).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
+			Expect(mr.SetStar(ctx, true, id)).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
@@ -530,7 +528,6 @@ var _ = Describe("MediaRepository", func() {
 			var testMediaFiles []model.MediaFile
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 
 				// Create test media files with specific timestamps
 				testMediaFiles = []model.MediaFile{
@@ -606,7 +603,7 @@ var _ = Describe("MediaRepository", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -648,7 +645,7 @@ var _ = Describe("MediaRepository", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -671,7 +668,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("breaks ties deterministically when files share the same created_at", func() {
-				conf.Server.RecentlyAddedByModTime = false
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				ctx := log.NewContext(GinkgoT().Context())
 				ctx = request.WithUser(ctx, model.User{ID: "userid"})
 				repo := NewMediaFileRepository(GetDBXBuilder())
@@ -922,7 +919,6 @@ var _ = Describe("MediaRepository", func() {
 		var pls model.Playlist
 
 		BeforeEach(func() {
-			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
 			pr = NewPlaylistRepository(GetDBXBuilder())
 			prev = model.MediaFile{ID: "reassign-prev", LibraryID: 1, Path: "reassign/prev.mp3", Title: "Prev"}
 			next = model.MediaFile{ID: "reassign-next", LibraryID: 1, Path: "reassign/next.mp3", Title: "Next"}
@@ -964,7 +960,6 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("moves scrobbles and buffered scrobbles onto the new id", func() {
-			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
 			scrobbles := NewScrobbleRepository(GetDBXBuilder())
 			buffer := NewScrobbleBufferRepository(GetDBXBuilder())
 			Expect(scrobbles.RecordScrobble(ctx, prev.ID, time.Now())).To(Succeed())
@@ -1205,6 +1200,73 @@ var _ = Describe("MediaRepository", func() {
 		})
 	})
 
+	Describe("FindRecentFilesByProperties", func() {
+		var adminCtx context.Context
+		var otherLib model.Library
+		var missing model.MediaFile
+		var since time.Time
+
+		BeforeEach(func() {
+			adminCtx, otherLib, _ = restrictedFixture("moved")
+			since = time.Now().Add(-time.Hour)
+			missing = model.MediaFile{
+				LibraryID: 1, Title: "Moved Song", Album: "Moved Album", Size: 1234,
+				Suffix: "flac", DiscNumber: 1, TrackNumber: 3,
+			}
+		})
+
+		candidate := func(id string, change func(*model.MediaFile)) {
+			mf := missing
+			mf.ID, mf.LibraryID, mf.Path, mf.CreatedAt = id, otherLib.ID, id+".flac", since.Add(time.Minute)
+			if change != nil {
+				change(&mf)
+			}
+			Expect(mr.Put(adminCtx, &mf)).To(Succeed())
+			DeferCleanup(func() { _ = mr.Delete(adminCtx, mf.ID) })
+		}
+
+		It("returns only recent, present, untagged copies from other libraries", func() {
+			candidate("moved-match", nil)
+			candidate("moved-same-lib", func(mf *model.MediaFile) { mf.LibraryID = 1 })
+			candidate("moved-tagged", func(mf *model.MediaFile) { mf.MbzReleaseTrackID = "some-mbid" })
+			candidate("moved-older", func(mf *model.MediaFile) { mf.CreatedAt = since.Add(-time.Minute) })
+			candidate("moved-missing", func(mf *model.MediaFile) { mf.Missing = true })
+			candidate("moved-other-title", func(mf *model.MediaFile) { mf.Title = "Another Song" })
+
+			results, err := mr.FindRecentFilesByProperties(adminCtx, missing, since)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(slice.Map(results, func(mf model.MediaFile) string { return mf.ID })).To(ConsistOf("moved-match"))
+			Expect(results[0].LibraryPath).To(Equal(otherLib.Path))
+		})
+
+		It("searches by title even when stats make the MBZ track ID index look more selective", func() {
+			conn := GetDBXBuilder().DB()
+			tx, err := conn.BeginTx(adminCtx, nil)
+			Expect(err).ToNot(HaveOccurred())
+			// The schema, and so the loaded stats, are shared by every connection to the in-memory DB
+			DeferCleanup(func() {
+				Expect(tx.Rollback()).To(Succeed())
+				_, err := conn.Exec("ANALYZE sqlite_schema")
+				Expect(err).ToNot(HaveOccurred())
+			})
+			for _, stmt := range []string{
+				"ANALYZE media_file_title",
+				"DELETE FROM sqlite_stat1 WHERE tbl = 'media_file'",
+				"INSERT INTO sqlite_stat1 VALUES ('media_file', 'media_file_title', '40000 2'), ('media_file', 'media_file_mbz_release_track_id', '40000 1'), ('media_file', 'media_file_created_at', '40000 1')",
+				"ANALYZE sqlite_schema",
+			} {
+				_, err := tx.Exec(stmt)
+				Expect(err).ToNot(HaveOccurred(), stmt)
+			}
+
+			query, args, err := recentFilesByPropertiesQuery(missing, since).ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			plan, err := queryPlan(tx, query, args...)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plan).To(ContainElement(ContainSubstring("USING INDEX media_file_title")))
+		})
+	})
+
 	Describe("dbMediaFile.String", func() {
 		It("does not dereference a nil MediaFile", func() {
 			Expect(fmt.Sprint(dbMediaFile{})).To(Equal("<nil>"))
@@ -1311,8 +1373,8 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("keeps the album state independent of the track's own art", func() {
-			mf := model.MediaFile{ID: "mf-2", AlbumID: "al-2"}
-			mf.ImageHash = "aaaaaaaaaaaaaaaa" // the track's own art
+			mf := model.MediaFile{ID: "mf-2", AlbumID: "al-2",
+				ImageHash: "aaaaaaaaaaaaaaaa"} // the track's own art
 			applyItemImage(
 				map[string]model.ItemArtworkInfo{"al-2": {ItemID: "al-2", Hash: "bbbbbbbbbbbbbbbb"}},
 				mf.AlbumID, &mf.AlbumImage,

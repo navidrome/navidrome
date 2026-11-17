@@ -10,24 +10,32 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-// fakeLyricsService returns canned lyrics per media-file ID and counts calls.
+// fakeLyricsService returns canned lyrics per media-file ID.
 type fakeLyricsService struct {
-	lyrics      map[string]model.LyricList
-	err         error
-	calls       int
-	hadDeadline bool
+	lyrics   map[string]model.LyricList
+	err      error
+	panicVal any
+	blockCh  <-chan struct{}
+	doneCh   chan<- struct{}
 }
 
 func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
-	f.calls++
-	_, f.hadDeadline = ctx.Deadline()
-	if err := ctx.Err(); err != nil {
-		return nil, err
+	if f.doneCh != nil {
+		defer close(f.doneCh)
+	}
+	if f.blockCh != nil {
+		select {
+		case <-f.blockCh:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	if f.panicVal != nil {
+		panic(f.panicVal) //nolint:forbidigo
 	}
 	if f.err != nil {
 		return nil, f.err
@@ -39,18 +47,14 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 	return nil, nil
 }
 
-func p(ms int64) *int64 { return &ms }
-
-func newTestLyricsCache() cache.SimpleCache[string, model.LyricList] {
-	return cache.NewSimpleCache[string, model.LyricList](cache.Options{SizeLimit: 1000})
-}
-
 var _ = Describe("getLyrics", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	var fake *fakeLyricsService
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: testID("s1"), Title: "Song", LibraryID: 1},
@@ -58,18 +62,16 @@ var _ = Describe("getLyrics", func() {
 		})
 		fake = &fakeLyricsService{lyrics: map[string]model.LyricList{}}
 		api = &Router{
-			ds:          ds,
-			lyrics:      fake,
-			lyricsCache: newTestLyricsCache(),
+			ds:     ds,
+			lyrics: fake,
 		}
 	})
 
 	doRequest := func(id string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
-		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}})
 		// Clients send hex-encoded ids (matching real traffic and the other handler tests).
 		enc := dto.EncodeID(id)
-		r := httptest.NewRequest("GET", "/Audio/"+enc+"/Lyrics", nil).WithContext(ctx)
+		r := httptest.NewRequest("GET", "/Audio/"+enc+"/Lyrics", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", enc)
 		invoke(api.getLyrics, w, r)
 		return w
@@ -77,7 +79,7 @@ var _ = Describe("getLyrics", func() {
 
 	It("returns 200 with a LyricDto for a track with synced lyrics", func() {
 		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "hello"}}},
 		}
 		w := doRequest(testID("s1"))
 
@@ -92,8 +94,8 @@ var _ = Describe("getLyrics", func() {
 
 	It("serves the main-kind lyric when a translation is also present", func() {
 		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "translation", Synced: true, Line: []model.Line{{Start: p(1000), Value: "bonjour"}}},
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+			{Kind: "translation", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "bonjour"}}},
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "hello"}}},
 		}
 		w := doRequest(testID("s1"))
 
@@ -118,38 +120,5 @@ var _ = Describe("getLyrics", func() {
 	It("returns 404 for an unknown item id", func() {
 		w := doRequest("unknown")
 		Expect(w.Code).To(Equal(http.StatusNotFound))
-	})
-
-	It("caches results so a second request doesn't re-invoke the service", func() {
-		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
-		}
-		Expect(doRequest(testID("s1")).Code).To(Equal(http.StatusOK))
-		Expect(doRequest(testID("s1")).Code).To(Equal(http.StatusOK))
-		Expect(fake.calls).To(Equal(1))
-	})
-
-	It("caches empty results too", func() {
-		Expect(doRequest(testID("s2")).Code).To(Equal(http.StatusNotFound))
-		Expect(doRequest(testID("s2")).Code).To(Equal(http.StatusNotFound))
-		Expect(fake.calls).To(Equal(1))
-	})
-
-	It("completes and caches the fetch even when the request context is cancelled", func() {
-		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
-		}
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		list := api.cachedLyrics(ctx, &model.MediaFile{ID: testID("s1")})
-		Expect(list).ToNot(BeEmpty())
-		Expect(doRequest(testID("s1")).Code).To(Equal(http.StatusOK))
-		Expect(fake.calls).To(Equal(1))
-	})
-
-	It("bounds the detached fetch with a timeout", func() {
-		Expect(doRequest(testID("s2")).Code).To(Equal(http.StatusNotFound))
-		Expect(fake.hadDeadline).To(BeTrue())
 	})
 })

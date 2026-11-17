@@ -21,11 +21,11 @@ var _ = Describe("Participants", func() {
 
 			It("marshals correctly", func() {
 				data, err := json.Marshal(participants)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				var afterConversion Participants
 				err = json.Unmarshal(data, &afterConversion)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(afterConversion).To(Equal(participants))
 			})
 
@@ -206,9 +206,9 @@ var _ = Describe("ParticipantList", func() {
 })
 
 func _p(id, name string, sortName ...string) Participant {
-	p := Participant{Artist: Artist{ID: id, Name: name}}
+	p := Participant{ID: id, Name: name}
 	if len(sortName) > 0 {
-		p.Artist.SortArtistName = sortName[0]
+		p.SortArtistName = sortName[0]
 	}
 	return p
 }

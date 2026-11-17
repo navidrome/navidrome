@@ -20,7 +20,7 @@ var _ = Describe("Spread FS", func() {
 		var err error
 		rootDir, _ = os.MkdirTemp("", "spread_fs")
 		fs, err = NewSpreadFS(rootDir, 0755)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 	AfterEach(func() {
 		_ = os.RemoveAll(rootDir)
@@ -50,17 +50,17 @@ var _ = Describe("Spread FS", func() {
 			}
 			name := filepath.Join(rootDir, "aa", "bb", "data")
 			s, err := stream.NewStream(name, fs)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			_, err = s.Write([]byte("PARTIAL"))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			r, err := s.NextReader()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Close()).To(Succeed())
 
 			f, err := fs.Create(name)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			_, err = f.Write([]byte("GOOD"))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(f.Close()).To(Succeed())
 
 			done := make(chan []byte, 1)
@@ -79,19 +79,19 @@ var _ = Describe("Spread FS", func() {
 		It("creates a .complete marker for a data file", func() {
 			data := fs.KeyMapper("song1")
 			f, err := fs.Create(data)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			_, _ = f.Write([]byte("ok"))
 			_ = f.Close()
 
 			Expect(fs.MarkComplete(data)).To(Succeed())
 			_, statErr := os.Stat(data + ".complete")
-			Expect(statErr).To(BeNil())
+			Expect(statErr).ToNot(HaveOccurred())
 		})
 
 		It("removes the sibling marker when the data file is removed", func() {
 			data := fs.KeyMapper("song2")
 			f, err := fs.Create(data)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			_, _ = f.Write([]byte("ok"))
 			_ = f.Close()
 			Expect(fs.MarkComplete(data)).To(Succeed())
@@ -108,7 +108,7 @@ var _ = Describe("Spread FS", func() {
 		makeData := func(content string) string {
 			file := fs.KeyMapper(content)
 			f, err := fs.Create(file)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			_, _ = f.Write([]byte(content))
 			_ = f.Close()
 			return file
@@ -125,12 +125,12 @@ var _ = Describe("Spread FS", func() {
 				data, _ := os.ReadFile(name)
 				actual = append(actual, string(data))
 			})
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(ContainElements("aaaaa", "bbbbb", "ccccc"))
 			Expect(actual).To(HaveLen(3))
 
 			_, sentinelErr := os.Stat(filepath.Join(rootDir, ".nd-migrated"))
-			Expect(sentinelErr).To(BeNil())
+			Expect(sentinelErr).ToNot(HaveOccurred())
 		})
 
 		It("after migration, adopts only marked files and deletes unmarked partials", func() {
@@ -143,7 +143,7 @@ var _ = Describe("Spread FS", func() {
 
 			var actual []string
 			err := fs.Reload(func(key, name string) { actual = append(actual, name) })
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(ConsistOf(good))
 
 			_, badErr := os.Stat(bad)
@@ -158,7 +158,7 @@ var _ = Describe("Spread FS", func() {
 
 			var actual []string
 			err := fs.Reload(func(key, name string) { actual = append(actual, name) })
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(BeEmpty())
 			_, orphanErr := os.Stat(orphan)
 			Expect(os.IsNotExist(orphanErr)).To(BeTrue())

@@ -74,9 +74,9 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 // rate-limit permit, so a sleeping lookup would crowd out a cover sitting on disk.
 func newDrainPools() []*drainPool {
 	budget := conf.MaxOpenConns() // floored at 4, so both remainders below stay positive
-	local := min(max(1, conf.Server.DevArtworkWorkerConcurrency), budget-1)
+	local := min(max(1, conf.Server().DevArtworkWorkerConcurrency), budget-1)
 	// More external slots than the rate allows would only sleep in the limiter.
-	external := min(max(2, 2*conf.Server.DevArtworkExternalMaxRPS), budget-local)
+	external := min(max(2, 2*conf.Server().DevArtworkExternalMaxRPS), budget-local)
 	return []*drainPool{
 		{name: "local", kinds: localDrainKinds, concurrency: local},
 		{name: "external", kinds: externalDrainKinds, concurrency: external},
@@ -326,7 +326,7 @@ func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueue
 // precache warms the resize cache at the UI cover size from the bytes just acquired, so the
 // first UI request hits without re-reading the rows or the file.
 func (w *Worker) precache(ctx context.Context, got *acquired) {
-	if !conf.Server.EnableArtworkPrecache || w.cache == nil || w.cache.Disabled(ctx) {
+	if !conf.Server().EnableArtworkPrecache || w.cache == nil || w.cache.Disabled(ctx) {
 		return
 	}
 	precacheStart := time.Now()
@@ -334,7 +334,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	// warms a key nothing reads.
 	item := &resizedItem{
 		hash:   got.ia.Hash,
-		size:   conf.Server.UICoverArtSize,
+		size:   conf.Server().UICoverArtSize,
 		square: true,
 		ffmpeg: w.ffmpeg,
 		open:   func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },
@@ -347,7 +347,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	_, _ = io.Copy(io.Discard, stream)
 	_ = stream.Close()
 	log.Trace(ctx, "Artwork: Precached UI size", "kind", got.ia.ItemKind, "id", got.ia.ItemID,
-		"size", conf.Server.UICoverArtSize, "elapsed", time.Since(precacheStart))
+		"size", conf.Server().UICoverArtSize, "elapsed", time.Since(precacheStart))
 }
 
 // backoffFor returns min(5s×4^n, giveUpAfter) scaled by (1+jitter), with jitter in [-0.4, 0.4].

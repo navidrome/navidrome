@@ -1,14 +1,12 @@
 package plugins
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -34,10 +32,12 @@ func startSandboxManager(tmpDir, libraryDir string, grant func(*model.Plugin)) *
 	installed := installTestPlugins(tmpDir, "test-library"+PackageExtension)
 	grant(&installed[0])
 
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 
 	mockPluginRepo := tests.CreateMockPluginRepo()
 	mockPluginRepo.Permitted = true
@@ -64,9 +64,10 @@ func callSandbox(manager *Manager, input sandboxInput) sandboxOutput {
 	manager.mu.RUnlock()
 	Expect(p).ToNot(BeNil())
 
-	instance, err := p.instance(context.Background())
+	ctx := GinkgoT().Context()
+	instance, err := p.instance(ctx)
 	Expect(err).ToNot(HaveOccurred())
-	defer instance.Close(context.Background())
+	defer instance.Close(ctx)
 
 	inputBytes, err := json.Marshal(input)
 	Expect(err).ToNot(HaveOccurred())

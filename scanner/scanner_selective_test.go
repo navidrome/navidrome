@@ -2,13 +2,13 @@ package scanner_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing/fstest"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -35,22 +35,28 @@ var _ = Describe("ScanFolders", Ordered, func() {
 	var fsys storagetest.FakeFS
 
 	BeforeAll(func() {
-		tests.SkipOnWindows("SQLite file lock blocks TempDir cleanup (#TBD-path-sep-scanner)")
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		tmpDir := GinkgoT().TempDir()
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL")
-		log.Warn("Using DB at " + conf.Server.DbPath)
+		// db.Db() is a process-wide singleton, so this dir may hold the open DB until
+		// the suite ends, and Windows can't delete an open file
+		tmpDir, err := os.MkdirTemp("", "scanner-test")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL") })
+		log.Warn("Using DB at " + conf.Server().DbPath)
 		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MusicFolder = "fake:///music"
-		conf.Server.DevExternalScanner = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = "fake:///music"
+			c.DevExternalScanner = false
+		})
 
 		db.Init(ctx)
 		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
+			Expect(tests.ClearDB(ctx)).To(Succeed())
 		})
 
 		ds = persistence.New(db.Db())
@@ -210,9 +216,10 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 				// Store track IDs for later verification
 				for _, t := range allTracks {
-					if t.Album == "Revolver" {
+					switch t.Album {
+					case "Revolver":
 						album1TrackIDs = append(album1TrackIDs, t.ID)
-					} else if t.Album == "Help!" {
+					case "Help!":
 						album2TrackIDs = append(album2TrackIDs, t.ID)
 					}
 				}
@@ -308,7 +315,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 					},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(missingFolders)).To(BeNumerically(">", 0), "At least one folder should be marked as missing")
+				Expect(missingFolders).ToNot(BeEmpty(), "At least one folder should be marked as missing")
 
 				// Verify all tracks in deleted folders are marked as missing
 				allTracks, err := ds.MediaFile().GetAll(ctx)
@@ -316,9 +323,10 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(allTracks).To(HaveLen(6))
 
 				for _, track := range allTracks {
-					if track.Album == "Help!" {
+					switch track.Album {
+					case "Help!":
 						Expect(track.Missing).To(BeTrue(), "All tracks in deleted Help! folder should be marked as missing")
-					} else if track.Album == "Revolver" {
+					case "Revolver":
 						Expect(track.Missing).To(BeFalse(), "Tracks in Revolver folder should not be marked as missing")
 					}
 				}

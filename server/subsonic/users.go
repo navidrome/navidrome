@@ -20,14 +20,14 @@ func buildUserResponse(user model.User) responses.User {
 		Email:             user.Email,
 		StreamRole:        true,
 		ScrobblingEnabled: true,
-		DownloadRole:      conf.Server.EnableDownloads,
-		ShareRole:         conf.Server.EnableSharing,
-		CoverArtRole:      conf.Server.EnableArtworkUpload || user.IsAdmin,
+		DownloadRole:      conf.Server().EnableDownloads,
+		ShareRole:         conf.Server().EnableSharing,
+		CoverArtRole:      conf.Server().EnableArtworkUpload || user.IsAdmin,
 		Folder:            slice.Map(user.Libraries, func(lib model.Library) int32 { return int32(lib.ID) }),
 	}
 
-	if conf.Server.Jukebox.Enabled {
-		userResponse.JukeboxRole = !conf.Server.Jukebox.AdminOnly || user.IsAdmin
+	if conf.Server().Jukebox.Enabled {
+		userResponse.JukeboxRole = !conf.Server().Jukebox.AdminOnly || user.IsAdmin
 	}
 
 	return userResponse

@@ -13,8 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
@@ -33,10 +33,9 @@ func newGetRequest(queryParams ...string) *http.Request {
 }
 
 func newPostRequest(queryParam string, formFields ...string) *http.Request {
+	GinkgoHelper()
 	r, err := http.NewRequest("POST", "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
@@ -100,8 +99,10 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("passes when all required params are available (reverse-proxy case)", func() {
-			conf.Server.ExtAuth.TrustedSources = "127.0.0.234/32"
-			conf.Server.ExtAuth.UserHeader = "Remote-User"
+			conf.Update(func(c *conf.Options) {
+				c.ExtAuth.TrustedSources = "127.0.0.234/32"
+				c.ExtAuth.UserHeader = "Remote-User"
+			})
 
 			r := newGetRequest("v=1.15", "c=test")
 			r.Header.Add("Remote-User", "user")
@@ -234,8 +235,7 @@ var _ = Describe("Middlewares", func() {
 			var validToken string
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.SessionTimeout = time.Minute
+				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 			})
 
@@ -266,9 +266,10 @@ var _ = Describe("Middlewares", func() {
 
 		When("using reverse proxy authentication", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.ExtAuth.TrustedSources = "192.168.1.1/24"
-				conf.Server.ExtAuth.UserHeader = "Remote-User"
+				conf.Update(func(c *conf.Options) {
+					c.ExtAuth.TrustedSources = "192.168.1.1/24"
+					c.ExtAuth.UserHeader = "Remote-User"
+				})
 			})
 
 			It("passes authentication with correct IP and header", func() {
@@ -419,9 +420,10 @@ var _ = Describe("Middlewares", func() {
 			var cp http.Handler
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.AuthRequestLimit = 3
-				conf.Server.AuthWindowLength = time.Minute
+				conf.Update(func(c *conf.Options) {
+					c.AuthRequestLimit = 3
+					c.AuthWindowLength = time.Minute
+				})
 				cp = authenticate(ds)(next)
 			})
 
@@ -513,8 +515,10 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not limit reverse proxy authentication", func() {
-				conf.Server.ExtAuth.TrustedSources = "192.168.1.1/24"
-				conf.Server.ExtAuth.UserHeader = "Remote-User"
+				conf.Update(func(c *conf.Options) {
+					c.ExtAuth.TrustedSources = "192.168.1.1/24"
+					c.ExtAuth.UserHeader = "Remote-User"
+				})
 				failTimes(3, "u=admin", "p=WRONG")
 
 				r := newGetRequest()
@@ -544,7 +548,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("is disabled when AuthRequestLimit is 0", func() {
-				conf.Server.AuthRequestLimit = 0
+				conf.Update(func(c *conf.Options) { c.AuthRequestLimit = 0 })
 				cp = authenticate(ds)(next)
 				failTimes(10, "u=admin", "p=WRONG")
 
@@ -558,9 +562,10 @@ var _ = Describe("Middlewares", func() {
 			var gatedDS model.DataStore
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.AuthRequestLimit = 5
-				conf.Server.AuthWindowLength = time.Minute
+				conf.Update(func(c *conf.Options) {
+					c.AuthRequestLimit = 5
+					c.AuthWindowLength = time.Minute
+				})
 				gate = &gatedUserRepo{
 					UserRepository: ds.User(),
 					entered:        make(chan struct{}, 64),
@@ -583,7 +588,7 @@ var _ = Describe("Middlewares", func() {
 						}
 					})
 				}
-				for range conf.Server.AuthRequestLimit {
+				for range conf.Server().AuthRequestLimit {
 					Eventually(gate.entered).Should(Receive())
 				}
 				close(gate.proceed)
@@ -601,7 +606,7 @@ var _ = Describe("Middlewares", func() {
 					})
 				}
 
-				limit := int32(conf.Server.AuthRequestLimit)
+				limit := int32(conf.Server().AuthRequestLimit)
 				Eventually(gate.lookups.Load).Should(Equal(limit))
 				Consistently(gate.lookups.Load, 100*time.Millisecond).Should(Equal(limit))
 				close(gate.proceed)
@@ -657,6 +662,40 @@ var _ = Describe("Middlewares", func() {
 
 			cookieStr := w.Header().Get("Set-Cookie")
 			Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone")))
+		})
+
+		It("registers the player with the client IP from RemoteAddr", func() {
+			r.RemoteAddr = "192.0.2.10:54321"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
+		It("keeps the client IP when RemoteAddr has no port, as set behind a trusted proxy", func() {
+			r.RemoteAddr = "192.0.2.10"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
+		It("takes the client IP resolved into the context, not the peer address", func() {
+			// realIPMiddleware resolves forwarding headers from a trusted proxy the same way
+			r.RemoteAddr = "10.0.0.1:1234"
+			r.Header.Set("X-Real-IP", "203.0.113.6")
+			gp := middleware.ClientIPFromHeader("X-Real-IP")(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("203.0.113.6"))
+		})
+
+		It("does not take a unix socket peer for an IP", func() {
+			r.RemoteAddr = "@"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(BeEmpty())
 		})
 
 		It("does not add the cookie if there was an error", func() {
@@ -749,9 +788,7 @@ var _ = Describe("Middlewares", func() {
 
 			var err error
 			usr, err = ur.FindByUsernameWithPassword(ctx, "admin")
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("Plaintext password", func() {
@@ -790,16 +827,13 @@ var _ = Describe("Middlewares", func() {
 			var validToken string
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.SessionTimeout = time.Minute
+				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 
 				usr = &model.User{UserName: "admin"}
 				var err error
 				validToken, err = auth.CreateToken(usr)
-				if err != nil {
-					panic(err)
-				}
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("authenticates with JWT token based authentication", func() {
@@ -825,8 +859,7 @@ var _ = Describe("Middlewares", func() {
 			var usr *model.User
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.SessionTimeout = time.Minute
+				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 				usr = &model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}
 			})
@@ -869,10 +902,12 @@ type mockPlayers struct {
 	core.Players
 	transcoding *model.Transcoding
 	touched     bool
+	ip          string
 }
 
-func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, _ string) (*model.Player, *model.Transcoding, error) {
+func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, ip string) (*model.Player, *model.Transcoding, error) {
 	mp.touched = true
+	mp.ip = ip
 	return &plr, mp.transcoding, nil
 }
 
@@ -881,6 +916,7 @@ func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player,
 }
 
 func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, *model.Transcoding, error) {
+	mp.ip = ip
 	if client == "error" {
 		return nil, nil, errors.New(client)
 	}

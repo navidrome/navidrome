@@ -36,7 +36,7 @@ func unmarshalTags(data string) (model.Tags, error) {
 	return res, nil
 }
 
-func marshalTags(tags model.Tags) string {
+func marshalTags(tags model.Tags) (string, error) {
 	dbTags := dbTags{}
 	for name, values := range tags {
 		for _, value := range values {
@@ -44,8 +44,11 @@ func marshalTags(tags model.Tags) string {
 			dbTags[name] = append(dbTags[name], dbTag{ID: t.ID, Value: value})
 		}
 	}
-	res, _ := json.Marshal(dbTags)
-	return string(res)
+	res, err := json.Marshal(dbTags)
+	if err != nil {
+		return "", fmt.Errorf("marshalling tags: %w", err)
+	}
+	return string(res), nil
 }
 
 // indexedTagNames are the tag types materialized into the <table>_tags join tables, so filtering by

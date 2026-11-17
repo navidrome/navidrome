@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
@@ -85,7 +86,7 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 				done <- err
 			}()
 
-			Consistently(done, "500ms").ShouldNot(Receive())
+			Consistently(done, 500*time.Millisecond).ShouldNot(Receive())
 			<-sem // free one slot; the pending call should now proceed
 			Eventually(done).Should(Receive(BeNil()))
 			for range cap(sem) - 1 {

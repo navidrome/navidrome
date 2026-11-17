@@ -21,7 +21,7 @@ var _ = Describe("FolderRepository", func() {
 	var testLib, otherLib model.Library
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
 		repo = newFolderRepository(conn)
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // registers the "taglib" local-storage extractor
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	_ "github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
@@ -26,6 +27,8 @@ func TestArtworkE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Artwork Pipeline E2E Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // Fixtures relative to the project root (tests.Init chdirs there).
 const (
