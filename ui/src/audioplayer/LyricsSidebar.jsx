@@ -113,6 +113,10 @@ const LyricsSidebar = ({
   offsetEnabled = false,
   onOffsetChange,
   onDownload,
+  downloadOpen = false,
+  onDownloadMenuOpenChange,
+  originalInfo = null,
+  downloadFormat = '',
   audioInstance,
   loading = false,
   error = null,
@@ -304,6 +308,10 @@ const LyricsSidebar = ({
           offsetEnabled={offsetEnabled}
           onOffsetChange={onOffsetChange}
           onDownload={onDownload}
+          downloadOpen={downloadOpen}
+          onDownloadMenuOpenChange={onDownloadMenuOpenChange}
+          originalInfo={originalInfo}
+          downloadFormat={downloadFormat}
           active={interactive}
           labels={labels}
           testId="lyrics-sidebar-floating-controls"

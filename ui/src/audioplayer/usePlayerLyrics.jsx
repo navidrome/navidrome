@@ -10,7 +10,12 @@ import {
   isPlayableVariant,
   legacyVariantKey,
 } from './lyrics'
-import { downloadLyrics } from './lyricsExport'
+import {
+  buildConvertedLyricsDownload,
+  downloadBlob,
+  downloadOriginalLyrics,
+} from './lyricsExport'
+import subsonic from '../subsonic'
 import {
   readLetterWavePreference,
   readLyricsOffset,
@@ -30,6 +35,16 @@ const SOURCE_REFRESH_INTERVAL_MS = 5_000
 const SOURCE_REFRESH_MAX_TICKS = 12
 const SOURCE_REFRESH_SLOW_TICKS = 6
 
+const isAbortError = (error) =>
+  error?.name === 'AbortError' || error?.code === 'ABORT_ERR'
+
+const operationKey = (target) =>
+  [
+    target?.trackId || '',
+    target?.variantKey || '',
+    target?.selection || '',
+  ].join('\u0000')
+
 const usePlayerLyrics = ({
   trackId,
   trackUpdatedAt,
@@ -38,6 +53,7 @@ const usePlayerLyrics = ({
   isDesktop,
   obscuredByQueue = false,
   translate,
+  onExportError = () => {},
 }) => {
   const [lyricsVisiblePreference, setLyricsVisiblePreference] = useState(false)
   const [translationPreference, setTranslationPreference] = useState(null)
@@ -51,8 +67,22 @@ const usePlayerLyrics = ({
   const [offsetMs, setOffsetMs] = useState(0)
   const [discoveryGeneration, setDiscoveryGeneration] = useState(0)
   const [discovering, setDiscovering] = useState(false)
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false)
+  const [originalInfo, setOriginalInfo] = useState(null)
   const lyricsToggleRef = useRef(null)
   const discoveryStateRef = useRef(null)
+  const downloadMenuTargetRef = useRef('')
+  const targetGenerationRef = useRef(0)
+  const targetKeyRef = useRef('')
+  const currentTargetRef = useRef({
+    trackId: null,
+    variantKey: null,
+    selection: '',
+  })
+  const listingTokenRef = useRef(0)
+  const exportTokenRef = useRef(0)
+  const listingAbortRef = useRef(null)
+  const exportAbortRef = useRef(null)
 
   const {
     variants,
@@ -83,6 +113,73 @@ const usePlayerLyrics = ({
     )
   }, [selectedSourceKey, variants])
 
+  const selectedVariant = useMemo(
+    () => findLyricVariant(variants, resolvedVariantKey),
+    [resolvedVariantKey, variants],
+  )
+  const downloadFormat =
+    lyricLayers.main?.source?.format || selectedVariant?.source?.format || ''
+  const exportSelection = lyricLayers.main?.selection || ''
+  const exportTarget = {
+    trackId,
+    variantKey: resolvedVariantKey,
+    selection: exportSelection,
+    format: downloadFormat,
+  }
+  const exportTargetKey = operationKey(exportTarget)
+  if (targetKeyRef.current !== exportTargetKey) {
+    targetKeyRef.current = exportTargetKey
+    targetGenerationRef.current += 1
+  }
+  currentTargetRef.current = exportTarget
+
+  const isCurrentTarget = useCallback((target) => {
+    const current = currentTargetRef.current
+    return (
+      current.trackId === target.trackId &&
+      current.variantKey === target.variantKey &&
+      current.selection === target.selection
+    )
+  }, [])
+
+  const startOperation = useCallback((kind) => {
+    const controller = new AbortController()
+    const token =
+      kind === 'listing' ? ++listingTokenRef.current : ++exportTokenRef.current
+    const activeRef = kind === 'listing' ? listingAbortRef : exportAbortRef
+    activeRef.current?.abort()
+    activeRef.current = controller
+    return {
+      kind,
+      token,
+      generation: targetGenerationRef.current,
+      target: currentTargetRef.current,
+      controller,
+    }
+  }, [])
+
+  const isOperationCurrent = useCallback((operation) => {
+    const current = currentTargetRef.current
+    const token =
+      operation.kind === 'listing'
+        ? listingTokenRef.current
+        : exportTokenRef.current
+    return (
+      operation.token === token &&
+      operation.generation === targetGenerationRef.current &&
+      current.trackId === operation.target.trackId &&
+      current.variantKey === operation.target.variantKey &&
+      current.selection === operation.target.selection
+    )
+  }, [])
+
+  const commitIfCurrent = useCallback(
+    (operation, commit) => {
+      if (isOperationCurrent(operation)) commit()
+    },
+    [isOperationCurrent],
+  )
+
   useEffect(() => {
     setSelectedSourceKey(readPreferredSource(trackId))
   }, [trackId])
@@ -100,6 +197,119 @@ const usePlayerLyrics = ({
   useEffect(() => {
     setOffsetMs(readLyricsOffset(trackId, resolvedVariantKey, legacyOffsetKey))
   }, [legacyOffsetKey, resolvedVariantKey, trackId])
+
+  useEffect(() => {
+    setDownloadMenuOpen(false)
+    setOriginalInfo(null)
+    downloadMenuTargetRef.current = ''
+    listingAbortRef.current?.abort()
+    exportAbortRef.current?.abort()
+    listingTokenRef.current += 1
+    exportTokenRef.current += 1
+  }, [exportTargetKey])
+
+  useEffect(
+    () => () => {
+      targetGenerationRef.current += 1
+      listingAbortRef.current?.abort()
+      exportAbortRef.current?.abort()
+      listingTokenRef.current += 1
+      exportTokenRef.current += 1
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (
+      !downloadMenuOpen ||
+      downloadMenuTargetRef.current !== exportTargetKey
+    ) {
+      return undefined
+    }
+    const target = currentTargetRef.current
+    if (!target.selection) {
+      setOriginalInfo({
+        status: 'unavailable',
+        reason: translate('player.downloadLyricsUnavailableLegacyText'),
+        selection: '',
+      })
+      return undefined
+    }
+    const operation = startOperation('listing')
+    setOriginalInfo({ status: 'loading', selection: target.selection })
+    subsonic
+      .getLyricsVariants(target.trackId, {
+        signal: operation.controller.signal,
+      })
+      .then((response) => {
+        const listing = response?.json?.['subsonic-response']?.lyricsVariants
+        const variants = listing?.variant || listing?.variants
+        const match = Array.isArray(variants)
+          ? variants.find((entry) => entry?.selection === target.selection)
+          : null
+        commitIfCurrent(operation, () => {
+          if (!match) {
+            setOriginalInfo({
+              status: 'unavailable',
+              reason: translate(
+                'player.downloadLyricsUnavailableSelectionText',
+              ),
+              selection: target.selection,
+            })
+            return
+          }
+          const info = match.original || {}
+          if (!info.available) {
+            setOriginalInfo({
+              status: 'unavailable',
+              reason:
+                info.reason ||
+                translate('player.downloadLyricsUnavailableNativeText'),
+              format: info.format,
+              extension: info.extension,
+              selection: target.selection,
+            })
+            return
+          }
+          setOriginalInfo({
+            status: 'available',
+            format: info.format,
+            extension: info.extension,
+            selection: target.selection,
+          })
+        })
+      })
+      .catch((error) => {
+        if (operation.controller.signal.aborted || isAbortError(error)) return
+        commitIfCurrent(operation, () => {
+          setOriginalInfo({
+            status: 'unavailable',
+            reason: translate('player.downloadLyricsUnavailableCheckText'),
+            selection: target.selection,
+          })
+        })
+      })
+      .finally(() => {
+        if (listingAbortRef.current === operation.controller) {
+          listingAbortRef.current = null
+        }
+      })
+    return () => {
+      operation.controller.abort()
+      if (listingTokenRef.current === operation.token) {
+        listingTokenRef.current += 1
+      }
+      if (listingAbortRef.current === operation.controller) {
+        listingAbortRef.current = null
+      }
+    }
+  }, [
+    commitIfCurrent,
+    downloadMenuOpen,
+    exportTargetKey,
+    startOperation,
+    translate,
+  ])
 
   useEffect(() => {
     const saved = findLyricVariant(variants, selectedSourceKey)
@@ -256,6 +466,27 @@ const usePlayerLyrics = ({
       }),
       offsetReset: translate('player.lyricsOffsetResetText'),
       download: translate('player.downloadLyricsText'),
+      downloadTitle: translate('player.downloadLyricsTitleText'),
+      downloadOriginal: translate('player.downloadLyricsOriginalText'),
+      downloadOriginalHint: translate('player.downloadLyricsOriginalHintText'),
+      downloadOriginalChecking: translate(
+        'player.downloadLyricsCheckingOriginalText',
+      ),
+      downloadOriginalCheckingHint: translate(
+        'player.downloadLyricsCheckingOriginalHintText',
+      ),
+      downloadOriginalUnavailable: translate(
+        'player.downloadLyricsOriginalUnavailableText',
+      ),
+      downloadOriginalUnavailableHint: translate(
+        'player.downloadLyricsOriginalUnavailableHintText',
+      ),
+      downloadConverted: translate('player.downloadLyricsConvertedText'),
+      downloadConvertedHint: translate(
+        'player.downloadLyricsConvertedHintText',
+      ),
+      downloadAdjusted: translate('player.downloadLyricsAdjustedText'),
+      downloadAdjustedHint: translate('player.downloadLyricsAdjustedHintText'),
     }),
     [checkingMoreSources, lyricsRetryAfterSeconds, translate],
   )
@@ -318,14 +549,91 @@ const usePlayerLyrics = ({
     [refreshLyrics],
   )
 
-  const downloadSelected = useCallback(() => {
-    downloadLyrics(lyricLayers.main, {
-      format: lyricLayers.main?.source?.format,
-      artist: lyricLayers.main?.displayArtist,
-      title: lyricLayers.main?.displayTitle,
-      label: getVariantLabel(lyricLayers.main?.source, labels),
-    })
-  }, [labels, lyricLayers.main])
+  const downloadSelected = useCallback(
+    async (mode = 'converted') => {
+      const lyric = lyricLayers.main
+      const target = { ...currentTargetRef.current }
+      if (!lyric || !target.variantKey) return
+      setDownloadMenuOpen(false)
+      const label = getVariantLabel(lyric.source, labels)
+      if (mode === 'original') {
+        if (!target.selection) {
+          onExportError(translate('player.downloadLyricsUnavailableLegacyText'))
+          return
+        }
+        const operation = startOperation('export')
+        try {
+          const original = await subsonic.getLyricsOriginal(
+            target.trackId,
+            target.selection,
+            { signal: operation.controller.signal },
+          )
+          commitIfCurrent(operation, () => {
+            const extension =
+              originalInfo?.selection === target.selection
+                ? originalInfo.extension
+                : '.bin'
+            downloadOriginalLyrics(original, {
+              artist: lyric.displayArtist,
+              title: lyric.displayTitle,
+              extension,
+            })
+          })
+        } catch (error) {
+          if (operation.controller.signal.aborted || isAbortError(error)) {
+            return
+          }
+          commitIfCurrent(operation, () => {
+            setOriginalInfo({
+              status: 'unavailable',
+              reason:
+                error?.message ||
+                translate('player.downloadLyricsUnavailableCheckText'),
+              selection: target.selection,
+            })
+            onExportError(translate('player.downloadLyricsErrorText'))
+          })
+        } finally {
+          if (exportAbortRef.current === operation.controller) {
+            exportAbortRef.current = null
+          }
+        }
+        return
+      }
+
+      const download = buildConvertedLyricsDownload(lyric, {
+        format: target.format,
+        artist: lyric.displayArtist,
+        title: lyric.displayTitle,
+        label,
+        mode,
+        offsetMs: mode === 'adjusted' ? offsetMs : 0,
+      })
+      if (!download) return
+      // Revalidate immediately before dispatching the browser download.
+      if (!isCurrentTarget(target)) return
+      downloadBlob(
+        new Blob([download.text], { type: download.mediaType }),
+        download.filename,
+      )
+    },
+    [
+      commitIfCurrent,
+      isCurrentTarget,
+      labels,
+      lyricLayers.main,
+      offsetMs,
+      onExportError,
+      originalInfo,
+      startOperation,
+      translate,
+    ],
+  )
+
+  const handleDownloadMenuOpenChange = useCallback((open) => {
+    downloadMenuTargetRef.current = open ? targetKeyRef.current : ''
+    setDownloadMenuOpen(Boolean(open))
+  }, [])
 
   const variantControlProps = useMemo(
     () => ({
@@ -338,14 +646,22 @@ const usePlayerLyrics = ({
       offsetEnabled,
       onOffsetChange: changeOffset,
       onDownload: downloadSelected,
+      downloadOpen: downloadMenuOpen,
+      onDownloadMenuOpenChange: handleDownloadMenuOpenChange,
+      originalInfo,
+      downloadFormat,
     }),
     [
       changeOffset,
+      downloadFormat,
+      downloadMenuOpen,
       downloadSelected,
+      handleDownloadMenuOpenChange,
       handleSourceMenuOpenChange,
       lyricsRefreshing,
       offsetEnabled,
       offsetMs,
+      originalInfo,
       selectSource,
       selectedSourceKey,
       variants,

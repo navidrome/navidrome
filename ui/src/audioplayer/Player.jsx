@@ -7,6 +7,7 @@ import {
   createMuiTheme,
   useAuthState,
   useDataProvider,
+  useNotify,
   useTranslate,
 } from 'react-admin'
 import ReactGA from 'react-ga'
@@ -44,6 +45,7 @@ import {
 const Player = () => {
   const theme = useCurrentTheme()
   const translate = useTranslate()
+  const notify = useNotify()
   const playerTheme = theme.player?.theme || 'dark'
   const dataProvider = useDataProvider()
   const playerState = useSelector((state) => state.player)
@@ -146,6 +148,10 @@ const Player = () => {
   const [context, setContext] = useState(null)
   const [gainNode, setGainNode] = useState(null)
   const { setDesktopLyricsProps } = useLyricsLayout()
+  const handleExportError = useCallback(
+    (message) => notify(message, { type: 'warning' }),
+    [notify],
+  )
   const {
     toolbarLyricsProps,
     desktopLyricsProps,
@@ -161,6 +167,7 @@ const Player = () => {
     isDesktop,
     obscuredByQueue: audioListsPanelVisible,
     translate,
+    onExportError: handleExportError,
   })
 
   useEffect(() => {

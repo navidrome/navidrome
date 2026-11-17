@@ -239,6 +239,105 @@ describe('getLyricsBySongId', () => {
   })
 })
 
+describe('lyrics original retrieval', () => {
+  const response = ({
+    body = new Blob(['document']),
+    contentType = 'application/ttml+xml',
+    disposition = 'attachment; filename="Artist - Song.ttml"',
+    status = 200,
+    json = null,
+  } = {}) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: {
+      get: (name) =>
+        ({
+          'Content-Type': contentType,
+          'Content-Disposition': disposition,
+        })[name] || null,
+    },
+    json: async () => json,
+    blob: async () => body,
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSubsonicLocalStorage()
+  })
+
+  it('requests the variant listing for the song id', async () => {
+    await subsonic.getLyricsVariants('song-123')
+    expect(httpClient).toHaveBeenCalledTimes(1)
+    expect(httpClient.mock.calls[0][0]).toContain('/rest/getLyricsVariants?')
+    expect(httpClient.mock.calls[0][0]).toContain('id=song-123')
+  })
+
+  it('returns exact original bytes with the server filename and media type', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response())
+    vi.stubGlobal('fetch', fetchMock)
+
+    const original = await subsonic.getLyricsOriginal('song-1', 'selection-1')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/rest/getLyricsOriginal?'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-test-client-id': 'test-client-id',
+        }),
+      }),
+    )
+    expect(fetchMock.mock.calls[0][0]).toContain('selection=selection-1')
+    expect(original.filename).toBe('Artist - Song.ttml')
+    expect(original.mediaType).toBe('application/ttml+xml')
+    expect(original.blob).toBeInstanceOf(Blob)
+  })
+
+  it('decodes RFC 5987 filenames', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response({
+          disposition: "attachment; filename*=utf-8''%E6%AD%8C%20-%20Song.qrc",
+        }),
+      ),
+    )
+    const original = await subsonic.getLyricsOriginal('song-1', 'selection-1')
+    expect(original.filename).toBe('歌 - Song.qrc')
+  })
+
+  it('surfaces a JSON error instead of downloading the error envelope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        response({
+          contentType: 'application/json; charset=utf-8',
+          json: {
+            'subsonic-response': {
+              status: 'failed',
+              error: { code: 70, message: 'lyrics original unavailable' },
+            },
+          },
+        }),
+      ),
+    )
+
+    await expect(
+      subsonic.getLyricsOriginal('song-1', 'selection-1'),
+    ).rejects.toThrow('lyrics original unavailable')
+  })
+
+  it('rejects non-success responses without a document', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ status: 500 })))
+    await expect(
+      subsonic.getLyricsOriginal('song-1', 'selection-1'),
+    ).rejects.toThrow('Lyrics original unavailable (500)')
+  })
+})
+
 describe('getDiscCoverArtUrl', () => {
   beforeEach(() => {
     mockSubsonicLocalStorage()

@@ -27,6 +27,16 @@ const labels = {
   offsetFineLater: 'Shift lyrics 0.05 s later',
   offsetReset: 'Reset timing offset',
   download: 'Download lyrics',
+  downloadTitle: 'Download selected lyrics',
+  downloadOriginal: 'Original %{format} (exact)',
+  downloadOriginalHint: 'Exact source document',
+  downloadOriginalChecking: 'Checking original availability…',
+  downloadOriginalUnavailable: 'Original unavailable',
+  downloadOriginalUnavailableHint: 'No native document is available',
+  downloadConverted: 'Converted %{format}',
+  downloadConvertedHint: 'Rebuilt from the selected playback variant',
+  downloadAdjusted: 'Timing-adjusted %{format} (%{offset})',
+  downloadAdjustedHint: 'Selected variant with your timing correction',
 }
 
 const variants = [
@@ -69,6 +79,26 @@ const renderControls = (props = {}) =>
 
 const openSourceMenu = () =>
   fireEvent.click(screen.getByRole('button', { name: labels.viewSource }))
+
+const DownloadHarness = ({ onDownload, ...props }) => {
+  const [open, setOpen] = React.useState(false)
+  return (
+    <LyricsLayerControls
+      showTranslation={false}
+      showPronunciation={false}
+      translationEnabled={false}
+      pronunciationEnabled={false}
+      onToggleTranslation={() => {}}
+      onTogglePronunciation={() => {}}
+      labels={labels}
+      variants={variants}
+      downloadOpen={open}
+      onDownloadMenuOpenChange={setOpen}
+      onDownload={onDownload}
+      {...props}
+    />
+  )
+}
 
 describe('<LyricsLayerControls />', () => {
   afterEach(cleanup)
@@ -206,13 +236,76 @@ describe('<LyricsLayerControls />', () => {
     ).toBeDisabled()
   })
 
-  it('calls onDownload when the download button is pressed', () => {
+  it('offers labeled original, converted and adjusted downloads', () => {
     const onDownload = vi.fn()
-    renderControls({ onDownload })
+    render(
+      <DownloadHarness
+        onDownload={onDownload}
+        offsetEnabled
+        offsetMs={500}
+        downloadFormat="ttml"
+        originalInfo={{ status: 'available', format: 'ttml' }}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: labels.download }))
+    expect(screen.getByText('Original TTML (exact)')).toBeInTheDocument()
+    expect(screen.getByText('Converted TTML')).toBeInTheDocument()
+    expect(
+      screen.getByText('Timing-adjusted TTML (+0.50 s)'),
+    ).toBeInTheDocument()
 
-    expect(onDownload).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByTestId('lyrics-download-original'))
+    expect(onDownload).toHaveBeenLastCalledWith('original')
+
+    fireEvent.click(screen.getByRole('button', { name: labels.download }))
+    fireEvent.click(screen.getByTestId('lyrics-download-converted'))
+    expect(onDownload).toHaveBeenLastCalledWith('converted')
+
+    fireEvent.click(screen.getByRole('button', { name: labels.download }))
+    fireEvent.click(screen.getByTestId('lyrics-download-adjusted'))
+    expect(onDownload).toHaveBeenLastCalledWith('adjusted')
+  })
+
+  it('identifies unavailable originals without offering a reconstructed one', () => {
+    render(
+      <DownloadHarness
+        downloadFormat="elrc"
+        originalInfo={{
+          status: 'unavailable',
+          reason: 'source supplies no native document',
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: labels.download }))
+    expect(
+      screen.getByText('source supplies no native document'),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('lyrics-download-original')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByTestId('lyrics-download-converted')).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
+  it('disables the adjusted action when the selected variant has no timing', () => {
+    render(
+      <DownloadHarness
+        offsetEnabled={false}
+        downloadFormat="elrc"
+        originalInfo={{ status: 'available', format: 'lrc' }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: labels.download }))
+    expect(screen.getByTestId('lyrics-download-adjusted')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('toggles the experimental letter wave', () => {

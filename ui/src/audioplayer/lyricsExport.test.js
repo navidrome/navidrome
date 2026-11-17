@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  buildConvertedLyricsDownload,
   buildLyricsFileName,
+  buildOriginalLyricsFileName,
+  downloadBlob,
+  downloadOriginalLyrics,
   downloadLyrics,
   lyricsFileExtension,
+  lyricsMediaType,
+  sanitizeLyricsFileName,
   serializeLyrics,
 } from './lyricsExport'
 
@@ -84,6 +90,106 @@ describe('lyrics export', () => {
     expect(serializeLyrics(lyric, 'ttml')).toContain(
       '<p begin="00:00:07.500" end="00:00:10.500">',
     )
+  })
+
+  it('applies the captured personal correction only to the adjusted export', () => {
+    const lyric = {
+      kind: 'main',
+      lang: 'eng',
+      synced: true,
+      offset: 350,
+      line: [line('Hello world', 8000, 11000)],
+    }
+    const options = {
+      format: 'elrc',
+      artist: 'Artist',
+      title: 'Song',
+      label: 'LRCLib',
+    }
+
+    const compatible = buildConvertedLyricsDownload(lyric, options)
+    expect(compatible.text).toBe('[00:08.35]Hello world')
+    expect(compatible.filename).toBe('Artist - Song (LRCLib converted).lrc')
+
+    const adjusted = buildConvertedLyricsDownload(lyric, {
+      ...options,
+      mode: 'adjusted',
+      offsetMs: 500,
+    })
+    // Source +350 and personal +500 are each applied exactly once.
+    expect(adjusted.text).toBe('[00:08.85]Hello world')
+    expect(adjusted.filename).toBe('Artist - Song (LRCLib timing-adjusted).lrc')
+    expect(adjusted.mediaType).toBe('text/plain; charset=utf-8')
+  })
+
+  it('does not let the personal correction change compatibility or originals', () => {
+    const lyric = {
+      kind: 'main',
+      lang: 'eng',
+      synced: true,
+      offset: 350,
+      line: [line('Hello world', 8000, 11000)],
+    }
+
+    expect(
+      buildConvertedLyricsDownload(lyric, {
+        format: 'elrc',
+        label: 'Source',
+        offsetMs: 500,
+      }).text,
+    ).toBe('[00:08.35]Hello world')
+    expect(
+      buildOriginalLyricsFileName({
+        artist: 'Artist',
+        title: 'Song',
+        extension: '.ttml',
+      }),
+    ).toBe('Artist - Song.ttml')
+  })
+
+  it('uses trusted media types and safe bounded filenames', () => {
+    expect(lyricsMediaType('ttml')).toBe('application/ttml+xml')
+    expect(lyricsMediaType('lrc')).toBe('text/plain; charset=utf-8')
+    expect(lyricsMediaType('txt')).toBe('text/plain; charset=utf-8')
+    expect(
+      sanitizeLyricsFileName('../../Artist - Song.ttml', 'lyrics.ttml'),
+    ).toBe('.._.._Artist - Song.ttml')
+    expect(
+      sanitizeLyricsFileName(`A${'b'.repeat(300)}.qrc`, 'lyrics.qrc'),
+    ).toHaveLength(180)
+    expect(sanitizeLyricsFileName('', 'lyrics.bin')).toBe('lyrics.bin')
+    expect(buildOriginalLyricsFileName({ extension: '../x' })).toBe(
+      'Unknown artist - Unknown title.bin',
+    )
+  })
+
+  it('downloads a server original blob without re-encoding it', () => {
+    vi.useFakeTimers()
+    const blob = new Blob(['<?xml version="1.0"?><QrcInfos/>'], {
+      type: 'application/xml',
+    })
+    const createObjectURL = vi.fn().mockReturnValue('blob:original')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    let filename
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
+      function () {
+        filename = this.download
+      },
+    )
+
+    expect(
+      downloadOriginalLyrics(
+        { blob, filename: 'server - name.qrc' },
+        { artist: 'Artist', title: 'Song', extension: '.qrc' },
+      ),
+    ).toBe(true)
+    expect(filename).toBe('server - name.qrc')
+    expect(createObjectURL.mock.calls[0][0]).toBe(blob)
+
+    downloadBlob(blob, 'other.qrc')
+    vi.runAllTimers()
+    expect(revokeObjectURL).toHaveBeenCalledTimes(2)
   })
 
   it('serializes line timing to a plain LRC stamp per line', () => {
@@ -421,9 +527,9 @@ describe('lyrics export', () => {
       label: 'LRCLib',
     })
 
-    expect(filename).toBe('Artist - Title (LRCLib).txt')
+    expect(filename).toBe('Artist - Title (LRCLib converted).txt')
     expect(createObjectURL.mock.calls[0][0].type).toBe(
-      'text/plain;charset=utf-8',
+      'text/plain; charset=utf-8',
     )
     vi.runAllTimers()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:lyrics')
