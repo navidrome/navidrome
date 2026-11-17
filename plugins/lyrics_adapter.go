@@ -302,6 +302,13 @@ func (l *LyricsPlugin) parseEntries(ctx context.Context, mf *model.MediaFile, re
 				lyric.Variant = variant
 				lyric.Selection = selection
 				lyric.Match = modelLyricsMatch(entry.match)
+				// Playback-v2 auxiliary entries are addressed by role, while a
+				// standalone LRC/plain document has no explicit kind. Default
+				// only the untyped kind from the validated identity; document
+				// metadata and multi-track structure stay authoritative.
+				if variant != nil && strings.TrimSpace(lyric.Kind) == "" {
+					lyric.Kind = variant.Role
+				}
 				result = append(result, lyric)
 			}
 		}
