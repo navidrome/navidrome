@@ -460,6 +460,137 @@ describe('lyrics variants', () => {
     ).toBe('Second Plugin')
   })
 
+  it('keys plugin variants by installation id instead of display name', () => {
+    const source = (pluginId) => ({
+      type: 'plugin',
+      name: 'Same Display Name',
+      pluginId,
+      provider: 'LRCLib',
+      format: 'lrc',
+    })
+    const entries = [
+      {
+        ...structured('main', 'eng', 'First install'),
+        source: source('zz-first'),
+      },
+      {
+        ...structured('main', 'eng', 'Second install'),
+        source: source('zz-second'),
+      },
+    ]
+    const variants = collectLyricVariants(entries)
+    expect(variants.map((variant) => variant.key)).toEqual([
+      'plugin:zz-first:lrclib',
+      'plugin:zz-second:lrclib',
+    ])
+    expect(
+      selectLyricLayers(entries, 'en', variants[1].key).main.line[0].value,
+    ).toBe('Second install')
+  })
+
+  it('associates auxiliary tracks by recording identity rather than selection token', () => {
+    const source = {
+      type: 'plugin',
+      name: 'Same Display Name',
+      pluginId: 'nd-better-lyrics',
+      provider: 'LRCLib',
+    }
+    const variant = (role, language, selection, extra = {}) => ({
+      version: 1,
+      instance: 'lrclib:0123456789abcdef0123456789abcdef',
+      recording: 'rec-1',
+      role,
+      language,
+      format: 'lrc',
+      ...extra,
+    })
+    const main = {
+      ...structured('main', 'en', 'Main words'),
+      source,
+      selection: 'sel-main',
+      variant: variant('main', 'en', 'sel-main'),
+    }
+    const translation = {
+      ...structured('translation', 'es', 'Hola'),
+      source,
+      selection: 'sel-translation',
+      variant: variant('translation', 'es', 'sel-translation'),
+    }
+    const pronunciation = {
+      ...structured('pronunciation', 'en-Latn', 'men'),
+      source,
+      selection: 'sel-pronunciation',
+      variant: variant('pronunciation', 'en-Latn', 'sel-pronunciation'),
+    }
+
+    const variants = collectLyricVariants([main, translation, pronunciation])
+    expect(variants).toHaveLength(1)
+    const layers = selectLyricLayers(
+      [main, translation, pronunciation],
+      'es',
+      variants[0].key,
+    )
+    expect(layers.main.line[0].value).toBe('Main words')
+    expect(layers.translation.line[0].value).toBe('Hola')
+    expect(layers.pronunciation.line[0].value).toBe('men')
+  })
+
+  it('does not leak auxiliary tracks across recordings or plugin installations', () => {
+    const source = (pluginId) => ({
+      type: 'plugin',
+      name: 'Same Display Name',
+      pluginId,
+      provider: 'LRCLib',
+    })
+    const variant = (role, recording, selection) => ({
+      version: 1,
+      instance: 'lrclib:0123456789abcdef0123456789abcdef',
+      recording,
+      role,
+      language: 'es',
+      format: 'lrc',
+    })
+    const main = {
+      ...structured('main', 'en', 'First recording'),
+      source: source('nd-better-lyrics'),
+      selection: 'sel-first',
+      variant: variant('main', 'rec-1', 'sel-first'),
+    }
+    const otherMain = {
+      ...structured('main', 'en', 'Second recording'),
+      source: source('nd-better-lyrics'),
+      selection: 'sel-second',
+      variant: variant('main', 'rec-2', 'sel-second'),
+    }
+    const crossRecording = {
+      ...structured('translation', 'es', 'Otra grabación'),
+      source: source('nd-better-lyrics'),
+      selection: 'sel-other',
+      variant: variant('translation', 'rec-2', 'sel-other'),
+    }
+    const crossInstall = {
+      ...structured('translation', 'es', 'Otra instalación'),
+      source: source('another-install'),
+      selection: 'sel-install',
+      variant: variant('translation', 'rec-1', 'sel-install'),
+    }
+
+    const variants = collectLyricVariants([main, otherMain])
+    expect(
+      selectLyricLayers(
+        [main, otherMain, crossRecording],
+        'es',
+        variants[1].key,
+      ).translation,
+    ).toBe(crossRecording)
+    const isolated = selectLyricLayers(
+      [main, crossInstall],
+      'es',
+      variants[0].key,
+    )
+    expect(isolated.translation).toBeNull()
+  })
+
   it('keeps sidecar formats and their translation layers separate', () => {
     const lrc = { type: 'sidecar', format: 'lrc' }
     const ttml = { type: 'sidecar', format: 'ttml' }
