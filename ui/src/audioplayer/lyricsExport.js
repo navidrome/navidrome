@@ -9,6 +9,43 @@ const pad = (value, length = 2) => String(value).padStart(length, '0')
 
 const MAX_FILENAME_BYTES = 180
 const MAX_FILENAME_PART = 80
+const MAX_DESCRIPTOR_BYTES = 55
+
+const utf8ByteLength = (value) => {
+  let bytes = 0
+  for (const character of String(value ?? '')) {
+    const codePoint = character.codePointAt(0)
+    bytes +=
+      codePoint <= 0x7f
+        ? 1
+        : codePoint <= 0x7ff
+          ? 2
+          : codePoint <= 0xffff
+            ? 3
+            : 4
+  }
+  return bytes
+}
+
+const truncateUtf8 = (value, maxBytes) => {
+  let result = ''
+  let bytes = 0
+  for (const character of String(value ?? '')) {
+    const codePoint = character.codePointAt(0)
+    const width =
+      codePoint <= 0x7f
+        ? 1
+        : codePoint <= 0x7ff
+          ? 2
+          : codePoint <= 0xffff
+            ? 3
+            : 4
+    if (bytes + width > maxBytes) break
+    result += character
+    bytes += width
+  }
+  return result
+}
 
 export const lyricsFileExtension = (format, lyric) => {
   const normalized = String(format || '')
@@ -31,25 +68,15 @@ export const lyricsMediaType = (extension) => {
   return 'application/octet-stream'
 }
 
-const truncateMiddle = (value, limit) => {
-  const text = String(value ?? '')
-  if (text.length <= limit) return text
-  const head = Math.ceil(limit * 0.6)
-  const tail = Math.max(0, limit - head - 1)
-  return `${text.slice(0, head).trimEnd()}…${text.slice(-tail).trimStart()}`
-}
-
-const sanitizePart = (value, fallback) => {
-  const cleaned = truncateMiddle(
-    String(value ?? '')
-      .replace(/\p{Cc}+/gu, ' ')
-      .replace(/[\\/:*?"<>|]+/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .replace(/\.+$/, ''),
-    MAX_FILENAME_PART,
-  )
-  return cleaned || fallback
+const sanitizeText = (value, fallback, maxBytes = MAX_FILENAME_PART) => {
+  const cleaned = String(value ?? '')
+    .replace(/\p{Cc}+/gu, ' ')
+    .replace(/[\\/:*?"<>|]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\.+$/, '')
+  const bounded = truncateUtf8(cleaned, maxBytes)
+  return bounded || truncateUtf8(fallback, maxBytes)
 }
 
 // Server filenames are trusted only for their safe extension; never let a
@@ -65,12 +92,23 @@ export const sanitizeLyricsFileName = (name, fallback = 'lyrics.txt') => {
   const dot = raw.lastIndexOf('.')
   const extension =
     dot > 0 && raw.length - dot <= 16 ? raw.slice(dot).toLowerCase() : ''
-  const base = truncateMiddle(
+  const base = truncateUtf8(
     extension ? raw.slice(0, dot) : raw,
-    MAX_FILENAME_BYTES - extension.length,
+    MAX_FILENAME_BYTES - utf8ByteLength(extension),
   )
   const candidate = `${base || 'lyrics'}${extension}`
-  return candidate.length > 0 ? candidate : fallback
+  return candidate ? candidate : fallback
+}
+
+const descriptorFor = (label, suffix) => {
+  const suffixText = truncateUtf8(String(suffix ?? '').trim(), 30)
+  const suffixBytes = suffixText ? utf8ByteLength(` ${suffixText}`) : 0
+  const labelText = sanitizeText(
+    label,
+    'Lyrics',
+    Math.max(0, MAX_DESCRIPTOR_BYTES - suffixBytes),
+  )
+  return `${labelText}${suffixText ? ` ${suffixText}` : ''}`.trim() || 'Lyrics'
 }
 
 export const buildLyricsFileName = ({
@@ -80,11 +118,29 @@ export const buildLyricsFileName = ({
   format,
   suffix = '',
 } = {}) => {
-  const descriptor = [label, suffix].filter(Boolean).join(' ')
-  return `${sanitizePart(artist, 'Unknown artist')} - ${sanitizePart(
-    title,
-    'Unknown title',
-  )} (${sanitizePart(descriptor, 'Lyrics')}).${lyricsFileExtension(format)}`
+  const extension = `.${lyricsFileExtension(format)}`
+  const descriptor = descriptorFor(label, suffix)
+  // " - " + " (" + ")" + extension are the fixed separators.
+  const budget =
+    MAX_FILENAME_BYTES -
+    utf8ByteLength(extension) -
+    utf8ByteLength(descriptor) -
+    6
+  const artistFull = sanitizeText(artist, 'Unknown artist', budget)
+  const titleFull = sanitizeText(title, 'Unknown title', budget)
+  let artistPart = artistFull
+  let titlePart = titleFull
+  if (utf8ByteLength(artistPart) + utf8ByteLength(titlePart) > budget) {
+    artistPart = truncateUtf8(artistPart, Math.max(1, Math.floor(budget / 2)))
+    titlePart = truncateUtf8(
+      titlePart,
+      Math.max(1, budget - utf8ByteLength(artistPart)),
+    )
+  }
+  const name = `${artistPart} - ${titlePart} (${descriptor})${extension}`
+  return utf8ByteLength(name) <= MAX_FILENAME_BYTES
+    ? name
+    : sanitizeLyricsFileName(name, `lyrics${extension}`)
 }
 
 export const buildOriginalLyricsFileName = ({
@@ -96,7 +152,7 @@ export const buildOriginalLyricsFileName = ({
     ? extension.toLowerCase()
     : '.bin'
   return sanitizeLyricsFileName(
-    `${sanitizePart(artist, 'Unknown artist')} - ${sanitizePart(
+    `${sanitizeText(artist, 'Unknown artist')} - ${sanitizeText(
       title,
       'Unknown title',
     )}${safeExtension}`,

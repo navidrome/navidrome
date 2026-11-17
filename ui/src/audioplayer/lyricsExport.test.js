@@ -163,6 +163,62 @@ describe('lyrics export', () => {
     )
   })
 
+  it('bounds every download filename by UTF-8 bytes and preserves labels', () => {
+    const filenameBytes = (value) =>
+      new TextEncoder().encode(String(value)).length
+    const lyric = {
+      kind: 'main',
+      lang: 'eng',
+      synced: true,
+      line: [line('Hello world', 8000, 11000)],
+    }
+    const longOptions = {
+      format: 'elrc',
+      artist: '音'.repeat(80),
+      title: '歌'.repeat(80),
+      label: '源'.repeat(80),
+    }
+
+    const converted = buildConvertedLyricsDownload(lyric, longOptions)
+    expect(filenameBytes(converted.filename)).toBeLessThanOrEqual(180)
+    expect(converted.filename).toMatch(/ converted\)\.lrc$/)
+
+    const adjusted = buildConvertedLyricsDownload(lyric, {
+      ...longOptions,
+      mode: 'adjusted',
+      offsetMs: 500,
+    })
+    expect(filenameBytes(adjusted.filename)).toBeLessThanOrEqual(180)
+    expect(adjusted.filename).toMatch(/ timing-adjusted\)\.lrc$/)
+
+    const original = sanitizeLyricsFileName(
+      `${'音'.repeat(200)}.ttml`,
+      'lyrics.ttml',
+    )
+    expect(filenameBytes(original)).toBeLessThanOrEqual(180)
+    expect(original).toMatch(/\.ttml$/)
+    expect(original).not.toContain('\uFFFD')
+
+    const emoji = buildOriginalLyricsFileName({
+      artist: '😀'.repeat(100),
+      title: '🎵'.repeat(100),
+      extension: '.qrc',
+    })
+    expect(filenameBytes(emoji)).toBeLessThanOrEqual(180)
+    expect(emoji).toMatch(/\.qrc$/)
+    expect(emoji).not.toContain('\uFFFD')
+
+    const ascii = buildLyricsFileName({
+      artist: 'a'.repeat(400),
+      title: 'b'.repeat(400),
+      label: 'c'.repeat(400),
+      format: 'ttml',
+      suffix: 'converted',
+    })
+    expect(filenameBytes(ascii)).toBeLessThanOrEqual(180)
+    expect(ascii).toMatch(/ converted\)\.ttml$/)
+  })
+
   it('downloads a server original blob without re-encoding it', () => {
     vi.useFakeTimers()
     const blob = new Blob(['<?xml version="1.0"?><QrcInfos/>'], {
