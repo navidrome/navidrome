@@ -39,6 +39,14 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 	return nil, nil
 }
 
+func (f *fakeLyricsService) GetLyricsVariantsResult(ctx context.Context, mf *model.MediaFile, _ bool) (model.LyricsResult, error) {
+	return model.LyricsResult{}, nil
+}
+
+func (f *fakeLyricsService) ListLyricsVariantsResult(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, []model.LyricsEvidence, error) {
+	return nil, nil, nil
+}
+
 func (f *fakeLyricsService) GetLyricsVariants(ctx context.Context, mf *model.MediaFile, _ bool) (model.LyricList, error) {
 	return f.GetLyrics(ctx, mf)
 }

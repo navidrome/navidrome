@@ -41,7 +41,7 @@ func lyricsClientError(err error) error {
 	return newError(responses.ErrorGeneric, "error getting lyrics")
 }
 
-func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {
+func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, evidence []model.LyricsEvidence, enhanced bool) *responses.LyricsList {
 	filtered := lyricsList
 	if !enhanced {
 		// Without enhanced, only return main-kind entries (a blank kind is main).
@@ -57,12 +57,19 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced b
 	for i, lyrics := range filtered {
 		lyricList[i] = buildStructuredLyric(mf, lyrics, enhanced)
 	}
-	return &responses.LyricsList{StructuredLyrics: lyricList}
+	var evidenceRows []responses.LyricsEvidence
+	if enhanced {
+		evidenceRows = buildLyricsEvidence(evidence)
+	}
+	return &responses.LyricsList{
+		StructuredLyrics:     lyricList,
+		InstrumentalEvidence: evidenceRows,
+	}
 }
 
 // buildLyricsVariants maps the addressable variant listing. Documents are not
 // included; clients retrieve one exact selection separately.
-func buildLyricsVariants(variants []model.LyricsVariant) *responses.LyricsVariants {
+func buildLyricsVariants(variants []model.LyricsVariant, evidence []model.LyricsEvidence) *responses.LyricsVariants {
 	rows := make([]responses.LyricsVariant, 0, len(variants))
 	for _, variant := range variants {
 		rows = append(rows, responses.LyricsVariant{
@@ -91,9 +98,39 @@ func buildLyricsVariants(variants []model.LyricsVariant) *responses.LyricsVarian
 				Size:       variant.Original.Size,
 				Reason:     variant.Original.Reason,
 			},
+			Match: buildLyricsMatch(variant.Match),
 		})
 	}
-	return &responses.LyricsVariants{Variants: rows}
+	return &responses.LyricsVariants{Variants: rows, InstrumentalEvidence: buildLyricsEvidence(evidence)}
+}
+
+func buildLyricsMatch(match *model.LyricsMatch) *responses.LyricsMatch {
+	if match == nil {
+		return nil
+	}
+	reasons := make([]string, 0, len(match.Reasons))
+	reasons = append(reasons, match.Reasons...)
+	return &responses.LyricsMatch{
+		Status: match.Status, Reasons: reasons, DurationDelta: match.DurationDelta,
+		Recording: match.Recording, AutoSave: match.AutoSave,
+	}
+}
+
+func buildLyricsEvidence(evidence []model.LyricsEvidence) []responses.LyricsEvidence {
+	if len(evidence) == 0 {
+		return nil
+	}
+	out := make([]responses.LyricsEvidence, 0, len(evidence))
+	for _, entry := range evidence {
+		if !entry.Valid() {
+			continue
+		}
+		out = append(out, responses.LyricsEvidence{
+			PluginID: entry.PluginID, Kind: entry.Kind, Provider: entry.Provider,
+			Recording: entry.Recording, Match: buildLyricsMatch(entry.Match), Reason: entry.Reason,
+		})
+	}
+	return out
 }
 
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced bool) responses.StructuredLyric {
@@ -140,6 +177,7 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 			}
 			structured.Selection = lyrics.Selection
 		}
+		structured.Match = buildLyricsMatch(lyrics.Match)
 		if len(cueLines) > 0 && len(agents.response) > 0 {
 			structured.Agents = agents.response
 		}

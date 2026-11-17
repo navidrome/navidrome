@@ -93,6 +93,70 @@ type LyricsOriginalInfo struct {
 	Reason     string `json:"reason,omitempty"`
 }
 
+const (
+	LyricsMatchUnassessed = "unassessed"
+	LyricsMatchValidated  = "validated"
+	LyricsMatchAmbiguous  = "ambiguous"
+	LyricsMatchMismatch   = "mismatch"
+)
+
+// LyricsMatch is the recording-identity assessment, independent of timing
+// richness and content state. AutoSaveEligible is true only for validated.
+type LyricsMatch struct {
+	Status        string   `structs:"status"                     json:"status"`
+	Reasons       []string `structs:"reasons,omitempty"          json:"reasons,omitempty"`
+	DurationDelta float64  `structs:"durationDelta,omitempty"    json:"durationDelta,omitempty"`
+	Recording     string   `structs:"recording,omitempty"        json:"recording,omitempty"`
+	AutoSave      bool     `structs:"autoSaveEligible"           json:"autoSaveEligible"`
+}
+
+// LyricsEvidence is a typed, attributed provider observation. It is separate
+// from playable lyric entries and is never inferred from empty/error responses.
+type LyricsEvidence struct {
+	PluginID  string       `structs:"pluginId,omitempty"  json:"pluginId,omitempty"`
+	Kind      string       `structs:"kind"                json:"kind"`
+	Provider  string       `structs:"provider,omitempty"  json:"provider,omitempty"`
+	Recording string       `structs:"recording,omitempty" json:"recording,omitempty"`
+	Match     *LyricsMatch `structs:"match,omitempty"     json:"match,omitempty"`
+	Reason    string       `structs:"reason,omitempty"    json:"reason,omitempty"`
+}
+
+const (
+	MaxLyricsEvidence          = 32
+	MaxLyricsMatchReasons      = 8
+	MaxLyricsMatchReasonBytes  = 160
+	MaxLyricsEvidenceKindBytes = 32
+)
+
+// Valid reports whether the match uses a known status and stays bounded.
+func (match LyricsMatch) Valid() bool {
+	switch match.Status {
+	case LyricsMatchUnassessed, LyricsMatchValidated, LyricsMatchAmbiguous, LyricsMatchMismatch:
+	default:
+		return false
+	}
+	if len(match.Reasons) > MaxLyricsMatchReasons || len(match.Recording) > MaxLyricsVariantRecordingBytes {
+		return false
+	}
+	for _, reason := range match.Reasons {
+		if len(reason) > MaxLyricsMatchReasonBytes {
+			return false
+		}
+	}
+	return true
+}
+
+// Valid reports whether the evidence kind and attribution are bounded.
+func (evidence LyricsEvidence) Valid() bool {
+	if evidence.Kind == "" || len(evidence.Kind) > MaxLyricsEvidenceKindBytes {
+		return false
+	}
+	if len(evidence.Provider) > 128 || len(evidence.Recording) > MaxLyricsVariantRecordingBytes {
+		return false
+	}
+	return evidence.Match == nil || evidence.Match.Valid()
+}
+
 // LyricsVariant is one listing row. PlaybackIndex is advisory: the identity is
 // the stable link to the playback entry.
 type LyricsVariant struct {
@@ -106,6 +170,7 @@ type LyricsVariant struct {
 	Format        string                `json:"format,omitempty"`
 	PlaybackIndex int                   `json:"playbackIndex"`
 	Original      LyricsOriginalInfo    `json:"original"`
+	Match         *LyricsMatch          `json:"match,omitempty"`
 }
 
 // LyricsOriginal is one exact native document returned by a selection.

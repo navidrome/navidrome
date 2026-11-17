@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -80,16 +81,45 @@ var _ = Describe("LyricsPlugin originals", Ordered, func() {
 		Expect(identity).To(Equal(*list[0].Variant))
 	})
 
-	It("lists the same addressable variants", func() {
-		variants, err := originalsPlugin.ListLyricsVariants(GinkgoT().Context(), track())
+	It("keeps typed evidence separate from playable entries", func() {
+		result, err := originalsPlugin.GetLyricsDetailedResult(GinkgoT().Context(), track())
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result.Lyrics).To(HaveLen(2))
+		Expect(result.Lyrics[0].Match).ToNot(BeNil())
+		Expect(result.Lyrics[0].Match.Status).To(Equal(model.LyricsMatchValidated))
+		Expect(result.Lyrics[0].Match.AutoSave).To(BeTrue())
+		Expect(result.Lyrics[1].Match).ToNot(BeNil())
+		Expect(result.Lyrics[1].Match.Status).To(Equal(model.LyricsMatchAmbiguous))
+		Expect(result.Lyrics[1].Match.AutoSave).To(BeFalse())
+		Expect(result.Evidence).To(HaveLen(1))
+		Expect(result.Evidence[0].PluginID).To(Equal("test-lyrics-originals"))
+		Expect(result.Evidence[0].Kind).To(Equal("instrumental"))
+	})
+
+	It("lists the same addressable variants with matches and evidence", func() {
+		variants, evidence, err := originalsPlugin.ListLyricsVariantsResult(GinkgoT().Context(), track())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(variants).To(HaveLen(2))
+		Expect(evidence).To(HaveLen(1))
+		Expect(variants[0].Match).ToNot(BeNil())
+		Expect(variants[0].Match.Status).To(Equal(model.LyricsMatchValidated))
+		Expect(variants[1].Match.Status).To(Equal(model.LyricsMatchAmbiguous))
 		Expect(variants[0].PlaybackIndex).To(Equal(0))
 		Expect(variants[1].PlaybackIndex).To(Equal(1))
 		Expect(variants[0].Original.Available).To(BeTrue())
 		Expect(variants[0].Original.Format).To(Equal("qrc"))
 		Expect(variants[1].Original.Format).To(Equal("ttml"))
 		Expect(variants[0].Selection).ToNot(BeEmpty())
+	})
+
+	It("normalizes an invalid assessed status to non-playable ambiguity", func() {
+		for _, status := range []string{"", "pending"} {
+			match := modelLyricsMatch(&capabilities.LyricsMatch{Status: status, AutoSaveEligible: true})
+			Expect(match).ToNot(BeNil())
+			Expect(match.Status).To(Equal(model.LyricsMatchAmbiguous))
+			Expect(match.AutoSave).To(BeFalse())
+			Expect(match.Reasons).To(ContainElement("invalid-match-status"))
+		}
 	})
 
 	It("retrieves exact native documents by selection and rejects replacements", func() {

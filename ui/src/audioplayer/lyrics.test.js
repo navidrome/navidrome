@@ -4,6 +4,7 @@ import {
   clampLyricsOffset,
   collectLyricVariants,
   formatLyricsOffset,
+  findLyricVariant,
   getPreferredLyricLanguage,
   hasNudgeableTiming,
   hasStructuredLyricContent,
@@ -637,5 +638,181 @@ describe('lyrics variants', () => {
     expect(
       selectLyricLayers([main, otherProvider], 'en').pronunciation,
     ).toBeNull()
+  })
+})
+
+describe('recording match selection', () => {
+  const matched = (value, status, selection, extra = {}) => ({
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value }],
+    selection,
+    match: { status, autoSaveEligible: status === 'validated' },
+    ...extra,
+  })
+
+  it('never auto-selects an ambiguous suggestion', () => {
+    const layers = selectLyricLayers(
+      [
+        matched('Wrong live words', 'ambiguous', 'sel-live'),
+        matched('Right studio words', 'validated', 'sel-studio'),
+      ],
+      'en',
+    )
+    expect(layers.main.line[0].value).toBe('Right studio words')
+  })
+
+  it('does not auto-select when only ambiguous suggestions exist', () => {
+    const layers = selectLyricLayers(
+      [matched('Wrong live words', 'ambiguous', 'sel-live')],
+      'en',
+    )
+    expect(layers.main).toBeNull()
+  })
+
+  it('allows an ambiguous suggestion to be selected explicitly', () => {
+    const entries = [matched('Wrong live words', 'ambiguous', 'sel-live')]
+    const layers = selectLyricLayers(entries, 'en', 'selection:sel-live')
+    expect(layers.main.line[0].value).toBe('Wrong live words')
+    expect(
+      findLyricVariant(collectLyricVariants(entries), 'selection:sel-live')
+        ?.suggestion,
+    ).toBe(true)
+  })
+
+  it('keeps two selections from one source individually addressable', () => {
+    const variants = collectLyricVariants([
+      matched('First recording', 'validated', 'sel-a'),
+      matched('Second recording', 'ambiguous', 'sel-b'),
+    ])
+    expect(variants).toHaveLength(2)
+    expect(variants[0].key).toBe('selection:sel-a')
+    expect(variants[1].key).toBe('selection:sel-b')
+  })
+})
+
+describe('selection preference compatibility', () => {
+  const main = {
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value: 'selected main' }],
+    selection: 'sel-main',
+    match: { status: 'validated', autoSaveEligible: true },
+    source: { type: 'plugin', name: 'Better Lyrics', provider: 'LRCLib' },
+  }
+
+  it('resolves a preference saved with the old composite source key', () => {
+    const oldKey = 'plugin:better%20lyrics:lrclib'
+    expect(findLyricVariant(collectLyricVariants([main]), oldKey)).toBeTruthy()
+  })
+
+  it('scopes an auxiliary layer that shares the main selection', () => {
+    const translation = {
+      kind: 'translation',
+      lang: 'es',
+      synced: true,
+      line: [{ start: 0, value: 'traducción' }],
+      selection: 'sel-main',
+      source: { type: 'plugin', name: 'Better Lyrics', provider: 'LRCLib' },
+    }
+    const layers = selectLyricLayers(
+      [main, translation],
+      'en',
+      'selection:sel-main',
+    )
+    expect(layers.main.line[0].value).toBe('selected main')
+    expect(layers.translation.line[0].value).toBe('traducción')
+  })
+})
+
+describe('invalid match status auto-selection', () => {
+  const entry = (value, status) => ({
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value }],
+    match: { status, autoSaveEligible: false },
+  })
+
+  it('skips a mismatch before a playable result', () => {
+    const layers = selectLyricLayers(
+      [entry('wrong', 'mismatch'), entry('right', 'validated')],
+      'en',
+    )
+    expect(layers.main.line[0].value).toBe('right')
+  })
+
+  it('does not auto-select when only mismatches exist', () => {
+    expect(selectLyricLayers([entry('wrong', 'mismatch')], 'en').main).toBe(
+      null,
+    )
+  })
+
+  it('does not treat an unknown assessed status as playable', () => {
+    expect(selectLyricLayers([entry('unknown', 'pending')], 'en').main).toBe(
+      null,
+    )
+  })
+})
+
+describe('invalid assessed match statuses', () => {
+  const matched = (status) => ({
+    kind: 'main',
+    lang: 'en',
+    synced: true,
+    line: [{ start: 0, value: 'assessed entry' }],
+    match: status === undefined ? {} : { status },
+  })
+
+  it('fails closed for a present match object with no status', () => {
+    expect(selectLyricLayers([matched()], 'en').main).toBeNull()
+  })
+
+  it('fails closed for a present match object with an empty status', () => {
+    expect(selectLyricLayers([matched('')], 'en').main).toBeNull()
+  })
+
+  it('fails closed for an unknown assessed status while keeping legacy absence compatible', () => {
+    expect(selectLyricLayers([matched('pending')], 'en').main).toBeNull()
+    const legacy = {
+      kind: 'main',
+      lang: 'en',
+      synced: true,
+      line: [{ start: 0, value: 'legacy entry' }],
+    }
+    expect(selectLyricLayers([legacy], 'en').main.line[0].value).toBe(
+      'legacy entry',
+    )
+  })
+})
+
+describe('suggestion-only auxiliary layers', () => {
+  it('returns no main, translation or pronunciation layers for an unselected suggestion', () => {
+    const suggestion = {
+      kind: 'main',
+      lang: 'en',
+      synced: true,
+      line: [{ start: 0, value: 'suggested main' }],
+      match: { status: 'ambiguous' },
+    }
+    const translation = {
+      kind: 'translation',
+      lang: 'es',
+      synced: true,
+      line: [{ start: 0, value: 'suggested translation' }],
+      match: { status: 'ambiguous' },
+    }
+    const pronunciation = {
+      kind: 'pronunciation',
+      lang: 'en',
+      synced: true,
+      line: [{ start: 0, value: 'suggested pronunciation' }],
+      match: { status: 'ambiguous' },
+    }
+    expect(
+      selectLyricLayers([suggestion, translation, pronunciation], 'en'),
+    ).toEqual({ main: null, translation: null, pronunciation: null })
   })
 })

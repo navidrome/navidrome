@@ -73,41 +73,43 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	}), nil
 }
 
-// fromPlugin attempts to load lyrics from a plugin with the given name.
-func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, pluginName string, detailed bool) (model.LyricList, error) {
+func (l *lyricsService) fromPluginResult(ctx context.Context, mf *model.MediaFile, pluginName string, detailed bool) (model.LyricsResult, error) {
 	if l.pluginLoader == nil {
 		log.Debug(ctx, "Invalid lyric source", "source", pluginName)
-		return nil, nil
+		return model.LyricsResult{}, nil
 	}
 
 	provider, ok := l.pluginLoader.LoadLyricsProvider(pluginName)
 	if !ok {
 		log.Warn(ctx, "Lyrics plugin not found", "plugin", pluginName)
-		return nil, nil
+		return model.LyricsResult{}, nil
 	}
 
-	var lyricsList model.LyricList
+	var result model.LyricsResult
 	var err error
 	if detailed {
-		if detailedProvider, ok := provider.(DetailedProvider); ok {
-			lyricsList, err = detailedProvider.GetLyricsDetailed(ctx, mf)
+		if resultProvider, ok := provider.(DetailedResultProvider); ok {
+			result, err = resultProvider.GetLyricsDetailedResult(ctx, mf)
+		} else if detailedProvider, ok := provider.(DetailedProvider); ok {
+			result.Lyrics, err = detailedProvider.GetLyricsDetailed(ctx, mf)
 		} else {
-			lyricsList, err = provider.GetLyrics(ctx, mf)
+			result.Lyrics, err = provider.GetLyrics(ctx, mf)
 		}
 	} else {
-		lyricsList, err = provider.GetLyrics(ctx, mf)
+		result.Lyrics, err = provider.GetLyrics(ctx, mf)
 	}
 	if err != nil {
-		return nil, err
+		return model.LyricsResult{}, err
 	}
 
-	if len(lyricsList) > 0 {
-		log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
+	if len(result.Lyrics) > 0 {
+		log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(result.Lyrics))
 	}
-	return withLyricsSource(lyricsList, model.LyricsSource{
+	result.Lyrics = withLyricsSource(result.Lyrics, model.LyricsSource{
 		Type: model.LyricsSourcePlugin,
 		Name: pluginName,
-	}), nil
+	})
+	return result, nil
 }
 
 // withLyricsSource copies the lyric entries before adding defaults so resolver

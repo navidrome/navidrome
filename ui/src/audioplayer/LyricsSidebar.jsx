@@ -94,6 +94,7 @@ const LyricsSidebar = ({
   mainLyric,
   translationLyric,
   pronunciationLyric,
+  evidence = [],
   showTranslation,
   showPronunciation,
   letterWave = true,
@@ -315,6 +316,7 @@ const LyricsSidebar = ({
           mainLyric={mainLyric}
           translationLyric={translationLyric}
           pronunciationLyric={pronunciationLyric}
+          evidence={evidence}
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
           letterWave={letterWave}

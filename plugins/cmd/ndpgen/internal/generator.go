@@ -446,7 +446,7 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustTypeAlias":       rustTypeAlias,
 		"rustConstType":       rustConstType,
 		"rustConstName":       rustConstName,
-		"rustFieldName":       func(name string) string { return ToSnakeCase(name) },
+		"rustFieldName":       rustIdentifier,
 		"rustMethodName":      func(name string) string { return ToSnakeCase(name) },
 		"fieldRustType":       func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
 		"rustOutputType":      func(goType string) string { return rustTraitType(goType, shared) },
@@ -969,7 +969,7 @@ func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
 	}
 	tmpl, err := template.New("types_rs").Funcs(template.FuncMap{
 		"rustDocComment":      RustDocComment,
-		"rustFieldName":       func(n string) string { return ToSnakeCase(n) },
+		"rustFieldName":       rustIdentifier,
 		"fieldRustType":       func(f FieldDef) string { return f.RustType(known) },
 		"skipSerializingFunc": skipSerializingFunc,
 		"indent":              indentSpaces,

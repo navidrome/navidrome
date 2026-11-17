@@ -290,10 +290,14 @@ export const hasStructuredLyricContent = (structuredLyric) =>
       hasCueTiming(structuredLyric)),
   )
 
-// variantKey identifies a lyrics source for selection and persistence. The
-// sidecar format distinguishes separate files; a plugin name scopes upstream
-// provider labels so two plugins can use the same provider independently.
-export const variantKey = (source) => {
+// variantKey identifies an addressable lyrics representation for selection and
+// persistence. A plugin selection token names one exact identity, so two
+// recordings from one provider stay individually selectable. Responses without
+// an identity keep the legacy source-level key for saved preferences.
+export const variantKey = (source, lyric = null) => {
+  if (lyric?.selection) {
+    return `selection:${lyric.selection}`
+  }
   if (source?.type === 'sidecar' && source.format) {
     return `sidecar:${source.format.trim().toLowerCase()}`
   }
@@ -316,11 +320,44 @@ export const legacyVariantKey = (source) => {
 export const findLyricVariant = (variants, key) => {
   const exact = variants.find((variant) => variant.key === key)
   if (exact || !key) return exact
+  // Preferences saved before selections were addressable used the composite
+  // source key. Resolve that before the older label-only fallback.
+  const sourceMatches = variants.filter(
+    (variant) => variantKey(variant.source) === key,
+  )
+  if (sourceMatches.length === 1) return sourceMatches[0]
   const matches = variants.filter(
     (variant) => legacyVariantKey(variant.source) === key,
   )
   return matches.length === 1 ? matches[0] : undefined
 }
+
+// lyricMatchStatus reads the optional recording-identity assessment. Older
+// hosts/plugins have no match object and keep the legacy playable path.
+export const lyricMatchStatus = (lyric) => {
+  if (!lyric?.match) return 'unassessed'
+  const status =
+    typeof lyric.match.status === 'string'
+      ? lyric.match.status.trim().toLowerCase()
+      : ''
+  return status || 'invalid'
+}
+
+export const isPlayableMatch = (lyric) => {
+  if (!lyric?.match) return true
+  const status = lyricMatchStatus(lyric)
+  return status === 'validated' || status === 'unassessed'
+}
+
+export const isPlayableVariant = (variant) => {
+  if (!variant?.lyric?.match) return true
+  if (Array.isArray(variant.entries) && variant.entries.length > 0) {
+    return variant.entries.some(isPlayableMatch)
+  }
+  return isPlayableMatch(variant.lyric)
+}
+
+export const isSuggestion = (lyric) => lyricMatchStatus(lyric) === 'ambiguous'
 
 // variantSync grades a variant for its badge: word timing from cue lines,
 // line timing from synced line starts, plain otherwise.
@@ -346,13 +383,15 @@ const groupLyricVariants = (entries) => {
   const variants = []
   const byKey = new Map()
   for (const lyric of entries) {
-    const key = variantKey(lyric?.source)
+    const key = variantKey(lyric?.source, lyric)
     let variant = byKey.get(key)
     if (!variant) {
       variant = {
         key,
         source: lyric?.source || null,
         sync: variantSync(lyric),
+        matchStatus: lyricMatchStatus(lyric),
+        suggestion: isSuggestion(lyric),
         lyric,
         entries: [],
       }
@@ -412,18 +451,26 @@ export const selectLyricLayers = (
   }
 
   const variants = groupLyricVariants(mainKindEntries(available))
+  const explicitlySelected = findLyricVariant(variants, selectedSourceKey)
   const selectedVariant =
-    findLyricVariant(variants, selectedSourceKey) || variants[0] || null
-  const mainCandidates = selectedVariant ? selectedVariant.entries : []
+    explicitlySelected || variants.find(isPlayableVariant) || null
+  const mainCandidates = selectedVariant
+    ? explicitlySelected
+      ? selectedVariant.entries
+      : selectedVariant.entries.filter(isPlayableMatch)
+    : []
 
   // A different provider's auxiliary track can have incompatible timing or
   // text. Only older responses without source attribution can be a fallback.
   const scopedLayer = (kind) => {
     const entries = grouped[kind]
-    if (!selectedVariant || entries.length === 0) return entries
-    const scoped = entries.filter(
-      (lyric) => variantKey(lyric?.source) === selectedVariant.key,
-    )
+    if (!selectedVariant) return []
+    if (entries.length === 0) return entries
+    const scoped = entries.filter((lyric) => {
+      if (variantKey(lyric?.source, lyric) === selectedVariant.key) return true
+      if (lyric?.selection || selectedVariant.lyric?.selection) return false
+      return variantKey(lyric?.source) === variantKey(selectedVariant.source)
+    })
     return scoped.length > 0
       ? scoped
       : entries.filter(

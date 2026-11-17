@@ -138,18 +138,21 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 	enhanced, _ := req.Params(r).Bool("enhanced")
 	allSources, _ := req.Params(r).Bool("allSources")
 	var structuredLyrics model.LyricList
+	var evidence []model.LyricsEvidence
 	if enhanced {
-		structuredLyrics, err = api.lyrics.GetLyricsVariants(r.Context(), mediaFile, allSources)
+		var result model.LyricsResult
+		result, err = api.lyrics.GetLyricsVariantsResult(r.Context(), mediaFile, allSources)
+		structuredLyrics, evidence = result.Lyrics, result.Evidence
 	} else {
 		structuredLyrics, err = api.lyrics.GetLyrics(r.Context(), mediaFile)
 	}
-	if err != nil && (!enhanced || len(structuredLyrics) == 0) {
+	if err != nil && (!enhanced || (len(structuredLyrics) == 0 && len(evidence) == 0)) {
 		log.Error(r.Context(), "Error getting lyrics", "id", id, err)
 		return nil, lyricsClientError(err)
 	}
 
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, enhanced)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, evidence, enhanced)
 	response.LyricsList.SourcesIncomplete = enhanced && err != nil
 	if enhanced {
 		response.LyricsList.RetryAfterSeconds = lyricsRetryAfterSeconds(err)
@@ -169,12 +172,12 @@ func (api *Router) GetLyricsVariants(r *http.Request) (*responses.Subsonic, erro
 	if err != nil {
 		return nil, err
 	}
-	variants, err := api.lyrics.ListLyricsVariants(r.Context(), mediaFile)
+	variants, evidence, err := api.lyrics.ListLyricsVariantsResult(r.Context(), mediaFile)
 	if err != nil {
 		log.Error(r.Context(), "Error listing lyrics variants", "id", id, err)
 	}
 	response := newResponse()
-	response.LyricsVariants = buildLyricsVariants(variants)
+	response.LyricsVariants = buildLyricsVariants(variants, evidence)
 	return response, nil
 }
 

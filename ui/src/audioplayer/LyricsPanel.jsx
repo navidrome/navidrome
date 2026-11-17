@@ -330,6 +330,14 @@ const useStyles = makeStyles((theme) => ({
       },
     },
   },
+  evidenceNote: {
+    padding: '8px 16px',
+    fontSize: '0.8rem',
+    lineHeight: 1.4,
+    color: 'inherit',
+    opacity: 0.8,
+    borderBottom: '1px solid rgba(127,127,127,0.2)',
+  },
   emptyState: {
     flex: 1,
     minHeight: 0,
@@ -488,6 +496,7 @@ const LyricsPanel = ({
   error = null,
   errorMessage = null,
   labels = {},
+  evidence = [],
 }) => {
   const classes = useStyles()
   const theme = useTheme()
@@ -789,12 +798,20 @@ const LyricsPanel = ({
 
   if (!visible) return null
 
+  const evidenceNote = lyricEvidenceNote(
+    evidence,
+    Boolean(hasLyricBody),
+    labels,
+  )
+
   if (!hasLyricBody) {
     const message = loading
       ? labels.loading || 'Loading lyrics'
-      : error
-        ? errorMessage || labels.unavailable || 'Lyrics unavailable'
-        : labels.empty || 'No lyrics available'
+      : evidenceNote
+        ? evidenceNote
+        : error
+          ? errorMessage || labels.unavailable || 'Lyrics unavailable'
+          : labels.empty || 'No lyrics available'
     return (
       <div
         className={clsx(classes.root, { [classes.inlineRoot]: inline })}
@@ -858,6 +875,14 @@ const LyricsPanel = ({
       data-testid="karaoke-lyrics-panel"
       onClick={inline ? (event) => event.stopPropagation() : undefined}
     >
+      {evidenceNote && (
+        <div
+          className={classes.evidenceNote}
+          data-testid="lyrics-evidence-note"
+        >
+          {evidenceNote}
+        </div>
+      )}
       <div
         className={clsx(classes.body, {
           [classes.inlineBody]: inline,
@@ -1107,6 +1132,39 @@ const LyricsPanel = ({
       )}
     </div>
   )
+}
+
+const lyricEvidenceNote = (evidence, hasLyrics, labels) => {
+  const entries = (evidence || []).filter(
+    (entry) => entry?.kind === 'instrumental',
+  )
+  if (entries.length === 0) return null
+  const entry = entries[0]
+  const provider = entry.provider || labels.unknownProvider || 'A provider'
+  const status = entry?.match?.status || 'unassessed'
+  if (hasLyrics) {
+    return labels.instrumentalConflict
+      ? String(labels.instrumentalConflict).replace('%{provider}', provider)
+      : `${provider} reports an instrumental recording; the lyrics shown are from the selected source.`
+  }
+  if (status === 'validated') {
+    return labels.instrumentalTrack
+      ? String(labels.instrumentalTrack).replace('%{provider}', provider)
+      : `${provider} reports this recording is instrumental.`
+  }
+  if (status === 'ambiguous') {
+    return labels.instrumentalSimilar
+      ? String(labels.instrumentalSimilar).replace('%{provider}', provider)
+      : `No lyrics for this track. ${provider} reports a similar recording is instrumental.`
+  }
+  if (status === 'mismatch') {
+    return labels.instrumentalOther
+      ? String(labels.instrumentalOther).replace('%{provider}', provider)
+      : `No lyrics for this track. ${provider} reports a different recording is instrumental.`
+  }
+  return labels.instrumentalMatched
+    ? String(labels.instrumentalMatched).replace('%{provider}', provider)
+    : `${provider} reports the matched recording is instrumental; the provider did not return enough recording details.`
 }
 
 export default LyricsPanel

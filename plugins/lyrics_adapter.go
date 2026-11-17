@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -61,21 +62,36 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 // cached representation and an identity per entry. A plugin without the export
 // falls back to the required playback response.
 func (l *LyricsPlugin) GetLyricsDetailed(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+	result, err := l.GetLyricsDetailedResult(ctx, mf)
+	return result.Lyrics, err
+}
+
+// GetLyricsDetailedResult is the typed enhanced result: playable entries plus
+// attributed evidence that is not a lyric entry.
+func (l *LyricsPlugin) GetLyricsDetailedResult(ctx context.Context, mf *model.MediaFile) (model.LyricsResult, error) {
 	if err := l.acquire(ctx); err != nil {
-		return nil, err
+		return model.LyricsResult{}, err
 	}
 	defer l.release()
-	if list, supported, err := l.getLyricsV2(ctx, mf); supported {
-		return list, err
+	if result, supported, err := l.getLyricsV2(ctx, mf); supported {
+		return result, err
 	}
-	return l.getLyricsV1(ctx, mf)
+	list, err := l.getLyricsV1(ctx, mf)
+	return model.LyricsResult{Lyrics: list}, err
 }
 
 // ListLyricsVariants returns the plugin's cached, addressable representations.
 // It performs no fetch; a cold plugin cache yields an empty listing.
 func (l *LyricsPlugin) ListLyricsVariants(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, error) {
+	variants, _, err := l.ListLyricsVariantsResult(ctx, mf)
+	return variants, err
+}
+
+// ListLyricsVariantsResult includes typed evidence without adding dummy lyric
+// entries.
+func (l *LyricsPlugin) ListLyricsVariantsResult(ctx context.Context, mf *model.MediaFile) ([]model.LyricsVariant, []model.LyricsEvidence, error) {
 	if err := l.acquire(ctx); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer l.release()
 	response, err := callPluginFunction[capabilities.GetLyricsVariantsRequest, capabilities.GetLyricsVariantsResponse](
@@ -83,9 +99,9 @@ func (l *LyricsPlugin) ListLyricsVariants(ctx context.Context, mf *model.MediaFi
 	)
 	if err != nil {
 		if unsupportedPluginFunction(err) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	variants := make([]model.LyricsVariant, 0, len(response.Variants))
 	for _, entry := range response.Variants {
@@ -127,12 +143,13 @@ func (l *LyricsPlugin) ListLyricsVariants(ctx context.Context, mf *model.MediaFi
 			Format:        strings.ToLower(boundedText(entry.Format, 16)),
 			PlaybackIndex: entry.PlaybackIndex,
 			Original:      original,
+			Match:         modelLyricsMatch(entry.Match),
 		})
 		if len(variants) >= model.MaxLyricsVariantsPerPlugin {
 			break
 		}
 	}
-	return variants, nil
+	return variants, modelLyricsEvidence(l.name, response.Evidence), nil
 }
 
 // GetOriginal retrieves one exact native document for one selection. The
@@ -205,6 +222,7 @@ func (l *LyricsPlugin) release() {
 type lyricsEntry struct {
 	text    capabilities.LyricsText
 	variant *capabilities.LyricsVariant
+	match   *capabilities.LyricsMatch
 }
 
 func (l *LyricsPlugin) getLyricsV1(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
@@ -221,24 +239,28 @@ func (l *LyricsPlugin) getLyricsV1(ctx context.Context, mf *model.MediaFile) (mo
 	return l.parseEntries(ctx, mf, response.Source, entries), nil
 }
 
-func (l *LyricsPlugin) getLyricsV2(ctx context.Context, mf *model.MediaFile) (model.LyricList, bool, error) {
+func (l *LyricsPlugin) getLyricsV2(ctx context.Context, mf *model.MediaFile) (model.LyricsResult, bool, error) {
 	response, err := callPluginFunction[capabilities.GetLyricsV2Request, capabilities.GetLyricsV2Response](
 		ctx, l.plugin, FuncLyricsGetLyricsV2, capabilities.GetLyricsV2Request{Track: mediaFileToTrackInfo(l.plugin, mf)},
 	)
 	if err != nil {
 		if unsupportedPluginFunction(err) {
-			return nil, false, nil
+			return model.LyricsResult{}, false, nil
 		}
-		return nil, true, err
+		return model.LyricsResult{}, true, err
 	}
 	entries := make([]lyricsEntry, 0, len(response.Lyrics))
 	for _, text := range response.Lyrics {
 		entries = append(entries, lyricsEntry{
 			text:    capabilities.LyricsText{Lang: text.Lang, Text: text.Text, Source: text.Source},
 			variant: text.Variant,
+			match:   text.Match,
 		})
 	}
-	return l.parseEntries(ctx, mf, response.Source, entries), true, nil
+	return model.LyricsResult{
+		Lyrics:   l.parseEntries(ctx, mf, response.Source, entries),
+		Evidence: modelLyricsEvidence(l.name, response.Evidence),
+	}, true, nil
 }
 
 func (l *LyricsPlugin) parseEntries(ctx context.Context, mf *model.MediaFile, responseSource *capabilities.LyricsSource, entries []lyricsEntry) model.LyricList {
@@ -279,6 +301,7 @@ func (l *LyricsPlugin) parseEntries(ctx context.Context, mf *model.MediaFile, re
 				lyric.Source = source
 				lyric.Variant = variant
 				lyric.Selection = selection
+				lyric.Match = modelLyricsMatch(entry.match)
 				result = append(result, lyric)
 			}
 		}
@@ -307,6 +330,58 @@ func lyricsSourceFor(entry capabilities.LyricsText, defaults *capabilities.Lyric
 		}
 	}
 	return source
+}
+
+func modelLyricsMatch(match *capabilities.LyricsMatch) *model.LyricsMatch {
+	if match == nil {
+		return nil
+	}
+	status := boundedBytes(match.Status, 32)
+	out := &model.LyricsMatch{
+		Status:        status,
+		DurationDelta: match.DurationDelta,
+		Recording:     boundedBytes(match.Recording, model.MaxLyricsVariantRecordingBytes),
+		AutoSave:      match.AutoSaveEligible && status == model.LyricsMatchValidated,
+	}
+	for _, reason := range match.Reasons {
+		if len(out.Reasons) >= model.MaxLyricsMatchReasons {
+			break
+		}
+		out.Reasons = append(out.Reasons, boundedBytes(reason, model.MaxLyricsMatchReasonBytes))
+	}
+	if !out.Valid() {
+		out.Status = model.LyricsMatchAmbiguous
+		out.AutoSave = false
+		if len(out.Reasons) < model.MaxLyricsMatchReasons {
+			out.Reasons = append(out.Reasons, "invalid-match-status")
+		}
+	}
+	if !out.Valid() {
+		return nil
+	}
+	return out
+}
+
+func modelLyricsEvidence(pluginID string, evidence []capabilities.LyricsEvidence) []model.LyricsEvidence {
+	out := make([]model.LyricsEvidence, 0, min(len(evidence), model.MaxLyricsEvidence))
+	for _, entry := range evidence {
+		mapped := model.LyricsEvidence{
+			PluginID:  pluginID,
+			Kind:      boundedBytes(entry.Kind, model.MaxLyricsEvidenceKindBytes),
+			Provider:  boundedBytes(entry.Provider, 128),
+			Recording: boundedBytes(entry.Recording, model.MaxLyricsVariantRecordingBytes),
+			Match:     modelLyricsMatch(entry.Match),
+			Reason:    boundedBytes(entry.Reason, 160),
+		}
+		if !mapped.Valid() {
+			continue
+		}
+		out = append(out, mapped)
+		if len(out) >= model.MaxLyricsEvidence {
+			break
+		}
+	}
+	return out
 }
 
 func modelLyricsVariant(variant capabilities.LyricsVariant) (model.LyricsVariantIdentity, bool) {
@@ -340,6 +415,19 @@ func boundedText(value string, limit int) string {
 	value = strings.TrimSpace(value)
 	if runes := []rune(value); len(runes) > limit {
 		return string(runes[:limit])
+	}
+	return value
+}
+
+// boundedBytes limits a UTF-8 string by bytes without splitting a rune.
+func boundedBytes(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if limit <= 0 || len(value) <= limit {
+		return value
+	}
+	for len(value) > limit {
+		_, size := utf8.DecodeLastRuneInString(value)
+		value = value[:len(value)-size]
 	}
 	return value
 }

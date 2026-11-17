@@ -594,20 +594,44 @@ type StructuredLyric struct {
 	Source        *LyricsSource          `xml:"source,omitempty"             json:"source,omitempty"`
 	Variant       *LyricsVariantIdentity `xml:"variant,omitempty"            json:"variant,omitempty"`
 	Selection     string                 `xml:"selection,attr,omitempty"     json:"selection,omitempty"`
+	Match         *LyricsMatch           `xml:"match,omitempty"              json:"match,omitempty"`
 	Synced        bool                   `xml:"synced,attr"                  json:"synced"`
+}
+
+// LyricsMatch is the recording-identity assessment. AutoSaveEligible is true
+// only for a validated recording.
+type LyricsMatch struct {
+	Status        string   `xml:"status,attr"                    json:"status"`
+	Reasons       []string `xml:"reason,omitempty"               json:"reasons,omitempty"`
+	DurationDelta float64  `xml:"durationDelta,attr,omitempty"  json:"durationDelta,omitempty"`
+	Recording     string   `xml:"recording,attr,omitempty"       json:"recording,omitempty"`
+	AutoSave      bool     `xml:"autoSaveEligible,attr"          json:"autoSaveEligible"`
+}
+
+// LyricsEvidence is a typed, attributed provider observation separate from
+// playable lyric entries.
+type LyricsEvidence struct {
+	PluginID  string       `xml:"pluginId,attr,omitempty"  json:"pluginId,omitempty"`
+	Kind      string       `xml:"kind,attr"                json:"kind"`
+	Provider  string       `xml:"provider,attr,omitempty"  json:"provider,omitempty"`
+	Recording string       `xml:"recording,attr,omitempty" json:"recording,omitempty"`
+	Match     *LyricsMatch `xml:"match,omitempty"          json:"match,omitempty"`
+	Reason    string       `xml:"reason,attr,omitempty"    json:"reason,omitempty"`
 }
 
 type StructuredLyrics []StructuredLyric
 type LyricsList struct {
-	StructuredLyrics  []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
-	SourcesIncomplete bool              `xml:"sourcesIncomplete,attr,omitempty" json:"sourcesIncomplete,omitempty"`
-	RetryAfterSeconds int               `xml:"retryAfterSeconds,attr,omitempty" json:"retryAfterSeconds,omitempty"`
+	StructuredLyrics     []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
+	InstrumentalEvidence []LyricsEvidence  `xml:"instrumentalEvidence,omitempty" json:"instrumentalEvidence,omitempty"`
+	SourcesIncomplete    bool              `xml:"sourcesIncomplete,attr,omitempty" json:"sourcesIncomplete,omitempty"`
+	RetryAfterSeconds    int               `xml:"retryAfterSeconds,attr,omitempty" json:"retryAfterSeconds,omitempty"`
 }
 
 // LyricsVariants lists the addressable playback representations. Documents are
 // retrieved separately by selection.
 type LyricsVariants struct {
-	Variants []LyricsVariant `xml:"variant,omitempty" json:"variant,omitempty"`
+	Variants             []LyricsVariant  `xml:"variant,omitempty" json:"variant,omitempty"`
+	InstrumentalEvidence []LyricsEvidence `xml:"instrumentalEvidence,omitempty" json:"instrumentalEvidence,omitempty"`
 }
 
 // LyricsVariantIdentity is the versioned identity of one playback entry.
@@ -644,6 +668,7 @@ type LyricsVariant struct {
 	Format        string                `xml:"format,attr,omitempty"       json:"format,omitempty"`
 	PlaybackIndex int                   `xml:"playbackIndex,attr"          json:"playbackIndex"`
 	Original      LyricsOriginalInfo    `xml:"original"                    json:"original"`
+	Match         *LyricsMatch          `xml:"match,omitempty"             json:"match,omitempty"`
 }
 
 type OpenSubsonicExtension struct {
