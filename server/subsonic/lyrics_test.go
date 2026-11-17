@@ -339,6 +339,13 @@ var _ = Describe("GetLyricsBySongId", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(string(encoded)).To(ContainSubstring(`retryAfterSeconds="120"`))
 
+		initial, err := router.GetLyricsBySongId(newGetRequest("id=1&enhanced=true"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(initial.LyricsList.SourcesIncomplete).To(BeTrue())
+		Expect(initial.LyricsList.RetryAfterSeconds).To(Equal(120))
+		Expect(initial.LyricsList.StructuredLyrics).To(HaveLen(1))
+		Expect(initial.LyricsList.StructuredLyrics[0].Line[0].Value).To(Equal("Local words"))
+
 		legacy, err := router.GetLyricsBySongId(newGetRequest("id=1&allSources=true"))
 		Expect(err).NotTo(HaveOccurred())
 		encoded, err = json.Marshal(legacy.LyricsList)

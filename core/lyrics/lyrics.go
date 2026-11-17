@@ -145,7 +145,7 @@ func (l *lyricsService) GetLyricsVariantsResult(ctx context.Context, mf *model.M
 	}
 	result := model.LyricsResult{Lyrics: variants, Evidence: evidence}
 	if len(variants) > 0 || len(evidence) > 0 {
-		if allSources {
+		if allSources || partialErr != nil {
 			return result, partialErr
 		}
 		return result, nil
