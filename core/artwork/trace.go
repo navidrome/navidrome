@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -94,7 +95,10 @@ func encodeSteps(steps []TraceStep, sourcePath string) string {
 		}
 		out = append(out, storedStep{C: s.Candidate, O: s.Outcome, D: str.TruncateRunes(d, maxTraceDetail, "...")})
 	}
-	b, _ := json.Marshal(out) // []storedStep is all strings, so this cannot fail
+	b, err := json.Marshal(out)
+	if err != nil {
+		log.Error("Artwork: Could not encode resolution trace", err)
+	}
 	return string(b)
 }
 

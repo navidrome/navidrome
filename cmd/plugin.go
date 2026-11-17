@@ -509,8 +509,8 @@ func usersToJSON(value string) (string, error) {
 			names = append(names, u)
 		}
 	}
-	b, _ := json.Marshal(names)
-	return string(b), nil
+	b, err := json.Marshal(names)
+	return string(b), err
 }
 
 // librariesToJSON accepts either a JSON array (starts with '[') or a
@@ -535,8 +535,8 @@ func librariesToJSON(value string) (string, error) {
 			ids = append(ids, id)
 		}
 	}
-	b, _ := json.Marshal(ids)
-	return string(b), nil
+	b, err := json.Marshal(ids)
+	return string(b), err
 }
 
 var pluginRescanCmd = &cobra.Command{

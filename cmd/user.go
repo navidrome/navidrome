@@ -469,7 +469,10 @@ func runUserList(ctx context.Context) {
 			users[idx].Libraries = paths
 		}
 
-		j, _ := json.Marshal(users)
+		j, err := json.Marshal(users)
+		if err != nil {
+			log.Fatal(ctx, "Failed to encode users", err)
+		}
 		fmt.Printf("%s\n", j)
 	}
 }

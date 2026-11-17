@@ -77,7 +77,11 @@ func (d *Discovery) ServeOn(ctx context.Context, conn net.PacketConn) {
 			continue
 		}
 		info := discoveryInfo{Address: discoveryAddress(ctx, remote), Id: d.serverID(ctx), Name: serverName()}
-		res, _ := json.Marshal(info)
+		res, err := json.Marshal(info)
+		if err != nil {
+			log.Error(ctx, "Jellyfin API: could not encode auto-discovery response", err)
+			continue
+		}
 		log.Debug(ctx, "Jellyfin API: answering auto-discovery request", "from", remote.String(), "address", info.Address)
 		if _, err := conn.WriteTo(res, remote); err != nil {
 			log.Debug(ctx, "Jellyfin API: could not answer auto-discovery request", "to", remote.String(), err)

@@ -250,7 +250,10 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 		primaryArtistName := fmt.Sprintf("Artist %04d", primaryArtistIdx)
 
 		participants := map[string][]map[string]string{"artist": artistEntries}
-		participantsJSON, _ := json.Marshal(participants)
+		participantsJSON, err := json.Marshal(participants)
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		if _, err := mfStmt.Exec(
 			trackID,

@@ -517,7 +517,10 @@ func callTestUsersPlugin(ctx context.Context, manager *Manager, input testUsersI
 	}
 	defer instance.Close(ctx)
 
-	inputBytes, _ := json.Marshal(input)
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, err
+	}
 	_, outputBytes, err := instance.Call("nd_test_users", inputBytes)
 	if err != nil {
 		return nil, err

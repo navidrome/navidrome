@@ -74,8 +74,13 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
 	args["search_normalized"] = str.NormalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
-	args["tags"] = marshalTags(m.MediaFile.Tags)
-	args["participants"] = marshalParticipants(m.MediaFile.Participants)
+	var err error
+	if args["tags"], err = marshalTags(m.MediaFile.Tags); err != nil {
+		return err
+	}
+	if args["participants"], err = marshalParticipants(m.MediaFile.Participants); err != nil {
+		return err
+	}
 	return nil
 }
 

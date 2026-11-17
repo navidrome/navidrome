@@ -71,6 +71,8 @@ func writeQuickConnectResult(w http.ResponseWriter, r *http.Request, req quickco
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	default:
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(quickConnectDevice{AppName: req.Device.App, AppVersion: req.Device.AppVersion, DeviceName: req.Device.Name})
+		if err := json.NewEncoder(w).Encode(quickConnectDevice{AppName: req.Device.App, AppVersion: req.Device.AppVersion, DeviceName: req.Device.Name}); err != nil {
+			log.Error(r.Context(), "Error encoding Quick Connect response", err)
+		}
 	}
 }

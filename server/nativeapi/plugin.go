@@ -138,7 +138,9 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnprocessableEntity)
-				_ = json.NewEncoder(w).Encode(errorResponse)
+				if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+					log.Error(ctx, "Error encoding enable plugin error response", "id", id, err)
+				}
 				return
 			}
 		} else {
@@ -186,7 +188,9 @@ func validateAndUpdateConfig(ctx context.Context, pm PluginManager, id, configJS
 		w.WriteHeader(http.StatusBadRequest)
 		// Try to return structured validation errors if available
 		response := map[string]any{"message": err.Error()}
-		_ = json.NewEncoder(w).Encode(response)
+		if encErr := json.NewEncoder(w).Encode(response); encErr != nil {
+			log.Error(ctx, "Error encoding config validation response", "id", id, encErr)
+		}
 		return err
 	}
 

@@ -134,7 +134,8 @@ func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any, when ...t
 	var tags map[string]any
 	gomega.Expect(json.Unmarshal(f.Data, &tags)).To(gomega.Succeed())
 	maps.Copy(tags, newTags)
-	data, _ := json.Marshal(tags)
+	data, err := json.Marshal(tags)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	f.Data = data
 	ffs.Touch(filePath, when...)
 }
@@ -208,7 +209,8 @@ func File(tags ...map[string]any) *fstest.MapFile {
 	if _, ok := ts[fakeFileInfoMode]; !ok {
 		ts[fakeFileInfoMode] = fs.ModePerm
 	}
-	data, _ := json.Marshal(ts)
+	data, err := json.Marshal(ts)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	if _, ok := ts[fakeFileInfoSize]; !ok {
 		ts[fakeFileInfoSize] = int64(len(data))
 	}

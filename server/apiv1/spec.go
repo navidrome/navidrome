@@ -46,6 +46,10 @@ func withBasePath(body []byte, key string, quotedInBundle bool) []byte {
 		return body
 	}
 	// A JSON string is also a valid YAML double-quoted scalar, so one encoding escapes both formats.
-	newURL, _ := json.Marshal(serverURL)
+	newURL, err := json.Marshal(serverURL)
+	if err != nil {
+		log.Error("API v1: could not encode the server URL, serving the spec without the base path", err)
+		return body
+	}
 	return bytes.Replace(body, old, append([]byte(key), newURL...), 1)
 }
