@@ -88,7 +88,7 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 	}
 	wasEnabled := dbPlugin.Enabled
 	if wasEnabled {
-		if err := m.unloadPlugin(dbPlugin.ID); err != nil {
+		if err := m.unloadPlugin(ctx, dbPlugin.ID); err != nil {
 			log.Debug(ctx, "Plugin not loaded during change", "plugin", dbPlugin.ID, err)
 		}
 	}
@@ -111,7 +111,7 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin) error {
 	pluginID := dbPlugin.ID
 	if dbPlugin.Enabled {
-		if err := m.unloadPlugin(pluginID); err != nil {
+		if err := m.unloadPlugin(ctx, pluginID); err != nil {
 			log.Debug(ctx, "Plugin not loaded during removal", "plugin", pluginID, err)
 		}
 	}
@@ -220,7 +220,7 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 				dbPlugin.UpdatedAt = now
 				if dbPlugin.Enabled {
 					// Unload broken plugin
-					if unloadErr := m.unloadPlugin(name); unloadErr != nil {
+					if unloadErr := m.unloadPlugin(ctx, name); unloadErr != nil {
 						log.Debug(ctx, "Plugin not loaded", "plugin", name)
 					}
 					dbPlugin.Enabled = false

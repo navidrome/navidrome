@@ -31,7 +31,7 @@ var _ = Describe("Library API", func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
 		ds = &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 

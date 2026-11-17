@@ -34,12 +34,12 @@ type Handler struct {
 	cache      cache.FileCache
 }
 
-func NewHandler() *Handler {
+func NewHandler(ctx context.Context) *Handler {
 	h := &Handler{}
 	h.httpClient = cache.NewHTTPClient(httpclient.New(5*time.Second), imageListTTL)
 	h.cache = cache.NewFileCache(imageCacheDir, imageCacheSize, imageCacheDir, imageCacheMaxItems, h.serveImage)
 	go func() {
-		_, _ = h.getImageList(log.NewContext(context.Background()))
+		_, _ = h.getImageList(ctx)
 	}()
 	return h
 }

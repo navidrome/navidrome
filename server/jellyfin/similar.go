@@ -40,7 +40,7 @@ func (api *Router) awaitSimilar(ctx context.Context, id string, limit int, fetch
 	u, _ := request.UserFrom(ctx)
 	key := fmt.Sprintf("%s|%s|%d", u.ID, id, limit)
 	ch := api.similarFlight.DoChan(key, func() (any, error) {
-		bgCtx, cancel := context.WithTimeout(request.WithUser(context.Background(), u), similarFetchTimeout)
+		bgCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), similarFetchTimeout)
 		defer cancel()
 		return fetch(bgCtx), nil
 	})

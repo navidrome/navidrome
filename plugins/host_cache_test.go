@@ -367,8 +367,8 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
+		DeferCleanup(func(ctx SpecContext) {
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})

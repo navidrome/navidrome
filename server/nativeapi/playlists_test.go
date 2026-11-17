@@ -85,7 +85,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			MockedProperty: &tests.MockedPropertyRepo{},
 		}
 
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 
 		testUser := model.User{
 			ID:          "user-1",

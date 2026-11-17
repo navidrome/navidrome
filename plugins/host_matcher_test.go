@@ -411,8 +411,8 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		}
 		Expect(manager.Start(GinkgoT().Context())).To(Succeed())
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
+		DeferCleanup(func(ctx SpecContext) {
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})

@@ -331,7 +331,7 @@ func setupTestDB() {
 	goldenDB.Restore()
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-	auth.Init(ds)
+	auth.Init(ctx, ds)
 
 	streamerSpy = &harness.SpyStreamer{}
 	artworkSpy = &spyArtwork{}

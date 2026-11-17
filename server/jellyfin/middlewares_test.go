@@ -24,7 +24,7 @@ var _ = Describe("authenticate middleware", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		ur := ds.User().(*tests.MockedUserRepo)
 		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}

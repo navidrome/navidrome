@@ -38,7 +38,7 @@ var _ = Describe("QuickConnect", func() {
 	BeforeEach(func() {
 		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
 		ds = &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 		ur := ds.User().(*tests.MockedUserRepo)
 		for _, u := range []model.User{alice, bob, admin} {
 			Expect(ur.Put(GinkgoT().Context(), &u)).To(Succeed())

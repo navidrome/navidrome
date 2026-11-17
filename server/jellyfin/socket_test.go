@@ -85,7 +85,7 @@ var _ = Describe("handleSocket", func() {
 
 		BeforeEach(func() {
 			ds = &tests.MockDataStore{}
-			auth.Init(ds)
+			auth.Init(GinkgoT().Context(), ds)
 			ur := ds.User().(*tests.MockedUserRepo)
 			Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 

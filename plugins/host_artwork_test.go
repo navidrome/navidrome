@@ -52,7 +52,7 @@ var _ = Describe("ArtworkService", Ordered, func() {
 
 		// Initialize auth (required for token generation)
 		ds := &tests.MockDataStore{MockedProperty: &tests.MockedPropertyRepo{}}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()
@@ -77,8 +77,8 @@ var _ = Describe("ArtworkService", Ordered, func() {
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
+		DeferCleanup(func(ctx SpecContext) {
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})

@@ -27,7 +27,7 @@ var _ = Describe("Token", func() {
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 		}
 		ff = tests.NewMockFFmpeg("")
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, ff)
 	})
 

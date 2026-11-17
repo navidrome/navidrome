@@ -52,7 +52,7 @@ func startSandboxManager(tmpDir, libraryDir string, grant func(*model.Plugin)) *
 		subsonicRouter: http.NotFoundHandler(),
 	}
 	Expect(manager.Start(GinkgoT().Context())).To(Succeed())
-	DeferCleanup(func() { _ = manager.Stop() })
+	DeferCleanup(func(ctx SpecContext) { _ = manager.Stop(ctx) })
 	return manager
 }
 

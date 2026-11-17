@@ -150,7 +150,7 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("Profiling", "/debug", profilerHandler())
 		}
 		if strings.HasPrefix(conf.Server().UILoginBackgroundURL, "/") {
-			a.MountRouter("Background images", conf.Server().UILoginBackgroundURL, backgrounds.NewHandler())
+			a.MountRouter("Background images", conf.Server().UILoginBackgroundURL, backgrounds.NewHandler(ctx))
 		}
 		return a.Run(ctx, conf.Server().Address, conf.Server().Port, conf.Server().TLSCert, conf.Server().TLSKey)
 	}

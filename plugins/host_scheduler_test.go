@@ -88,9 +88,9 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		testService = &testableSchedulerService{schedulerServiceImpl: service}
 		testService.scheduler = mockSched
 
-		DeferCleanup(func() {
+		DeferCleanup(func(ctx SpecContext) {
 			timeAfterFunc = origAfterFn
-			_ = manager.Stop()
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
@@ -299,7 +299,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			Expect(mockSched.GetCallbackCount()).To(Equal(1)) // Only recurring task uses scheduler
 			Expect(mockTimers.GetTimerCount()).To(Equal(1))   // Only one-time task uses timer
 
-			err = manager.unloadPlugin("test-scheduler")
+			err = manager.unloadPlugin(GinkgoT().Context(), "test-scheduler")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(findSchedulerService(manager, "test-scheduler")).To(BeNil())

@@ -103,7 +103,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 
 		goldenDB.Restore()
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		// Re-scanning already-populated data deadlocks the parallel album-refresh phase at the
 		// harness's MaxOpenConns=1, so wipe the golden content and import this library fresh.

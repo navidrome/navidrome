@@ -37,10 +37,11 @@ type Server struct {
 
 func New(ds model.DataStore, broker events.Broker, insights metrics.Insights) *Server {
 	s := &Server{ds: ds, broker: broker, insights: insights}
-	if err := initialSetup(context.TODO(), ds); err != nil {
+	ctx := context.TODO()
+	if err := initialSetup(ctx, ds); err != nil {
 		log.Fatal("Error running initial setup", err)
 	}
-	auth.Init(s.ds)
+	auth.Init(ctx, s.ds)
 	s.initRoutes()
 	s.mountAuthenticationRoutes()
 	s.mountRootRedirector()
@@ -134,7 +135,7 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 
 	// Try to stop the HTTP server gracefully
 	log.Info(ctx, "Stopping HTTP server")
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 	defer cancel()
 	server.SetKeepAlivesEnabled(false)
 	if err := server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {

@@ -154,7 +154,7 @@ var _ = Describe("ResolveRequest", func() {
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 		}
 		ff := tests.NewMockFFmpeg("")
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, ff)
 	})
 
@@ -459,7 +459,7 @@ var _ = Describe("ResolveClientRequest", func() {
 			MockedProperty:    &tests.MockedPropertyRepo{},
 			MockedTranscoding: &tests.MockTranscodingRepo{},
 		}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))
 	})
 

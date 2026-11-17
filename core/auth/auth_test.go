@@ -37,7 +37,7 @@ var _ = Describe("Auth", func() {
 		ds := &tests.MockDataStore{
 			MockedProperty: &tests.MockedPropertyRepo{},
 		}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 	})
 
 	Describe("Validate", func() {

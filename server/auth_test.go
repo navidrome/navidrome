@@ -40,7 +40,7 @@ var _ = Describe("Auth", func() {
 
 		BeforeEach(func() {
 			ds = &tests.MockDataStore{}
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 		})
 
 		Describe("createAdmin", func() {
@@ -445,7 +445,7 @@ var _ = Describe("Auth", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			ds = &tests.MockDataStore{}
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 			ur := ds.User().(*tests.MockedUserRepo)
 			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
 			Expect(ur.Put(ctx, usr)).To(Succeed())
@@ -500,7 +500,7 @@ var _ = Describe("Auth", func() {
 		BeforeEach(func() {
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
-			auth.Init(&tests.MockDataStore{})
+			auth.Init(ctx, &tests.MockDataStore{})
 		})
 
 		serveWith := func(handler http.HandlerFunc) *httptest.ResponseRecorder {

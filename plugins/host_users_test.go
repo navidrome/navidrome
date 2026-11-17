@@ -577,11 +577,12 @@ func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUser
 		ds:             dataStore,
 		subsonicRouter: http.NotFoundHandler(),
 	}
-	err = manager.Start(GinkgoT().Context())
+	ctx := GinkgoT().Context()
+	err = manager.Start(ctx)
 	Expect(err).ToNot(HaveOccurred())
 
 	cleanup := func() {
-		_ = manager.Stop()
+		_ = manager.Stop(ctx)
 		_ = os.RemoveAll(setup.tmpDir)
 		cleanupConfig()
 	}

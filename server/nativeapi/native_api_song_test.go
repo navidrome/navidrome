@@ -50,7 +50,7 @@ var _ = Describe("Song Endpoints", func() {
 		}
 
 		// Initialize auth system
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		// Create test user
 		testUser = model.User{
