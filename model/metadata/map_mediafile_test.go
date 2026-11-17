@@ -47,8 +47,7 @@ var _ = Describe("ToMediaFile", func() {
 			Expect(byFolder.PID).ToNot(Equal(byTags.PID))
 		})
 
-		// TagLib reports the year of M4A and WMA files as DATE, like MP3 and FLAC, and also
-		// sends the raw atom/attribute. The raw one must not become a release date (#6467).
+		// TagLib sends the M4A/WMA year as DATE and as the raw atom, which is a release date alias
 		DescribeTable("gives the same album ID to tracks of one album in different formats",
 			func(formatYearTag string) {
 				albumTags := model.RawTags{"ALBUM": {"Hello"}, "ALBUMARTIST": {"Adele"}, "DATE": {"2022"}}
@@ -59,7 +58,7 @@ var _ = Describe("ToMediaFile", func() {
 				other := toMediaFile(otherTags)
 
 				Expect(other.AlbumID).To(Equal(mp3.AlbumID))
-				Expect(other.Year).To(Equal(2022))
+				Expect(other.ReleaseDate).To(Equal("2022"))
 			},
 			Entry("M4A", "©day"),
 			Entry("WMA", "WM/Year"),

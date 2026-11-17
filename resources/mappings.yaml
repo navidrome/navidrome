@@ -124,7 +124,7 @@ main:
     aliases: [ tdrc, date, recordingdate, icrd, record date ]
     type: date
   releasedate:
-    aliases: [ tdrl, releasedate, year ]
+    aliases: [ tdrl, releasedate, ©day, wm/year, year ]
     type: date
   catalognumber:
     aliases: [ txxx:catalognumber, catalognumber, ----:com.apple.itunes:catalognumber, wm/catalogno ]
