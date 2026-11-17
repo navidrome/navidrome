@@ -109,7 +109,7 @@ var _ = Describe("Configuration", func() {
 
 		It("rejects a URL that cannot be parsed", func() {
 			fn := conf.ValidateURL("TestOption", "://invalid")
-			Expect(fn()).To(HaveOccurred())
+			Expect(fn()).ToNot(Succeed())
 		})
 
 		It("rejects a URL without a host", func() {

@@ -157,7 +157,7 @@ var _ = Describe("phasePlaylists", func() {
 			Expect(propRepo.Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			phase.pendingImport = true
 
-			Expect(phase.finalize(errors.New("boom"))).To(HaveOccurred())
+			Expect(phase.finalize(errors.New("boom"))).ToNot(Succeed())
 
 			v, _ := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(v).To(Equal("1"))

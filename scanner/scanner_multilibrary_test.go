@@ -511,7 +511,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				},
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(missingJazzFiles).To(HaveLen(0))
+			Expect(missingJazzFiles).To(BeEmpty())
 
 			// Verify non-missing files
 			presentRockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
@@ -654,7 +654,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				ds.MockedMediaFile = mfRepo
 
 				// Attempt scan (should fail)
-				Expect(runScanner(ctx, false)).To(HaveOccurred())
+				Expect(runScanner(ctx, false)).ToNot(Succeed())
 
 				// Check that error is recorded in scanner properties
 				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "")
@@ -793,7 +793,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				// The scanner should recover and import both rock files
-				Expect(len(rockFiles)).To(Equal(2))
+				Expect(rockFiles).To(HaveLen(2))
 
 				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},

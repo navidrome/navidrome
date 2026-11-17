@@ -210,7 +210,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 
 			results, err := service.GetAllLibraries(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(results).To(HaveLen(0))
+			Expect(results).To(BeEmpty())
 		})
 
 		It("should return all libraries when allLibraries is true regardless of allowed list", func() { // allLibraries=true should ignore the allowed list

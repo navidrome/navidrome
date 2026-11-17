@@ -18,6 +18,7 @@ linters:
     - errorlint
     - exhaustive
     - forbidigo
+    - ginkgolinter
     - gocritic
     - gocyclo
     - goprintffuncname
@@ -129,6 +130,12 @@ linters:
         - (*github.com/zeebo/xxh3.Hasher).Write
     errchkjson:
       report-no-exported: true
+    ginkgolinter:
+      forbid-focus-container: true
+      force-expect-to: true
+      force-succeed: true
+      force-tonot: true
+      validate-async-intervals: true
     gocritic:
       disable-all: true
       enabled-checks:

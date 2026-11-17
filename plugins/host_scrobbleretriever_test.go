@@ -90,23 +90,23 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "1", LibraryID: 1})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "2", LibraryID: 1})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "3", LibraryID: 1})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
 
 		scrobbleRepo := dataStore.Scrobble()
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(0, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "2", time.Unix(1, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(2, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(2, 0))
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		// Create and configure manager
 		manager = &Manager{
@@ -305,7 +305,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 			for i := range 5 {
 				err := scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(100, 0))
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				scrobble := host.ScrobbleRef{ID: 5 + int64(i), MediaFileID: "3", SubmissionTime: 100}
 				duplicates[i] = scrobble

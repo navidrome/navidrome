@@ -78,7 +78,7 @@ var _ = Describe("Extractor", func() {
 
 			// Test OGG
 			m = mds["tests/fixtures/test.ogg"]
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(m.Tags).To(HaveKeyWithValue("fbpm", []string{"141.7"}))
 
 			// TagLib 1.12 returns 18, previous versions return 39.

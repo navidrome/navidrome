@@ -767,7 +767,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				{LibraryID: lib.ID, FolderPath: "The Beatles"},
 			}
 			_, err := s.ScanFolders(ctx, false, targets)
-			Expect(err).To(Succeed())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking all Revolver tracks are marked as missing")
 			mf, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")

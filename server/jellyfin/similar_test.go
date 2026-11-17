@@ -70,7 +70,7 @@ var _ = Describe("awaitSimilar", func() {
 		api.awaitSimilar(ctxFor(testID("u1")), "id3", 20, fetch)
 		close(release)
 		Eventually(calls.Load).Should(Equal(int32(1)))
-		Consistently(calls.Load, "50ms").Should(Equal(int32(1)))
+		Consistently(calls.Load, 50*time.Millisecond).Should(Equal(int32(1)))
 	})
 
 	It("does not share fetches across users (items embed the user's annotations)", func() {

@@ -315,7 +315,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 					},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(missingFolders)).To(BeNumerically(">", 0), "At least one folder should be marked as missing")
+				Expect(missingFolders).ToNot(BeEmpty(), "At least one folder should be marked as missing")
 
 				// Verify all tracks in deleted folders are marked as missing
 				allTracks, err := ds.MediaFile().GetAll(ctx)

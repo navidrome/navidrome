@@ -206,12 +206,12 @@ var _ = Describe("Logger", func() {
 	Describe("extractLogger", func() {
 		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns an error if the context is a string", func() {
 			_, err := extractLogger("any msg")
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns the logger from context if it has one", func() {

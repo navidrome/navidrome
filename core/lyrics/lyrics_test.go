@@ -164,7 +164,7 @@ var _ = Describe("Lyrics", func() {
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = priority })
 		svc := lyrics.NewLyrics(nil, nil)
 		list, err := svc.GetLyrics(ctx, &mf)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(Equal(expected))
 	},
 		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics),
@@ -177,7 +177,7 @@ var _ = Describe("Lyrics", func() {
 	It("resolves source priority across duplicate media files", func() {
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".ttml,embedded" })
 		embeddedJSON, err := json.Marshal(embeddedLyrics)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		repo := &tests.MockMediaFileRepo{}
 		repo.SetData(model.MediaFiles{
@@ -193,7 +193,7 @@ var _ = Describe("Lyrics", func() {
 		svc := lyrics.NewLyrics(&tests.MockDataStore{MockedMediaFile: repo}, nil)
 
 		list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(Equal(ttmlLyrics))
 	})
 
@@ -221,7 +221,7 @@ var _ = Describe("Lyrics", func() {
 			Path:        "song.mp3",
 		})
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Line).To(Equal([]model.Line{
 			{Start: new(int64(1000)), Value: "Upper suffix"},
@@ -248,7 +248,7 @@ var _ = Describe("Lyrics", func() {
 		// ParseLyrics falls back to plain text for any suffix when the content
 		// doesn't match the structured format, so the .yaml hit is non-empty and
 		// shadows the lower-priority .lrc entirely.
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Synced).To(BeFalse())
 		Expect(list[0].Line).To(Equal([]model.Line{
@@ -286,7 +286,7 @@ var _ = Describe("Lyrics", func() {
 
 				svc := lyrics.NewLyrics(nil, nil)
 				list, err := svc.GetLyrics(ctx, &mf)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(list).To(Equal(embeddedLyrics))
 			})
 
@@ -295,7 +295,7 @@ var _ = Describe("Lyrics", func() {
 
 				svc := lyrics.NewLyrics(nil, nil)
 				list, err := svc.GetLyrics(ctx, &mf)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(list).To(BeEmpty())
 			})
 		})
@@ -313,7 +313,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
 		})
 
@@ -323,7 +323,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
 		})
 
@@ -332,7 +332,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // embedded wins
 		})
 
@@ -341,7 +341,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.notFound = true
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
 		})
 
@@ -351,7 +351,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
 		})
 
@@ -360,7 +360,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.err = fmt.Errorf("plugin error")
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
 		})
 	})

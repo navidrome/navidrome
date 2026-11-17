@@ -58,8 +58,8 @@ var _ = Describe("netguard", func() {
 		})
 
 		It("fails closed when the address is not an IP", func() {
-			Expect(netguard.DialControl()("tcp", "localhost:80", nil)).To(HaveOccurred())
-			Expect(netguard.DialControl()("tcp", "garbage", nil)).To(HaveOccurred())
+			Expect(netguard.DialControl()("tcp", "localhost:80", nil)).ToNot(Succeed())
+			Expect(netguard.DialControl()("tcp", "garbage", nil)).ToNot(Succeed())
 		})
 	})
 })

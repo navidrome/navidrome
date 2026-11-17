@@ -170,7 +170,7 @@ var _ = Describe("Repair", func() {
 			Expect(rows.Scan(&name, &ddl)).To(Succeed())
 			schema[name] = ws.ReplaceAllString(ddl, " ")
 		}
-		Expect(rows.Err()).ToNot(HaveOccurred())
+		Expect(rows.Err()).To(Succeed())
 		return schema
 	}
 

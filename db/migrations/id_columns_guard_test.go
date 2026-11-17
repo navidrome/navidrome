@@ -93,7 +93,7 @@ var _ = Describe("idColumns inventory", func() {
 				}
 				dangling = append(dangling, key)
 			}
-			Expect(rows.Err()).ToNot(HaveOccurred())
+			Expect(rows.Err()).To(Succeed())
 			Expect(rows.Close()).To(Succeed())
 		}
 		Expect(dangling).To(BeEmpty(),

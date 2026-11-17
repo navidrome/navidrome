@@ -303,7 +303,7 @@ var _ = BeforeSuite(func() {
 		Expect(rows.Scan(&name)).To(Succeed())
 		snapshotTables = append(snapshotTables, name)
 	}
-	Expect(rows.Err()).ToNot(HaveOccurred())
+	Expect(rows.Err()).To(Succeed())
 
 	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 	Expect(err).ToNot(HaveOccurred())

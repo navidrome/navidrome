@@ -59,7 +59,7 @@ var _ = Describe("Queue Endpoints", func() {
 			saveQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue).ToNot(BeNil())
-			Expect(repo.Queue.Items).To(HaveLen(0))
+			Expect(repo.Queue.Items).To(BeEmpty())
 		})
 
 		It("returns bad request for invalid current index (negative)", func() {

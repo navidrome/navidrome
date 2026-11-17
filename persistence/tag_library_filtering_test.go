@@ -171,7 +171,7 @@ var _ = Describe("Tag Library Filtering", func() {
 					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should return no tags since user can't access library 3
-				Expect(tags).To(HaveLen(0))
+				Expect(tags).To(BeEmpty())
 			})
 
 			It("should filter by library 1 correctly", func() {

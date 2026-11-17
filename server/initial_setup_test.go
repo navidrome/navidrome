@@ -38,18 +38,18 @@ var _ = Describe("initial_setup", func() {
 
 	Describe("createInitialAdminUser", func() {
 		It("creates a new admin user with specified password if User table is empty", func() {
-			Expect(createInitialAdminUser(ctx, ds, "pass123")).To(BeNil())
+			Expect(createInitialAdminUser(ctx, ds, "pass123")).To(Succeed())
 			ur := ds.User()
 			admin, err := ur.FindByUsername(ctx, "admin")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(admin.Password).To(Equal("pass123"))
 		})
 
 		It("does not create a new admin user if User table is not empty", func() {
-			Expect(createInitialAdminUser(ctx, ds, "first")).To(BeNil())
+			Expect(createInitialAdminUser(ctx, ds, "first")).To(Succeed())
 			ur := ds.User()
 			Expect(ur.CountAll(ctx)).To(Equal(int64(1)))
-			Expect(createInitialAdminUser(ctx, ds, "second")).To(BeNil())
+			Expect(createInitialAdminUser(ctx, ds, "second")).To(Succeed())
 			Expect(ur.CountAll(ctx)).To(Equal(int64(1)))
 		})
 

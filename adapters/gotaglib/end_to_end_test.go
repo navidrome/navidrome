@@ -156,7 +156,7 @@ var _ = Describe("Extractor", func() {
 			mf := parseTestFile("tests/fixtures/" + file)
 
 			lyrics, err := mf.StructuredLyrics()
-			Expect(err).To(Not(HaveOccurred()))
+			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(2))
 
 			unspec := makeLyrics("xxx", "unspecified")
@@ -250,7 +250,7 @@ var _ = Describe("Extractor", func() {
 
 				// WMA has no Arranger role
 				if role == model.RoleArranger {
-					Expect(actual).To(HaveLen(0))
+					Expect(actual).To(BeEmpty())
 					continue
 				}
 

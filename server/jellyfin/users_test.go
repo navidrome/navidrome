@@ -90,7 +90,7 @@ var _ = Describe("Users", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
-			Expect(res.Items).To(HaveLen(0))
+			Expect(res.Items).To(BeEmpty())
 			Expect(res.TotalRecordCount).To(Equal(0))
 		})
 	})
