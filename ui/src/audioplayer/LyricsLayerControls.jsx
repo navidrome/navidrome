@@ -15,7 +15,7 @@ import RotateLeftIcon from '@material-ui/icons/RotateLeft'
 import TranslateIcon from '@material-ui/icons/Translate'
 import WavesIcon from '@material-ui/icons/Waves'
 import clsx from 'clsx'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   LYRICS_OFFSET_COARSE_MS,
   LYRICS_OFFSET_FINE_MS,
@@ -36,6 +36,11 @@ const syncLabelFor = (sync, labels) => {
       return labels.plainSynced || 'Plain text'
   }
 }
+
+const fillLabel = (template, values) =>
+  String(template ?? '').replace(/%\{(\w+)\}/g, (match, key) =>
+    values[key] == null ? '' : String(values[key]),
+  )
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -100,6 +105,20 @@ const useStyles = makeStyles(
     sourceMenu: {
       minWidth: 210,
       maxWidth: 320,
+    },
+    downloadMenu: {
+      minWidth: 260,
+      maxWidth: 360,
+    },
+    downloadItem: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      gap: theme.spacing(0.25),
+    },
+    downloadMeta: {
+      color: alpha(theme.palette.text.primary, 0.58),
+      whiteSpace: 'normal',
     },
     sourceHeader: {
       display: 'flex',
@@ -202,6 +221,10 @@ const LyricsLayerControls = ({
   offsetEnabled = false,
   onOffsetChange = noop,
   onDownload = noop,
+  downloadOpen = false,
+  onDownloadMenuOpenChange = noop,
+  originalInfo = null,
+  downloadFormat = '',
   active = true,
   labels = {},
   testId = 'lyrics-layer-controls',
@@ -209,12 +232,40 @@ const LyricsLayerControls = ({
   const classes = useStyles()
   const [sourceAnchor, setSourceAnchor] = useState(null)
   const [offsetAnchor, setOffsetAnchor] = useState(null)
+  const [downloadAnchor, setDownloadAnchor] = useState(null)
   const sourceMenuId = `${testId}-source-menu`
   const offsetPopoverId = `${testId}-offset-popover`
+  const downloadMenuId = `${testId}-download-menu`
   const hasVariants = variants.length > 0
   const sourceOpen = Boolean(active && hasVariants && sourceAnchor)
   const offsetOpen = Boolean(active && offsetEnabled && offsetAnchor)
+  const downloadMenuVisible = Boolean(active && hasVariants && downloadOpen)
   const offsetLabel = labels.offset || 'Lyrics timing offset'
+  const downloadFormatLabel =
+    formatSourceValue(downloadFormat) || labels.downloadConvertedFallback || ''
+  const originalFormat = formatSourceValue(originalInfo?.format)
+  const originalAvailable = originalInfo?.status === 'available'
+  const originalLoading = originalInfo?.status === 'loading'
+  const originalReason =
+    originalInfo?.reason ||
+    (originalInfo?.status === 'idle'
+      ? labels.downloadOriginalUnavailableHint
+      : '')
+  const originalLabel = originalLoading
+    ? labels.downloadOriginalChecking || 'Checking original availability…'
+    : originalAvailable
+      ? fillLabel(labels.downloadOriginal || 'Original %{format} (exact)', {
+          format: originalFormat,
+        })
+      : labels.downloadOriginalUnavailable || 'Original unavailable'
+  const convertedLabel = fillLabel(
+    labels.downloadConverted || 'Converted %{format}',
+    { format: downloadFormatLabel },
+  )
+  const adjustedLabel = fillLabel(
+    labels.downloadAdjusted || 'Timing-adjusted %{format} (%{offset})',
+    { format: downloadFormatLabel, offset: formatLyricsOffset(offsetMs) },
+  )
 
   useEffect(() => {
     if (!sourceOpen) return undefined
@@ -229,6 +280,34 @@ const LyricsLayerControls = ({
   useEffect(() => {
     if (!active || !offsetEnabled) setOffsetAnchor(null)
   }, [active, offsetEnabled])
+
+  useEffect(() => {
+    if (!active || !hasVariants) {
+      setDownloadAnchor(null)
+      if (downloadOpen) onDownloadMenuOpenChange(false)
+    }
+  }, [active, downloadOpen, hasVariants, onDownloadMenuOpenChange])
+
+  const openDownloadMenu = useCallback(
+    (event) => {
+      setDownloadAnchor(event.currentTarget)
+      onDownloadMenuOpenChange(true)
+    },
+    [onDownloadMenuOpenChange],
+  )
+
+  const closeDownloadMenu = useCallback(() => {
+    setDownloadAnchor(null)
+    onDownloadMenuOpenChange(false)
+  }, [onDownloadMenuOpenChange])
+
+  const selectDownload = useCallback(
+    (mode) => {
+      closeDownloadMenu()
+      onDownload(mode)
+    },
+    [closeDownloadMenu, onDownload],
+  )
 
   const selectSource = useCallback(
     (sourceKey) => {
@@ -425,15 +504,78 @@ const LyricsLayerControls = ({
           <IconButton
             size="small"
             disabled={!hasVariants}
-            onClick={onDownload}
+            onClick={openDownloadMenu}
             aria-label={labels.download || 'Download lyrics'}
+            aria-haspopup="menu"
+            aria-expanded={downloadMenuVisible}
+            aria-controls={downloadMenuVisible ? downloadMenuId : undefined}
             data-testid="lyrics-download-button"
-            className={classes.controlButton}
+            className={clsx(classes.controlButton, {
+              [classes.controlActive]: downloadMenuVisible,
+            })}
           >
             <GetAppIcon fontSize="small" />
           </IconButton>
         </span>
       </Tooltip>
+      <Menu
+        id={downloadMenuId}
+        anchorEl={downloadAnchor}
+        open={Boolean(downloadMenuVisible && downloadAnchor)}
+        onClose={closeDownloadMenu}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        PaperProps={{ className: classes.downloadMenu }}
+        onClick={(event) => event.stopPropagation()}
+        data-testid="lyrics-download-menu"
+      >
+        <li className={classes.sourceHeader} role="presentation">
+          <Typography variant="overline" className={classes.sourceHeading}>
+            {labels.downloadTitle || 'Download selected lyrics'}
+          </Typography>
+        </li>
+        <MenuItem
+          disabled={!originalAvailable}
+          onClick={() => selectDownload('original')}
+          className={classes.downloadItem}
+          data-testid="lyrics-download-original"
+        >
+          <span>{originalLabel}</span>
+          <span className={classes.downloadMeta}>
+            {originalAvailable
+              ? labels.downloadOriginalHint || 'Exact source document'
+              : originalLoading
+                ? labels.downloadOriginalCheckingHint ||
+                  'Reading the variant listing'
+                : originalReason ||
+                  labels.downloadOriginalUnavailableHint ||
+                  'No native document is available'}
+          </span>
+        </MenuItem>
+        <MenuItem
+          onClick={() => selectDownload('converted')}
+          className={classes.downloadItem}
+          data-testid="lyrics-download-converted"
+        >
+          <span>{convertedLabel}</span>
+          <span className={classes.downloadMeta}>
+            {labels.downloadConvertedHint ||
+              'Rebuilt from the selected playback variant'}
+          </span>
+        </MenuItem>
+        <MenuItem
+          disabled={!offsetEnabled}
+          onClick={() => selectDownload('adjusted')}
+          className={classes.downloadItem}
+          data-testid="lyrics-download-adjusted"
+        >
+          <span>{adjustedLabel}</span>
+          <span className={classes.downloadMeta}>
+            {labels.downloadAdjustedHint ||
+              'Selected variant with your timing correction'}
+          </span>
+        </MenuItem>
+      </Menu>
       <LayerButton
         active={showPronunciation}
         classes={classes}

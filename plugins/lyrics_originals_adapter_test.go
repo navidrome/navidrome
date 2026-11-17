@@ -14,6 +14,43 @@ const (
 	fixtureTTMLDocument = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<tt xmlns=\"http://www.w3.org/ns/ttml\"><body><div><p begin=\"00:00.00\" end=\"00:01.00\">line one</p></div></body></tt>"
 )
 
+var _ = Describe("LyricsPlugin entry kind defaults", func() {
+	It("defaults untyped standalone entries from the validated identity role", func() {
+		plugin := &LyricsPlugin{name: "test-plugin", displayName: "Test Plugin"}
+		variant := func(role string) *capabilities.LyricsVariant {
+			return &capabilities.LyricsVariant{
+				Version: 1, Instance: "test-plugin:0123456789abcdef0123456789abcdef",
+				Recording: "rec-" + role, Role: role, Format: "lrc",
+			}
+		}
+		ttml := `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
+  <head><metadata><iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+    <translations><translation xml:lang="es"><text for="L1">Hola</text></translation></translations>
+  </iTunesMetadata></metadata></head>
+  <body xml:lang="en"><div>
+    <p begin="00:01.000" end="00:01.500" itunes:key="L1">Hello</p>
+  </div></body>
+</tt>`
+		list := plugin.parseEntries(GinkgoT().Context(), &model.MediaFile{Path: "song.mp3"}, nil, []lyricsEntry{
+			{text: capabilities.LyricsText{Lang: "en", Text: "[00:01.00]Translated"}, variant: variant("translation")},
+			{text: capabilities.LyricsText{Lang: "en", Text: "[00:01.00]Pronunciation"}, variant: variant("pronunciation")},
+			{text: capabilities.LyricsText{Lang: "en", Text: ttml}, variant: variant("main")},
+		})
+		Expect(list).To(HaveLen(4))
+		Expect(list[0].Kind).To(Equal(model.LyricKindTranslation))
+		Expect(list[1].Kind).To(Equal(model.LyricKindPronunciation))
+		// The document's explicit main and metadata kinds win over the identity role.
+		Expect(list[2].Kind).To(Equal(model.LyricKindMain))
+		Expect(list[3].Kind).To(Equal(model.LyricKindTranslation))
+		Expect(list[3].Line[0].Value).To(Equal("Hola"))
+		for _, lyric := range list {
+			Expect(lyric.Selection).ToNot(BeEmpty())
+			Expect(lyric.Variant).ToNot(BeNil())
+		}
+	})
+})
+
 var _ = Describe("LyricsPlugin originals", Ordered, func() {
 	var (
 		originalsPlugin *LyricsPlugin

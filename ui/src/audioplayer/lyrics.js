@@ -291,9 +291,15 @@ export const hasStructuredLyricContent = (structuredLyric) =>
   )
 
 // variantKey identifies an addressable lyrics representation for selection and
-// persistence. A plugin selection token names one exact identity, so two
-// recordings from one provider stay individually selectable. Responses without
-// an identity keep the legacy source-level key for saved preferences.
+// persistence. A plugin installation id is the stable boundary; responses from
+// older hosts fall back to the display name. A plugin selection token names one
+// exact identity, so two recordings from one provider stay individually
+// selectable.
+const pluginIdentity = (source) =>
+  String(source?.pluginId || source?.name || '')
+    .trim()
+    .toLowerCase()
+
 export const variantKey = (source, lyric = null) => {
   if (lyric?.selection) {
     return `selection:${lyric.selection}`
@@ -301,12 +307,35 @@ export const variantKey = (source, lyric = null) => {
   if (source?.type === 'sidecar' && source.format) {
     return `sidecar:${source.format.trim().toLowerCase()}`
   }
-  if (source?.type === 'plugin' && source.name) {
-    return [source.type, source.name, source.provider || '']
-      .map((value) => encodeURIComponent(value.trim().toLowerCase()))
-      .join(':')
+  if (source?.type === 'plugin' && pluginIdentity(source)) {
+    return [
+      source.type,
+      encodeURIComponent(pluginIdentity(source)),
+      encodeURIComponent(
+        String(source.provider || '')
+          .trim()
+          .toLowerCase(),
+      ),
+    ].join(':')
   }
   return legacyVariantKey(source)
+}
+
+// recordingKey associates the auxiliary tracks of one addressable recording.
+// Role, language and playback format deliberately do not participate; the
+// plugin installation, provider instance and recording do, so translations
+// cannot cross installations or recordings.
+export const recordingKey = (source, lyric) => {
+  const variant = lyric?.variant
+  if (variant?.instance && variant?.recording) {
+    return [
+      'recording',
+      encodeURIComponent(pluginIdentity(source)),
+      encodeURIComponent(String(variant.instance).trim()),
+      encodeURIComponent(String(variant.recording).trim()),
+    ].join(':')
+  }
+  return variantKey(source, lyric)
 }
 
 export const legacyVariantKey = (source) => {
@@ -461,13 +490,18 @@ export const selectLyricLayers = (
     : []
 
   // A different provider's auxiliary track can have incompatible timing or
-  // text. Only older responses without source attribution can be a fallback.
+  // text. Only older responses without addressable identities can be a
+  // fallback.
   const scopedLayer = (kind) => {
     const entries = grouped[kind]
     if (!selectedVariant) return []
     if (entries.length === 0) return entries
+    const selectedRecording = recordingKey(
+      selectedVariant.source,
+      selectedVariant.lyric,
+    )
     const scoped = entries.filter((lyric) => {
-      if (variantKey(lyric?.source, lyric) === selectedVariant.key) return true
+      if (recordingKey(lyric?.source, lyric) === selectedRecording) return true
       if (lyric?.selection || selectedVariant.lyric?.selection) return false
       return variantKey(lyric?.source) === variantKey(selectedVariant.source)
     })

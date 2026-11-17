@@ -1,11 +1,51 @@
-// Serializes structured lyrics for download in the source's format, falling
-// back to plain text for untimed LRC. Source offsets are included; the
-// listener's local timing adjustment is deliberately not exported.
+// Serializes structured lyrics for explicitly labeled converted downloads.
+// Compatibility folds the source's own offset in once. Timing-adjusted adds the
+// listener's correction for the selected variant; originals never pass here.
 
 import { buildKaraokeLines, hasUsableKaraokeTiming } from './lyrics'
 import { buildSegmentsFromLine } from './lyricsSegments'
 
 const pad = (value, length = 2) => String(value).padStart(length, '0')
+
+const MAX_FILENAME_BYTES = 180
+const MAX_FILENAME_PART = 80
+const MAX_DESCRIPTOR_BYTES = 55
+
+const utf8ByteLength = (value) => {
+  let bytes = 0
+  for (const character of String(value ?? '')) {
+    const codePoint = character.codePointAt(0)
+    bytes +=
+      codePoint <= 0x7f
+        ? 1
+        : codePoint <= 0x7ff
+          ? 2
+          : codePoint <= 0xffff
+            ? 3
+            : 4
+  }
+  return bytes
+}
+
+const truncateUtf8 = (value, maxBytes) => {
+  let result = ''
+  let bytes = 0
+  for (const character of String(value ?? '')) {
+    const codePoint = character.codePointAt(0)
+    const width =
+      codePoint <= 0x7f
+        ? 1
+        : codePoint <= 0x7ff
+          ? 2
+          : codePoint <= 0xffff
+            ? 3
+            : 4
+    if (bytes + width > maxBytes) break
+    result += character
+    bytes += width
+  }
+  return result
+}
 
 export const lyricsFileExtension = (format, lyric) => {
   const normalized = String(format || '')
@@ -20,20 +60,105 @@ export const lyricsFileExtension = (format, lyric) => {
   return 'txt'
 }
 
-const sanitizePart = (value, fallback) => {
+export const lyricsMediaType = (extension) => {
+  if (extension === 'ttml') return 'application/ttml+xml'
+  if (extension === 'lrc' || extension === 'txt') {
+    return 'text/plain; charset=utf-8'
+  }
+  return 'application/octet-stream'
+}
+
+const sanitizeText = (value, fallback, maxBytes = MAX_FILENAME_PART) => {
   const cleaned = String(value ?? '')
+    .replace(/\p{Cc}+/gu, ' ')
     .replace(/[\\/:*?"<>|]+/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/\.+$/, '')
-  return cleaned || fallback
+  const bounded = truncateUtf8(cleaned, maxBytes)
+  return bounded || truncateUtf8(fallback, maxBytes)
 }
 
-export const buildLyricsFileName = ({ artist, title, label, format } = {}) =>
-  `${sanitizePart(artist, 'Unknown artist')} - ${sanitizePart(
-    title,
-    'Unknown title',
-  )} (${sanitizePart(label, 'Lyrics')}).${lyricsFileExtension(format)}`
+// Server filenames are trusted only for their safe extension; never let a
+// header introduce a path or an unbounded component into the download.
+export const sanitizeLyricsFileName = (name, fallback = 'lyrics.txt') => {
+  const raw = String(name ?? '')
+    .replace(/\p{Cc}+/gu, ' ')
+    .replace(/[\\/:*?"<>|]+/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\.+$/, '')
+  if (!raw) return fallback
+  const dot = raw.lastIndexOf('.')
+  const extension =
+    dot > 0 && raw.length - dot <= 16 ? raw.slice(dot).toLowerCase() : ''
+  const base = truncateUtf8(
+    extension ? raw.slice(0, dot) : raw,
+    MAX_FILENAME_BYTES - utf8ByteLength(extension),
+  )
+  const candidate = `${base || 'lyrics'}${extension}`
+  return candidate ? candidate : fallback
+}
+
+const descriptorFor = (label, suffix) => {
+  const suffixText = truncateUtf8(String(suffix ?? '').trim(), 30)
+  const suffixBytes = suffixText ? utf8ByteLength(` ${suffixText}`) : 0
+  const labelText = sanitizeText(
+    label,
+    'Lyrics',
+    Math.max(0, MAX_DESCRIPTOR_BYTES - suffixBytes),
+  )
+  return `${labelText}${suffixText ? ` ${suffixText}` : ''}`.trim() || 'Lyrics'
+}
+
+export const buildLyricsFileName = ({
+  artist,
+  title,
+  label,
+  format,
+  suffix = '',
+} = {}) => {
+  const extension = `.${lyricsFileExtension(format)}`
+  const descriptor = descriptorFor(label, suffix)
+  // " - " + " (" + ")" + extension are the fixed separators.
+  const budget =
+    MAX_FILENAME_BYTES -
+    utf8ByteLength(extension) -
+    utf8ByteLength(descriptor) -
+    6
+  const artistFull = sanitizeText(artist, 'Unknown artist', budget)
+  const titleFull = sanitizeText(title, 'Unknown title', budget)
+  let artistPart = artistFull
+  let titlePart = titleFull
+  if (utf8ByteLength(artistPart) + utf8ByteLength(titlePart) > budget) {
+    artistPart = truncateUtf8(artistPart, Math.max(1, Math.floor(budget / 2)))
+    titlePart = truncateUtf8(
+      titlePart,
+      Math.max(1, budget - utf8ByteLength(artistPart)),
+    )
+  }
+  const name = `${artistPart} - ${titlePart} (${descriptor})${extension}`
+  return utf8ByteLength(name) <= MAX_FILENAME_BYTES
+    ? name
+    : sanitizeLyricsFileName(name, `lyrics${extension}`)
+}
+
+export const buildOriginalLyricsFileName = ({
+  artist,
+  title,
+  extension = '.bin',
+} = {}) => {
+  const safeExtension = /^\.[a-z0-9]{1,15}$/i.test(extension)
+    ? extension.toLowerCase()
+    : '.bin'
+  return sanitizeLyricsFileName(
+    `${sanitizeText(artist, 'Unknown artist')} - ${sanitizeText(
+      title,
+      'Unknown title',
+    )}${safeExtension}`,
+    `lyrics${safeExtension}`,
+  )
+}
 
 const escapeXml = (value) =>
   String(value ?? '')
@@ -221,11 +346,11 @@ const serializeTtml = (lyric, lines) => {
   ].join('\n')
 }
 
-export const serializeLyrics = (lyric, format) => {
+// buildKaraokeLines owns offset arithmetic: it adds the source offset and the
+// captured personal correction exactly once. Serializers never add either.
+export const serializeLyrics = (lyric, format, { offsetMs = 0 } = {}) => {
   if (!lyric) return ''
-  // Reuse the panel's source-offset and voice-lane normalization, with no
-  // listener offset, so a downloaded line contains what the listener reads.
-  const lines = buildKaraokeLines(lyric)
+  const lines = buildKaraokeLines(lyric, offsetMs)
   switch (lyricsFileExtension(format, lyric)) {
     case 'ttml':
       return serializeTtml(lyric, lines)
@@ -236,28 +361,61 @@ export const serializeLyrics = (lyric, format) => {
   }
 }
 
-export const downloadLyrics = (
+export const buildConvertedLyricsDownload = (
   lyric,
-  { format, artist, title, label } = {},
+  { format, artist, title, label, mode = 'converted', offsetMs = 0 } = {},
 ) => {
-  if (!lyric || typeof document === 'undefined') return
-  const text = serializeLyrics(lyric, format)
-  if (!text) return
-
+  if (!lyric) return null
+  const adjusted = mode === 'adjusted'
+  const text = serializeLyrics(lyric, format, {
+    offsetMs: adjusted ? offsetMs : 0,
+  })
+  if (!text) return null
   const extension = lyricsFileExtension(format, lyric)
-  const type = extension === 'ttml' ? 'application/xml' : 'text/plain'
-  const blob = new Blob([text], { type: `${type};charset=utf-8` })
+  return {
+    text,
+    extension,
+    mediaType: lyricsMediaType(extension),
+    filename: buildLyricsFileName({
+      artist,
+      title,
+      label,
+      format: extension,
+      suffix: adjusted ? 'timing-adjusted' : 'converted',
+    }),
+  }
+}
+
+export const downloadBlob = (blob, filename) => {
+  if (!blob || !filename || typeof document === 'undefined') return false
   const objectUrl = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = objectUrl
-  anchor.download = buildLyricsFileName({
-    artist,
-    title,
-    label,
-    format: extension,
-  })
+  anchor.download = filename
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
+  return true
+}
+
+export const downloadOriginalLyrics = (
+  original,
+  { artist, title, extension = '.bin' } = {},
+) => {
+  if (!original?.blob) return false
+  const filename = sanitizeLyricsFileName(
+    original.filename,
+    buildOriginalLyricsFileName({ artist, title, extension }),
+  )
+  return downloadBlob(original.blob, filename)
+}
+
+export const downloadLyrics = (lyric, options = {}) => {
+  const download = buildConvertedLyricsDownload(lyric, options)
+  if (!download) return false
+  return downloadBlob(
+    new Blob([download.text], { type: download.mediaType }),
+    download.filename,
+  )
 }

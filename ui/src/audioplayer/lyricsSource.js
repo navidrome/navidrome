@@ -3,11 +3,16 @@
 
 const UPPERCASE_SOURCE_VALUES = new Set([
   'elrc',
+  'krc',
   'lrc',
+  'lyl',
+  'qrc',
   'srt',
   'ttml',
   'txt',
+  'wsy',
   'yaml',
+  'yrc',
 ])
 
 export const formatSourceValue = (value) => {

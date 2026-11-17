@@ -19,6 +19,7 @@ describe('lyrics source labels', () => {
   it('formats known formats and slug-like values for display', () => {
     expect(formatSourceValue('ttml')).toBe('TTML')
     expect(formatSourceValue('elrc')).toBe('ELRC')
+    expect(formatSourceValue('qrc')).toBe('QRC')
     expect(formatSourceValue('plain')).toBe('Plain text')
     expect(formatSourceValue('apple-lyrically')).toBe('Apple Lyrically')
     expect(formatSourceValue('  ')).toBe('')

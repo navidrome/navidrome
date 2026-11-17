@@ -595,7 +595,7 @@ func TestLyricsProviderErrors(t *testing.T) {
 			list, err = lookup(&model.MediaFile{Lyrics: `[{"lang":"eng","line":[{"value":"Local words"}]}]`})
 			g.Expect(list).To(HaveLen(1))
 			g.Expect(list[0].Source.Type).To(Equal(model.LyricsSourceEmbedded))
-			if tt.allSources {
+			if tt.enhanced {
 				g.Expect(err).To(MatchError(longErr.Error() + "\n" + shortErr.Error()))
 			} else {
 				g.Expect(err).NotTo(HaveOccurred())
