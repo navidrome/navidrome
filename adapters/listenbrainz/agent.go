@@ -116,18 +116,6 @@ func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) boo
 	return err == nil && sk != ""
 }
 
-func (l *listenBrainzAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	if mbid == "" {
-		return "", agents.ErrNotFound
-	}
-
-	url, err := l.client.getArtistUrl(ctx, mbid)
-	if err != nil {
-		return "", err
-	}
-	return url, nil
-}
-
 func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
 	resp, err := l.client.getArtistTopSongs(ctx, mbid, count)
 	if err != nil {
@@ -256,7 +244,6 @@ func newAgent(ds model.DataStore) agents.Interface {
 
 var (
 	_ agents.ArtistTopSongsRetriever      = (*listenBrainzAgent)(nil)
-	_ agents.ArtistURLRetriever           = (*listenBrainzAgent)(nil)
 	_ agents.ArtistSimilarRetriever       = (*listenBrainzAgent)(nil)
 	_ agents.SimilarSongsByTrackRetriever = (*listenBrainzAgent)(nil)
 )
