@@ -625,6 +625,7 @@ var _ = Describe("newCacheService", func() {
 			}
 			Expect(runtime.NumGoroutine()).To(BeNumerically(">=", baseline+numServices),
 				"expected one janitor goroutine per cache service")
+			runtime.KeepAlive(services)
 		}()
 
 		Eventually(func() int { runtime.GC(); return runtime.NumGoroutine() }).

@@ -35,7 +35,7 @@ func (m *MockArtistRepo) SetData(artists model.Artists) {
 
 func (m *MockArtistRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Err {
-		return false, errors.New("Error!")
+		return false, errors.New("error")
 	}
 	_, found := m.Data[id]
 	return found, nil
@@ -43,7 +43,7 @@ func (m *MockArtistRepo) Exists(_ context.Context, id string) (bool, error) {
 
 func (m *MockArtistRepo) Get(_ context.Context, id string) (*model.Artist, error) {
 	if m.Err {
-		return nil, errors.New("Error!")
+		return nil, errors.New("error")
 	}
 	if d, ok := m.Data[id]; ok {
 		return d, nil

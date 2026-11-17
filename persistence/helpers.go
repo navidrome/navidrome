@@ -55,7 +55,7 @@ var matchUnderscore = regexp.MustCompile("_([A-Za-z])")
 
 func toCamelCase(str string) string {
 	return matchUnderscore.ReplaceAllStringFunc(str, func(s string) string {
-		return strings.ToUpper(strings.Replace(s, "_", "", -1))
+		return strings.ToUpper(strings.ReplaceAll(s, "_", ""))
 	})
 }
 

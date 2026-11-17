@@ -33,7 +33,7 @@ func (m *MockedRadioRepo) CountAll(_ context.Context, options ...model.QueryOpti
 
 func (m *MockedRadioRepo) Delete(_ context.Context, ids ...string) error {
 	if m.Err {
-		return errors.New("Error!")
+		return errors.New("error")
 	}
 	for _, id := range ids {
 		if _, found := m.Data[id]; !found {
@@ -46,7 +46,7 @@ func (m *MockedRadioRepo) Delete(_ context.Context, ids ...string) error {
 
 func (m *MockedRadioRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Err {
-		return false, errors.New("Error!")
+		return false, errors.New("error")
 	}
 	_, found := m.Data[id]
 	return found, nil
@@ -54,7 +54,7 @@ func (m *MockedRadioRepo) Exists(_ context.Context, id string) (bool, error) {
 
 func (m *MockedRadioRepo) Get(_ context.Context, id string) (*model.Radio, error) {
 	if m.Err {
-		return nil, errors.New("Error!")
+		return nil, errors.New("error")
 	}
 	if d, ok := m.Data[id]; ok {
 		return d, nil
@@ -67,7 +67,7 @@ func (m *MockedRadioRepo) GetAll(_ context.Context, qo ...model.QueryOptions) (m
 		m.Options = qo[0]
 	}
 	if m.Err {
-		return nil, errors.New("Error!")
+		return nil, errors.New("error")
 	}
 	return m.All, nil
 }

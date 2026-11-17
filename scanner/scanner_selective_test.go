@@ -216,9 +216,10 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 				// Store track IDs for later verification
 				for _, t := range allTracks {
-					if t.Album == "Revolver" {
+					switch t.Album {
+					case "Revolver":
 						album1TrackIDs = append(album1TrackIDs, t.ID)
-					} else if t.Album == "Help!" {
+					case "Help!":
 						album2TrackIDs = append(album2TrackIDs, t.ID)
 					}
 				}
@@ -322,9 +323,10 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(allTracks).To(HaveLen(6))
 
 				for _, track := range allTracks {
-					if track.Album == "Help!" {
+					switch track.Album {
+					case "Help!":
 						Expect(track.Missing).To(BeTrue(), "All tracks in deleted Help! folder should be marked as missing")
-					} else if track.Album == "Revolver" {
+					case "Revolver":
 						Expect(track.Missing).To(BeFalse(), "Tracks in Revolver folder should not be marked as missing")
 					}
 				}

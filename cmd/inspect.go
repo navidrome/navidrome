@@ -50,11 +50,11 @@ func prettyMarshal(v any) ([]byte, error) {
 	out := v.([]core.InspectOutput)
 	var res strings.Builder
 	for i := range out {
-		res.WriteString(fmt.Sprintf("====================\nFile: %s\n\n", out[i].File))
+		fmt.Fprintf(&res, "====================\nFile: %s\n\n", out[i].File)
 		t, _ := toml.Marshal(out[i].RawTags)
-		res.WriteString(fmt.Sprintf("Raw tags:\n%s\n\n", t))
+		fmt.Fprintf(&res, "Raw tags:\n%s\n\n", t)
 		t, _ = toml.Marshal(out[i].MappedTags)
-		res.WriteString(fmt.Sprintf("Mapped tags:\n%s\n\n", t))
+		fmt.Fprintf(&res, "Mapped tags:\n%s\n\n", t)
 	}
 	return []byte(res.String()), nil
 }

@@ -75,7 +75,7 @@ func (m *MockedScrobbleBufferRepo) Dequeue(_ context.Context, entry *model.Scrob
 	defer m.mu.Unlock()
 	newData := model.ScrobbleEntries{}
 	for _, e := range m.Data {
-		if e.Service == entry.Service && e.UserID == entry.UserID && e.PlayTime == entry.PlayTime && e.MediaFile.ID == entry.MediaFile.ID {
+		if e.Service == entry.Service && e.UserID == entry.UserID && e.PlayTime.Equal(entry.PlayTime) && e.MediaFile.ID == entry.MediaFile.ID {
 			continue
 		}
 		newData = append(newData, e)

@@ -3,7 +3,7 @@ package plugins
 import (
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -119,7 +119,7 @@ var _ = Describe("mediaFileToSongRef multi-artist", func() {
 			},
 		}}
 		ref := mediaFileToSongRef(mf)
-		Expect(ref.Artists).To(Equal([]capabilities.ArtistRef{
+		Expect(ref.Artists).To(Equal([]types.ArtistRef{
 			{ID: "ar-drake", Name: "Drake", MBID: "m-drake", Role: "artist"},
 			{ID: "ar-future", Name: "Future", MBID: "m-future", Role: "artist"},
 		}))

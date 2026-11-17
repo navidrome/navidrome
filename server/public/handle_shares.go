@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -120,6 +120,6 @@ func encodeMediafileShare(s model.Share, id string) string {
 		BitRate: s.MaxBitRate,
 		ShareID: s.ID,
 	}
-	token, _ := auth.CreateExpiringPublicToken(V(s.ExpiresAt), claims)
+	token, _ := auth.CreateExpiringPublicToken(gg.V(s.ExpiresAt), claims)
 	return token
 }

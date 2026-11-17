@@ -10,7 +10,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -140,16 +140,16 @@ func saveQueue(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 		user, client := extractUserAndClient(ctx)
-		ids := V(payload.Ids)
+		ids := gg.V(payload.Ids)
 		items := createMediaFileItems(ids)
-		current := V(payload.Current)
+		current := gg.V(payload.Current)
 		if len(ids) > 0 && !validateCurrentIndex(w, current, len(ids)) {
 			return
 		}
 		pq := &model.PlayQueue{
 			UserID:    user.ID,
 			Current:   current,
-			Position:  max(V(payload.Position), 0),
+			Position:  max(gg.V(payload.Position), 0),
 			ChangedBy: client,
 			Items:     items,
 		}

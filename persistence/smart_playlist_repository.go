@@ -195,8 +195,8 @@ func (r *playlistRepository) addCriteria(sql SelectBuilder, cSQL smartPlaylistCr
 		return sql, err
 	}
 	sql = sql.Where(cond)
-	if cSQL.Criteria.Limit > 0 {
-		sql = sql.Limit(uint64(cSQL.Criteria.Limit)).Offset(uint64(cSQL.Criteria.Offset))
+	if cSQL.Limit > 0 {
+		sql = sql.Limit(uint64(cSQL.Limit)).Offset(uint64(cSQL.Offset))
 	}
 	if order := cSQL.orderBy(); order != "" {
 		sql = sql.OrderBy(order)

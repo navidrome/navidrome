@@ -157,7 +157,7 @@ func (r *libraryRepositoryWrapper) Save(ctx context.Context, lib *model.Library)
 		return "", err
 	}
 
-	err := r.LibraryRepository.Put(ctx, lib)
+	err := r.Put(ctx, lib)
 	if err != nil {
 		return "", r.mapError(err)
 	}
@@ -205,7 +205,7 @@ func (r *libraryRepositoryWrapper) Update(ctx context.Context, id string, entity
 	pidChanged := (updatesColumn(cols, "pidAlbum") && originalLib.PIDAlbum != lib.PIDAlbum) ||
 		(updatesColumn(cols, "pidTrack") && originalLib.PIDTrack != lib.PIDTrack)
 
-	err = r.LibraryRepository.Put(ctx, lib, cols...)
+	err = r.Put(ctx, lib, cols...)
 	if err != nil {
 		return r.mapError(err)
 	}

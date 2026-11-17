@@ -524,9 +524,9 @@ func firstArtPath(currentPath string, currentDisc int, m MediaFile) (string, int
 func (mfs MediaFiles) ToM3U8(title string, absolutePaths bool) string {
 	buf := strings.Builder{}
 	buf.WriteString("#EXTM3U\n")
-	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", title))
+	fmt.Fprintf(&buf, "#PLAYLIST:%s\n", title)
 	for _, t := range mfs {
-		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		fmt.Fprintf(&buf, "#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title)
 		if absolutePaths {
 			buf.WriteString(t.AbsolutePath() + "\n")
 		} else {
