@@ -134,3 +134,16 @@ func irregular(c *http.Client) {
 var _ = describe("irregular", func() {
 	_, _ = http.Head("/") // want `use net/http\.NewRequestWithContext with \(\*net/http\.Client\)\.Do and pass the caller's ctx`
 })
+
+func Cmp[T any](v T) {}
+
+func CmpContext[T comparable](ctx context.Context, v T) {}
+
+func Loose[T comparable](v T) {}
+
+func LooseContext[T any](ctx context.Context, v T) {}
+
+func constraints() {
+	Cmp([]int{1})
+	Loose(1) // want `use a\.LooseContext and pass the caller's ctx`
+}

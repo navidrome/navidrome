@@ -127,7 +127,7 @@ func isDropIn(f, sib *types.Signature) bool {
 		for i := range n {
 			args[i] = f.TypeParams().At(i)
 		}
-		inst, err := types.Instantiate(nil, sib, args, false)
+		inst, err := types.Instantiate(nil, sib, args, true)
 		if err != nil {
 			return false
 		}
