@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 
@@ -16,29 +17,32 @@ import (
 // that requests using non-canonical casing are still routed correctly, both when the router is used
 // directly and when mounted under a parent (as it is in production via server.MountRouter).
 var _ = Describe("Case-insensitive routing", func() {
+	var ctx context.Context
+
 	var api *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		api = New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	It("serves a fully lowercase path directly", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/system/info/public", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/system/info/public", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 
 	It("serves a mixed/weird-case path directly", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/SYSTEM/Info/PUBLIC", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/SYSTEM/Info/PUBLIC", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 
 	It("serves a lowercase login path directly", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/users/authenticatebyname", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/authenticatebyname", nil)
 		api.ServeHTTP(w, r)
 		// MockDataStore has no users, so authentication itself may fail downstream, but the
 		// route must be found (not a 404) to prove case-insensitive matching worked.
@@ -49,7 +53,7 @@ var _ = Describe("Case-insensitive routing", func() {
 		parent := chi.NewRouter()
 		parent.Mount("/jellyfin", api)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/jellyfin/system/info/public", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/jellyfin/system/info/public", nil)
 		parent.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
 	})

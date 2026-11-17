@@ -43,12 +43,15 @@ func (m *mockArchiver) ZipShare(_ context.Context, _ *model.Share, w io.Writer) 
 }
 
 var _ = Describe("handleDownloads", func() {
+	var ctx context.Context
+
 	var ds *tests.MockDataStore
 	var shareRepo *tests.MockShareRepo
 	var archiver *mockArchiver
 	var pub *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		shareRepo = &tests.MockShareRepo{}
 		ds.MockedShare = shareRepo
@@ -62,7 +65,7 @@ var _ = Describe("handleDownloads", func() {
 	}
 
 	makeRequest := func(id string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest("GET", "/public/d/"+id+"?%3Aid="+id, nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/public/d/"+id+"?%3Aid="+id, nil)
 		w := httptest.NewRecorder()
 		pub.handleDownloads(w, r)
 		return w

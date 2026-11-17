@@ -19,12 +19,16 @@ import (
 
 var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	var (
+		ctx       context.Context
 		manager   *Manager
 		tmpDir    string
 		router    *fakeSubsonicRouter
 		userRepo  *tests.MockedUserRepo
 		dataStore *tests.MockDataStore
 	)
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	BeforeAll(func() {
 		var err error
@@ -135,7 +139,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
-			exit, output, err := instance.Call("call_subsonic_api", []byte("/ping?u=testuser"))
+			exit, output, err := instance.CallWithContext(ctx, "call_subsonic_api", []byte("/ping?u=testuser"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -154,7 +158,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
-			_, _, err = instance.Call("call_subsonic_api", []byte("/getAlbumList?u=testuser&type=newest"))
+			_, _, err = instance.CallWithContext(ctx, "call_subsonic_api", []byte("/getAlbumList?u=testuser&type=newest"))
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify the parameters were added
@@ -171,7 +175,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
-			exit, _, err := instance.Call("call_subsonic_api", []byte("/ping"))
+			exit, _, err := instance.CallWithContext(ctx, "call_subsonic_api", []byte("/ping"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
@@ -193,7 +197,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
-			exit, output, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			exit, output, err := instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -211,7 +215,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
-			_, _, err = instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			_, _, err = instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(router.lastRequest).ToNot(BeNil())
@@ -226,7 +230,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			defer instance.Close(GinkgoT().Context())
 
-			exit, _, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt"))
+			exit, _, err := instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err.Error()).To(ContainSubstring("missing required parameter"))

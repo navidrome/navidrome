@@ -77,7 +77,7 @@ var _ = Describe("Logger", func() {
 
 		It("can get data from the request's context", func() {
 			ctx = NewContext(ctx, "foo", "bar")
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil).WithContext(ctx)
 
 			Error(req, "Simple Message", "key1", "value1")
 
@@ -224,7 +224,7 @@ var _ = Describe("Logger", func() {
 		It("returns the logger from request's context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
 			ctx = context.WithValue(ctx, loggerCtxKey, logger)
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil).WithContext(ctx)
 
 			Expect(extractLogger(req)).To(Equal(logger))
 		})

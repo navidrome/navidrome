@@ -11,6 +11,7 @@ linters:
     - bodyclose
     - containedctx
     - copyloopvar
+    - ctxvariant
     - depguard
     - dogsled
     - durationcheck
@@ -35,6 +36,10 @@ linters:
     - usetesting
     - whitespace
   settings:
+    custom:
+      ctxvariant:
+        type: module
+        description: Reports calls to F when a FContext or FWithContext sibling takes the same parameters after a leading ctx, and known ctx-less stdlib calls
     depguard:
       rules:
         api-subsonic:
@@ -151,12 +156,6 @@ linters:
       ignore-enum-types: ^(reflect\.Kind|go\.senan\.xyz/taglib\.FileFormat)$
     forbidigo:
       forbid:
-        - pattern: 'tx\.Exec$'
-          msg: "use tx.ExecContext(ctx, ...) in migrations to propagate context"
-        - pattern: 'tx\.Query$'
-          msg: "use tx.QueryContext(ctx, ...) in migrations to propagate context"
-        - pattern: 'tx\.QueryRow$'
-          msg: "use tx.QueryRowContext(ctx, ...) in migrations to propagate context"
         - pattern: '^context\.(Background|TODO)$'
           msg: "in tests use the spec's ctx (from GinkgoT().Context()), t.Context() or b.Context()"
         - pattern: '^panic$'
@@ -189,11 +188,12 @@ linters:
       - path: _test\.go
         linters:
           - containedctx
-      # forbidigo rules are scoped by their msg: "in migrations" or "in tests use"
-      - path-except: 'db/migrations/'
+      # a fresh request ctx keeps the caller's chi route ctx out of the internal Subsonic call
+      - path: ^plugins/host_subsonicapi\.go$
         linters:
-          - forbidigo
-        text: "in migrations"
+          - ctxvariant
+        text: "use net/http\\.NewRequestWithContext"
+      # forbidigo rules are scoped by their msg: "in tests use"
       - path-except: '(_test\.go|^tests/)'
         linters:
           - forbidigo

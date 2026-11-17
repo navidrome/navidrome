@@ -19,7 +19,7 @@ var _ = Describe("QuickConnect", func() {
 
 	clientReq := func(deviceID, method, path, body string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, strings.NewReader(body))
 		r.Header.Set("Authorization", `MediaBrowser Client="Finamp", Device="Pixel 7", DeviceId="`+deviceID+`", Version="1.0"`)
 		r.Header.Set("Content-Type", "application/json")
 		router.ServeHTTP(w, r)
@@ -54,7 +54,7 @@ var _ = Describe("QuickConnect", func() {
 		Expect(res.SessionInfo).ToNot(BeNil())
 		Expect(res.SessionInfo.DeviceId).To(Equal("other-device"))
 
-		r := httptest.NewRequest("GET", "/Users/Me", nil)
+		r := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/Users/Me", nil)
 		r.Header.Set("X-Emby-Token", res.AccessToken)
 		me := httptest.NewRecorder()
 		router.ServeHTTP(me, r)

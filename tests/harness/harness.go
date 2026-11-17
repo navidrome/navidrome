@@ -78,7 +78,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+	_, err = db.Db().ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
 	Expect(err).ToNot(HaveOccurred())
 	data, err := os.ReadFile(h.FilePath)
 	Expect(err).ToNot(HaveOccurred())
@@ -88,8 +88,8 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 
 // ResettableTables lists the tables a per-spec reset may write. FTS shadow tables are excluded:
 // their content tables' triggers keep them in sync, and writing them directly corrupts the index.
-func ResettableTables() []string {
-	rows, err := db.Db().Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
+func ResettableTables(ctx context.Context) []string {
+	rows, err := db.Db().QueryContext(ctx, "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
 	defer rows.Close()
 	var tables []string
@@ -104,39 +104,39 @@ func ResettableTables() []string {
 
 // TruncateDB empties every resettable table, leaving the migrated schema in place — for suites
 // whose specs each build their own library, so the schema is not re-migrated per spec.
-func TruncateDB(tables []string) {
+func TruncateDB(ctx context.Context, tables []string) {
 	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	_, err := sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = OFF")
 	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
+	defer func() { _, _ = sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = ON") }()
 
 	for _, table := range tables {
 		// Table names come from sqlite_master, not user input.
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
+		_, err = sqlDB.ExecContext(ctx, `DELETE FROM main."`+table+`"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
 	}
 }
 
 // Restore reloads every table from the golden snapshot via ATTACH DATABASE — much faster than a
 // rescan.
-func (h *DB) Restore() {
+func (h *DB) Restore(ctx context.Context) {
 	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	_, err := sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = OFF")
 	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
+	_, err = sqlDB.ExecContext(ctx, "ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
 	Expect(err).ToNot(HaveOccurred())
 
-	for _, table := range ResettableTables() {
+	for _, table := range ResettableTables(ctx) {
 		// Table names come from sqlite_master, not user input.
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
+		_, err = sqlDB.ExecContext(ctx, `DELETE FROM main."`+table+`"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
+		_, err = sqlDB.ExecContext(ctx, `INSERT INTO main."`+table+`" SELECT * FROM snapshot."`+table+`"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	_, err = sqlDB.Exec("DETACH DATABASE snapshot")
+	_, err = sqlDB.ExecContext(ctx, "DETACH DATABASE snapshot")
 	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
+	_, err = sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = ON")
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -184,10 +184,10 @@ func (NoopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io
 	return nil, errors.New("noop ffmpeg: convert animated image not supported")
 }
 
-func (NoopFFmpeg) CmdPath() (string, error) { return "", nil }
-func (NoopFFmpeg) IsAvailable() bool        { return false }
-func (NoopFFmpeg) IsProbeAvailable() bool   { return true }
-func (NoopFFmpeg) Version() string          { return "noop" }
+func (NoopFFmpeg) CmdPath() (string, error)       { return "", nil }
+func (NoopFFmpeg) IsAvailable() bool              { return false }
+func (NoopFFmpeg) IsProbeAvailable() bool         { return true }
+func (NoopFFmpeg) Version(context.Context) string { return "noop" }
 
 var (
 	_ stream.MediaStreamer = &SpyStreamer{}

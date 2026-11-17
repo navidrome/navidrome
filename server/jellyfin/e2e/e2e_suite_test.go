@@ -149,7 +149,7 @@ func jReq(user model.User, method, path, body string) *httptest.ResponseRecorder
 	if body != "" {
 		reader = strings.NewReader(body)
 	}
-	r := httptest.NewRequest(method, path, reader)
+	r := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, reader)
 	token, err := auth.CreateToken(&user)
 	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("X-Emby-Token", token)
@@ -168,7 +168,7 @@ func rawReq(method, path, body string) *httptest.ResponseRecorder {
 	if body != "" {
 		reader = strings.NewReader(body)
 	}
-	r := httptest.NewRequest(method, path, reader)
+	r := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, reader)
 	if body != "" {
 		r.Header.Set("Content-Type", "application/json")
 	}
@@ -188,7 +188,7 @@ func delAs(u model.User, path string) *httptest.ResponseRecorder { return jReq(u
 // upload performs an authenticated POST with a custom Content-Type and raw body (image upload).
 func upload(user model.User, path, contentType string, body []byte) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", path, bytes.NewReader(body))
+	r := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPost, path, bytes.NewReader(body))
 	token, err := auth.CreateToken(&user)
 	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("X-Emby-Token", token)
@@ -328,7 +328,7 @@ func setupTestDB() {
 		c.DevEnableMediaFileProbe = false
 	})
 
-	goldenDB.Restore()
+	goldenDB.Restore(ctx)
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)

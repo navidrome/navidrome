@@ -50,7 +50,7 @@ func (d *Discovery) Serve(ctx context.Context) {
 		return
 	}
 	// udp4 only: a dual-stack bind can share the port with another server and never get a packet.
-	conn, err := net.ListenPacket("udp4", net.JoinHostPort("0.0.0.0", strconv.Itoa(discoveryPort)))
+	conn, err := (&net.ListenConfig{}).ListenPacket(ctx, "udp4", net.JoinHostPort("0.0.0.0", strconv.Itoa(discoveryPort)))
 	if err != nil {
 		log.Warn(ctx, "Jellyfin API: auto-discovery is off, the UDP port is unavailable. Is another Jellyfin server running?", "port", discoveryPort, err)
 		return
@@ -96,16 +96,16 @@ func hasAdvertisableAddress() bool {
 
 func discoveryAddress(ctx context.Context, remote net.Addr) string {
 	scheme := gg.If(conf.Server().TLSEnabled(), "https", "http")
-	host := net.JoinHostPort(localIPFor(remote), strconv.Itoa(conf.Server().Port))
+	host := net.JoinHostPort(localIPFor(ctx, remote), strconv.Itoa(conf.Server().Port))
 	return publicurl.AbsoluteURL(request.WithServerAddress(ctx, scheme, host), consts.URLPathJellyfinAPI, nil)
 }
 
 // On a multi-homed host, only the interface that routes to the requester is reachable by it.
-func localIPFor(remote net.Addr) string {
+func localIPFor(ctx context.Context, remote net.Addr) string {
 	if ip := parseIP(conf.Server().Address); ip.IsValid() && !ip.IsUnspecified() {
 		return ip.String()
 	}
-	c, err := net.Dial("udp", remote.String())
+	c, err := (&net.Dialer{}).DialContext(ctx, "udp", remote.String())
 	if err != nil {
 		return conf.Server().Address
 	}

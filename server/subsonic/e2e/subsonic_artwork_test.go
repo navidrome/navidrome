@@ -101,7 +101,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 			c.DevArtworkThrottleBacklogTimeout = time.Minute
 		})
 
-		goldenDB.Restore()
+		goldenDB.Restore(ctx)
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 		auth.Init(ds)
 
@@ -118,7 +118,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Focus the worker on the entities under test.
-		_, err = db.Db().Exec("DELETE FROM artwork_queue")
+		_, err = db.Db().ExecContext(ctx, "DELETE FROM artwork_queue")
 		Expect(err).ToNot(HaveOccurred())
 
 		artfulID = albumIDByName("Artful Album")
@@ -232,7 +232,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest("GET", "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Body.Bytes()).To(Equal(readArtworkFixture("cover.jpg")))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("public, max-age=31536000, immutable"))
@@ -244,7 +244,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest("GET", "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 })
@@ -266,13 +266,13 @@ func buildArtworkRouter(art artwork.Artwork) *subsonic.Router {
 // disabled for the bulk delete, mirroring harness.Restore.
 func wipeScannedContent() {
 	GinkgoHelper()
-	_, err := db.Db().Exec("PRAGMA foreign_keys = OFF")
+	_, err := db.Db().ExecContext(ctx, "PRAGMA foreign_keys = OFF")
 	Expect(err).ToNot(HaveOccurred())
 	for _, t := range []string{"media_file", "album", "artist", "folder", "item_artwork", "artwork_queue", "artwork", "library"} {
-		_, err = db.Db().Exec(`DELETE FROM "` + t + `"`)
+		_, err = db.Db().ExecContext(ctx, `DELETE FROM "`+t+`"`)
 		Expect(err).ToNot(HaveOccurred(), "wiping %s", t)
 	}
-	_, err = db.Db().Exec("PRAGMA foreign_keys = ON")
+	_, err = db.Db().ExecContext(ctx, "PRAGMA foreign_keys = ON")
 	Expect(err).ToNot(HaveOccurred())
 }
 

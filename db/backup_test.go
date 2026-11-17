@@ -31,7 +31,7 @@ func sqliteFile(statements string) func(path string) {
 		other, err := sql.Open(Driver, path)
 		Expect(err).ToNot(HaveOccurred())
 		defer other.Close()
-		_, err = other.Exec(statements)
+		_, err = other.ExecContext(GinkgoT().Context(), statements)
 		Expect(err).ToNot(HaveOccurred())
 	}
 }

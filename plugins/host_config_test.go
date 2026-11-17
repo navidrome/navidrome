@@ -102,7 +102,7 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 		if err != nil {
 			return nil, err
 		}
-		_, outputBytes, err := instance.Call("nd_test_config", inputBytes)
+		_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_config", inputBytes)
 		if err != nil {
 			return nil, err
 		}

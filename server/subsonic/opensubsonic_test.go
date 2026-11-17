@@ -1,6 +1,7 @@
 package subsonic_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -29,14 +30,18 @@ func (m *mockSonicPluginLoader) LoadSonicSimilarity(_ string) (sonicsvc.Provider
 
 var _ = Describe("GetOpenSubsonicExtensions", func() {
 	var (
+		ctx    context.Context
 		router *subsonic.Router
 		w      *httptest.ResponseRecorder
 		r      *http.Request
 	)
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	JustBeforeEach(func() {
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest("GET", "/getOpenSubsonicExtensions?f=json", nil)
+		r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/getOpenSubsonicExtensions?f=json", nil)
 	})
 
 	Context("without sonic similarity plugin", func() {

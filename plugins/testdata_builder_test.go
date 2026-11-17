@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -18,14 +19,14 @@ import (
 
 // buildTestPlugins packages every test plugin under dir, replicating
 // `make -C plugins/testdata` without needing make or zip on the PATH.
-func buildTestPlugins(dir string) {
+func buildTestPlugins(ctx context.Context, dir string) {
 	start := time.Now()
-	built, err := buildPackages(dir)
+	built, err := buildPackages(ctx, dir)
 	fmt.Fprintf(GinkgoWriter, "[BeforeSuite] built test plugins in %s: %v\n", time.Since(start), built)
 	Expect(err).ToNot(HaveOccurred(), "failed to build test plugins")
 }
 
-func buildPackages(dir string) ([]string, error) {
+func buildPackages(ctx context.Context, dir string) ([]string, error) {
 	mods, err := filepath.Glob(filepath.Join(dir, "*", "go.mod"))
 	if err != nil || len(mods) == 0 {
 		return nil, err
@@ -40,7 +41,7 @@ func buildPackages(dir string) ([]string, error) {
 	build := func(i int) {
 		pluginDir := filepath.Dir(mods[i])
 		var rebuilt bool
-		if rebuilt, errs[i] = buildPackage(pluginDir, pdkTime); rebuilt {
+		if rebuilt, errs[i] = buildPackage(ctx, pluginDir, pdkTime); rebuilt {
 			built[i] = filepath.Base(pluginDir)
 		}
 	}
@@ -56,7 +57,7 @@ func buildPackages(dir string) ([]string, error) {
 	return slices.DeleteFunc(built, func(name string) bool { return name == "" }), errors.Join(errs...)
 }
 
-func buildPackage(dir string, pdkTime time.Time) (bool, error) {
+func buildPackage(ctx context.Context, dir string, pdkTime time.Time) (bool, error) {
 	sourceTime, err := newestModTime(dir)
 	if err != nil {
 		return false, err
@@ -73,7 +74,7 @@ func buildPackage(dir string, pdkTime time.Time) (bool, error) {
 	defer os.Remove(wasm)
 	// -buildvcs=false keeps the bytes stable across commits, so the suite's
 	// wazero compilation cache still hits after a rebuild.
-	cmd := exec.Command("go", "build", "-buildvcs=false", "-buildmode=c-shared", "-o", wasm, ".")
+	cmd := exec.CommandContext(ctx, "go", "build", "-buildvcs=false", "-buildmode=c-shared", "-o", wasm, ".")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
 	if out, err := cmd.CombinedOutput(); err != nil {

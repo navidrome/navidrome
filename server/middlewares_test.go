@@ -22,6 +22,11 @@ import (
 )
 
 var _ = Describe("middlewares", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("robotsTXT", func() {
 		var nextCalled bool
 		next := func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +37,7 @@ var _ = Describe("middlewares", func() {
 		})
 
 		It("returns the robot.txt when requested from root", func() {
-			r := httptest.NewRequest("GET", "/robots.txt", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/robots.txt", nil)
 			w := httptest.NewRecorder()
 
 			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
@@ -42,7 +47,7 @@ var _ = Describe("middlewares", func() {
 		})
 
 		It("allows prefixes", func() {
-			r := httptest.NewRequest("GET", "/app/robots.txt", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/app/robots.txt", nil)
 			w := httptest.NewRecorder()
 
 			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
@@ -52,7 +57,7 @@ var _ = Describe("middlewares", func() {
 		})
 
 		It("passes through requests for other files", func() {
-			r := httptest.NewRequest("GET", "/this_is_not_a_robots.txt_file", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/this_is_not_a_robots.txt_file", nil)
 			w := httptest.NewRecorder()
 
 			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
@@ -84,7 +89,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with no X-Forwarded headers", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 			})
 
 			It("should not modify the request", func() {
@@ -103,7 +108,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Host header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded.example.com")
 			})
 
@@ -116,7 +121,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Proto header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Proto", "https")
 			})
 
@@ -129,7 +134,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Scheme header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Scheme", "https")
 			})
 
@@ -142,7 +147,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with multiple X-Forwarded headers", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded.example.com")
 				req.Header.Set("X-Forwarded-Proto", "https")
 				req.Header.Set("X-Forwarded-Scheme", "http")
@@ -173,7 +178,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with multiple values in X-Forwarded-Host header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded1.example.com, forwarded2.example.com")
 			})
 
@@ -200,7 +205,7 @@ var _ = Describe("middlewares", func() {
 				nextReq = r
 			})
 			middleware = clientUniqueIDMiddleware(nextHandler)
-			req, _ = http.NewRequest(http.MethodGet, "/", nil)
+			req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			rec = httptest.NewRecorder()
 		})
 
@@ -279,7 +284,7 @@ var _ = Describe("middlewares", func() {
 				middleware = URLParamsMiddleware(testHandler)
 				router.Mount("/", middleware)
 
-				req, _ := http.NewRequest("GET", "/?user=1", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/?user=1", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -295,7 +300,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test?key=value", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test?key=value", nil)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal("OK"))
@@ -311,7 +316,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test?key=value", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test?key=value", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -327,7 +332,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test with space?key=another value", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test with space?key=another value", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -345,7 +350,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test/value?key=other_value", nil)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test/value?key=other_value", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -382,7 +387,7 @@ var _ = Describe("middlewares", func() {
 				To(Succeed())
 
 			middleware = UpdateLastAccessMiddleware(ds)
-			req, _ = http.NewRequest(http.MethodGet, "/", nil)
+			req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req = req.WithContext(request.WithUser(ctx, model.User{ID: id, UserName: "johndoe"}))
 		})
 
@@ -439,7 +444,7 @@ var _ = Describe("middlewares", func() {
 		}
 		call := func(peer string, headers map[string]string) {
 			resolved, remoteAddr, proxyIP = "", "", nil
-			r := httptest.NewRequest("POST", "/auth/login", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/auth/login", nil)
 			r.RemoteAddr = peer
 			for k, v := range headers {
 				r.Header.Set(k, v)
@@ -494,7 +499,7 @@ var _ = Describe("middlewares", func() {
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })))
 		})
 		attempt := func(peer string, header, value string) int {
-			r := httptest.NewRequest("POST", "/auth/login", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/auth/login", nil)
 			r.RemoteAddr = peer
 			r.Header.Set(header, value)
 			w := httptest.NewRecorder()

@@ -26,37 +26,37 @@ var _ = Describe("Optimize", func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(database.Close)
 
-		_, err = database.Exec(`create table property(
+		_, err = database.ExecContext(ctx, `create table property(
 			id varchar(255) primary key,
 			value varchar(255) not null default ''
 		)`)
 		Expect(err).ToNot(HaveOccurred())
-		_, err = database.Exec("create table analyze_probe(id integer primary key, flag int)")
+		_, err = database.ExecContext(ctx, "create table analyze_probe(id integer primary key, flag int)")
 		Expect(err).ToNot(HaveOccurred())
-		_, err = database.Exec(`insert into analyze_probe(flag)
+		_, err = database.ExecContext(ctx, `insert into analyze_probe(flag)
 			with recursive s(x) as (select 1 union all select x+1 from s where x < 3000)
 			select 0 from s`)
 		Expect(err).ToNot(HaveOccurred())
-		_, err = database.Exec("create index probe_flag on analyze_probe(flag)")
+		_, err = database.ExecContext(ctx, "create index probe_flag on analyze_probe(flag)")
 		Expect(err).ToNot(HaveOccurred())
-		_, err = database.Exec("analyze")
+		_, err = database.ExecContext(ctx, "analyze")
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	putProperty := func(key, value string) {
-		_, err := database.Exec(`insert into property(id, value) values(?, ?)
+		_, err := database.ExecContext(ctx, `insert into property(id, value) values(?, ?)
 			on conflict(id) do update set value=excluded.value`, key, value)
 		Expect(err).ToNot(HaveOccurred())
 	}
 
 	getProperty := func(key string) string {
 		var value string
-		Expect(database.QueryRow("select value from property where id=?", key).Scan(&value)).To(Succeed())
+		Expect(database.QueryRowContext(ctx, "select value from property where id=?", key).Scan(&value)).To(Succeed())
 		return value
 	}
 
 	poisonStats := func() {
-		_, err := database.Exec("update sqlite_stat1 set stat='3000 50' where idx='probe_flag'")
+		_, err := database.ExecContext(ctx, "update sqlite_stat1 set stat='3000 50' where idx='probe_flag'")
 		Expect(err).ToNot(HaveOccurred())
 	}
 
@@ -67,7 +67,7 @@ var _ = Describe("Optimize", func() {
 		Expect(db.OptimizeDBAt(ctx, database, now)).To(Succeed())
 
 		var stat string
-		err := database.QueryRow("select stat from sqlite_stat1 where idx='probe_flag'").Scan(&stat)
+		err := database.QueryRowContext(ctx, "select stat from sqlite_stat1 where idx='probe_flag'").Scan(&stat)
 		Expect(err).ToNot(HaveOccurred())
 		// A full ANALYZE sees all 3000 rows share one value: avg rows per key = row count.
 		Expect(stat).To(Equal("3000 3000"))
@@ -88,11 +88,11 @@ var _ = Describe("Optimize", func() {
 			"create index partial_only_v on partial_only(v) where v = 1",
 			"analyze",
 		} {
-			_, err := database.Exec(stmt)
+			_, err := database.ExecContext(ctx, stmt)
 			Expect(err).ToNot(HaveOccurred())
 		}
 		statRows := func() []string {
-			rows, err := database.Query("select tbl || '|' || coalesce(idx, '') || '|' || stat from sqlite_stat1 order by 1")
+			rows, err := database.QueryContext(ctx, "select tbl || '|' || coalesce(idx, '') || '|' || stat from sqlite_stat1 order by 1")
 			Expect(err).ToNot(HaveOccurred())
 			defer rows.Close()
 			var res []string
@@ -104,7 +104,7 @@ var _ = Describe("Optimize", func() {
 			return res
 		}
 		fullAnalyze := statRows()
-		_, err := database.Exec("delete from sqlite_stat1")
+		_, err := database.ExecContext(ctx, "delete from sqlite_stat1")
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(db.OptimizeDBAt(ctx, database, now)).To(Succeed())
@@ -131,7 +131,7 @@ var _ = Describe("Optimize", func() {
 		Expect(getProperty(consts.LastDBAnalyzeAtKey)).To(Equal(lastAnalyze.Format(time.RFC3339Nano)))
 
 		var stat string
-		Expect(database.QueryRow("select stat from sqlite_stat1 where idx='probe_flag'").Scan(&stat)).To(Succeed())
+		Expect(database.QueryRowContext(ctx, "select stat from sqlite_stat1 where idx='probe_flag'").Scan(&stat)).To(Succeed())
 		Expect(stat).To(Equal("3000 50"))
 	})
 

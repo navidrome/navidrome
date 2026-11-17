@@ -235,7 +235,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				for _, artist := range allArtists {
 					// Check if artist is associated with rock library
 					var count int64
-					err := db.Db().QueryRow(
+					err := db.Db().QueryRowContext(ctx,
 						"SELECT COUNT(*) FROM library_artist WHERE library_id = ? AND artist_id = ?",
 						lib1.ID, artist.ID,
 					).Scan(&count)
@@ -245,7 +245,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 					}
 
 					// Check if artist is associated with jazz library
-					err = db.Db().QueryRow(
+					err = db.Db().QueryRowContext(ctx,
 						"SELECT COUNT(*) FROM library_artist WHERE library_id = ? AND artist_id = ?",
 						lib2.ID, artist.ID,
 					).Scan(&count)
@@ -381,7 +381,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				jeffID := jeffArtists[0].ID
 
 				// Check rock library association
-				err = db.Db().QueryRow(
+				err = db.Db().QueryRowContext(ctx,
 					"SELECT COUNT(*) FROM library_artist WHERE library_id = ? AND artist_id = ?",
 					lib1.ID, jeffID,
 				).Scan(&rockCount)
@@ -389,7 +389,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(rockCount).To(Equal(int64(1)))
 
 				// Check jazz library association
-				err = db.Db().QueryRow(
+				err = db.Db().QueryRowContext(ctx,
 					"SELECT COUNT(*) FROM library_artist WHERE library_id = ? AND artist_id = ?",
 					lib2.ID, jeffID,
 				).Scan(&jazzCount)

@@ -169,7 +169,7 @@ var _ = Describe("Playlists", func() {
 	Describe("createPlaylist", func() {
 		It("creates a playlist and returns its id", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(testID("s1"))+`","`+dto.EncodeID(testID("s2"))+`"]}`)).
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(testID("s1"))+`","`+dto.EncodeID(testID("s2"))+`"]}`)).
 				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -182,7 +182,7 @@ var _ = Describe("Playlists", func() {
 
 		It("returns 400 on an invalid JSON body", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`not json`)).
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists", strings.NewReader(`not json`)).
 				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
@@ -191,14 +191,14 @@ var _ = Describe("Playlists", func() {
 		It("returns 500 when the service fails", func() {
 			fp.createErr = errors.New("boom")
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix"}`)).
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix"}`)).
 				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 
 		createReq := func(body string) *http.Request {
-			return httptest.NewRequest("POST", "/Playlists", strings.NewReader(body)).
+			return httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists", strings.NewReader(body)).
 				WithContext(GinkgoT().Context())
 		}
 
@@ -233,7 +233,7 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items", nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1")+"/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistItems(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -258,7 +258,7 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items?StartIndex=1&Limit=1", nil).
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1")+"/Items?StartIndex=1&Limit=1", nil).
 				WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylistItems, w, r)
@@ -281,7 +281,7 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items?StartIndex=-1&Limit=1", nil).
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1")+"/Items?StartIndex=-1&Limit=1", nil).
 				WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylistItems, w, r)
@@ -296,7 +296,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 for a non-owned or absent playlist", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/missing/Items", nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/missing/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("missing")))
 			api.getPlaylistItems(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -313,7 +313,7 @@ var _ = Describe("Playlists", func() {
 
 		createWith := func(id string) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(id)+`"]}`)).
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(id)+`"]}`)).
 				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -364,7 +364,7 @@ var _ = Describe("Playlists", func() {
 			}
 			fp.getPls, fp.getByIDPls = pls, pls
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1"), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -378,7 +378,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 for a non-owned or absent playlist", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/missing", nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/missing", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("missing")))
 			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -387,7 +387,7 @@ var _ = Describe("Playlists", func() {
 
 	Describe("deleteItem", func() {
 		deleteReq := func(id string) *http.Request {
-			r := httptest.NewRequest("DELETE", "/Items/"+dto.EncodeID(id), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Items/"+dto.EncodeID(id), nil).WithContext(ctx)
 			return withChiURLParam(r, "itemId", dto.EncodeID(id))
 		}
 
@@ -423,7 +423,7 @@ var _ = Describe("Playlists", func() {
 	Describe("addToPlaylist", func() {
 		It("adds tracks by song id from the lowercase ids param real Jellyfin clients send", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -433,7 +433,7 @@ var _ = Describe("Playlists", func() {
 
 		It("accepts a PascalCase Ids param (case-folded by the middleware)", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?Ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?Ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -443,7 +443,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 when the service rejects the request (not found/not owned)", func() {
 			fp.addErr = model.ErrNotAuthorized
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -452,7 +452,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 403 when the playlist is not editable (synced/smart), like Jellyfin", func() {
 			fp.addErr = model.ErrPlaylistNotEditable
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusForbidden))
@@ -460,7 +460,7 @@ var _ = Describe("Playlists", func() {
 
 		It("passes no ids (not a spurious empty string) when the ids param is absent", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -472,7 +472,7 @@ var _ = Describe("Playlists", func() {
 	Describe("removeFromPlaylist", func() {
 		It("removes entries by the lowercase entryIds param real Jellyfin clients send (playlist-track position ids, not song ids)", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -482,7 +482,7 @@ var _ = Describe("Playlists", func() {
 
 		It("accepts a PascalCase EntryIds param (case-folded by the middleware)", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?EntryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?EntryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -491,7 +491,7 @@ var _ = Describe("Playlists", func() {
 
 		It("404s an entryId that is a song id rather than a playlist-entry position", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -501,7 +501,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 when the service rejects the request (not found/not owned)", func() {
 			fp.removeErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -510,7 +510,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 403 when the playlist is not editable (synced/smart), like Jellyfin", func() {
 			fp.removeErr = model.ErrPlaylistNotEditable
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusForbidden))
@@ -518,7 +518,7 @@ var _ = Describe("Playlists", func() {
 
 		It("passes no ids (not a spurious empty string) when the entryIds param is absent", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -531,7 +531,7 @@ var _ = Describe("Playlists", func() {
 		It("returns the current user with CanEdit true for an editable playlist", func() {
 			fp.getByIDPls = &model.Playlist{ID: testID("pl1")}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistUsers(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -543,7 +543,7 @@ var _ = Describe("Playlists", func() {
 		It("reports CanEdit false for a synced playlist", func() {
 			fp.getByIDPls = &model.Playlist{ID: testID("pl1"), Sync: true}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistUsers(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -555,7 +555,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 when the playlist is not visible", func() {
 			fp.getByIDErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistUsers(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -565,7 +565,7 @@ var _ = Describe("Playlists", func() {
 	Describe("getPlaylistUser", func() {
 		requestUser := func() *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users/"+testID("u1"), nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Playlists/"+testID("pl1")+"/Users/"+testID("u1"), nil).WithContext(ctx)
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("playlistId", dto.EncodeID(testID("pl1")))
 			rctx.URLParams.Add("userId", testID("u1"))

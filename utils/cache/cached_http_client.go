@@ -3,6 +3,7 @@ package cache
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -47,11 +48,12 @@ func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	ctx := req.Context()
 	cached := true
 	start := time.Now()
 	respStr, err := c.cache.GetWithLoader(key, func(key string) (string, time.Duration, error) {
 		cached = false
-		req, err := c.deserializeReq(key)
+		req, err := c.deserializeReq(ctx, key)
 		if err != nil {
 			log.Trace(req.Context(), "CachedHTTPClient.Do", "key", key, err)
 			return "", 0, err
@@ -88,7 +90,7 @@ func (c *HTTPClient) serializeReq(req *http.Request) (string, error) {
 	return string(j), nil
 }
 
-func (c *HTTPClient) deserializeReq(reqStr string) (*http.Request, error) {
+func (c *HTTPClient) deserializeReq(ctx context.Context, reqStr string) (*http.Request, error) {
 	var data requestData
 	_ = json.Unmarshal([]byte(reqStr), &data)
 	var body io.Reader
@@ -96,7 +98,8 @@ func (c *HTTPClient) deserializeReq(reqStr string) (*http.Request, error) {
 		bodyStr, _ := base64.StdEncoding.DecodeString(*data.Body)
 		body = strings.NewReader(string(bodyStr))
 	}
-	req, err := http.NewRequest(data.Method, data.URL, body)
+	// The load is shared by every caller waiting on this key, so no single caller may cancel it.
+	req, err := http.NewRequestWithContext(context.WithoutCancel(ctx), data.Method, data.URL, body)
 	if err != nil {
 		return nil, err
 	}

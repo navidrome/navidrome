@@ -1,6 +1,7 @@
 package public
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 
@@ -14,11 +15,14 @@ import (
 )
 
 var _ = Describe("handleM3U", func() {
+	var ctx context.Context
+
 	var ds *tests.MockDataStore
 	var shareRepo *tests.MockShareRepo
 	var pub *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
 		ds = &tests.MockDataStore{}
 		shareRepo = &tests.MockShareRepo{}
@@ -27,7 +31,7 @@ var _ = Describe("handleM3U", func() {
 	})
 
 	makeRequest := func(id string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest("GET", "/public/"+id+"/m3u?%3Aid="+id, nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/public/"+id+"/m3u?%3Aid="+id, nil)
 		w := httptest.NewRecorder()
 		pub.handleM3U(w, r)
 		return w

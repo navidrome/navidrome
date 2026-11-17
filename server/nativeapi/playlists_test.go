@@ -23,13 +23,17 @@ import (
 )
 
 var _ = Describe("Playlist Image Endpoints", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	DescribeTable("uploadPlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
 			req = req.WithContext(ctx)
 
@@ -48,7 +52,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
 			req = req.WithContext(ctx)
 
@@ -65,6 +69,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 
 var _ = Describe("Playlist Tracks Endpoint", func() {
 	var (
+		ctx      context.Context
 		router   http.Handler
 		plsSvc   *mockPlaylistsService
 		userRepo *tests.MockedUserRepo
@@ -72,6 +77,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) {
 			c.EnableSharing = false
 			c.SessionTimeout = time.Minute
@@ -103,7 +109,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	})
 
 	createAuthenticatedRequest := func(method, path string) *http.Request {
-		req := httptest.NewRequest(method, path, nil)
+		req := httptest.NewRequestWithContext(ctx, method, path, nil)
 		testUser := model.User{ID: "user-1", UserName: "testuser"}
 		token, err := auth.CreateToken(&testUser)
 		Expect(err).ToNot(HaveOccurred())
@@ -182,13 +188,18 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 })
 
 var _ = Describe("handleExportPlaylist", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	export := func(name string) *httptest.ResponseRecorder {
 		r := chi.NewRouter()
 		r.Get("/playlist/{playlistId}", handleExportPlaylist(&mockPlaylistsService{
 			playlist: &model.Playlist{ID: "pls-1", Name: name},
 		}))
 		w := httptest.NewRecorder()
-		r.ServeHTTP(w, httptest.NewRequest("GET", "/playlist/pls-1", nil))
+		r.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/playlist/pls-1", nil))
 		return w
 	}
 

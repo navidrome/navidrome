@@ -71,7 +71,7 @@ func (ff *MockFFmpeg) CmdPath() (string, error) {
 	return "ffmpeg", nil
 }
 
-func (ff *MockFFmpeg) Version() string {
+func (ff *MockFFmpeg) Version(context.Context) string {
 	return "1.0"
 }
 

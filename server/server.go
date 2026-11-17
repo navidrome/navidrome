@@ -83,13 +83,13 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	var err error
 	if after, ok := strings.CutPrefix(addr, "unix:"); ok {
 		socketPath := after
-		listener, err = createUnixSocketFile(socketPath, conf.Server().UnixSocketPerm)
+		listener, err = createUnixSocketFile(ctx, socketPath, conf.Server().UnixSocketPerm)
 		if err != nil {
 			return err
 		}
 	} else {
 		addr = fmt.Sprintf("%s:%d", addr, port)
-		listener, err = net.Listen("tcp", addr)
+		listener, err = (&net.ListenConfig{}).Listen(ctx, "tcp", addr)
 		if err != nil {
 			return fmt.Errorf("creating tcp listener: %w", err)
 		}
@@ -143,13 +143,13 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	return nil
 }
 
-func createUnixSocketFile(socketPath string, socketPerm string) (net.Listener, error) {
+func createUnixSocketFile(ctx context.Context, socketPath string, socketPerm string) (net.Listener, error) {
 	// Remove the socket file if it already exists
 	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("removing previous unix socket file: %w", err)
 	}
 	// Create listener
-	listener, err := net.Listen("unix", socketPath)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "unix", socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("creating unix socket listener: %w", err)
 	}

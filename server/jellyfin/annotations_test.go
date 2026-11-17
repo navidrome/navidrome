@@ -18,6 +18,8 @@ import (
 )
 
 var _ = Describe("Annotations", func() {
+	var ctx context.Context
+
 	var api *Router
 	var ds *tests.MockDataStore
 	var broker *fakeEventBroker
@@ -27,6 +29,7 @@ var _ = Describe("Annotations", func() {
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		broker = &fakeEventBroker{}
 		api = &Router{ds: ds, broker: broker}
@@ -38,7 +41,7 @@ var _ = Describe("Annotations", func() {
 		return mfRepo
 	}
 	songReq := func(method, target, body string, params ...string) *http.Request {
-		r := httptest.NewRequest(method, target, strings.NewReader(body)).WithContext(ctxUser())
+		r := httptest.NewRequestWithContext(ctx, method, target, strings.NewReader(body)).WithContext(ctxUser())
 		return withChiURLParam(r, append([]string{"itemId", dto.EncodeID(testID("s1"))}, params...)...)
 	}
 
@@ -47,7 +50,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -61,7 +64,7 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -76,7 +79,7 @@ var _ = Describe("Annotations", func() {
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			// alice only has access to library 1, but artists aren't gated per-library.
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/ar1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/ar1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("ar1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -90,7 +93,7 @@ var _ = Describe("Annotations", func() {
 			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
 			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "Mix", OwnerID: testID("u1")}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("p1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -101,7 +104,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Starred: true}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.unmarkFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -115,7 +118,7 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -126,7 +129,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -135,7 +138,7 @@ var _ = Describe("Annotations", func() {
 
 		It("returns 404 when the id doesn't match any entity", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/missing", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/missing", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -144,7 +147,7 @@ var _ = Describe("Annotations", func() {
 		It("returns 500 (not 404) when a repository lookup fails for a reason other than not-found", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetError(true)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("x1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
@@ -154,7 +157,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.markFavorite, w, r)
 			Expect(broker.Events).To(HaveLen(1))
@@ -165,7 +168,7 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(broker.Events).To(HaveLen(1))
@@ -176,7 +179,7 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -189,7 +192,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -204,7 +207,7 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -215,7 +218,7 @@ var _ = Describe("Annotations", func() {
 			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
 			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "Mix", OwnerID: testID("u1")}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("p1"))+"/Rating?Rating=8", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("p1"))+"/Rating?Rating=8", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("p1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -226,7 +229,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Rating: 4}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Users/u1/Items/s1/Rating", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Users/u1/Items/s1/Rating", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.removeRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -240,7 +243,7 @@ var _ = Describe("Annotations", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -251,7 +254,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=9", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=9", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -262,7 +265,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Rating: 4}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -273,7 +276,7 @@ var _ = Describe("Annotations", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=7.5", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=7.5", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -528,7 +531,7 @@ var _ = Describe("Annotations", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("POST", "/UserItems/a1/UserData", strings.NewReader(`{"Rating":10,"IsFavorite":true}`)).WithContext(ctxUser())
+				r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/UserItems/a1/UserData", strings.NewReader(`{"Rating":10,"IsFavorite":true}`)).WithContext(ctxUser())
 				invoke(api.updateUserItemData, w, withChiURLParam(r, "itemId", dto.EncodeID(testID("a1"))))
 				Expect(w.Code).To(Equal(http.StatusNotFound))
 				Expect(albumRepo.Data[testID("a1")].Rating).To(Equal(0))

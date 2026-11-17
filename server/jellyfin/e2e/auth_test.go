@@ -32,7 +32,7 @@ var _ = Describe("Authentication", func() {
 			Expect(res.ServerId).To(MatchRegexp("^[0-9a-f]{32}$"))
 
 			// The returned token must actually authenticate a protected request.
-			r := httptest.NewRequest("GET", "/Users/Me", nil)
+			r := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)
 			pw := httptest.NewRecorder()
 			router.ServeHTTP(pw, r)
@@ -79,7 +79,7 @@ var _ = Describe("Authentication", func() {
 			var res dto.AuthenticationResult
 			parseInto(w, &res)
 
-			r := httptest.NewRequest("GET", "/Users/Me", nil)
+			r := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)
 			pw := httptest.NewRecorder()
 			router.ServeHTTP(pw, r)
@@ -91,7 +91,7 @@ var _ = Describe("Authentication", func() {
 			admin.NewPassword = "rotated"
 			Expect(ds.User().Put(ctx, admin)).To(Succeed())
 
-			r = httptest.NewRequest("GET", "/Users/Me", nil)
+			r = httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)
 			pw = httptest.NewRecorder()
 			router.ServeHTTP(pw, r)
@@ -144,7 +144,7 @@ var _ = Describe("Authentication", func() {
 		})
 
 		It("rejects a protected request with a bogus token", func() {
-			r := httptest.NewRequest("GET", "/Users/Me", nil)
+			r := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", "not-a-valid-jwt")
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, r)
