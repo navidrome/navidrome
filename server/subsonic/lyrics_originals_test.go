@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http/httptest"
 	"strings"
@@ -131,6 +132,26 @@ var _ = Describe("Lyrics originals routes", func() {
 		subErr := mapToSubsonicError(err)
 		Expect(subErr.code).To(Equal(responses.ErrorDataNotFound))
 		Expect(recorder.Body.String()).To(BeEmpty())
+	})
+
+	It("sanitizes unexpected original retrieval diagnostics in the client response", func() {
+		service.originalErr = fmt.Errorf("https://user:PRIVATE_PASSWORD@provider.test/lyrics: PRIVATE_API_KEY /private/music/PRIVATE_PATH PRIVATE_BODY")
+		request := httptest.NewRequest("GET", "/getLyricsOriginal?id=track-1&f=json&selection="+selection, nil)
+		recorder := httptest.NewRecorder()
+		_, err := router.GetLyricsOriginal(recorder, request)
+		Expect(err).To(HaveOccurred())
+
+		errorRecorder := httptest.NewRecorder()
+		sendError(errorRecorder, request, err)
+		body := errorRecorder.Body.String()
+		Expect(body).NotTo(ContainSubstring("PRIVATE_"))
+		Expect(body).NotTo(ContainSubstring("provider.test"))
+
+		var wrapper responses.JsonWrapper
+		Expect(json.Unmarshal([]byte(body), &wrapper)).To(Succeed())
+		Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
+		Expect(wrapper.Subsonic.Error.Code).To(Equal(responses.ErrorGeneric))
+		Expect(wrapper.Subsonic.Error.Message).To(Equal("error getting lyrics original"))
 	})
 
 	It("requires authentication on both routes", func() {

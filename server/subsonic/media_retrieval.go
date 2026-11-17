@@ -207,7 +207,10 @@ func (api *Router) GetLyricsOriginal(w http.ResponseWriter, r *http.Request) (*r
 		if errors.Is(err, model.ErrLyricsOriginalUnavailable) {
 			return nil, newError(responses.ErrorDataNotFound, "lyrics original unavailable")
 		}
-		return nil, err
+		// Provider diagnostics can contain credentials or local paths. Log them
+		// server-side and return a fixed client message, never raw text.
+		log.Error(r.Context(), "Error getting lyrics original", "id", id, "plugin", plugin, err)
+		return nil, newError(responses.ErrorGeneric, "error getting lyrics original")
 	}
 	w.Header().Set("Content-Type", original.MediaType)
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{
