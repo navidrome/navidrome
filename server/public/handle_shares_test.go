@@ -27,7 +27,7 @@ var _ = Describe("handleM3U", func() {
 	})
 
 	makeRequest := func(id string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest("GET", "/public/"+id+"/m3u?%3Aid="+id, nil)
+		r := httptest.NewRequest(http.MethodGet, "/public/"+id+"/m3u?%3Aid="+id, nil)
 		w := httptest.NewRecorder()
 		pub.handleM3U(w, r)
 		return w

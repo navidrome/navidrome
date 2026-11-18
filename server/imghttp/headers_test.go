@@ -59,7 +59,7 @@ var _ = Describe("WriteImageHeaders", func() {
 	DescribeTable("applies the artwork caching contract",
 		func(c testCase) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/img", nil)
+			r := httptest.NewRequest(http.MethodGet, "/img", nil)
 			if c.ifNoneMatch != "" {
 				r.Header.Set("If-None-Match", c.ifNoneMatch)
 			}

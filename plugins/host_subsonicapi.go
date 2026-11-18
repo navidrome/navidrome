@@ -91,7 +91,7 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 	// SubsonicAPI call doesn't inherit routing information from the parent handler,
 	// which would cause Chi to invoke the wrong handler. Authentication context is
 	// explicitly added in the next step via request.WithInternalAuth.
-	httpReq, err := http.NewRequest("GET", finalURL.String(), nil)
+	httpReq, err := http.NewRequest(http.MethodGet, finalURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}

@@ -130,7 +130,7 @@ var _ = Describe("handleStream", func() {
 	})
 
 	makeRequest := func(token string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest("GET", "/public/s/token?%3Aid="+token, nil)
+		r := httptest.NewRequest(http.MethodGet, "/public/s/token?%3Aid="+token, nil)
 		w := httptest.NewRecorder()
 		pub.handleStream(w, r)
 		return w

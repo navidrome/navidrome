@@ -33,6 +33,7 @@ linters:
     - staticcheck
     - thelper
     - unconvert
+    - usestdlibvars
     - usetesting
     - whitespace
   settings:
