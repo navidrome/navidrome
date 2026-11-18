@@ -106,6 +106,8 @@ const usePlayerLyrics = ({
     token: 0,
     trackId: null,
     authIdentity: null,
+    key: null,
+    pending: false,
   })
   const currentOffsetTargetRef = useRef({
     trackId: null,
@@ -114,8 +116,8 @@ const usePlayerLyrics = ({
     local: '',
   })
   const effectivePersonalRef = useRef(null)
-  const preferenceSequenceRef = useRef(0)
-  const latestTargetSequenceRef = useRef(new Map())
+  const personalRef = useRef(null)
+  const personalOverrideRef = useRef(null)
 
   // Keep send-time guards current in the same render that receives a new
   // account/track. Effect-only ref updates leave a narrow window in which a
@@ -162,6 +164,7 @@ const usePlayerLyrics = ({
       ? identityOverride
       : personal
   effectivePersonalRef.current = effectivePersonal
+  personalRef.current = personal
   const rejectionList = useMemo(
     () => personalRejections(effectivePersonal),
     [effectivePersonal],
@@ -275,6 +278,7 @@ const usePlayerLyrics = ({
   )
 
   useEffect(() => {
+    personalOverrideRef.current = null
     setPersonalOverride(null)
     setScopedSourceKey(readScopedSource(authIdentity, trackId))
     setSelectedSourceKey(null)
@@ -289,7 +293,6 @@ const usePlayerLyrics = ({
       window.clearTimeout(entry.timer)
     }
     pendingOffsetsRef.current.clear()
-    latestTargetSequenceRef.current.clear()
     preferenceQueueRef.current = Promise.resolve()
   }, [authIdentity])
 
@@ -306,6 +309,15 @@ const usePlayerLyrics = ({
 
   useEffect(() => {
     if (personalSupported === true) {
+      const intent = selectionIntentRef.current
+      if (
+        intent.pending &&
+        intent.trackId === trackId &&
+        intent.authIdentity === authIdentity
+      ) {
+        setSelectedSourceKey(intent.key)
+        return
+      }
       const next =
         personalSelectionVariantKey(effectivePersonal) ||
         scopedSourceKey ||
@@ -722,14 +734,13 @@ const usePlayerLyrics = ({
 
   // Every write carries its own account and track target. Track navigation
   // does not drop an accepted write; a different account does, before the
-  // request is allowed to leave. The response only updates the visible state
-  // when the client is still looking at that same target.
+  // request is allowed to leave. Every successful snapshot advances the
+  // authoritative state; pending selection intent is tracked separately so a
+  // later queued action cannot discard an independent successful change.
   const enqueuePreference = useCallback((target, payload) => {
     const identity = target?.authIdentity
     const targetTrack = target?.trackId
     if (!identity || !targetTrack) return Promise.resolve()
-    const sequence = ++preferenceSequenceRef.current
-    latestTargetSequenceRef.current.set(targetTrack, sequence)
     const run = async () => {
       if (authIdentityRef.current !== identity) return
       const response = await subsonic.updateLyricsPreference(
@@ -742,17 +753,21 @@ const usePlayerLyrics = ({
       ) {
         return
       }
-      // Only the last enqueued operation for this target may update the
-      // visible state; an earlier response is represented by the later one.
-      if (latestTargetSequenceRef.current.get(targetTrack) !== sequence) return
       const next = readMutationPersonal(response)
-      if (next) {
-        setPersonalOverride({
-          authIdentity: identity,
-          trackId: targetTrack,
-          personal: next,
-        })
+      if (!next) return
+      const revision = Number(next.revision) || 0
+      const currentRevision = Math.max(
+        Number(personalOverrideRef.current?.personal?.revision) || 0,
+        Number(personalRef.current?.revision) || 0,
+      )
+      if (revision < currentRevision) return
+      const override = {
+        authIdentity: identity,
+        trackId: targetTrack,
+        personal: next,
       }
+      personalOverrideRef.current = override
+      setPersonalOverride(override)
     }
     const chained = preferenceQueueRef.current.catch(() => {}).then(run)
     preferenceQueueRef.current = chained
@@ -767,26 +782,37 @@ const usePlayerLyrics = ({
       const local = variant?.lyric?.local?.token || ''
       const previous = selectedSourceKey
       const target = { authIdentity, trackId }
-      const token = ++selectionIntentRef.current.token
-      selectionIntentRef.current = { token, trackId, authIdentity }
       setSelectedSourceKey(next)
       if (personalSupported !== true) {
         writePreferredSource(trackId, next)
         return
       }
+      const intent = {
+        token: selectionIntentRef.current.token + 1,
+        trackId,
+        authIdentity,
+        key: next,
+        pending: true,
+      }
+      selectionIntentRef.current = intent
       const send = (payload) =>
-        enqueuePreference(target, payload).catch(() => {
-          const intent = selectionIntentRef.current
-          if (
-            intent.token !== token ||
-            intent.trackId !== trackIdRef.current ||
-            intent.authIdentity !== authIdentityRef.current
-          ) {
-            return
-          }
-          setSelectedSourceKey(previous)
-          onExportError(translate('player.lyricsPreferenceErrorText'))
-        })
+        enqueuePreference(target, payload)
+          .then(() => {
+            if (selectionIntentRef.current !== intent) return
+            intent.pending = false
+          })
+          .catch(() => {
+            if (selectionIntentRef.current !== intent) return
+            intent.pending = false
+            if (
+              trackIdRef.current !== intent.trackId ||
+              authIdentityRef.current !== intent.authIdentity
+            ) {
+              return
+            }
+            setSelectedSourceKey(previous)
+            onExportError(translate('player.lyricsPreferenceErrorText'))
+          })
       if (!next) {
         setScopedSourceKey(null)
         writeScopedSource(authIdentity, trackId, null)
@@ -859,6 +885,7 @@ const usePlayerLyrics = ({
         if (pending.local) payload.local = pending.local
         else payload.selection = pending.selection
         enqueuePreference(pending.target, payload).catch(() => {
+          if (pendingOffsetsRef.current.has(pending.key)) return
           const current = currentOffsetTargetRef.current
           if (
             current.authIdentity !== pending.target.authIdentity ||

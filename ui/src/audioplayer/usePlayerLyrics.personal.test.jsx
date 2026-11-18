@@ -1055,6 +1055,122 @@ describe('personal write targeting and immediate layers', () => {
     expect(text).not.toContain('LRCLib main')
   })
 
+  it('keeps an independently successful rejection when a later write and refresh fail', async () => {
+    const lrclib = providerEntry(
+      'LRCLib',
+      'LRCLib main',
+      'token-lrclib',
+      identity('r-l@0123456789abcdef0123456789abcdef'),
+    )
+    const translation = {
+      ...providerEntry(
+        'LRCLib',
+        'LRCLib translation',
+        'token-lrclib',
+        identity('r-l@0123456789abcdef0123456789abcdef'),
+      ),
+      kind: 'translation',
+    }
+    const netease = providerEntry(
+      'NetEase',
+      'NetEase line',
+      'token-netease',
+      identity('r-n@0123456789abcdef0123456789abcdef'),
+    )
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(
+        lyricsResponse([lrclib, translation, netease], { revision: 2 }),
+      )
+      .mockRejectedValueOnce(new Error('refresh failed'))
+    subsonic.updateLyricsPreference
+      .mockResolvedValueOnce(
+        mutationResponse({
+          revision: 3,
+          rejection: [
+            {
+              token: 'reject-token',
+              plugin: 'plugin-id',
+              provider: 'LRCLib',
+              instance: 'plugin-instance',
+              recording: 'r-l',
+            },
+          ],
+        }),
+      )
+      .mockRejectedValueOnce(new Error('later write failed'))
+
+    const { result } = renderPlayerLyrics({ trackId: 'independent-snapshot' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onRejectVariant(
+        result.current.desktopLyricsProps.variants.find(
+          (variant) => variant.key === 'selection:token-lrclib',
+        ),
+      ),
+    )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(50))
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+        'NetEase line',
+      ),
+    )
+    expect(result.current.desktopLyricsProps.translationLyric).toBeNull()
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'NetEase line',
+    )
+    act(() => result.current.desktopLyricsProps.onDownload('converted'))
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalled())
+    const text = await blobText(downloadBlob.mock.calls.at(-1)[0])
+    expect(text).toContain('NetEase line')
+    expect(text).not.toContain('LRCLib main')
+  })
+
+  it('does not roll back a newer offset when an older write fails', async () => {
+    const onExportError = vi.fn()
+    installLocalPreferenceMock()
+    const embeddedEntry = localEntry('Embedded line', embedded)
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([embeddedEntry], { revision: 1 }),
+    )
+    const { result } = renderPlayerLyrics({
+      trackId: 'offset-race',
+      onExportError,
+    })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        `local:${embedded.token}`,
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric.local.token).toBe(
+        embedded.token,
+      ),
+    )
+    const older = deferred()
+    subsonic.updateLyricsPreference
+      .mockReturnValueOnce(older.promise)
+      .mockResolvedValueOnce(
+        mutationResponse({
+          revision: 5,
+          selection: { kind: 'local', local: embedded, status: 'pinned' },
+          offset: [{ kind: 'local', local: embedded, offsetMs: 100 }],
+        }),
+      )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(50))
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    act(() => result.current.desktopLyricsProps.onOffsetChange(100))
+    await act(async () => {
+      older.reject(new Error('older offset failed'))
+      await Promise.resolve()
+    })
+    expect(result.current.desktopLyricsProps.offsetMs).toBe(100)
+    expect(onExportError).not.toHaveBeenCalled()
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    expect(result.current.desktopLyricsProps.offsetMs).toBe(100)
+  })
+
   it('accepts an equal-revision read as a newer observation', async () => {
     const lrclib = providerEntry('LRCLib', 'LRCLib line', 'token-lrclib')
     const netease = providerEntry('NetEase', 'NetEase line', 'token-netease')
