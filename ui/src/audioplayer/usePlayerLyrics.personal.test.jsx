@@ -1082,8 +1082,26 @@ describe('personal write targeting and immediate layers', () => {
         lyricsResponse([lrclib, translation, netease], { revision: 2 }),
       )
       .mockRejectedValueOnce(new Error('refresh failed'))
+    const rejection = deferred()
     subsonic.updateLyricsPreference
-      .mockResolvedValueOnce(
+      .mockReturnValueOnce(rejection.promise)
+      .mockRejectedValueOnce(new Error('later write failed'))
+
+    const { result } = renderPlayerLyrics({ trackId: 'independent-snapshot' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onRejectVariant(
+        result.current.desktopLyricsProps.variants.find(
+          (variant) => variant.key === 'selection:token-lrclib',
+        ),
+      ),
+    )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(50))
+    // Let the offset enter the queue behind the in-flight rejection; the old
+    // per-track sequence gate would then discard the rejection snapshot.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await act(async () => {
+      rejection.resolve(
         mutationResponse({
           revision: 3,
           rejection: [
@@ -1097,18 +1115,8 @@ describe('personal write targeting and immediate layers', () => {
           ],
         }),
       )
-      .mockRejectedValueOnce(new Error('later write failed'))
-
-    const { result } = renderPlayerLyrics({ trackId: 'independent-snapshot' })
-    await showLyrics(result)
-    act(() =>
-      result.current.desktopLyricsProps.onRejectVariant(
-        result.current.desktopLyricsProps.variants.find(
-          (variant) => variant.key === 'selection:token-lrclib',
-        ),
-      ),
-    )
-    act(() => result.current.desktopLyricsProps.onOffsetChange(50))
+      await Promise.resolve()
+    })
     await waitFor(() =>
       expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
         'NetEase line',
@@ -1124,6 +1132,81 @@ describe('personal write targeting and immediate layers', () => {
     const text = await blobText(downloadBlob.mock.calls.at(-1)[0])
     expect(text).toContain('NetEase line')
     expect(text).not.toContain('LRCLib main')
+  })
+
+  it('does not reapply a pending selection after leaving and returning to a track', async () => {
+    const embeddedEntry = localEntry('Embedded line', embedded)
+    const sidecarEntry = localEntry('Sidecar line', local)
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([embeddedEntry, sidecarEntry], { revision: 1 }),
+    )
+    const pending = deferred()
+    subsonic.updateLyricsPreference.mockReturnValueOnce(pending.promise)
+
+    const { result, rerender } = renderPlayerLyrics({ trackId: 'nav-home' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(`local:${local.token}`),
+    )
+    rerender({ trackId: 'nav-away' })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    rerender({ trackId: 'nav-home' })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    // The write is still pending; returning to the track must not reapply a
+    // stale optimistic intent. If the promise never settles, no re-pin occurs.
+    expect(result.current.desktopLyricsProps.selectedSourceKey).not.toBe(
+      `local:${local.token}`,
+    )
+  })
+
+  it('does not roll back an offset after a newer same-target edit has dispatched', async () => {
+    const onExportError = vi.fn()
+    installLocalPreferenceMock()
+    const embeddedEntry = localEntry('Embedded line', embedded)
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([embeddedEntry], { revision: 1 }),
+    )
+    const { result } = renderPlayerLyrics({
+      trackId: 'offset-dispatched-race',
+      onExportError,
+    })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        `local:${embedded.token}`,
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric.local.token).toBe(
+        embedded.token,
+      ),
+    )
+    const older = deferred()
+    subsonic.updateLyricsPreference
+      .mockReturnValueOnce(older.promise)
+      .mockResolvedValueOnce(
+        mutationResponse({
+          revision: 5,
+          selection: { kind: 'local', local: embedded, status: 'pinned' },
+          offset: [{ kind: 'local', local: embedded, offsetMs: 100 }],
+        }),
+      )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(50))
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    act(() => result.current.desktopLyricsProps.onOffsetChange(100))
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    await act(async () => {
+      older.reject(new Error('older offset failed'))
+      await Promise.resolve()
+    })
+    expect(result.current.desktopLyricsProps.offsetMs).toBe(100)
+    expect(onExportError).not.toHaveBeenCalled()
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    expect(result.current.desktopLyricsProps.offsetMs).toBe(100)
   })
 
   it('does not roll back a newer offset when an older write fails', async () => {

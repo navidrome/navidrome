@@ -102,8 +102,9 @@ const usePlayerLyrics = ({
   const trackIdRef = useRef(trackId)
   const preferenceQueueRef = useRef(Promise.resolve())
   const pendingOffsetsRef = useRef(new Map())
+  const offsetSequenceRef = useRef(0)
+  const latestOffsetIntentRef = useRef(new Map())
   const selectionIntentRef = useRef({
-    token: 0,
     trackId: null,
     authIdentity: null,
     key: null,
@@ -115,6 +116,9 @@ const usePlayerLyrics = ({
     selection: '',
     local: '',
   })
+  // effectivePersonalRef is the merged view used by failure rollbacks;
+  // personalRef is the latest fetched read; personalOverrideRef is the
+  // authoritative snapshot applied by a successful mutation response.
   const effectivePersonalRef = useRef(null)
   const personalRef = useRef(null)
   const personalOverrideRef = useRef(null)
@@ -279,6 +283,12 @@ const usePlayerLyrics = ({
 
   useEffect(() => {
     personalOverrideRef.current = null
+    selectionIntentRef.current = {
+      trackId: null,
+      authIdentity: null,
+      key: null,
+      pending: false,
+    }
     setPersonalOverride(null)
     setScopedSourceKey(readScopedSource(authIdentity, trackId))
     setSelectedSourceKey(null)
@@ -293,6 +303,7 @@ const usePlayerLyrics = ({
       window.clearTimeout(entry.timer)
     }
     pendingOffsetsRef.current.clear()
+    latestOffsetIntentRef.current.clear()
     preferenceQueueRef.current = Promise.resolve()
   }, [authIdentity])
 
@@ -788,7 +799,6 @@ const usePlayerLyrics = ({
         return
       }
       const intent = {
-        token: selectionIntentRef.current.token + 1,
         trackId,
         authIdentity,
         key: next,
@@ -870,8 +880,11 @@ const usePlayerLyrics = ({
       const key = [trackId, exportSelection, exportLocalToken].join('\u0000')
       const existing = pendingOffsetsRef.current.get(key)
       if (existing) window.clearTimeout(existing.timer)
+      const sequence = ++offsetSequenceRef.current
+      latestOffsetIntentRef.current.set(key, sequence)
       const pending = {
         key,
+        sequence,
         target,
         selection: exportSelection,
         local: exportLocalToken,
@@ -885,7 +898,11 @@ const usePlayerLyrics = ({
         if (pending.local) payload.local = pending.local
         else payload.selection = pending.selection
         enqueuePreference(pending.target, payload).catch(() => {
-          if (pendingOffsetsRef.current.has(pending.key)) return
+          if (
+            latestOffsetIntentRef.current.get(pending.key) !== pending.sequence
+          ) {
+            return
+          }
           const current = currentOffsetTargetRef.current
           if (
             current.authIdentity !== pending.target.authIdentity ||
