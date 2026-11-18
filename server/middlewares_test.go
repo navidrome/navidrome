@@ -428,6 +428,28 @@ var _ = Describe("middlewares", func() {
 				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
 			})
 		})
+		Context("when the request is an internal call (e.g. from a plugin)", func() {
+			BeforeEach(func() {
+				req = req.WithContext(request.WithInternalAuth(req.Context(), "johndoe"))
+			})
+
+			It("calls the next handler", func() {
+				called := false
+				middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					called = true
+				})).ServeHTTP(nil, req)
+				Expect(called).To(BeTrue())
+			})
+
+			It("does not update the last access time", func() {
+				time.Sleep(3 * time.Millisecond)
+
+				callMiddleware(req)
+
+				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+			})
+		})
 	})
 	Describe("realIPMiddleware", func() {
 		var resolved, remoteAddr string

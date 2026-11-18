@@ -374,7 +374,9 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			usr, ok := request.UserFrom(ctx)
-			if ok {
+			// Internal calls (e.g. plugins) are not user activity: skip the last access update.
+			_, internal := request.InternalAuthFrom(ctx)
+			if ok && !internal {
 				userAccessLimiter.Do(usr.ID, func() {
 					start := time.Now()
 					ctx, cancel := context.WithTimeout(ctx, time.Second)
