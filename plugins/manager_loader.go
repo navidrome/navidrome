@@ -29,12 +29,6 @@ type serviceContext struct {
 	allLibraries     bool     // If true, plugin can access all libraries
 }
 
-// baseCtx returns the manager's lifecycle context, for host services that
-// outlive the plugin call that created them.
-func (c *serviceContext) baseCtx() context.Context {
-	return c.manager.lifecycleCtx()
-}
-
 // hostServiceEntry defines a host service for table-driven registration.
 type hostServiceEntry struct {
 	name          string
@@ -74,7 +68,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Websocket != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Websocket
-			service := newWebSocketService(ctx.baseCtx(), ctx.pluginName, ctx.manager, perm)
+			service := newWebSocketService(ctx.manager.lifecycleCtx(), ctx.pluginName, ctx.manager, perm)
 			return host.RegisterWebSocketHostFunctions(service), service, nil
 		},
 	},
@@ -108,7 +102,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Kvstore != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Kvstore
-			service, err := newKVStoreService(ctx.baseCtx(), ctx.pluginName, perm)
+			service, err := newKVStoreService(ctx.manager.lifecycleCtx(), ctx.pluginName, perm)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -154,7 +148,7 @@ var hostServices = []hostServiceEntry{
 			if perm.MaxConcurrency > 0 {
 				maxConcurrency = int32(perm.MaxConcurrency)
 			}
-			service, err := newTaskQueueService(ctx.baseCtx(), ctx.pluginName, ctx.manager, maxConcurrency)
+			service, err := newTaskQueueService(ctx.manager.lifecycleCtx(), ctx.pluginName, ctx.manager, maxConcurrency)
 			if err != nil {
 				return nil, nil, err
 			}

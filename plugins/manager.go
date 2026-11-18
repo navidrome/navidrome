@@ -204,9 +204,9 @@ func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) 
 	return nil
 }
 
-// Stop shuts down the plugin manager and releases all resources.
-// lifecycleCtx returns the ctx that Stop cancels. It falls back to context.Background() when the manager was
-// never started, as in CLI commands (e.g. `navidrome plugin enable`) that load plugins without calling Start.
+// lifecycleCtx returns the ctx that Stop cancels, for host services and callbacks that outlive the plugin call
+// that created them. It falls back to context.Background() when the manager was never started, as in CLI
+// commands (e.g. `navidrome plugin enable`) that load plugins without calling Start.
 func (m *Manager) lifecycleCtx() context.Context {
 	if m.ctx == nil {
 		return context.Background()
@@ -214,6 +214,7 @@ func (m *Manager) lifecycleCtx() context.Context {
 	return m.ctx
 }
 
+// Stop shuts down the plugin manager and releases all resources.
 func (m *Manager) Stop(ctx context.Context) error {
 	ctx = context.WithoutCancel(ctx)
 
