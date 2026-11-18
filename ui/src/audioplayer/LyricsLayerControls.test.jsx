@@ -197,7 +197,7 @@ describe('<LyricsLayerControls />', () => {
     renderControls({ variants: [contentOnly] })
     openSourceMenu()
     const button = screen.getByRole('button', {
-      name: labels.rejectUnavailable,
+      name: new RegExp(labels.rejectUnavailable),
     })
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('title', labels.rejectUnavailable)

@@ -418,7 +418,7 @@ const LyricsLayerControls = ({
                 "This source can't identify the recording reliably, so it can't be rejected"
               const rejectLabel = canReject
                 ? `${labels.rejectMatch || 'Reject this recording'}: ${getVariantLabel(variant.source, labels)}`
-                : rejectHint
+                : `${rejectHint}: ${getVariantLabel(variant.source, labels)}`
               return (
                 <MenuItem
                   key={variant.key}
