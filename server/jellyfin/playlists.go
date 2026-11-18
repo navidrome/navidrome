@@ -276,8 +276,8 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) ([]stri
 			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id), limit)...)
 		} else if _, err := api.ds.Artist().Get(ctx, id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByArtistID(id), limit)...)
-		} else if pl, err := api.playlists.GetWithTracks(ctx, id); err == nil {
-			out = append(out, slice.Map(pl.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })...)
+		} else if repo, err := api.playlists.Tracks(ctx, id); err == nil {
+			out = append(out, playlistSongIDs(ctx, repo, limit)...)
 		} else {
 			out = append(out, id) // well-formed but unresolved — left for the caller's write to handle
 		}
@@ -286,6 +286,15 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) ([]stri
 		}
 	}
 	return out, true
+}
+
+func playlistSongIDs(ctx context.Context, repo model.PlaylistTrackRepository, limit int) []string {
+	ids, err := repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id", Filters: notMissing, Max: limit})
+	if err != nil {
+		log.Error(ctx, "Jellyfin: error expanding playlist to tracks", err)
+		return nil
+	}
+	return ids
 }
 
 func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions, limit int) []string {

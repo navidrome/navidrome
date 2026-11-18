@@ -18,6 +18,7 @@ import (
 )
 
 // MaxTracksPerRequest is how many tracks one API request may add or set; 0 means no limit.
+// Native album, artist and disc ids are not counted: their expansion is bounded by the library size.
 func MaxTracksPerRequest() int {
 	return max(conf.Server().DevMaxPlaylistTracksPerRequest, 0)
 }

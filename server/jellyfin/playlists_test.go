@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -420,6 +421,21 @@ var _ = Describe("Playlists", func() {
 			w := create(map[string]any{"Name": "Mix", "Ids": []string{artist}})
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(fp.createdIds).To(HaveLen(6))
+		})
+
+		It("asks a playlist container for at most one track past the limit", func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			tracks := make(model.PlaylistTracks, 6)
+			for i := range tracks {
+				tracks[i] = model.PlaylistTrack{ID: strconv.Itoa(i + 1), MediaFileID: testID(fmt.Sprintf("pl-%d", i))}
+			}
+			fp.getPls = &model.Playlist{ID: testID("pl9"), Tracks: tracks}
+
+			w := create(map[string]any{"Name": "Mix", "Ids": []string{dto.EncodeID(testID("pl9"))}})
+
+			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+			Expect(fp.tracksRepo).ToNot(BeNil())
+			Expect(fp.tracksRepo.Options.Max).To(Equal(6))
 		})
 
 		It("rejects a create body with data after the JSON object with 400", func() {
