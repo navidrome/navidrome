@@ -21,9 +21,9 @@ import {
   LYRICS_OFFSET_COARSE_MS,
   LYRICS_OFFSET_FINE_MS,
   formatLyricsOffset,
+  recordingScope,
   stepLyricsOffset,
 } from './lyrics'
-import { recordingScope } from './lyrics'
 import { formatSourceValue, getVariantLabel } from './lyricsSource'
 
 const noop = () => {}
@@ -408,67 +408,75 @@ const LyricsLayerControls = ({
             >
               {labels.autoSource || 'Auto (best match)'}
             </MenuItem>
-            {variants.map((variant) => (
-              <MenuItem
-                key={variant.key}
-                role="menuitemradio"
-                aria-checked={selectedSourceKey === variant.key}
-                selected={selectedSourceKey === variant.key}
-                onClick={() => selectSource(variant.key)}
-                className={classes.sourceItem}
-                data-testid={`lyrics-source-${variant.key}`}
-              >
-                <span className={classes.variantLabel}>
-                  {getVariantLabel(variant.source, labels)}
-                </span>
-                <span className={classes.sourceMetaRow}>
-                  <span className={classes.variantMeta}>
-                    {[
-                      ...new Set(
-                        [
-                          variant.suggestion
-                            ? labels.suggestion || 'Suggestion'
-                            : null,
-                          formatSourceValue(variant.source?.format),
-                          formatSourceValue(variant.lyric?.local?.format),
-                          ['xxx', 'und'].includes(
-                            String(
-                              variant.lyric?.local?.language || '',
-                            ).toLowerCase(),
-                          )
-                            ? ''
-                            : formatSourceValue(variant.lyric?.local?.language),
-                          syncLabelFor(variant.sync, labels),
-                        ].filter(Boolean),
-                      ),
-                    ].join(' · ')}
+            {variants.map((variant) => {
+              const canReject = Boolean(
+                variant.lyric?.selection &&
+                recordingScope(variant.lyric?.variant),
+              )
+              const rejectHint =
+                labels.rejectUnavailable ||
+                "This source can't identify the recording reliably, so it can't be rejected"
+              const rejectLabel = canReject
+                ? `${labels.rejectMatch || 'Reject this recording'}: ${getVariantLabel(variant.source, labels)}`
+                : rejectHint
+              return (
+                <MenuItem
+                  key={variant.key}
+                  role="menuitemradio"
+                  aria-checked={selectedSourceKey === variant.key}
+                  selected={selectedSourceKey === variant.key}
+                  onClick={() => selectSource(variant.key)}
+                  className={classes.sourceItem}
+                  data-testid={`lyrics-source-${variant.key}`}
+                >
+                  <span className={classes.variantLabel}>
+                    {getVariantLabel(variant.source, labels)}
                   </span>
-                  {variant.lyric?.selection ? (
-                    <IconButton
-                      size="small"
-                      disabled={!recordingScope(variant.lyric?.variant)}
-                      aria-label={
-                        recordingScope(variant.lyric?.variant)
-                          ? `${labels.rejectMatch || 'Reject this recording'}: ${getVariantLabel(variant.source, labels)}`
-                          : labels.rejectUnavailable ||
-                            'This source cannot identify the recording reliably, so it cannot be rejected'
-                      }
-                      title={
-                        recordingScope(variant.lyric?.variant)
-                          ? labels.rejectMatch || 'Reject this recording'
-                          : labels.rejectUnavailable ||
-                            'This source cannot identify the recording reliably, so it cannot be rejected'
-                      }
-                      data-testid={`lyrics-reject-${variant.key}`}
-                      onClick={(event) => rejectVariant(event, variant)}
-                      className={classes.controlButton}
-                    >
-                      <BlockIcon fontSize="small" />
-                    </IconButton>
-                  ) : null}
-                </span>
-              </MenuItem>
-            ))}
+                  <span className={classes.sourceMetaRow}>
+                    <span className={classes.variantMeta}>
+                      {[
+                        ...new Set(
+                          [
+                            variant.suggestion
+                              ? labels.suggestion || 'Suggestion'
+                              : null,
+                            formatSourceValue(variant.source?.format),
+                            formatSourceValue(variant.lyric?.local?.format),
+                            ['xxx', 'und'].includes(
+                              String(
+                                variant.lyric?.local?.language || '',
+                              ).toLowerCase(),
+                            )
+                              ? ''
+                              : formatSourceValue(
+                                  variant.lyric?.local?.language,
+                                ),
+                            syncLabelFor(variant.sync, labels),
+                          ].filter(Boolean),
+                        ),
+                      ].join(' · ')}
+                    </span>
+                    {variant.lyric?.selection ? (
+                      <IconButton
+                        size="small"
+                        disabled={!canReject}
+                        aria-label={rejectLabel}
+                        title={
+                          canReject
+                            ? labels.rejectMatch || 'Reject this recording'
+                            : rejectHint
+                        }
+                        data-testid={`lyrics-reject-${variant.key}`}
+                        onClick={(event) => rejectVariant(event, variant)}
+                        className={classes.controlButton}
+                      >
+                        <BlockIcon fontSize="small" />
+                      </IconButton>
+                    ) : null}
+                  </span>
+                </MenuItem>
+              )
+            })}
             {rejections.length > 0 && (
               <li className={classes.sourceHeader} role="presentation">
                 <Typography

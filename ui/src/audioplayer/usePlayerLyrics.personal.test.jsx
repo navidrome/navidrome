@@ -220,6 +220,20 @@ describe('usePlayerLyrics personal corrections', () => {
     expect(result.current.desktopLyricsProps.offsetMs).toBe(500)
   })
 
+  it('explains an unreadable saved preference record', async () => {
+    const lrclib = providerEntry('LRCLib', 'LRCLib line', 'token-lrclib')
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([lrclib], { revision: 0, unsupported: true }),
+    )
+
+    const { result } = renderPlayerLyrics()
+    await showLyrics(result)
+
+    expect(result.current.desktopLyricsProps.personalNotice).toContain(
+      'player.lyricsPreferencesUnsupportedText',
+    )
+  })
+
   it('explains a pin that is still waiting for a later source pass', async () => {
     const lrclib = providerEntry('LRCLib', 'LRCLib line', 'token-lrclib')
     subsonic.getLyricsBySongId.mockResolvedValue(

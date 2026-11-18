@@ -33,7 +33,7 @@ var (
 	errNoPreferenceChange  = errors.New("no lyrics preference change")
 )
 
-// LyricsPreferenceUpdate is one validated client correction request.
+// LyricsPreferenceUpdate is one parsed client correction request.
 type LyricsPreferenceUpdate struct {
 	TrackID   string
 	Action    string
@@ -336,7 +336,7 @@ func applyOffset(record *model.LyricsPreferenceRecord, provider *model.LyricsVar
 		offset = model.LyricsPreferenceOffset{
 			Kind: model.LyricsPreferenceKindLocal, Local: &identity,
 		}
-		key = "local\x00" + identity.Token
+		key = offset.Key()
 	}
 	for i := range record.Offsets {
 		if record.Offsets[i].Key() != key {

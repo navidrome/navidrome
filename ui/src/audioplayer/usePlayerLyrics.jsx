@@ -587,7 +587,6 @@ const usePlayerLyrics = ({
       rejectedTitle: translate('player.lyricsRejectedTitleText'),
       restoreRejection: translate('player.lyricsRestoreRejectionText'),
       personalFallback: translate('player.lyricsPersonalFallbackText'),
-      personalPending: translate('player.lyricsPersonalPendingText'),
       rejectUnavailable: translate('player.lyricsRejectUnavailableText'),
       preferenceError: translate('player.lyricsPreferenceErrorText'),
       download: translate('player.downloadLyricsText'),
