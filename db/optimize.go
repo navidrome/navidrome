@@ -144,8 +144,9 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	return nil
 }
 
-// One ANALYZE per index (whole table if WITHOUT ROWID or lacking a non-partial index) yields the
-// same sqlite_stat1 rows as a full ANALYZE, but frees the write lock between steps.
+// analyzeTargetsSQL picks one ANALYZE target per index (whole table if WITHOUT ROWID or lacking a
+// non-partial index). That yields the same sqlite_stat1 rows as a full ANALYZE, but frees the write lock
+// between steps.
 const analyzeTargetsSQL = `
 SELECT i.name FROM sqlite_schema i JOIN pragma_table_list t ON t.schema = 'main' AND t.name = i.tbl_name
 WHERE i.type = 'index' AND t.wr = 0 AND EXISTS (SELECT 1 FROM pragma_index_list(t.name) l WHERE l.partial = 0)

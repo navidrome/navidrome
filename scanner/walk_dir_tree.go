@@ -310,7 +310,7 @@ func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
 	return true
 }
 
-// List of special directories to ignore
+// ignoredDirs lists special directories to ignore
 var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",

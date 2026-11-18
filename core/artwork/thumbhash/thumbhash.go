@@ -230,7 +230,7 @@ func pack(w, h int, hasAlpha bool, lx, ly int,
 	return hash
 }
 
-// NRGBA, not RGBA: ThumbHash requires non-premultiplied RGB and the pipeline hands us a
+// toNRGBA returns NRGBA, not RGBA: ThumbHash requires non-premultiplied RGB and the pipeline hands us a
 // premultiplied *image.RGBA, which draw.Draw un-premultiplies on the way in.
 func toNRGBA(img image.Image) *image.NRGBA {
 	// Conservative: a sub-image re-slices Pix so the loops would read it correctly too, but the

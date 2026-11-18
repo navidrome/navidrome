@@ -21,7 +21,7 @@ func sortName(sortTag, orderName, displayName string) string {
 	return cmp.Or(orderName, displayName)
 }
 
-// Jellyfin wire times are ticks: 100ns units, i.e. 10,000 per millisecond.
+// ticksPerMillis converts Jellyfin wire times, which are ticks: 100ns units, i.e. 10,000 per millisecond.
 const ticksPerMillis = 10_000
 
 func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1000 * ticksPerMillis) }
@@ -56,7 +56,7 @@ func premiereDate(date string, year int) *string {
 	return &s
 }
 
-// Dates use .NET's round-trip layout, 7 fractional digits and all: Manet rejects plain RFC3339.
+// jellyfinDateLayout is .NET's round-trip layout, 7 fractional digits and all: Manet rejects plain RFC3339.
 const jellyfinDateLayout = "2006-01-02T15:04:05.0000000Z07:00"
 
 // JellyfinDate formats t as the date string clients expect, or "" for the zero time so the

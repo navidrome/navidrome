@@ -23,7 +23,8 @@ func (r *playlistRepository) refreshSmartPlaylist(ctx context.Context, pls *mode
 	return r.refreshSmartPlaylistTree(ctx, pls, map[string]struct{}{})
 }
 
-// The visited set stops playlists that reference each other from recursing forever.
+// refreshSmartPlaylistTree uses the visited set to stop playlists that reference each other from
+// recursing forever.
 func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *model.Playlist, visited map[string]struct{}) bool {
 	if _, seen := visited[pls.ID]; seen {
 		log.Trace(ctx, "Skipping already visited smart playlist", "playlist", pls.Name, "id", pls.ID)

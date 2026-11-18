@@ -449,7 +449,7 @@ func (r *userRepository) initPasswordEncryptionKey(ctx context.Context) error {
 	return nil
 }
 
-// encrypts u.NewPassword
+// encryptPassword encrypts u.NewPassword
 func (r *userRepository) encryptPassword(ctx context.Context, u *model.User) error {
 	encPassword, err := utils.Encrypt(ctx, encKey, u.NewPassword)
 	if err != nil {
@@ -460,7 +460,7 @@ func (r *userRepository) encryptPassword(ctx context.Context, u *model.User) err
 	return nil
 }
 
-// decrypts u.Password
+// decryptPassword decrypts u.Password
 func (r *userRepository) decryptPassword(ctx context.Context, u *model.User) error {
 	plaintext, err := utils.Decrypt(ctx, encKey, u.Password)
 	if err != nil {

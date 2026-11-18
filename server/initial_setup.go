@@ -14,7 +14,8 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 )
 
-// Keeps reads out of the transaction: SQLite fails a write that follows a read at once, without waiting for the lock
+// initialSetup keeps reads out of the transaction: SQLite fails a write that follows a read at once,
+// without waiting for the lock
 func initialSetup(ctx context.Context, ds model.DataStore) error {
 	if err := ds.Library().StoreMusicFolder(ctx); err != nil {
 		return err
@@ -33,7 +34,7 @@ func initialSetup(ctx context.Context, ds model.DataStore) error {
 	}, "initial setup")
 }
 
-// If the Dev Admin user is not present, create it
+// createInitialAdminUser creates the Dev Admin user if it is not present
 func createInitialAdminUser(ctx context.Context, ds model.DataStore, initialPassword string) error {
 	users := ds.User()
 	c, err := users.CountAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})
