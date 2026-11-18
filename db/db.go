@@ -34,8 +34,8 @@ var embedMigrations embed.FS
 
 const migrationsFolder = "migrations"
 
-// sql.Register panics if called twice, so guard it: the singleton instance can be reset
-// (tests/benchmarks) and rebuilt, but the driver is process-global and registers only once.
+// registerDriverOnce guards sql.Register, which panics if called twice: the singleton instance can be
+// reset (tests/benchmarks) and rebuilt, but the driver is process-global and registers only once.
 var registerDriverOnce sync.Once
 
 func Db() *sql.DB {

@@ -371,8 +371,9 @@ func (api *Router) movePlaylistItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Clients probe these before offering edits. Navidrome has no per-playlist ACL, so CanEdit carries
-// only editability; ownership is enforced on write, and a lookup error 404s to prevent probing.
+// getPlaylistUsers answers the probe clients make before offering edits. Navidrome has no per-playlist
+// ACL, so CanEdit carries only editability; ownership is enforced on write, and a lookup error 404s to
+// prevent probing.
 func (api *Router) getPlaylistUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")

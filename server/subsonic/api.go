@@ -239,14 +239,14 @@ func (api *Router) routes() http.Handler {
 	return r
 }
 
-// Add a Subsonic handler
+// h adds a Subsonic handler
 func h(r chi.Router, path string, f handler) {
 	hr(r, path, func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 		return f(r)
 	})
 }
 
-// Add a Subsonic handler that requires an http.ResponseWriter (ex: stream, getCoverArt...)
+// hr adds a Subsonic handler that requires an http.ResponseWriter (ex: stream, getCoverArt...)
 func hr(r chi.Router, path string, f handlerRaw) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
@@ -267,7 +267,8 @@ func hr(r chi.Router, path string, f handlerRaw) {
 	addHandler(r, path, handle)
 }
 
-// Add a handler that returns 501 - Not implemented. Used to signal that an endpoint is not implemented yet
+// h501 adds a handler that returns 501 - Not implemented. Used to signal that an endpoint is not
+// implemented yet
 func h501(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {
@@ -279,7 +280,7 @@ func h501(r chi.Router, paths ...string) {
 	}
 }
 
-// Add a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
+// h410 adds a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
 func h410(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {

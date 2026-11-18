@@ -307,6 +307,7 @@ func (m *MockMediaFileRepo) DeleteAllMissing(_ context.Context) (int64, error) {
 }
 
 // REST repository methods
+
 func (m *MockMediaFileRepo) Count(ctx context.Context, _ ...rest.QueryOptions) (int64, error) {
 	return m.CountAll(ctx)
 }
@@ -331,6 +332,7 @@ func (m *MockMediaFileRepo) Search(ctx context.Context, q string, options ...mod
 }
 
 // Cross-library move detection mock methods
+
 func (m *MockMediaFileRepo) FindRecentFilesByMBZTrackID(_ context.Context, missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
 	if m.Err {
 		return nil, errors.New("error")

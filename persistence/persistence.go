@@ -39,7 +39,8 @@ type SQLStore struct {
 	artworkQueue func() model.ArtworkQueueRepository
 }
 
-// Repositories are built on first use, so a transaction store only pays for the ones its block touches.
+// newSQLStore builds repositories on first use, so a transaction store only pays for the ones its block
+// touches.
 func newSQLStore(db dbx.Builder) *SQLStore {
 	return &SQLStore{
 		db:           db,

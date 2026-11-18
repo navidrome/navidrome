@@ -243,8 +243,8 @@ var (
 	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
 
-	// Not a RetryLaterError on purpose: parking the agent would also stall its API-backed
-	// methods, which the page block does not affect.
+	// errNoArtistPage is not a RetryLaterError on purpose: parking the agent would also stall its
+	// API-backed methods, which the page block does not affect.
 	errNoArtistPage = errors.New("no artist image in Last.fm page")
 )
 

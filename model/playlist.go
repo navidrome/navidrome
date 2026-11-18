@@ -198,7 +198,8 @@ func normalizeChildPathRule(rule map[string]any, referencingPlaylistPath string)
 	return normalized
 }
 
-// filepath.IsAbs rejects a bare leading separator on Windows, but that is how Unix spells absolute.
+// isAbsPlaylistRef also accepts a bare leading separator: filepath.IsAbs rejects it on Windows, but that is
+// how Unix spells absolute.
 func isAbsPlaylistRef(path string) bool {
 	return filepath.IsAbs(path) || os.IsPathSeparator(path[0])
 }

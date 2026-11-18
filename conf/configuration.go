@@ -728,7 +728,7 @@ func asWrittenInConfigFile(keys []string) []string {
 	})
 }
 
-// Matches keys and section headers in all supported config formats.
+// configFileKeyRx matches keys and section headers in all supported config formats.
 var configFileKeyRx = regexp.MustCompile(`(?m)^\s*\[?\s*"?([\w.]+)"?\s*[]=:]`)
 
 // configKeys maps every accepted option name, lowercased, to its canonical spelling,

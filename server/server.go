@@ -222,7 +222,7 @@ func (s *Server) mountAuthenticationRoutes() chi.Router {
 	})
 }
 
-// Serve UI app assets
+// mountRootRedirector redirects the root path to the UI app
 func (s *Server) mountRootRedirector() {
 	r := s.router
 	// Redirect root to UI URL

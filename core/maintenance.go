@@ -310,9 +310,9 @@ func (s *maintenanceService) refreshStatsAsync(ctx context.Context, affectedAlbu
 	})
 }
 
-// Wait waits for all background goroutines to complete.
+// wait waits for all background goroutines to complete.
 // WARNING: This method is ONLY for testing. Never call this in production code.
-// Calling Wait() in production will block until ALL background operations complete
+// Calling wait() in production will block until ALL background operations complete
 // and may cause race conditions with new operations starting.
 func (s *maintenanceService) wait() {
 	s.wg.Wait()

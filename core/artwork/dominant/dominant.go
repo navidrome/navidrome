@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	// 4 bits per channel: coarse enough that near-identical pixels land together, fine enough that
+	// bits per channel: 4 is coarse enough that near-identical pixels land together, fine enough that
 	// distinct colours stay apart.
 	bits  = 4
 	nBins = 1 << (3 * bits)
-	// Only the heaviest bins can win, and merging is O(n^2) over whatever survives.
+	// maxBins caps the bins kept: only the heaviest can win, and merging is O(n^2) over whatever survives.
 	maxBins = 64
-	// Oklab distance below which two bins are the same colour to the eye. Merging matters because a
-	// gradient splits across adjacent bins and would otherwise lose to a smaller flat region.
+	// mergeDist is the Oklab distance below which two bins are the same colour to the eye. Merging matters
+	// because a gradient splits across adjacent bins and would otherwise lose to a smaller flat region.
 	mergeDist = 0.10
 )
 
