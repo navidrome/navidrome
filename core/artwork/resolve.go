@@ -180,8 +180,9 @@ func chainFetchesExternal(priority string) bool {
 	return false
 }
 
-// fetchExternalAlbum is where album and artist fetches stop when the resolver is local-only, rather than at
-// each point in the chain walk; resolvePlaylist gates the third network path, the m3u image URL, itself.
+// fetchExternalAlbum and fetchExternalArtist are where album and artist fetches stop when the resolver is
+// local-only, rather than at each point in the chain walk; resolvePlaylist gates the third network path,
+// the m3u image URL, itself.
 func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, error) {
 	if r.ext == nil {
 		return nil, "", nil

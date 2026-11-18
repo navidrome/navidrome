@@ -101,8 +101,8 @@ func discoveryAddress(ctx context.Context, remote net.Addr) string {
 	return publicurl.AbsoluteURL(request.WithServerAddress(ctx, scheme, host), consts.URLPathJellyfinAPI, nil)
 }
 
-// localIPFor picks the interface that routes to the requester: on a multi-homed host, only that one is
-// reachable by it.
+// localIPFor returns the configured Address when it is a specific IP. Otherwise it picks the interface that
+// routes to the requester, since on a multi-homed host only that one is reachable by it.
 func localIPFor(remote net.Addr) string {
 	if ip := parseIP(conf.Server().Address); ip.IsValid() && !ip.IsUnspecified() {
 		return ip.String()
