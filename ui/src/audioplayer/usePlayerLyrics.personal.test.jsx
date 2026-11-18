@@ -1,9 +1,19 @@
 import { act, waitFor } from '@testing-library/react'
-import { renderHook } from '@testing-library/react-hooks'
+import { cleanup, renderHook } from '@testing-library/react-hooks'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import subsonic from '../subsonic'
+import { downloadBlob } from './lyricsExport'
 import { clearEnhancedLyricsCache } from './useEnhancedLyrics'
 import usePlayerLyrics from './usePlayerLyrics'
+
+vi.mock('./lyricsExport', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    downloadBlob: vi.fn(),
+    downloadOriginalLyrics: vi.fn(),
+  }
+})
 
 vi.mock('../subsonic', () => ({
   default: {
@@ -93,6 +103,14 @@ const mutationResponse = (personal) => ({
   json: { 'subsonic-response': { lyricsPersonal: personal } },
 })
 
+const blobText = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(blob)
+  })
+
 const deferred = () => {
   let resolve
   let reject
@@ -152,12 +170,17 @@ describe('usePlayerLyrics personal corrections', () => {
     subsonic.getLyricsVariants.mockReset()
     subsonic.getLyricsOriginal.mockReset()
     subsonic.updateLyricsPreference.mockReset()
+    downloadBlob.mockReset()
     subsonic.updateLyricsPreference.mockImplementation((_id, payload) =>
       Promise.resolve(mutationResponse({ revision: 2, ...payload })),
     )
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Let a pending debounce/timer dispatch under this test's mocks before the
+    // next test resets them; otherwise a write leaks into the next case.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    cleanup()
     vi.useRealTimers()
     localStorage.clear()
     clearEnhancedLyricsCache()
@@ -555,5 +578,358 @@ describe('usePlayerLyrics personal corrections', () => {
       await Promise.resolve()
     })
     expect(result.current.desktopLyricsProps.selectedSourceKey).toBeNull()
+  })
+})
+
+describe('personal write targeting and immediate layers', () => {
+  const installLocalPreferenceMock = () => {
+    let revision = 1
+    let selection = null
+    let offset = []
+    subsonic.updateLyricsPreference.mockImplementation((_id, payload) => {
+      revision += 1
+      if (payload.action === 'select') {
+        const chosen =
+          payload.local === embedded.token
+            ? embedded
+            : payload.local === local.token
+              ? local
+              : null
+        selection = chosen
+          ? { kind: 'local', local: chosen, status: 'pinned' }
+          : null
+      }
+      if (payload.action === 'auto') selection = null
+      if (payload.action === 'offset') {
+        const chosen =
+          payload.local === embedded.token
+            ? embedded
+            : payload.local === local.token
+              ? local
+              : null
+        offset = [
+          {
+            kind: 'local',
+            local: chosen || {
+              version: 1,
+              token: payload.local,
+              kind: 'sidecar',
+            },
+            offsetMs: payload.offsetMs,
+          },
+        ]
+      }
+      return Promise.resolve(
+        mutationResponse({
+          revision,
+          ...(selection ? { selection } : {}),
+          offset,
+        }),
+      )
+    })
+  }
+
+  it('keeps disjoint variant offsets changed inside one debounce window', async () => {
+    installLocalPreferenceMock()
+    const embeddedEntry = localEntry('Embedded line', embedded)
+    const sidecarEntry = localEntry('Sidecar line', local)
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([embeddedEntry, sidecarEntry], { revision: 1 }),
+    )
+
+    const { result } = renderPlayerLyrics({ trackId: 'offset-check' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        `local:${embedded.token}`,
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric.local.token).toBe(
+        embedded.token,
+      ),
+    )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(50))
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(`local:${local.token}`),
+    )
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric.local.token).toBe(
+        local.token,
+      ),
+    )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(100))
+    await new Promise((resolve) => setTimeout(resolve, 450))
+
+    const offsets = subsonic.updateLyricsPreference.mock.calls
+      .filter(
+        ([id, payload]) => id === 'offset-check' && payload.action === 'offset',
+      )
+      .map(([id, payload]) => ({
+        id,
+        local: payload.local,
+        offsetMs: payload.offsetMs,
+      }))
+    const byToken = Object.fromEntries(
+      offsets.map((entry) => [entry.local, entry]),
+    )
+    expect(byToken[embedded.token]).toEqual({
+      id: 'offset-check',
+      local: embedded.token,
+      offsetMs: 50,
+    })
+    expect(byToken[local.token]).toEqual({
+      id: 'offset-check',
+      local: local.token,
+      offsetMs: 100,
+    })
+  })
+
+  it('dispatches a pending offset to its own track after navigation', async () => {
+    installLocalPreferenceMock()
+    const embeddedEntry = localEntry('Embedded line', embedded)
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([embeddedEntry], { revision: 1 }),
+    )
+
+    const { result, rerender } = renderPlayerLyrics({ trackId: 'nav-a' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        `local:${embedded.token}`,
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.selectedSourceKey).toBe(
+        `local:${embedded.token}`,
+      ),
+    )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(75))
+    rerender({ trackId: 'nav-b' })
+    await new Promise((resolve) => setTimeout(resolve, 450))
+
+    const offsets = subsonic.updateLyricsPreference.mock.calls.filter(
+      ([id, payload]) => id === 'nav-a' && payload.action === 'offset',
+    )
+    expect(offsets).toEqual([
+      ['nav-a', { action: 'offset', local: embedded.token, offsetMs: 75 }],
+    ])
+  })
+
+  it('never dispatches a queued offset under a different account', async () => {
+    installLocalPreferenceMock()
+    const embeddedEntry = localEntry('Embedded line', embedded)
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([embeddedEntry], { revision: 1 }),
+    )
+
+    const { result, rerender } = renderPlayerLyrics({ trackId: 'nav-a' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        `local:${embedded.token}`,
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.selectedSourceKey).toBe(
+        `local:${embedded.token}`,
+      ),
+    )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(75))
+    rerender({ authIdentity: 'user-b', trackId: 'switch-a' })
+    await new Promise((resolve) => setTimeout(resolve, 450))
+
+    const offsets = subsonic.updateLyricsPreference.mock.calls.filter(
+      ([id, payload]) => id === 'switch-a' && payload.action === 'offset',
+    )
+    expect(offsets).toEqual([])
+  })
+
+  it('does not roll back or notify after the listener changes track', async () => {
+    const onExportError = vi.fn()
+    const pending = deferred()
+    subsonic.updateLyricsPreference.mockReturnValueOnce(pending.promise)
+    const embeddedEntry = localEntry('Embedded line', embedded)
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([embeddedEntry], { revision: 1 }),
+    )
+
+    const { result, rerender } = renderPlayerLyrics({
+      trackId: 'song-a',
+      onExportError,
+    })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        `local:${embedded.token}`,
+      ),
+    )
+    rerender({ trackId: 'song-b' })
+    await act(async () => {
+      pending.reject(new Error('write failed'))
+      await Promise.resolve()
+    })
+    expect(onExportError).not.toHaveBeenCalled()
+  })
+
+  it('does not refresh another track after a late rejection response', async () => {
+    const pending = deferred()
+    subsonic.updateLyricsPreference.mockReturnValueOnce(pending.promise)
+    const lrclib = providerEntry('LRCLib', 'LRCLib line', 'token-lrclib')
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([lrclib], { revision: 1 }),
+    )
+
+    const { result, rerender } = renderPlayerLyrics({ trackId: 'reject-a' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onRejectVariant(
+        result.current.desktopLyricsProps.variants.find(
+          (variant) => variant.key === 'selection:token-lrclib',
+        ),
+      ),
+    )
+    rerender({ trackId: 'reject-b' })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    const callsAfterSwitch = subsonic.getLyricsBySongId.mock.calls.length
+    await act(async () => {
+      pending.resolve(
+        mutationResponse({
+          revision: 2,
+          rejection: [
+            {
+              token: 'reject-token',
+              plugin: 'plugin-id',
+              provider: 'LRCLib',
+              instance: 'plugin-instance',
+              recording: 'r-a',
+            },
+          ],
+        }),
+      )
+      await Promise.resolve()
+    })
+    expect(subsonic.getLyricsBySongId.mock.calls.length).toBe(callsAfterSwitch)
+  })
+
+  it('removes a rejected recording from rendered layers and export immediately', async () => {
+    const lrclib = providerEntry(
+      'LRCLib',
+      'LRCLib main',
+      'token-lrclib',
+      identity('r-l@0123456789abcdef0123456789abcdef'),
+    )
+    const translation = {
+      ...providerEntry(
+        'LRCLib',
+        'LRCLib translation',
+        'token-lrclib',
+        identity('r-l@0123456789abcdef0123456789abcdef'),
+      ),
+      kind: 'translation',
+    }
+    const netease = providerEntry(
+      'NetEase',
+      'NetEase line',
+      'token-netease',
+      identity('r-n@0123456789abcdef0123456789abcdef'),
+    )
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([lrclib, translation, netease], { revision: 2 }),
+    )
+    subsonic.updateLyricsPreference.mockResolvedValue(
+      mutationResponse({
+        revision: 3,
+        rejection: [
+          {
+            token: 'reject-token',
+            plugin: 'plugin-id',
+            provider: 'LRCLib',
+            instance: 'plugin-instance',
+            recording: 'r-l',
+          },
+        ],
+      }),
+    )
+
+    const { result } = renderPlayerLyrics({ trackId: 'layers-check' })
+    await showLyrics(result)
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'LRCLib main',
+    )
+    expect(
+      result.current.desktopLyricsProps.translationLyric?.line[0].value,
+    ).toBe('LRCLib translation')
+
+    act(() =>
+      result.current.desktopLyricsProps.onRejectVariant(
+        result.current.desktopLyricsProps.variants.find(
+          (variant) => variant.key === 'selection:token-lrclib',
+        ),
+      ),
+    )
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+        'NetEase line',
+      ),
+    )
+    expect(result.current.desktopLyricsProps.translationLyric).toBeNull()
+
+    act(() => result.current.desktopLyricsProps.onDownload('converted'))
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalled())
+    const text = await blobText(downloadBlob.mock.calls.at(-1)[0])
+    expect(text).toContain('NetEase line')
+    expect(text).not.toContain('LRCLib main')
+  })
+
+  it('accepts an equal-revision read as a newer observation', async () => {
+    const lrclib = providerEntry('LRCLib', 'LRCLib line', 'token-lrclib')
+    const netease = providerEntry('NetEase', 'NetEase line', 'token-netease')
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(lyricsResponse([lrclib, netease], { revision: 4 }))
+      .mockResolvedValueOnce(
+        lyricsResponse([lrclib, netease], {
+          revision: 5,
+          selection: {
+            ...providerSelection(
+              '',
+              identity('r-a@0123456789abcdef0123456789abcdef'),
+            ),
+            status: 'unavailable',
+          },
+        }),
+      )
+    subsonic.updateLyricsPreference.mockResolvedValueOnce(
+      mutationResponse({
+        revision: 5,
+        selection: providerSelection(
+          'token-lrclib',
+          identity('r-a@0123456789abcdef0123456789abcdef'),
+        ),
+      }),
+    )
+
+    const { result } = renderPlayerLyrics({ trackId: 'revision-check' })
+    await showLyrics(result)
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        'selection:token-lrclib',
+      ),
+    )
+    await waitFor(() =>
+      expect(subsonic.updateLyricsPreference).toHaveBeenCalled(),
+    )
+    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe(
+      'selection:token-lrclib',
+    )
+
+    act(() => result.current.desktopLyricsProps.onSourceMenuOpenChange(true))
+    await waitFor(() =>
+      expect(result.current.desktopLyricsProps.personalNotice).toContain(
+        'player.lyricsPersonalFallbackText',
+      ),
+    )
   })
 })

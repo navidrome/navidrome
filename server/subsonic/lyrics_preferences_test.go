@@ -388,6 +388,40 @@ var _ = Describe("Lyrics personal preferences", func() {
 		Expect(record.Offsets).To(HaveLen(3))
 	})
 
+	It("clears only the rejected plugin's selection and offset", func() {
+		identityA := model.LyricsVariantIdentity{
+			Version: 1, Instance: "shared-instance", Recording: "rec@0123456789abcdef0123456789abcdef",
+			Language: "en", Role: "main", Format: "lrc",
+		}
+		identityB := identityA
+		identityB.Instance = "shared-instance-b"
+		record := model.LyricsPreferenceRecord{
+			Version: model.LyricsPreferenceVersion, Revision: 1,
+			Selection: &model.LyricsPreferenceSelection{
+				Kind: model.LyricsPreferenceKindProvider, Plugin: "plugin-b", Identity: &identityB,
+			},
+			Offsets: []model.LyricsPreferenceOffset{
+				{Kind: model.LyricsPreferenceKindProvider, Plugin: "plugin-b", Instance: identityB.Instance, Recording: "rec", Stable: true, OffsetMs: 100},
+				{Kind: model.LyricsPreferenceKindProvider, Plugin: "plugin-a", Instance: identityA.Instance, Recording: "rec", Stable: true, OffsetMs: 200},
+			},
+		}
+		providerA := model.LyricsVariant{PluginID: "plugin-a", Provider: "A", Identity: identityA}
+		Expect(applyRejection(&record, &providerA)).To(Succeed())
+		Expect(record.Selection).NotTo(BeNil())
+		Expect(record.Selection.Plugin).To(Equal("plugin-b"))
+		Expect(record.Offsets).To(HaveLen(1))
+		Expect(record.Offsets[0].Plugin).To(Equal("plugin-b"))
+
+		ownRecord := model.LyricsPreferenceRecord{
+			Version: model.LyricsPreferenceVersion, Revision: 1,
+			Selection: &model.LyricsPreferenceSelection{
+				Kind: model.LyricsPreferenceKindProvider, Plugin: "plugin-a", Identity: &identityA,
+			},
+		}
+		Expect(applyRejection(&ownRecord, &providerA)).To(Succeed())
+		Expect(ownRecord.Selection).To(BeNil())
+	})
+
 	It("requires authenticated ownership and a readable track", func() {
 		local := lyrics.LocalVariants(GinkgoT().Context(), mediaFile)[0].Token
 		r := httptest.NewRequest(http.MethodPost, "/setLyricsPreference?id="+trackID+"&action=select&local="+local, nil)

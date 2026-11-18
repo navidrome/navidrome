@@ -3,13 +3,16 @@ import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
 import {
+  filterRejectedLyrics,
   findLyricVariant,
+  getPreferredLyricLanguage,
   hasNudgeableTiming,
   hasStructuredLyricContent,
   hasWordTiming,
   isPlayableVariant,
   isRejectedRecording,
   legacyVariantKey,
+  selectLyricLayers,
 } from './lyrics'
 import {
   buildConvertedLyricsDownload,
@@ -101,13 +104,25 @@ const usePlayerLyrics = ({
   const authIdentityRef = useRef(authIdentity)
   const trackIdRef = useRef(trackId)
   const preferenceQueueRef = useRef(Promise.resolve())
-  const offsetTimerRef = useRef(null)
-  const pendingOffsetRef = useRef(null)
+  const pendingOffsetsRef = useRef(new Map())
+  const selectionIntentRef = useRef({
+    token: 0,
+    trackId: null,
+    authIdentity: null,
+  })
+  const currentOffsetTargetRef = useRef({
+    trackId: null,
+    authIdentity: null,
+    selection: '',
+    local: '',
+  })
+  const effectivePersonalRef = useRef(null)
 
   const {
     variants,
     evidence = [],
-    layers: lyricLayers,
+    layers: fetchedLyricLayers,
+    structuredLyrics,
     loading: lyricsLoading,
     refreshing: lyricsRefreshing,
     sourcesIncomplete,
@@ -132,18 +147,44 @@ const usePlayerLyrics = ({
     personalOverride.trackId === trackId
       ? personalOverride.personal
       : null
-  // The latest authoritative personal state wins. A write response is the
-  // newest state for this client until a fetch reports an equal/newer
-  // revision (another device may have changed it).
+  // A write response is newer than reads that started before it. A read that
+  // reports the same durable revision happened after the write and may carry
+  // updated availability or a rebinding, so it wins; only a strictly older
+  // revision must not undo the mutation.
   const effectivePersonal =
     identityOverride &&
-    (identityOverride.revision || 0) >= (personal?.revision || 0)
+    (identityOverride.revision || 0) > (personal?.revision || 0)
       ? identityOverride
       : personal
   const rejectionList = useMemo(
     () => personalRejections(effectivePersonal),
     [effectivePersonal],
   )
+  const preferredLyricLanguage = getPreferredLyricLanguage()
+  // A rejection accepted from this client must affect the rendered layers and
+  // the export target immediately, including when the follow-up read is
+  // coalesced or fails. Re-select from the raw response with the latest
+  // personal rejections applied; the hook's layers already reflect the read's
+  // own personal state.
+  const lyricLayers = useMemo(() => {
+    if (!structuredLyrics || personalSupported !== true) {
+      return fetchedLyricLayers
+    }
+    const filtered = filterRejectedLyrics(structuredLyrics, rejectionList)
+    if (filtered.length === structuredLyrics.length) return fetchedLyricLayers
+    return selectLyricLayers(
+      filtered,
+      preferredLyricLanguage,
+      selectedSourceKey,
+    )
+  }, [
+    fetchedLyricLayers,
+    personalSupported,
+    preferredLyricLanguage,
+    rejectionList,
+    selectedSourceKey,
+    structuredLyrics,
+  ])
   const visibleVariants = useMemo(
     () =>
       variants.filter(
@@ -233,20 +274,35 @@ const usePlayerLyrics = ({
   useEffect(() => {
     authIdentityRef.current = authIdentity
     trackIdRef.current = trackId
-  }, [authIdentity, trackId])
+    currentOffsetTargetRef.current = {
+      authIdentity,
+      trackId,
+      selection: exportSelection,
+      local: exportLocalToken,
+    }
+  }, [authIdentity, exportLocalToken, exportSelection, trackId])
+
+  useEffect(() => {
+    effectivePersonalRef.current = effectivePersonal
+  }, [effectivePersonal])
 
   useEffect(() => {
     setPersonalOverride(null)
     setScopedSourceKey(readScopedSource(authIdentity, trackId))
     setSelectedSourceKey(null)
     setOffsetMs(0)
-    if (offsetTimerRef.current) {
-      window.clearTimeout(offsetTimerRef.current)
-      offsetTimerRef.current = null
-    }
-    pendingOffsetRef.current = null
-    preferenceQueueRef.current = Promise.resolve()
   }, [authIdentity, trackId])
+
+  useEffect(() => {
+    // A different account must never receive a delayed write queued by the
+    // previous one. Track navigation deliberately keeps its queued actions:
+    // every operation carries its own target and the server is the authority.
+    for (const entry of pendingOffsetsRef.current.values()) {
+      window.clearTimeout(entry.timer)
+    }
+    pendingOffsetsRef.current.clear()
+    preferenceQueueRef.current = Promise.resolve()
+  }, [authIdentity])
 
   const legacyOffsetKey = useMemo(() => {
     const variant = findLyricVariant(visibleVariants, resolvedVariantKey)
@@ -326,11 +382,10 @@ const usePlayerLyrics = ({
       exportAbortRef.current?.abort()
       listingTokenRef.current += 1
       exportTokenRef.current += 1
-      if (offsetTimerRef.current) {
-        window.clearTimeout(offsetTimerRef.current)
-        offsetTimerRef.current = null
+      for (const entry of pendingOffsetsRef.current.values()) {
+        window.clearTimeout(entry.timer)
       }
-      pendingOffsetRef.current = null
+      pendingOffsetsRef.current.clear()
     },
     [],
   )
@@ -672,17 +727,16 @@ const usePlayerLyrics = ({
     })
   }, [])
 
-  const enqueuePreference = useCallback((payload) => {
-    const identity = authIdentityRef.current
-    const targetTrack = trackIdRef.current
+  // Every write carries its own account and track target. Track navigation
+  // does not drop an accepted write; a different account does, before the
+  // request is allowed to leave. The response only updates the visible state
+  // when the client is still looking at that same target.
+  const enqueuePreference = useCallback((target, payload) => {
+    const identity = target?.authIdentity
+    const targetTrack = target?.trackId
     if (!identity || !targetTrack) return Promise.resolve()
     const run = async () => {
-      if (
-        authIdentityRef.current !== identity ||
-        trackIdRef.current !== targetTrack
-      ) {
-        return
-      }
+      if (authIdentityRef.current !== identity) return
       const response = await subsonic.updateLyricsPreference(
         targetTrack,
         payload,
@@ -707,14 +761,6 @@ const usePlayerLyrics = ({
     return chained
   }, [])
 
-  const handlePreferenceError = useCallback(
-    (previous) => {
-      setSelectedSourceKey(previous)
-      onExportError(translate('player.lyricsPreferenceErrorText'))
-    },
-    [onExportError, translate],
-  )
-
   const selectSource = useCallback(
     (sourceKey) => {
       const next = sourceKey || null
@@ -722,33 +768,43 @@ const usePlayerLyrics = ({
       const selection = variant?.lyric?.selection || ''
       const local = variant?.lyric?.local?.token || ''
       const previous = selectedSourceKey
+      const target = { authIdentity, trackId }
+      const token = ++selectionIntentRef.current.token
+      selectionIntentRef.current = { token, trackId, authIdentity }
       setSelectedSourceKey(next)
       if (personalSupported !== true) {
         writePreferredSource(trackId, next)
         return
       }
+      const send = (payload) =>
+        enqueuePreference(target, payload).catch(() => {
+          const intent = selectionIntentRef.current
+          if (
+            intent.token !== token ||
+            intent.trackId !== trackIdRef.current ||
+            intent.authIdentity !== authIdentityRef.current
+          ) {
+            return
+          }
+          setSelectedSourceKey(previous)
+          onExportError(translate('player.lyricsPreferenceErrorText'))
+        })
       if (!next) {
         setScopedSourceKey(null)
         writeScopedSource(authIdentity, trackId, null)
-        enqueuePreference({ action: 'auto' }).catch(() =>
-          handlePreferenceError(previous),
-        )
+        send({ action: 'auto' })
         return
       }
       if (local) {
         setScopedSourceKey(null)
         writeScopedSource(authIdentity, trackId, null)
-        enqueuePreference({ action: 'select', local }).catch(() =>
-          handlePreferenceError(previous),
-        )
+        send({ action: 'select', local })
         return
       }
       if (selection) {
         setScopedSourceKey(null)
         writeScopedSource(authIdentity, trackId, null)
-        enqueuePreference({ action: 'select', selection }).catch(() =>
-          handlePreferenceError(previous),
-        )
+        send({ action: 'select', selection })
         return
       }
       // A legacy plugin row with neither a host local identity nor a provider
@@ -756,17 +812,16 @@ const usePlayerLyrics = ({
       // uploaded and never bound to a guessed identity.
       setScopedSourceKey(next)
       writeScopedSource(authIdentity, trackId, next)
-      enqueuePreference({ action: 'auto' }).catch(() =>
-        handlePreferenceError(previous),
-      )
+      send({ action: 'auto' })
     },
     [
       authIdentity,
       enqueuePreference,
-      handlePreferenceError,
+      onExportError,
       personalSupported,
       selectedSourceKey,
       trackId,
+      translate,
       visibleVariants,
     ],
   )
@@ -787,33 +842,36 @@ const usePlayerLyrics = ({
         )
         return
       }
-      const target = {
+      const target = { authIdentity, trackId }
+      const key = [trackId, exportSelection, exportLocalToken].join('\u0000')
+      const existing = pendingOffsetsRef.current.get(key)
+      if (existing) window.clearTimeout(existing.timer)
+      const pending = {
+        key,
+        target,
         selection: exportSelection,
         local: exportLocalToken,
-        authIdentity,
-        trackId,
+        offsetMs: nextOffsetMs,
+        timer: null,
       }
-      pendingOffsetRef.current = { ...target, offsetMs: nextOffsetMs }
-      if (offsetTimerRef.current) {
-        window.clearTimeout(offsetTimerRef.current)
-      }
-      offsetTimerRef.current = window.setTimeout(() => {
-        offsetTimerRef.current = null
-        const pending = pendingOffsetRef.current
-        pendingOffsetRef.current = null
-        if (
-          !pending ||
-          pending.authIdentity !== authIdentityRef.current ||
-          pending.trackId !== trackIdRef.current
-        ) {
-          return
-        }
+      pending.timer = window.setTimeout(() => {
+        pendingOffsetsRef.current.delete(pending.key)
+        if (pending.target.authIdentity !== authIdentityRef.current) return
         const payload = { action: 'offset', offsetMs: pending.offsetMs }
         if (pending.local) payload.local = pending.local
         else payload.selection = pending.selection
-        enqueuePreference(payload).catch(() => {
+        enqueuePreference(pending.target, payload).catch(() => {
+          const current = currentOffsetTargetRef.current
+          if (
+            current.authIdentity !== pending.target.authIdentity ||
+            current.trackId !== pending.target.trackId ||
+            current.selection !== pending.selection ||
+            current.local !== pending.local
+          ) {
+            return
+          }
           setOffsetMs(
-            personalOffsetFor(effectivePersonal, {
+            personalOffsetFor(effectivePersonalRef.current, {
               selection: pending.selection,
               local: pending.local,
             }),
@@ -821,10 +879,10 @@ const usePlayerLyrics = ({
           onExportError(translate('player.lyricsPreferenceErrorText'))
         })
       }, 250)
+      pendingOffsetsRef.current.set(key, pending)
     },
     [
       authIdentity,
-      effectivePersonal,
       enqueuePreference,
       exportLocalToken,
       exportSelection,
@@ -840,17 +898,27 @@ const usePlayerLyrics = ({
     (variant) => {
       const selection = variant?.lyric?.selection
       if (personalSupported !== true || !selection) return
-      enqueuePreference({ action: 'reject', selection })
-        .then(() => refreshLyrics())
-        .catch(() =>
-          onExportError(translate('player.lyricsPreferenceErrorText')),
-        )
+      const target = { authIdentity, trackId }
+      const isCurrent = () =>
+        authIdentityRef.current === target.authIdentity &&
+        trackIdRef.current === target.trackId
+      enqueuePreference(target, { action: 'reject', selection })
+        .then(() => {
+          if (isCurrent()) refreshLyrics()
+        })
+        .catch(() => {
+          if (isCurrent()) {
+            onExportError(translate('player.lyricsPreferenceErrorText'))
+          }
+        })
     },
     [
+      authIdentity,
       enqueuePreference,
       onExportError,
       personalSupported,
       refreshLyrics,
+      trackId,
       translate,
     ],
   )
@@ -858,17 +926,27 @@ const usePlayerLyrics = ({
   const restoreRejection = useCallback(
     (token) => {
       if (personalSupported !== true || !token) return
-      enqueuePreference({ action: 'restore', rejection: token })
-        .then(() => refreshLyrics())
-        .catch(() =>
-          onExportError(translate('player.lyricsPreferenceErrorText')),
-        )
+      const target = { authIdentity, trackId }
+      const isCurrent = () =>
+        authIdentityRef.current === target.authIdentity &&
+        trackIdRef.current === target.trackId
+      enqueuePreference(target, { action: 'restore', rejection: token })
+        .then(() => {
+          if (isCurrent()) refreshLyrics()
+        })
+        .catch(() => {
+          if (isCurrent()) {
+            onExportError(translate('player.lyricsPreferenceErrorText'))
+          }
+        })
     },
     [
+      authIdentity,
       enqueuePreference,
       onExportError,
       personalSupported,
       refreshLyrics,
+      trackId,
       translate,
     ],
   )

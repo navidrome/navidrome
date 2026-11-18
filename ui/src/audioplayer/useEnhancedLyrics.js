@@ -621,6 +621,7 @@ const useEnhancedLyrics = ({
     return {
       variants: [],
       layers: emptyLyricLayers,
+      structuredLyrics: null,
       evidence: [],
       personal: null,
       personalSupported: null,
@@ -635,6 +636,7 @@ const useEnhancedLyrics = ({
   return {
     variants,
     layers,
+    structuredLyrics,
     evidence: state.evidence || EMPTY_EVIDENCE,
     personal: state.personal || null,
     personalSupported: state.personalSupported ?? null,

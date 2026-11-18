@@ -381,6 +381,7 @@ func applyRejection(record *model.LyricsPreferenceRecord, provider *model.Lyrics
 		Instance: provider.Identity.Instance, Recording: scope,
 	})
 	if record.Selection != nil && record.Selection.Kind == model.LyricsPreferenceKindProvider &&
+		record.Selection.Plugin == provider.PluginID &&
 		record.Selection.Identity != nil && record.Selection.Identity.Instance == provider.Identity.Instance {
 		if selectionScope, ok := record.Selection.Identity.RecordingScope(); ok && selectionScope == scope {
 			record.Selection = nil
@@ -389,6 +390,7 @@ func applyRejection(record *model.LyricsPreferenceRecord, provider *model.Lyrics
 	kept := record.Offsets[:0]
 	for _, offset := range record.Offsets {
 		if offset.Kind == model.LyricsPreferenceKindProvider &&
+			offset.Plugin == provider.PluginID &&
 			offset.Instance == provider.Identity.Instance && offset.Stable && offset.Recording == scope {
 			continue
 		}
