@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -350,7 +351,7 @@ var _ = Describe("createPlaylistFromM3U", func() {
 		w := upload(&mockPlaylistsService{importM3UFn: drainingImport}, strings.NewReader("/music/song.mp3\n"))
 
 		Expect(w.Code).To(Equal(http.StatusCreated))
-		Expect(w.Body.String()).To(ContainSubstring("/music/song.mp3"))
+		Expect(w.Body.String()).To(ContainSubstring(filepath.FromSlash("/music/song.mp3")))
 	})
 
 	It("rejects a body larger than the upload limit", func() {
