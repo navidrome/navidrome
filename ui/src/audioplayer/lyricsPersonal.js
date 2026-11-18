@@ -52,6 +52,15 @@ export const personalOffsetFor = (personal, { selection, local } = {}) => {
   return 0
 }
 
+const languageLabel = (value) => {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+  return normalized === 'xxx' || normalized === 'und'
+    ? ''
+    : formatSourceValue(value)
+}
+
 export const personalSelectionLabel = (personal, labels = {}) => {
   const selection = personal?.selection
   if (!selection) return ''
@@ -61,12 +70,12 @@ export const personalSelectionLabel = (personal, labels = {}) => {
         ? labels.embeddedSource || 'Embedded lyrics'
         : labels.sidecarSource || 'Sidecar file'
     const format = formatSourceValue(selection.local?.format)
-    const language = formatSourceValue(selection.local?.language)
+    const language = languageLabel(selection.local?.language)
     return [kind, format, language].filter(Boolean).join(' · ')
   }
   const provider = formatSourceValue(selection.provider)
   const format = formatSourceValue(selection.identity?.format)
-  const language = formatSourceValue(selection.identity?.language)
+  const language = languageLabel(selection.identity?.language)
   const role = formatSourceValue(selection.identity?.role)
   return [
     provider || labels.pluginSource || 'Lyrics source',
