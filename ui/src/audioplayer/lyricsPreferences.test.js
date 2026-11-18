@@ -3,9 +3,13 @@ import {
   readLetterWavePreference,
   readLyricsOffset,
   readPreferredSource,
+  readScopedOffset,
+  readScopedSource,
   writeLetterWavePreference,
   writeLyricsOffset,
   writePreferredSource,
+  writeScopedOffset,
+  writeScopedSource,
 } from './lyricsPreferences'
 
 describe('lyrics preferences', () => {
@@ -79,5 +83,41 @@ describe('lyrics preferences', () => {
     } finally {
       if (original) Object.defineProperty(window, 'localStorage', original)
     }
+  })
+})
+
+describe('account-scoped lyrics preferences', () => {
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('keeps the older unscoped keys untouched when writing account-scoped state', () => {
+    writePreferredSource('song-1', 'legacy-source')
+    writeLyricsOffset('song-1', 'legacy-source', 250)
+
+    writeScopedSource('user-a', 'song-1', 'plugin:legacy-row')
+    writeScopedOffset('user-a', 'song-1', 'plugin:legacy-row', 100)
+
+    expect(localStorage.getItem('lyrics.source:song-1')).toBe('legacy-source')
+    expect(localStorage.getItem('lyrics.offset:song-1:legacy-source')).toBe(
+      '250',
+    )
+    expect(readPreferredSource('song-1')).toBe('legacy-source')
+    expect(readLyricsOffset('song-1', 'legacy-source')).toBe(250)
+  })
+
+  it('scopes new personal state to the authenticated account', () => {
+    writeScopedSource('user-a', 'song-1', 'plugin:row')
+    writeScopedOffset('user-a', 'song-1', 'plugin:row', 300)
+
+    expect(readScopedSource('user-a', 'song-1')).toBe('plugin:row')
+    expect(readScopedSource('user-b', 'song-1')).toBeNull()
+    expect(readScopedOffset('user-a', 'song-1', 'plugin:row')).toBe(300)
+    expect(readScopedOffset('user-b', 'song-1', 'plugin:row')).toBe(0)
+
+    writeScopedSource('user-a', 'song-1', null)
+    writeScopedOffset('user-a', 'song-1', 'plugin:row', 0)
+    expect(readScopedSource('user-a', 'song-1')).toBeNull()
+    expect(readScopedOffset('user-a', 'song-1', 'plugin:row')).toBe(0)
   })
 })

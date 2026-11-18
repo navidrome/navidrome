@@ -491,6 +491,7 @@ const LyricsPanel = ({
   letterWave = true,
   audioInstance,
   offsetMs = 0,
+  personalNotice = null,
   inline = false,
   loading = false,
   error = null,
@@ -881,6 +882,15 @@ const LyricsPanel = ({
           data-testid="lyrics-evidence-note"
         >
           {evidenceNote}
+        </div>
+      )}
+      {personalNotice && (
+        <div
+          className={classes.evidenceNote}
+          data-testid="lyrics-personal-notice"
+          role="status"
+        >
+          {personalNotice}
         </div>
       )}
       <div

@@ -159,6 +159,11 @@ const Player = () => {
     useInlineMobileLyrics,
     closeLyrics,
   } = usePlayerLyrics({
+    authIdentity:
+      (typeof window !== 'undefined' &&
+        (window.localStorage.getItem('userId') ||
+          window.localStorage.getItem('username'))) ||
+      '',
     trackId: playerState.current?.trackId || currentTrackId,
     trackUpdatedAt:
       playerState.current?.song?.updatedAt || playerState.current?.updatedAt,

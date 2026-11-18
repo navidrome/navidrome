@@ -95,6 +95,7 @@ const LyricsSidebar = ({
   translationLyric,
   pronunciationLyric,
   evidence = [],
+  personalNotice = null,
   showTranslation,
   showPronunciation,
   letterWave = true,
@@ -105,6 +106,9 @@ const LyricsSidebar = ({
   onTogglePronunciation,
   onToggleLetterWave,
   variants = [],
+  rejections = [],
+  onRejectVariant,
+  onRestoreRejection,
   selectedSourceKey,
   onSelectSource,
   onSourceMenuOpenChange,
@@ -300,6 +304,9 @@ const LyricsSidebar = ({
           onToggleTranslation={onToggleTranslation}
           onToggleLetterWave={onToggleLetterWave}
           variants={variants}
+          rejections={rejections}
+          onRejectVariant={onRejectVariant}
+          onRestoreRejection={onRestoreRejection}
           selectedSourceKey={selectedSourceKey}
           onSelectSource={onSelectSource}
           onSourceMenuOpenChange={onSourceMenuOpenChange}
@@ -325,6 +332,7 @@ const LyricsSidebar = ({
           translationLyric={translationLyric}
           pronunciationLyric={pronunciationLyric}
           evidence={evidence}
+          personalNotice={personalNotice}
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
           letterWave={letterWave}

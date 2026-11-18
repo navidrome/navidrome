@@ -184,9 +184,12 @@ func (api *Router) routes() http.Handler {
 			r.Use(getPlayer(api.players))
 			hr(r, "getAvatar", api.GetAvatar)
 			h(r, "getLyrics", api.GetLyrics)
-			h(r, "getLyricsBySongId", api.GetLyricsBySongId)
-			h(r, "getLyricsVariants", api.GetLyricsVariants)
+			hr(r, "getLyricsBySongId", api.getLyricsBySongIdWithHeaders)
+			hr(r, "getLyricsVariants", api.getLyricsVariantsWithHeaders)
 			hr(r, "getLyricsOriginal", api.GetLyricsOriginal)
+			postOnly(r, "setLyricsPreference", func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+				return api.SetLyricsPreference(r)
+			})
 			hr(r, "stream", api.Stream)
 			hr(r, "download", api.Download)
 			hr(r, "getTranscodeDecision", api.GetTranscodeDecision)
@@ -241,6 +244,16 @@ func (api *Router) routes() http.Handler {
 	return r
 }
 
+// Add a POST-only Subsonic handler. Personalized mutations are deliberately
+// not exposed as GETs so caches, prefetchers and links cannot trigger them.
+func postOnly(r chi.Router, path string, f handlerRaw) {
+	r.Post("/"+path, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "private, no-store")
+		res, err := f(w, r)
+		writeSubsonicResponse(w, r, res, err)
+	})
+}
+
 // Add a Subsonic handler
 func h(r chi.Router, path string, f handler) {
 	hr(r, path, func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -250,23 +263,27 @@ func h(r chi.Router, path string, f handler) {
 
 // Add a Subsonic handler that requires an http.ResponseWriter (ex: stream, getCoverArt...)
 func hr(r chi.Router, path string, f handlerRaw) {
-	handle := func(w http.ResponseWriter, r *http.Request) {
+	addHandler(r, path, func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
-		if err != nil {
-			sendError(w, r, err)
-			return
-		}
-		if r.Context().Err() != nil {
-			if log.IsGreaterOrEqualTo(log.LevelDebug) {
-				log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
-			}
-			return
-		}
-		if res != nil {
-			sendResponse(w, r, res)
-		}
+		writeSubsonicResponse(w, r, res, err)
+	})
+}
+
+// writeSubsonicResponse is the shared tail of handler and handlerRaw routes.
+func writeSubsonicResponse(w http.ResponseWriter, r *http.Request, res *responses.Subsonic, err error) {
+	if err != nil {
+		sendError(w, r, err)
+		return
 	}
-	addHandler(r, path, handle)
+	if r.Context().Err() != nil {
+		if log.IsGreaterOrEqualTo(log.LevelDebug) {
+			log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
+		}
+		return
+	}
+	if res != nil {
+		sendResponse(w, r, res)
+	}
 }
 
 // Add a handler that returns 501 - Not implemented. Used to signal that an endpoint is not implemented yet

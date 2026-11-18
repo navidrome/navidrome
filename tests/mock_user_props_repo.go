@@ -50,6 +50,27 @@ func (p *MockedUserPropsRepo) Delete(_ context.Context, userId, key string) erro
 	return model.ErrNotFound
 }
 
+// CompareAndSwap mirrors the persistent compare-and-swap contract.
+func (p *MockedUserPropsRepo) CompareAndSwap(_ context.Context, userId, key, value string, expected *string) (bool, error) {
+	if p.Error != nil {
+		return false, p.Error
+	}
+	p.init()
+	current, found := p.Data[userId+key]
+	if expected == nil {
+		if found {
+			return false, nil
+		}
+		p.Data[userId+key] = value
+		return true, nil
+	}
+	if !found || current != *expected {
+		return false, nil
+	}
+	p.Data[userId+key] = value
+	return true, nil
+}
+
 func (p *MockedUserPropsRepo) DefaultGet(ctx context.Context, userId, key string, defaultValue string) (string, error) {
 	if p.Error != nil {
 		return "", p.Error

@@ -41,7 +41,7 @@ func lyricsClientError(err error) error {
 	return newError(responses.ErrorGeneric, "error getting lyrics")
 }
 
-func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, evidence []model.LyricsEvidence, enhanced bool) *responses.LyricsList {
+func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, evidence []model.LyricsEvidence, enhanced bool, personal *responses.LyricsPersonal) *responses.LyricsList {
 	filtered := lyricsList
 	if !enhanced {
 		// Without enhanced, only return main-kind entries (a blank kind is main).
@@ -64,6 +64,7 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, evidence [
 	return &responses.LyricsList{
 		StructuredLyrics:     lyricList,
 		InstrumentalEvidence: evidenceRows,
+		Personal:             personal,
 	}
 }
 
@@ -178,6 +179,16 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 			structured.Selection = lyrics.Selection
 		}
 		structured.Match = buildLyricsMatch(lyrics.Match)
+		if lyrics.Local != nil {
+			structured.Local = &responses.LyricsLocalIdentity{
+				Version:  lyrics.Local.Version,
+				Token:    lyrics.Local.Token,
+				Kind:     lyrics.Local.Kind,
+				Format:   lyrics.Local.Format,
+				Language: lyrics.Local.Language,
+				Role:     lyrics.Local.Role,
+			}
+		}
 		if len(cueLines) > 0 && len(agents.response) > 0 {
 			structured.Agents = agents.response
 		}

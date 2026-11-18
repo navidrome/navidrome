@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/server/imghttp"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -152,7 +153,12 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 	}
 
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, evidence, enhanced)
+	personalList := structuredLyrics
+	var personal *responses.LyricsPersonal
+	if enhanced {
+		personalList, personal = api.applyPersonalForRequest(r.Context(), mediaFile, structuredLyrics, allSources)
+	}
+	response.LyricsList = buildLyricsList(mediaFile, personalList, evidence, enhanced, personal)
 	response.LyricsList.SourcesIncomplete = enhanced && err != nil
 	if enhanced {
 		response.LyricsList.RetryAfterSeconds = lyricsRetryAfterSeconds(err)
@@ -175,6 +181,9 @@ func (api *Router) GetLyricsVariants(r *http.Request) (*responses.Subsonic, erro
 	variants, evidence, err := api.lyrics.ListLyricsVariantsResult(r.Context(), mediaFile)
 	if err != nil {
 		log.Error(r.Context(), "Error listing lyrics variants", "id", id, err)
+	}
+	if user, ok := request.UserFrom(r.Context()); ok {
+		variants = api.filterRejectedVariants(r.Context(), user.ID, mediaFile.ID, variants)
 	}
 	response := newResponse()
 	response.LyricsVariants = buildLyricsVariants(variants, evidence)

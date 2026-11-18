@@ -37,6 +37,10 @@ const labels = {
   downloadConvertedHint: 'Rebuilt from the selected playback variant',
   downloadAdjusted: 'Timing-adjusted %{format} (%{offset})',
   downloadAdjustedHint: 'Selected variant with your timing correction',
+  rejectMatch: 'Reject this recording',
+  rejectUnavailable: "This source can't identify the recording reliably",
+  rejectedTitle: 'Rejected recordings',
+  restoreRejection: 'Restore',
 }
 
 const variants = [
@@ -134,6 +138,82 @@ describe('<LyricsLayerControls />', () => {
     expect(lrclib).toHaveAttribute('aria-checked', 'true')
     expect(lrclib).toHaveTextContent('LRC')
     expect(lrclib).toHaveTextContent('Line-synced')
+  })
+
+  it('rejects a provider variant and restores a rejected recording', () => {
+    const onRejectVariant = vi.fn()
+    const onRestoreRejection = vi.fn()
+    const providerVariants = variants.map((variant) => ({
+      ...variant,
+      lyric: {
+        selection: `selection-${variant.key}`,
+        variant: {
+          version: 1,
+          instance: 'plugin-instance',
+          recording: `${variant.key}@0123456789abcdef0123456789abcdef`,
+          role: 'main',
+          format: 'lrc',
+        },
+      },
+    }))
+    renderControls({
+      variants: providerVariants,
+      onRejectVariant,
+      onRestoreRejection,
+      rejections: [
+        {
+          token: 'reject-token',
+          label: 'LRCLib · r-l',
+        },
+      ],
+    })
+
+    openSourceMenu()
+    fireEvent.click(
+      screen.getByRole('button', { name: `${labels.rejectMatch}: NetEase` }),
+    )
+    expect(onRejectVariant).toHaveBeenCalledWith(providerVariants[0])
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /LRCLib · r-l/ }))
+    expect(onRestoreRejection).toHaveBeenCalledWith('reject-token')
+  })
+
+  it('explains why a content-only recording cannot be rejected', () => {
+    const contentOnly = {
+      ...variants[0],
+      key: 'content-only',
+      lyric: {
+        selection: 'content-only-selection',
+        variant: {
+          version: 1,
+          instance: 'plugin-instance',
+          recording:
+            'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+          role: 'main',
+          format: 'lrc',
+        },
+      },
+    }
+    renderControls({ variants: [contentOnly] })
+    openSourceMenu()
+    const button = screen.getByRole('button', {
+      name: new RegExp(labels.rejectUnavailable),
+    })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('title', labels.rejectUnavailable)
+  })
+
+  it('keeps the source menu reachable when only rejected recordings remain', () => {
+    renderControls({
+      variants: [],
+      rejections: [{ token: 'reject-token', label: 'LRCLib · r-l' }],
+    })
+
+    const button = screen.getByRole('button', { name: labels.viewSource })
+    fireEvent.click(button)
+    expect(
+      screen.getByRole('menuitem', { name: /LRCLib · r-l/ }),
+    ).toBeInTheDocument()
   })
 
   it('names built-in sources and hides extra metadata', () => {

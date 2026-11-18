@@ -55,6 +55,7 @@ type Lyrics struct {
 	Offset        *int64                 `structs:"offset,omitempty"        json:"offset,omitempty"`
 	Source        *LyricsSource          `structs:"source,omitempty"        json:"source,omitempty"`
 	Variant       *LyricsVariantIdentity `structs:"variant,omitempty"       json:"variant,omitempty"`
+	Local         *LyricsLocalIdentity   `structs:"local,omitempty"         json:"local,omitempty"`
 	Selection     string                 `structs:"selection,omitempty"     json:"selection,omitempty"`
 	Match         *LyricsMatch           `structs:"match,omitempty"         json:"match,omitempty"`
 	Synced        bool                   `structs:"synced"                  json:"synced"`

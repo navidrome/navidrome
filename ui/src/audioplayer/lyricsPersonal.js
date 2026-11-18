@@ -1,0 +1,89 @@
+import { formatSourceValue } from './lyricsSource'
+
+// A preference mutation returns `lyricsPersonal`. It is listener-scoped and
+// must never be shared across accounts. The enhanced lyrics node is read by
+// the lyrics hook, which owns the response cache.
+export const readMutationPersonal = (response) => {
+  const personal = response?.json?.['subsonic-response']?.lyricsPersonal
+  return personal && typeof personal === 'object' ? personal : null
+}
+
+const asList = (value) => (Array.isArray(value) ? value : value ? [value] : [])
+
+export const personalOffsets = (personal) => asList(personal?.offset)
+
+export const personalRejections = (personal) => asList(personal?.rejection)
+
+export const personalSelectionVariantKey = (personal) => {
+  const selection = personal?.selection
+  if (!selection) return null
+  if (selection.status !== 'pinned' && selection.status !== 'rebound') {
+    return null
+  }
+  if (selection.selection) return `selection:${selection.selection}`
+  if (selection.local?.token) return `local:${selection.local.token}`
+  return null
+}
+
+export const personalOffsetFor = (personal, { selection, local } = {}) => {
+  for (const offset of personalOffsets(personal)) {
+    if (
+      offset?.kind === 'local' &&
+      local &&
+      String(offset.local?.token || '') === String(local)
+    ) {
+      return Number(offset.offsetMs) || 0
+    }
+  }
+  for (const offset of personalOffsets(personal)) {
+    if (
+      offset?.kind !== 'local' &&
+      selection &&
+      offset?.selection === selection
+    ) {
+      return Number(offset.offsetMs) || 0
+    }
+  }
+  return 0
+}
+
+const languageLabel = (value) => {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+  return normalized === 'xxx' || normalized === 'und'
+    ? ''
+    : formatSourceValue(value)
+}
+
+export const personalSelectionLabel = (personal, labels = {}) => {
+  const selection = personal?.selection
+  if (!selection) return ''
+  if (selection.kind === 'local') {
+    const kind =
+      selection.local?.kind === 'embedded'
+        ? labels.embeddedSource || 'Embedded lyrics'
+        : labels.sidecarSource || 'Sidecar file'
+    const format = formatSourceValue(selection.local?.format)
+    const language = languageLabel(selection.local?.language)
+    return [kind, format, language].filter(Boolean).join(' · ')
+  }
+  const provider = formatSourceValue(selection.provider)
+  const format = formatSourceValue(selection.identity?.format)
+  const language = languageLabel(selection.identity?.language)
+  const role = formatSourceValue(selection.identity?.role)
+  return [
+    provider || labels.pluginSource || 'Lyrics source',
+    format,
+    language,
+    role && role !== 'Main' ? role : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+export const personalSelectionUnavailable = (personal) =>
+  personal?.selection?.status === 'unavailable'
+
+export const personalSelectionPending = (personal) =>
+  personal?.selection?.status === 'pending'
