@@ -83,16 +83,11 @@ func (r *userRepository) selectUserWithLibraries(ctx context.Context, options ..
 				'updated_at', library.updated_at,
 				'created_at', library.created_at
 			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
-		LeftJoin(userLibraryJoin).
-		LeftJoin(userLibraryLibraryJoin).
+		// Admins get every library without relying on their user_library rows, which can be missing
+		LeftJoin("user_library ul ON ul.user_id = user.id AND NOT user.is_admin").
+		LeftJoin("library ON library.id = ul.library_id OR user.is_admin").
 		GroupBy("user.id")
 }
-
-// Admins get every library without relying on their user_library rows, which can be missing
-const (
-	userLibraryJoin        = "user_library ul ON ul.user_id = user.id AND NOT user.is_admin"
-	userLibraryLibraryJoin = "library ON library.id = ul.library_id OR user.is_admin"
-)
 
 func (r *userRepository) CountAll(ctx context.Context, qo ...model.QueryOptions) (int64, error) {
 	return r.count(ctx, Select(), qo...)
