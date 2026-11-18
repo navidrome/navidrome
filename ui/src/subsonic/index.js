@@ -224,6 +224,17 @@ const getLyricsOriginal = async (id, selection, requestOptions = {}) => {
   }
 }
 
+// updateLyricsPreference is a deliberate listener action. It is POST-only on
+// the host so caches, prefetchers and links cannot mutate personal state.
+const updateLyricsPreference = (id, payload, requestOptions = {}) => {
+  const requestUrl = url('setLyricsPreference', id, payload)
+  if (!requestUrl) return Promise.reject(new Error('Not authenticated'))
+  return httpClient(requestUrl, {
+    ...requestOptions,
+    method: 'POST',
+  }).then(requireSuccessfulLyricsResponse)
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -256,4 +267,5 @@ export default {
   getLyricsBySongId,
   getLyricsVariants,
   getLyricsOriginal,
+  updateLyricsPreference,
 }

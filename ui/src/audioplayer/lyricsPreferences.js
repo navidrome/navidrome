@@ -91,3 +91,74 @@ export const writeLyricsOffset = (trackId, sourceKey, offsetMs) => {
     // Session-only fallback.
   }
 }
+
+// New-host state for variants the host cannot address (an older plugin row
+// without a selection token). These keys are deliberately account-scoped and
+// never touch the older unscoped keys above, which remain readable only by
+// older hosts.
+const scopedPrefix = (authIdentity) =>
+  `lyrics.v2:${encodeURIComponent(String(authIdentity || ''))}`
+
+const scopedSelectionKey = (authIdentity, trackId) =>
+  `${scopedPrefix(authIdentity)}:source:${trackId}`
+
+const scopedOffsetKey = (authIdentity, trackId, variantKey) =>
+  `${scopedPrefix(authIdentity)}:offset:${trackId}:${variantKey}`
+
+export const readScopedSource = (authIdentity, trackId) => {
+  if (!authIdentity || !trackId) return null
+  try {
+    const value = storage()?.getItem(scopedSelectionKey(authIdentity, trackId))
+    return value && value.trim() !== '' ? value : null
+  } catch {
+    return null
+  }
+}
+
+export const writeScopedSource = (authIdentity, trackId, sourceKey) => {
+  if (!authIdentity || !trackId) return
+  try {
+    const key = scopedSelectionKey(authIdentity, trackId)
+    if (sourceKey && String(sourceKey).trim() !== '') {
+      storage()?.setItem(key, String(sourceKey))
+    } else {
+      storage()?.removeItem(key)
+    }
+  } catch {
+    // Session-only fallback.
+  }
+}
+
+export const readScopedOffset = (authIdentity, trackId, variantKey) => {
+  if (!authIdentity || !trackId || !variantKey) return 0
+  try {
+    const raw = storage()?.getItem(
+      scopedOffsetKey(authIdentity, trackId, variantKey),
+    )
+    if (raw == null || raw === '') return 0
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : 0
+  } catch {
+    return 0
+  }
+}
+
+export const writeScopedOffset = (
+  authIdentity,
+  trackId,
+  variantKey,
+  offsetMs,
+) => {
+  if (!authIdentity || !trackId || !variantKey) return
+  try {
+    const key = scopedOffsetKey(authIdentity, trackId, variantKey)
+    const value = Number(offsetMs)
+    if (!Number.isFinite(value) || value === 0) {
+      storage()?.removeItem(key)
+    } else {
+      storage()?.setItem(key, String(value))
+    }
+  } catch {
+    // Session-only fallback.
+  }
+}

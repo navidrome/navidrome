@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import subsonic from '../subsonic'
 import {
   collectLyricVariants,
+  filterRejectedLyrics,
   getPreferredLyricLanguage,
   hasStructuredLyricContent,
   selectLyricLayers,
@@ -62,6 +63,11 @@ const readStructuredLyrics = (response) =>
 const readInstrumentalEvidence = (response) =>
   response?.json?.['subsonic-response']?.lyricsList?.instrumentalEvidence || []
 
+const readLyricsPersonal = (response) => {
+  const personal = response?.json?.['subsonic-response']?.lyricsList?.personal
+  return personal && typeof personal === 'object' ? personal : null
+}
+
 const retryDelayFromError = (error) => {
   const serverMessage =
     error?.body?.['subsonic-response']?.error?.message || error?.message || ''
@@ -71,8 +77,18 @@ const retryDelayFromError = (error) => {
   return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null
 }
 
-const buildCacheKey = ({ trackId, preferredLanguage, updatedAt }) =>
-  [trackId || '', updatedAt || '', preferredLanguage || ''].join('\u0000')
+const buildCacheKey = ({
+  authIdentity,
+  trackId,
+  preferredLanguage,
+  updatedAt,
+}) =>
+  [
+    authIdentity || '',
+    trackId || '',
+    updatedAt || '',
+    preferredLanguage || '',
+  ].join('\u0000')
 
 const rememberLyrics = (
   cacheKey,
@@ -80,6 +96,7 @@ const rememberLyrics = (
   evidence = [],
   expiresAt = null,
   sourcesIncomplete = false,
+  personal = null,
 ) => {
   cache.delete(cacheKey)
   cache.set(cacheKey, {
@@ -87,6 +104,8 @@ const rememberLyrics = (
     evidence,
     expiresAt,
     sourcesIncomplete,
+    personal,
+    personalSupported: personal !== null,
   })
   while (cache.size > MAX_LYRIC_CACHE_ENTRIES) {
     const oldestCacheKey = cache.keys().next().value
@@ -158,7 +177,12 @@ const createLyricsRequest = ({ trackId, cacheKey, allSources }) => {
   entry.promise = subsonic
     .getLyricsBySongId(trackId, { signal: controller.signal, allSources })
     .then((response) => {
-      const incoming = normalizeStructuredLyrics(readStructuredLyrics(response))
+      const personal = readLyricsPersonal(response)
+      const rejections = personal?.rejection || []
+      const incoming = filterRejectedLyrics(
+        normalizeStructuredLyrics(readStructuredLyrics(response)),
+        rejections,
+      )
       const incomingEvidence = Array.isArray(readInstrumentalEvidence(response))
         ? readInstrumentalEvidence(response)
         : []
@@ -166,7 +190,13 @@ const createLyricsRequest = ({ trackId, cacheKey, allSources }) => {
         response?.json?.['subsonic-response']?.lyricsList?.sourcesIncomplete ===
         true
       const structuredLyrics = sourcesIncomplete
-        ? mergePartialSources(cache.get(cacheKey)?.structuredLyrics, incoming)
+        ? filterRejectedLyrics(
+            mergePartialSources(
+              cache.get(cacheKey)?.structuredLyrics,
+              incoming,
+            ),
+            rejections,
+          )
         : incoming
       const evidence = sourcesIncomplete
         ? [...(cache.get(cacheKey)?.evidence || []), ...incomingEvidence]
@@ -180,6 +210,7 @@ const createLyricsRequest = ({ trackId, cacheKey, allSources }) => {
           ? null
           : Date.now() + NEGATIVE_CACHE_TTL_MS,
         sourcesIncomplete,
+        personal,
       )
       const seconds =
         response?.json?.['subsonic-response']?.lyricsList?.retryAfterSeconds
@@ -188,7 +219,13 @@ const createLyricsRequest = ({ trackId, cacheKey, allSources }) => {
           ? rememberRetryWait(cacheKey, seconds * 1000).retryAt
           : null
       if (retryAt == null) retryWaits.delete(cacheKey)
-      return { structuredLyrics, evidence, sourcesIncomplete, retryAt }
+      return {
+        structuredLyrics,
+        evidence,
+        sourcesIncomplete,
+        retryAt,
+        personal,
+      }
     })
     .finally(() => {
       entry.settled = true
@@ -228,6 +265,8 @@ const emptyLyricsState = (cacheKey) => ({
   cacheKey,
   structuredLyrics: null,
   evidence: [],
+  personal: null,
+  personalSupported: null,
   loading: false,
   refreshing: false,
   error: null,
@@ -235,6 +274,7 @@ const emptyLyricsState = (cacheKey) => ({
 })
 
 const useEnhancedLyrics = ({
+  authIdentity,
   trackId,
   updatedAt,
   disabled = false,
@@ -243,8 +283,14 @@ const useEnhancedLyrics = ({
 }) => {
   const preferredLanguage = getPreferredLyricLanguage()
   const cacheKey = useMemo(
-    () => buildCacheKey({ trackId, preferredLanguage, updatedAt }),
-    [preferredLanguage, trackId, updatedAt],
+    () =>
+      buildCacheKey({
+        authIdentity,
+        trackId,
+        preferredLanguage,
+        updatedAt,
+      }),
+    [authIdentity, preferredLanguage, trackId, updatedAt],
   )
   const [state, setState] = useState(() => emptyLyricsState(cacheKey))
   const [requestGeneration, setRequestGeneration] = useState(0)
@@ -298,6 +344,8 @@ const useEnhancedLyrics = ({
         ...emptyLyricsState(cacheKey),
         structuredLyrics: cached?.structuredLyrics || null,
         evidence: cached?.evidence || [],
+        personal: cached?.personal || null,
+        personalSupported: cached?.personalSupported ?? null,
         sourcesIncomplete:
           cache.get(cacheKey)?.sourcesIncomplete || Boolean(waiting.error),
         error: cached?.structuredLyrics?.length ? null : waiting.error,
@@ -313,6 +361,8 @@ const useEnhancedLyrics = ({
           cacheKey,
           structuredLyrics: cached.structuredLyrics,
           evidence: cached.evidence || [],
+          personal: cached.personal || null,
+          personalSupported: cached.personalSupported ?? null,
           sourcesIncomplete: cache.get(cacheKey)?.sourcesIncomplete || false,
           loading: false,
           refreshing: false,
@@ -351,41 +401,65 @@ const useEnhancedLyrics = ({
     )
 
     request.promise
-      .then(({ structuredLyrics, evidence, sourcesIncomplete, retryAt }) => {
-        if (!active) return
-        autoRetryRef.current = { cacheKey, attempts: 0 }
-        setAutoRetry(null)
-        if (keepingContent && structuredLyrics.length === 0) {
-          const retainedEvidence = evidence.length
-            ? evidence
-            : stateRef.current.evidence
-          rememberLyrics(
-            cacheKey,
-            stateRef.current.structuredLyrics,
-            retainedEvidence,
-          )
-          setState((current) => ({
-            ...current,
-            evidence: retainedEvidence,
-            refreshing: false,
-          }))
-          return
-        }
-        setState((current) => ({
-          cacheKey,
-          structuredLyrics:
-            current.cacheKey === cacheKey &&
-            sameStructuredLyrics(current.structuredLyrics, structuredLyrics)
-              ? current.structuredLyrics
-              : structuredLyrics,
+      .then(
+        ({
+          structuredLyrics,
           evidence,
-          loading: false,
-          refreshing: false,
-          error: null,
-          retryAt,
           sourcesIncomplete,
-        }))
-      })
+          retryAt,
+          personal,
+        }) => {
+          if (!active) return
+          autoRetryRef.current = { cacheKey, attempts: 0 }
+          setAutoRetry(null)
+          if (keepingContent && structuredLyrics.length === 0) {
+            const retainedEvidence = evidence.length
+              ? evidence
+              : stateRef.current.evidence
+            // A provider failure must keep readable lyrics, but never a
+            // recording this listener rejected. Apply the latest personal
+            // filter to the retained list before caching or displaying it.
+            const retained = filterRejectedLyrics(
+              stateRef.current.structuredLyrics,
+              personal?.rejection || [],
+            )
+            rememberLyrics(
+              cacheKey,
+              retained,
+              retainedEvidence,
+              null,
+              false,
+              personal,
+            )
+            setState((current) => ({
+              ...current,
+              structuredLyrics: retained,
+              evidence: retainedEvidence,
+              personal: personal || current.personal || null,
+              personalSupported:
+                personal === null ? current.personalSupported : true,
+              refreshing: false,
+            }))
+            return
+          }
+          setState((current) => ({
+            cacheKey,
+            structuredLyrics:
+              current.cacheKey === cacheKey &&
+              sameStructuredLyrics(current.structuredLyrics, structuredLyrics)
+                ? current.structuredLyrics
+                : structuredLyrics,
+            evidence,
+            personal,
+            personalSupported: personal !== null,
+            loading: false,
+            refreshing: false,
+            error: null,
+            retryAt,
+            sourcesIncomplete,
+          }))
+        },
+      )
       .catch((error) => {
         if (!active || error?.name === 'AbortError') return
         const cooldownDelay = retryDelayFromError(error)
@@ -448,6 +522,9 @@ const useEnhancedLyrics = ({
         setState({
           cacheKey,
           structuredLyrics: null,
+          evidence: [],
+          personal: null,
+          personalSupported: null,
           loading: false,
           refreshing: false,
           error,
@@ -545,6 +622,8 @@ const useEnhancedLyrics = ({
       variants: [],
       layers: emptyLyricLayers,
       evidence: [],
+      personal: null,
+      personalSupported: null,
       loading: Boolean(trackId && !disabled && requested),
       refreshing: false,
       error: null,
@@ -557,6 +636,8 @@ const useEnhancedLyrics = ({
     variants,
     layers,
     evidence: state.evidence || EMPTY_EVIDENCE,
+    personal: state.personal || null,
+    personalSupported: state.personalSupported ?? null,
     loading: state.loading,
     refreshing: state.refreshing,
     sourcesIncomplete: Boolean(state.sourcesIncomplete),
@@ -570,11 +651,26 @@ const useEnhancedLyrics = ({
   }
 }
 
-export const clearEnhancedLyricsCache = () => {
-  cache.clear()
-  retryWaits.clear()
-  inFlight.forEach((entry) => entry.controller.abort())
-  inFlight.clear()
+export const clearEnhancedLyricsCache = (authIdentity) => {
+  if (!authIdentity) {
+    cache.clear()
+    retryWaits.clear()
+    inFlight.forEach((entry) => entry.controller.abort())
+    inFlight.clear()
+    return
+  }
+  const prefix = `${authIdentity}\u0000`
+  for (const key of [...cache.keys()]) {
+    if (key.startsWith(prefix)) cache.delete(key)
+  }
+  for (const key of [...retryWaits.keys()]) {
+    if (key.startsWith(prefix)) retryWaits.delete(key)
+  }
+  for (const [key, entry] of [...inFlight.entries()]) {
+    if (!key.startsWith(prefix)) continue
+    entry.controller.abort()
+    inFlight.delete(key)
+  }
 }
 
 export default useEnhancedLyrics

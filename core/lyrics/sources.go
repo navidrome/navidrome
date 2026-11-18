@@ -9,6 +9,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -19,7 +20,8 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 	if mf.Lyrics != "" {
 		log.Trace(ctx, "embedded lyrics found in file", "title", mf.Title)
 		list, err := mf.StructuredLyrics()
-		return withLyricsSource(list, model.LyricsSource{Type: model.LyricsSourceEmbedded}), err
+		return withLocalIdentity(mf, model.LyricsLocalKindEmbedded, "", "embedded",
+			withLyricsSource(list, model.LyricsSource{Type: model.LyricsSourceEmbedded})), err
 	}
 
 	log.Trace(ctx, "no embedded lyrics for file", "path", mf.Title)
@@ -67,10 +69,12 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	}
 
 	log.Trace(ctx, "retrieved lyrics from external file")
-	return withLyricsSource(list, model.LyricsSource{
-		Type:   model.LyricsSourceSidecar,
-		Format: strings.ToLower(strings.TrimPrefix(suffix, ".")),
-	}), nil
+	format := strings.ToLower(strings.TrimPrefix(suffix, "."))
+	return withLocalIdentity(mf, model.LyricsLocalKindSidecar, format, suffix,
+		withLyricsSource(list, model.LyricsSource{
+			Type:   model.LyricsSourceSidecar,
+			Format: format,
+		})), nil
 }
 
 func (l *lyricsService) fromPluginResult(ctx context.Context, mf *model.MediaFile, pluginName string, detailed bool) (model.LyricsResult, error) {
@@ -110,6 +114,92 @@ func (l *lyricsService) fromPluginResult(ctx context.Context, mf *model.MediaFil
 		Name: pluginName,
 	})
 	return result, nil
+}
+
+// withLocalIdentity stamps one host-issued identity on every entry of a local
+// source. Embedded and sidecar lyrics have no provider recording; the opaque
+// identity is the durable address used by account-scoped personal choices.
+func withLocalIdentity(mf *model.MediaFile, kind, format, discriminator string, list model.LyricList) model.LyricList {
+	if len(list) == 0 || mf == nil {
+		return list
+	}
+	language, role := localIdentityAttributes(list)
+	identity := model.NewLyricsLocalIdentity(mf.ID, kind, format, language, role, discriminator)
+	if !identity.Valid() {
+		return list
+	}
+	result := make(model.LyricList, len(list))
+	copy(result, list)
+	for i := range result {
+		stamped := identity
+		result[i].Local = &stamped
+	}
+	return result
+}
+
+// localIdentityAttributes reports the variant's uniform main language, or an
+// empty language for a mixed-language local document. The token itself does
+// not depend on this presentation value.
+func localIdentityAttributes(list model.LyricList) (string, string) {
+	language := ""
+	mixed := false
+	for _, lyric := range list {
+		if !lyric.IsMainKind() {
+			continue
+		}
+		lang := strings.TrimSpace(lyric.Lang)
+		if language == "" {
+			language = lang
+			continue
+		}
+		if lang != language {
+			mixed = true
+		}
+	}
+	if mixed {
+		language = ""
+	}
+	return language, model.LyricKindMain
+}
+
+// LocalVariants lists the currently readable embedded and configured sidecar
+// variants for mf. It performs the real local-file read and is the validation
+// authority for durable local choices; it never invents an identity for an
+// unavailable source.
+func LocalVariants(ctx context.Context, mf *model.MediaFile) []model.LyricsLocalIdentity {
+	if mf == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	identities := make([]model.LyricsLocalIdentity, 0, 2)
+	add := func(list model.LyricList) {
+		for _, lyric := range list {
+			if lyric.Local == nil || !lyric.Local.Valid() || seen[lyric.Local.Token] {
+				continue
+			}
+			seen[lyric.Local.Token] = true
+			identities = append(identities, *lyric.Local)
+		}
+	}
+	for pattern := range strings.SplitSeq(conf.Server.LyricsPriority, ",") {
+		pattern = strings.TrimSpace(pattern)
+		if !isLocalSource(pattern) {
+			continue
+		}
+		var list model.LyricList
+		var err error
+		if strings.EqualFold(pattern, "embedded") {
+			list, err = fromEmbedded(ctx, mf)
+		} else {
+			list, err = fromExternalFile(ctx, mf, pattern)
+		}
+		if err != nil {
+			log.Debug(ctx, "local lyrics variant unavailable", "source", pattern, err)
+			continue
+		}
+		add(list)
+	}
+	return identities
 }
 
 // withLyricsSource copies the lyric entries before adding defaults so resolver

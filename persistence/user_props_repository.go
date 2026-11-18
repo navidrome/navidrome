@@ -60,3 +60,27 @@ func (r userPropsRepository) DefaultGet(ctx context.Context, userId, key string,
 func (r userPropsRepository) Delete(ctx context.Context, userId, key string) error {
 	return r.delete(ctx, And{Eq{"user_id": userId}, Eq{"key": key}})
 }
+
+// CompareAndSwap is the atomic read/modify/write boundary for durable personal
+// state. A single SQLite statement either inserts an absent row or updates the
+// exact value the caller read; concurrent writers retry against fresh state
+// instead of losing updates.
+func (r userPropsRepository) CompareAndSwap(ctx context.Context, userId, key, value string, expected *string) (bool, error) {
+	if expected == nil {
+		insert := Insert(r.tableName).Columns("user_id", "key", "value").
+			Values(userId, key, value).
+			Suffix("ON CONFLICT(user_id, key) DO NOTHING")
+		count, err := r.executeSQL(ctx, insert)
+		if err != nil {
+			return false, err
+		}
+		return count > 0, nil
+	}
+	update := Update(r.tableName).Set("value", value).
+		Where(And{Eq{"user_id": userId}, Eq{"key": key}, Eq{"value": *expected}})
+	count, err := r.executeSQL(ctx, update)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

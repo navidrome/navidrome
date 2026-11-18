@@ -239,6 +239,43 @@ describe('getLyricsBySongId', () => {
   })
 })
 
+describe('lyrics personal preference mutation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSubsonicLocalStorage()
+  })
+
+  it('POSTs a deliberate preference action', async () => {
+    await subsonic.updateLyricsPreference('song-123', {
+      action: 'select',
+      local: 'local:v1:abc',
+    })
+
+    expect(httpClient).toHaveBeenCalledWith(
+      expect.stringContaining('/rest/setLyricsPreference?'),
+      { method: 'POST' },
+    )
+    const requestedUrl = httpClient.mock.calls[0][0]
+    expect(requestedUrl).toContain('id=song-123')
+    expect(requestedUrl).toContain('action=select')
+    expect(requestedUrl).toContain('local=local%3Av1%3Aabc')
+  })
+
+  it('rejects a failed preference mutation with the server message', async () => {
+    httpClient.mockResolvedValueOnce({
+      json: {
+        'subsonic-response': {
+          status: 'failed',
+          error: { code: 0, message: 'could not save the lyrics preference' },
+        },
+      },
+    })
+    await expect(
+      subsonic.updateLyricsPreference('song-123', { action: 'auto' }),
+    ).rejects.toThrow('could not save the lyrics preference')
+  })
+})
+
 describe('lyrics original retrieval', () => {
   const response = ({
     body = new Blob(['document']),

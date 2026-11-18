@@ -184,9 +184,12 @@ func (api *Router) routes() http.Handler {
 			r.Use(getPlayer(api.players))
 			hr(r, "getAvatar", api.GetAvatar)
 			h(r, "getLyrics", api.GetLyrics)
-			h(r, "getLyricsBySongId", api.GetLyricsBySongId)
-			h(r, "getLyricsVariants", api.GetLyricsVariants)
+			hr(r, "getLyricsBySongId", api.getLyricsBySongIdWithHeaders)
+			hr(r, "getLyricsVariants", api.getLyricsVariantsWithHeaders)
 			hr(r, "getLyricsOriginal", api.GetLyricsOriginal)
+			postOnly(r, "setLyricsPreference", func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+				return api.SetLyricsPreference(r)
+			})
 			hr(r, "stream", api.Stream)
 			hr(r, "download", api.Download)
 			hr(r, "getTranscodeDecision", api.GetTranscodeDecision)
@@ -239,6 +242,25 @@ func (api *Router) routes() http.Handler {
 		h410(r, "getVideos", "getVideoInfo", "getCaptions", "hls")
 	})
 	return r
+}
+
+// Add a POST-only Subsonic handler. Personalized mutations are deliberately
+// not exposed as GETs so caches, prefetchers and links cannot trigger them.
+func postOnly(r chi.Router, path string, f handlerRaw) {
+	r.Post("/"+path, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "private, no-store")
+		res, err := f(w, r)
+		if err != nil {
+			sendError(w, r, err)
+			return
+		}
+		if r.Context().Err() != nil {
+			return
+		}
+		if res != nil {
+			sendResponse(w, r, res)
+		}
+	})
 }
 
 // Add a Subsonic handler

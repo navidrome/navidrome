@@ -8,6 +8,7 @@ import Tooltip from '@material-ui/core/Tooltip'
 import Typography from '@material-ui/core/Typography'
 import { alpha, makeStyles } from '@material-ui/core/styles'
 import AvTimerIcon from '@material-ui/icons/AvTimer'
+import BlockIcon from '@material-ui/icons/Block'
 import GetAppIcon from '@material-ui/icons/GetApp'
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import RecordVoiceOverIcon from '@material-ui/icons/RecordVoiceOver'
@@ -140,6 +141,11 @@ const useStyles = makeStyles(
       justifyContent: 'space-between',
       gap: theme.spacing(2),
     },
+    sourceMetaRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(0.25),
+    },
     variantLabel: {
       overflowWrap: 'anywhere',
     },
@@ -213,6 +219,9 @@ const LyricsLayerControls = ({
   onTogglePronunciation,
   onToggleLetterWave = noop,
   variants = [],
+  rejections = [],
+  onRejectVariant = noop,
+  onRestoreRejection = noop,
   selectedSourceKey = null,
   onSelectSource = noop,
   onSourceMenuOpenChange = noop,
@@ -237,7 +246,8 @@ const LyricsLayerControls = ({
   const offsetPopoverId = `${testId}-offset-popover`
   const downloadMenuId = `${testId}-download-menu`
   const hasVariants = variants.length > 0
-  const sourceOpen = Boolean(active && hasVariants && sourceAnchor)
+  const hasSourceMenu = hasVariants || rejections.length > 0
+  const sourceOpen = Boolean(active && hasSourceMenu && sourceAnchor)
   const offsetOpen = Boolean(active && offsetEnabled && offsetAnchor)
   const downloadMenuVisible = Boolean(active && hasVariants && downloadOpen)
   const offsetLabel = labels.offset || 'Lyrics timing offset'
@@ -274,8 +284,8 @@ const LyricsLayerControls = ({
   }, [onSourceMenuOpenChange, sourceOpen])
 
   useEffect(() => {
-    if (!active || !hasVariants) setSourceAnchor(null)
-  }, [active, hasVariants])
+    if (!active || !hasSourceMenu) setSourceAnchor(null)
+  }, [active, hasSourceMenu])
 
   useEffect(() => {
     if (!active || !offsetEnabled) setOffsetAnchor(null)
@@ -317,6 +327,22 @@ const LyricsLayerControls = ({
     [onSelectSource],
   )
 
+  const rejectVariant = useCallback(
+    (event, variant) => {
+      event.stopPropagation()
+      onRejectVariant(variant)
+    },
+    [onRejectVariant],
+  )
+
+  const restoreRejection = useCallback(
+    (token) => {
+      setSourceAnchor(null)
+      onRestoreRejection(token)
+    },
+    [onRestoreRejection],
+  )
+
   const stepOffset = (delta) =>
     onOffsetChange(stepLyricsOffset(offsetMs, delta))
 
@@ -329,7 +355,7 @@ const LyricsLayerControls = ({
       data-testid={testId}
       onClick={(event) => event.stopPropagation()}
     >
-      {hasVariants && (
+      {hasSourceMenu && (
         <>
           <Tooltip title={labels.viewSource || 'View lyrics source'}>
             <IconButton
@@ -394,16 +420,60 @@ const LyricsLayerControls = ({
                 <span className={classes.variantLabel}>
                   {getVariantLabel(variant.source, labels)}
                 </span>
+                <span className={classes.sourceMetaRow}>
+                  <span className={classes.variantMeta}>
+                    {[
+                      variant.suggestion
+                        ? labels.suggestion || 'Suggestion'
+                        : null,
+                      formatSourceValue(variant.source?.format),
+                      formatSourceValue(variant.lyric?.local?.format),
+                      formatSourceValue(variant.lyric?.local?.language),
+                      syncLabelFor(variant.sync, labels),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  {variant.lyric?.selection ? (
+                    <IconButton
+                      size="small"
+                      aria-label={`${labels.rejectMatch || 'Reject this recording'}: ${getVariantLabel(variant.source, labels)}`}
+                      title={labels.rejectMatch || 'Reject this recording'}
+                      data-testid={`lyrics-reject-${variant.key}`}
+                      onClick={(event) => rejectVariant(event, variant)}
+                      className={classes.controlButton}
+                    >
+                      <BlockIcon fontSize="small" />
+                    </IconButton>
+                  ) : null}
+                </span>
+              </MenuItem>
+            ))}
+            {rejections.length > 0 && (
+              <li className={classes.sourceHeader} role="presentation">
+                <Typography
+                  variant="overline"
+                  className={classes.sourceHeading}
+                >
+                  {labels.rejectedTitle || 'Rejected recordings'}
+                </Typography>
+              </li>
+            )}
+            {rejections.map((rejection, index) => (
+              <MenuItem
+                key={rejection.token || index}
+                onClick={() => restoreRejection(rejection.token)}
+                className={classes.sourceItem}
+                data-testid={`lyrics-restore-rejection-${index}`}
+              >
+                <span className={classes.variantLabel}>
+                  {rejection.label ||
+                    rejection.recording ||
+                    labels.rejectedTitle ||
+                    'Rejected recording'}
+                </span>
                 <span className={classes.variantMeta}>
-                  {[
-                    variant.suggestion
-                      ? labels.suggestion || 'Suggestion'
-                      : null,
-                    formatSourceValue(variant.source?.format),
-                    syncLabelFor(variant.sync, labels),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
+                  {labels.restoreRejection || 'Restore'}
                 </span>
               </MenuItem>
             ))}

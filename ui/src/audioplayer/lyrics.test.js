@@ -8,7 +8,11 @@ import {
   getPreferredLyricLanguage,
   hasNudgeableTiming,
   hasStructuredLyricContent,
+  isRejectedRecording,
+  localVariantKey,
+  recordingScope,
   selectLyricLayers,
+  variantKey,
   stepLyricsOffset,
   utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
@@ -945,5 +949,62 @@ describe('suggestion-only auxiliary layers', () => {
     expect(
       selectLyricLayers([suggestion, translation, pronunciation], 'en'),
     ).toEqual({ main: null, translation: null, pronunciation: null })
+  })
+})
+
+describe('local identities and recording scopes', () => {
+  it('addresses a host local variant separately from provider selections', () => {
+    const localIdentity = {
+      version: 1,
+      token: 'local:v1:0123456789abcdef0123456789abcdef',
+      kind: 'sidecar',
+      format: 'lrc',
+      language: 'en',
+      role: 'main',
+    }
+    const lyric = {
+      local: localIdentity,
+      selection: 'provider-token',
+      source: { type: 'sidecar', format: 'lrc' },
+    }
+    expect(localVariantKey(lyric)).toBe(`local:${localIdentity.token}`)
+    expect(variantKey(lyric.source, lyric)).toBe(`local:${localIdentity.token}`)
+  })
+
+  it('derives a stable recording scope only from a 32-hex revision tail', () => {
+    expect(
+      recordingScope({
+        recording: 'r-l@0123456789abcdef0123456789abcdef',
+      }),
+    ).toBe('r-l')
+    expect(
+      recordingScope({
+        recording: 'provider@id@0123456789abcdef0123456789abcdef',
+      }),
+    ).toBe('provider@id')
+    expect(recordingScope({ recording: 'sha256:abcdef' })).toBe('')
+    expect(recordingScope({ recording: 'r-l@0123' })).toBe('')
+  })
+
+  it('filters only the rejected provider recording', () => {
+    const rejected = {
+      source: { pluginId: 'plugin-id' },
+      variant: {
+        instance: 'plugin-instance',
+        recording: 'r-l@0123456789abcdef0123456789abcdef',
+      },
+    }
+    const sibling = {
+      source: { pluginId: 'plugin-id' },
+      variant: {
+        instance: 'plugin-instance',
+        recording: 'r-n@0123456789abcdef0123456789abcdef',
+      },
+    }
+    const rejections = [
+      { plugin: 'plugin-id', instance: 'plugin-instance', recording: 'r-l' },
+    ]
+    expect(isRejectedRecording(rejected, rejections)).toBe(true)
+    expect(isRejectedRecording(sibling, rejections)).toBe(false)
   })
 })

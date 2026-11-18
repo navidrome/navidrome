@@ -294,13 +294,21 @@ export const hasStructuredLyricContent = (structuredLyric) =>
 // persistence. A plugin installation id is the stable boundary; responses from
 // older hosts fall back to the display name. A plugin selection token names one
 // exact identity, so two recordings from one provider stay individually
-// selectable.
+// selectable. Host local identities address embedded and sidecar variants and
+// are deliberately separate from provider selections and original documents.
 const pluginIdentity = (source) =>
   String(source?.pluginId || source?.name || '')
     .trim()
     .toLowerCase()
 
+export const localVariantKey = (lyric) =>
+  lyric?.local?.token ? `local:${lyric.local.token}` : null
+
 export const variantKey = (source, lyric = null) => {
+  const localKey = localVariantKey(lyric)
+  if (localKey) {
+    return localKey
+  }
   if (lyric?.selection) {
     return `selection:${lyric.selection}`
   }
@@ -320,6 +328,40 @@ export const variantKey = (source, lyric = null) => {
   }
   return legacyVariantKey(source)
 }
+
+// recordingScope mirrors the host's stable provider recording id: the plugin
+// appends a content-revision digest after '@'. Only a 32-hex tail is a
+// revision; content-only addresses have no stable recording scope. It is used
+// to keep rejected recordings out of merged and retained client state.
+export const recordingScope = (identity) => {
+  const recording =
+    typeof identity?.recording === 'string' ? identity.recording.trim() : ''
+  const at = recording.lastIndexOf('@')
+  if (at <= 0 || recording.length - at - 1 !== 32) return ''
+  const revision = recording.slice(at + 1)
+  return /^[0-9a-f]{32}$/.test(revision) ? recording.slice(0, at) : ''
+}
+
+export const isRejectedRecording = (lyric, rejections) => {
+  if (!Array.isArray(rejections) || rejections.length === 0) return false
+  const pluginId = pluginIdentity(lyric?.source)
+  const instance = lyric?.variant?.instance
+  const scope = recordingScope(lyric?.variant)
+  if (!pluginId || !instance || !scope) return false
+  return rejections.some(
+    (rejection) =>
+      String(rejection?.plugin || '')
+        .trim()
+        .toLowerCase() === pluginId &&
+      String(rejection?.instance || '').trim() === instance &&
+      String(rejection?.recording || '').trim() === scope,
+  )
+}
+
+export const filterRejectedLyrics = (lyrics, rejections) =>
+  Array.isArray(lyrics)
+    ? lyrics.filter((lyric) => !isRejectedRecording(lyric, rejections))
+    : []
 
 // recordingKey associates the auxiliary tracks of one addressable recording.
 // Role, language and playback format deliberately do not participate; the

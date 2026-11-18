@@ -743,3 +743,81 @@ describe('useEnhancedLyrics evidence-only refresh', () => {
     expect(result.current.evidence).toHaveLength(1)
   })
 })
+
+describe('useEnhancedLyrics personal state and identity', () => {
+  it('carries the listener personal node and filters rejected recordings', async () => {
+    const identity = {
+      version: 1,
+      instance: 'plugin-instance',
+      recording: 'r-l@0123456789abcdef0123456789abcdef',
+      language: 'en',
+      role: 'main',
+      format: 'lrc',
+    }
+    const response = responseForEntries([
+      sourceEntry('NetEase', 'NetEase line'),
+      {
+        ...sourceEntry('LRCLib', 'LRCLib line'),
+        selection: 'token-lrclib',
+        variant: identity,
+        source: {
+          type: 'plugin',
+          pluginId: 'plugin-id',
+          provider: 'LRCLib',
+          format: 'lrc',
+        },
+      },
+    ])
+    response.json['subsonic-response'].lyricsList.personal = {
+      revision: 3,
+      rejection: [
+        {
+          token: 'reject-token',
+          plugin: 'plugin-id',
+          provider: 'LRCLib',
+          instance: 'plugin-instance',
+          recording: 'r-l',
+        },
+      ],
+    }
+    subsonic.getLyricsBySongId.mockResolvedValue(response)
+    const { result } = renderLyrics({ trackId: 'personal' })
+    await act(async () => {})
+    expect(result.current.personalSupported).toBe(true)
+    expect(result.current.personal.revision).toBe(3)
+    expect(result.current.variants.map((variant) => variant.key)).toEqual([
+      'netease',
+    ])
+  })
+
+  it('does not reuse another account cached lyrics or personal state', async () => {
+    let calls = 0
+    subsonic.getLyricsBySongId.mockImplementation(() => {
+      calls += 1
+      if (calls === 1) return Promise.resolve(responseFor('account A'))
+      return Promise.resolve({
+        json: {
+          'subsonic-response': {
+            lyricsList: {
+              structuredLyrics:
+                responseFor('account B').json['subsonic-response'].lyricsList
+                  .structuredLyrics,
+              personal: { revision: 0 },
+            },
+          },
+        },
+      })
+    })
+    const { result, rerender } = renderLyrics({
+      authIdentity: 'user-a',
+      trackId: 'shared-track',
+    })
+    await expectLyric(result, 'account A')
+    const firstAccountCalls = calls
+
+    rerender({ authIdentity: 'user-b', trackId: 'shared-track' })
+    await expectLyric(result, 'account B')
+    expect(calls).toBeGreaterThan(firstAccountCalls)
+    expect(result.current.personalSupported).toBe(true)
+  })
+})

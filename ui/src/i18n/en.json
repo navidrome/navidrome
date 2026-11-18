@@ -778,7 +778,13 @@
       "orderLoop": "Repeat",
       "singleLoop": "Repeat One",
       "shufflePlay": "Shuffle"
-    }
+    },
+    "lyricsRejectMatchText": "Reject this recording",
+    "lyricsRejectedTitleText": "Rejected recordings",
+    "lyricsRestoreRejectionText": "Restore",
+    "lyricsPersonalFallbackText": "Your selected lyrics (%{label}) are temporarily unavailable. Showing the best available match.",
+    "lyricsPreferenceErrorText": "Could not save your lyrics choice",
+    "lyricsPreferencesUnsupportedText": "Saved lyrics choices could not be read by this server version. Automatic selection is still available."
   },
   "about": {
     "links": {

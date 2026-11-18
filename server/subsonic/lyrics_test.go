@@ -1120,7 +1120,7 @@ var _ = Describe("lyrics recording evidence responses", func() {
 		}}, []model.LyricsEvidence{{
 			PluginID: "nd-better-lyrics", Kind: "instrumental", Provider: "LRCLib",
 			Recording: "rec-1", Match: &model.LyricsMatch{Status: model.LyricsMatchValidated},
-		}}, true)
+		}}, true, nil)
 
 		Expect(list.StructuredLyrics).To(HaveLen(1))
 		Expect(list.StructuredLyrics[0].Match).ToNot(BeNil())
@@ -1137,7 +1137,7 @@ var _ = Describe("lyrics recording evidence responses", func() {
 			Kind: model.LyricKindMain, Lang: "en", Synced: true,
 			Line:  []model.Line{{Value: "line one", Start: int64Ptr(0)}},
 			Match: &model.LyricsMatch{Status: model.LyricsMatchValidated},
-		}}, []model.LyricsEvidence{{Kind: "instrumental", Provider: "LRCLib"}}, false)
+		}}, []model.LyricsEvidence{{Kind: "instrumental", Provider: "LRCLib"}}, false, nil)
 		Expect(list.StructuredLyrics).To(HaveLen(1))
 		Expect(list.StructuredLyrics[0].Match).To(BeNil())
 		Expect(list.InstrumentalEvidence).To(BeEmpty())

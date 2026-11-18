@@ -231,6 +231,17 @@ describe('<LyricsPanel />', () => {
     cleanup()
   })
 
+  it('explains a temporarily unavailable personal selection', () => {
+    renderPanel({
+      mainLyric,
+      personalNotice:
+        'Your selected lyrics (Sidecar file · LRC) are temporarily unavailable.',
+    })
+    expect(screen.getByTestId('lyrics-personal-notice')).toHaveTextContent(
+      'temporarily unavailable',
+    )
+  })
+
   it('applies the per-song user offset to the karaoke timeline', () => {
     const propsAt = (offsetMs) => ({
       mainLyric,
