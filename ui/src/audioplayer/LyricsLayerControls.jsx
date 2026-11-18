@@ -423,16 +423,24 @@ const LyricsLayerControls = ({
                 <span className={classes.sourceMetaRow}>
                   <span className={classes.variantMeta}>
                     {[
-                      variant.suggestion
-                        ? labels.suggestion || 'Suggestion'
-                        : null,
-                      formatSourceValue(variant.source?.format),
-                      formatSourceValue(variant.lyric?.local?.format),
-                      formatSourceValue(variant.lyric?.local?.language),
-                      syncLabelFor(variant.sync, labels),
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
+                      ...new Set(
+                        [
+                          variant.suggestion
+                            ? labels.suggestion || 'Suggestion'
+                            : null,
+                          formatSourceValue(variant.source?.format),
+                          formatSourceValue(variant.lyric?.local?.format),
+                          ['xxx', 'und'].includes(
+                            String(
+                              variant.lyric?.local?.language || '',
+                            ).toLowerCase(),
+                          )
+                            ? ''
+                            : formatSourceValue(variant.lyric?.local?.language),
+                          syncLabelFor(variant.sync, labels),
+                        ].filter(Boolean),
+                      ),
+                    ].join(' · ')}
                   </span>
                   {variant.lyric?.selection ? (
                     <IconButton
