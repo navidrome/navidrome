@@ -1,6 +1,7 @@
 package nativeapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -33,6 +34,29 @@ func writePlaylistError(w http.ResponseWriter, err error, defaultStatus int) {
 	default:
 		http.Error(w, err.Error(), defaultStatus)
 	}
+}
+
+// maxPlaylistJSONBody fits MaxTracksPerRequest ids (about 1.3 MiB) with room to spare.
+const maxPlaylistJSONBody = 4 << 20
+
+// maxContainerIDs keeps album, artist and disc lists under SQLite's variable and expression-depth limits.
+const maxContainerIDs = 500
+
+// limitPlaylistJSON buffers the body so an oversized one is a 413: deluan/rest answers any read error with 422.
+func limitPlaylistJSON(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxPlaylistJSONBody))
+		if errors.As(err, new(*http.MaxBytesError)) {
+			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		next.ServeHTTP(w, r)
+	})
 }
 
 func playlistTracksHandler(pls playlists.Playlists, handler func(rest.Repository[model.PlaylistTrack]) http.HandlerFunc, refreshSmartPlaylist func(*http.Request) bool) http.HandlerFunc {
@@ -148,9 +172,18 @@ func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 		p := req.Params(r)
 		playlistId, _ := p.String(":playlistId")
 		var payload addTracksPayload
-		err := json.NewDecoder(r.Body).Decode(&payload)
+		err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaylistJSONBody)).Decode(&payload)
+		if errors.As(err, new(*http.MaxBytesError)) {
+			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if len(payload.Ids) > playlists.MaxTracksPerRequest ||
+			len(payload.AlbumIds)+len(payload.ArtistIds)+len(payload.Discs) > maxContainerIDs {
+			http.Error(w, "too many ids in one request", http.StatusRequestEntityTooLarge)
 			return
 		}
 		count, c := 0, 0
