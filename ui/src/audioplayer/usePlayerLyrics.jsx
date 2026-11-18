@@ -614,12 +614,14 @@ const usePlayerLyrics = ({
   )
 
   const personalNotice =
-    personalSupported === true &&
-    personalSelectionUnavailable(effectivePersonal)
-      ? translate('player.lyricsPersonalFallbackText', {
-          label: personalSelectionLabel(effectivePersonal, labels),
-        })
-      : null
+    personalSupported === true && effectivePersonal?.unsupported
+      ? translate('player.lyricsPreferencesUnsupportedText')
+      : personalSupported === true &&
+          personalSelectionUnavailable(effectivePersonal)
+        ? translate('player.lyricsPersonalFallbackText', {
+            label: personalSelectionLabel(effectivePersonal, labels),
+          })
+        : null
   const rejectionRows = useMemo(
     () =>
       personalRejections(effectivePersonal).map((rejection) => ({

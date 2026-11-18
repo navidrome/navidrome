@@ -164,7 +164,7 @@ func validPreferenceOffsets(offsets []LyricsPreferenceOffset) []LyricsPreference
 		if len(result) >= MaxLyricsPreferenceOffsets {
 			break
 		}
-		offset.OffsetMs = clampOffset(offset.OffsetMs)
+		offset.OffsetMs = ClampLyricsOffset(offset.OffsetMs)
 		if offset.OffsetMs == 0 {
 			continue
 		}
@@ -200,7 +200,7 @@ func validPreferenceOffsets(offsets []LyricsPreferenceOffset) []LyricsPreference
 		default:
 			continue
 		}
-		key := offsetKey(offset)
+		key := offset.Key()
 		if seen[key] {
 			continue
 		}
@@ -249,18 +249,22 @@ func normalizeLocalIdentity(local *LyricsLocalIdentity) *LyricsLocalIdentity {
 	return local
 }
 
-func clampOffset(value int64) int64 {
-	const limit = 5000
-	if value > limit {
-		return limit
+// MaxLyricsOffsetMs bounds one variant-specific timing correction.
+const MaxLyricsOffsetMs = 5000
+
+// ClampLyricsOffset bounds a correction to the client-supported range.
+func ClampLyricsOffset(value int64) int64 {
+	if value > MaxLyricsOffsetMs {
+		return MaxLyricsOffsetMs
 	}
-	if value < -limit {
-		return -limit
+	if value < -MaxLyricsOffsetMs {
+		return -MaxLyricsOffsetMs
 	}
 	return value
 }
 
-func offsetKey(offset LyricsPreferenceOffset) string {
+// Key identifies one offset's variant scope for replacement and deduplication.
+func (offset LyricsPreferenceOffset) Key() string {
 	if offset.Kind == LyricsPreferenceKindLocal && offset.Local != nil {
 		return "local\x00" + offset.Local.Token
 	}

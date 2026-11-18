@@ -1,13 +1,8 @@
 import { formatSourceValue } from './lyricsSource'
 
-// The enhanced lyrics response carries a `lyricsList.personal` node, while a
-// preference mutation returns `lyricsPersonal`. Both are listener-scoped and
-// must never be shared across accounts.
-export const readLyricsListPersonal = (response) => {
-  const personal = response?.json?.['subsonic-response']?.lyricsList?.personal
-  return personal && typeof personal === 'object' ? personal : null
-}
-
+// A preference mutation returns `lyricsPersonal`. It is listener-scoped and
+// must never be shared across accounts. The enhanced lyrics node is read by
+// the lyrics hook, which owns the response cache.
 export const readMutationPersonal = (response) => {
   const personal = response?.json?.['subsonic-response']?.lyricsPersonal
   return personal && typeof personal === 'object' ? personal : null

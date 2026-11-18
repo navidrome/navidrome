@@ -651,26 +651,11 @@ const useEnhancedLyrics = ({
   }
 }
 
-export const clearEnhancedLyricsCache = (authIdentity) => {
-  if (!authIdentity) {
-    cache.clear()
-    retryWaits.clear()
-    inFlight.forEach((entry) => entry.controller.abort())
-    inFlight.clear()
-    return
-  }
-  const prefix = `${authIdentity}\u0000`
-  for (const key of [...cache.keys()]) {
-    if (key.startsWith(prefix)) cache.delete(key)
-  }
-  for (const key of [...retryWaits.keys()]) {
-    if (key.startsWith(prefix)) retryWaits.delete(key)
-  }
-  for (const [key, entry] of [...inFlight.entries()]) {
-    if (!key.startsWith(prefix)) continue
-    entry.controller.abort()
-    inFlight.delete(key)
-  }
+export const clearEnhancedLyricsCache = () => {
+  cache.clear()
+  retryWaits.clear()
+  inFlight.forEach((entry) => entry.controller.abort())
+  inFlight.clear()
 }
 
 export default useEnhancedLyrics

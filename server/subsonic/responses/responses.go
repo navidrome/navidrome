@@ -680,9 +680,6 @@ type LyricsPersonalRejected struct {
 	Provider  string `xml:"provider,attr,omitempty" json:"provider,omitempty"`
 	Instance  string `xml:"instance,attr,omitempty" json:"instance,omitempty"`
 	Recording string `xml:"recording,attr,omitempty" json:"recording,omitempty"`
-	Format    string `xml:"format,attr,omitempty"   json:"format,omitempty"`
-	Language  string `xml:"language,attr,omitempty" json:"language,omitempty"`
-	Role      string `xml:"role,attr,omitempty"     json:"role,omitempty"`
 }
 
 // LyricsVariants lists the addressable playback representations. Documents are

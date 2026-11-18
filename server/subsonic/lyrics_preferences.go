@@ -26,22 +26,16 @@ const (
 )
 
 var (
-	errPersonalConflict      = errors.New("lyrics preference conflict")
-	errPersonalUnsupported   = errors.New("lyrics preference is not supported")
-	errPersonalTooLarge      = errors.New("lyrics preference is too large")
-	errPersonalFull          = errors.New("lyrics preference list is full")
-	errSelectionMalformed    = errors.New("invalid lyrics selection")
-	errSelectionUnavailable  = errors.New("lyrics selection is not currently available")
-	errSelectionMismatch     = errors.New("lyrics selection is a known mismatch")
-	errLocalMalformed        = errors.New("invalid local lyrics selection")
-	errLocalUnavailable      = errors.New("local lyrics are not currently available")
-	errRejectionProviderOnly = errors.New("rejection applies only to provider recordings")
-	errRejectionUnstable     = errors.New("lyrics recording identity is not stable")
-	errNoPreferenceChange    = errors.New("no lyrics preference change")
+	errPersonalConflict    = errors.New("lyrics preference conflict")
+	errPersonalUnsupported = errors.New("lyrics preference is not supported")
+	errPersonalTooLarge    = errors.New("lyrics preference is too large")
+	errPersonalFull        = errors.New("lyrics preference list is full")
+	errNoPreferenceChange  = errors.New("no lyrics preference change")
 )
 
 // LyricsPreferenceUpdate is one validated client correction request.
 type LyricsPreferenceUpdate struct {
+	TrackID   string
 	Action    string
 	Selection string
 	Local     string
@@ -71,12 +65,7 @@ func (api *Router) getLyricsVariantsWithHeaders(w http.ResponseWriter, r *http.R
 // only from the authenticated request context, and the media file is loaded
 // through that context so the existing library access filter applies.
 func (api *Router) SetLyricsPreference(r *http.Request) (*responses.Subsonic, error) {
-	params := req.Params(r)
-	id, err := params.String("id")
-	if err != nil {
-		return nil, err
-	}
-	action, err := params.String("action")
+	update, err := parseLyricsPreferenceUpdate(r)
 	if err != nil {
 		return nil, err
 	}
@@ -86,116 +75,119 @@ func (api *Router) SetLyricsPreference(r *http.Request) (*responses.Subsonic, er
 	}
 	// Ignore any client-supplied user selector: ownership is the authenticated
 	// account only.
-	mediaFile, err := api.ds.MediaFile().Get(r.Context(), id)
+	mediaFile, err := api.ds.MediaFile().Get(r.Context(), update.TrackID)
 	if err != nil {
 		return nil, err
 	}
-	update := LyricsPreferenceUpdate{
-		Action:    strings.ToLower(strings.TrimSpace(action)),
-		Selection: strings.TrimSpace(r.URL.Query().Get("selection")),
-		Local:     strings.TrimSpace(r.URL.Query().Get("local")),
-		Rejection: strings.TrimSpace(r.URL.Query().Get("rejection")),
-	}
-	if offset, parseErr := params.Int64("offsetMs"); parseErr == nil {
-		update.OffsetMs = offset
-	} else if update.Action == "offset" {
-		return nil, parseErr
-	}
-
 	variants, _, _ := api.lyrics.ListLyricsVariantsResult(r.Context(), mediaFile)
 	locals := lyrics.LocalVariants(r.Context(), mediaFile)
-	entries := personalEntries(variants, locals)
-
-	var validated *model.LyricsVariant
-	var validatedLocal *model.LyricsLocalIdentity
-	switch update.Action {
-	case "auto":
-		if update.Selection != "" || update.Local != "" || update.Rejection != "" {
-			return nil, newError(responses.ErrorGeneric, "invalid lyrics preference parameters")
-		}
-	case "select":
-		if err := oneOf(update.Selection, update.Local); err != nil {
-			return nil, err
-		}
-		if update.Selection != "" {
-			variant, err := api.validateProviderSelection(r.Context(), mediaFile, variants, update.Selection)
-			if err != nil {
-				return nil, err
-			}
-			if isMismatch(variant.Match) {
-				return nil, newError(responses.ErrorGeneric, "lyrics selection is a known mismatch; reject it instead")
-			}
-			validated = &variant
-		} else {
-			identity, err := validateLocalSelection(locals, update.Local)
-			if err != nil {
-				return nil, err
-			}
-			validatedLocal = &identity
-		}
-	case "offset":
-		if err := oneOf(update.Selection, update.Local); err != nil {
-			return nil, err
-		}
-		if update.Selection != "" {
-			variant, err := api.validateProviderSelection(r.Context(), mediaFile, variants, update.Selection)
-			if err != nil {
-				return nil, err
-			}
-			validated = &variant
-		} else {
-			identity, err := validateLocalSelection(locals, update.Local)
-			if err != nil {
-				return nil, err
-			}
-			validatedLocal = &identity
-		}
-	case "reject":
-		if update.Selection == "" || update.Local != "" {
-			return nil, newError(responses.ErrorGeneric, "rejections apply only to provider recordings")
-		}
-		variant, err := api.validateProviderSelection(r.Context(), mediaFile, variants, update.Selection)
-		if err != nil {
-			return nil, err
-		}
-		validated = &variant
-	case "restore":
-		if update.Rejection == "" || update.Selection != "" || update.Local != "" {
-			return nil, newError(responses.ErrorGeneric, "invalid lyrics preference parameters")
-		}
-	default:
-		return nil, newError(responses.ErrorGeneric, "invalid lyrics preference action")
+	provider, local, err := api.validateLyricsPreferenceUpdate(r.Context(), mediaFile, update, variants, locals)
+	if err != nil {
+		return nil, err
 	}
-
 	record, err := api.mutatePersonal(r.Context(), user.ID, mediaFile.ID, func(record *model.LyricsPreferenceRecord) error {
-		switch update.Action {
-		case "auto":
-			return clearProviderAndLocalSelection(record)
-		case "select":
-			return applySelect(record, validated, validatedLocal)
-		case "offset":
-			return applyOffset(record, validated, validatedLocal, update.OffsetMs)
-		case "reject":
-			return applyRejection(record, validated)
-		case "restore":
-			return applyRestore(record, update.Rejection)
-		}
-		return errNoPreferenceChange
+		return applyLyricsPreferenceUpdate(record, update, provider, local)
 	})
 	if err != nil {
 		return nil, lyricsPreferenceError(err)
 	}
-	_, personal := applyLyricsPersonal(record, entries, true)
+	_, personal := applyLyricsPersonal(record, personalEntries(variants, locals), true)
 	response := newResponse()
 	response.LyricsPersonal = personal
 	return response, nil
 }
 
-func oneOf(selection, local string) error {
+func parseLyricsPreferenceUpdate(r *http.Request) (LyricsPreferenceUpdate, error) {
+	params := req.Params(r)
+	id, err := params.String("id")
+	if err != nil {
+		return LyricsPreferenceUpdate{}, err
+	}
+	action, err := params.String("action")
+	if err != nil {
+		return LyricsPreferenceUpdate{}, err
+	}
+	update := LyricsPreferenceUpdate{
+		TrackID:   id,
+		Action:    strings.ToLower(strings.TrimSpace(action)),
+		Selection: strings.TrimSpace(params.StringOr("selection", "")),
+		Local:     strings.TrimSpace(params.StringOr("local", "")),
+		Rejection: strings.TrimSpace(params.StringOr("rejection", "")),
+	}
+	if offset, parseErr := params.Int64("offsetMs"); parseErr == nil {
+		update.OffsetMs = offset
+	} else if update.Action == "offset" {
+		return LyricsPreferenceUpdate{}, parseErr
+	}
+	return update, nil
+}
+
+func exactlyOneOf(selection, local string) error {
 	if (selection == "") == (local == "") {
 		return newError(responses.ErrorGeneric, "invalid lyrics preference parameters")
 	}
 	return nil
+}
+
+func (api *Router) validateLyricsPreferenceUpdate(ctx context.Context, mf *model.MediaFile, update LyricsPreferenceUpdate, variants []model.LyricsVariant, locals []model.LyricsLocalIdentity) (*model.LyricsVariant, *model.LyricsLocalIdentity, error) {
+	switch update.Action {
+	case "auto":
+		if update.Selection != "" || update.Local != "" || update.Rejection != "" {
+			return nil, nil, newError(responses.ErrorGeneric, "invalid lyrics preference parameters")
+		}
+		return nil, nil, nil
+	case "reject":
+		if update.Selection == "" || update.Local != "" {
+			return nil, nil, newError(responses.ErrorGeneric, "rejections apply only to provider recordings")
+		}
+		variant, err := api.validateProviderSelection(ctx, mf, variants, update.Selection)
+		if err != nil {
+			return nil, nil, err
+		}
+		return &variant, nil, nil
+	case "restore":
+		if update.Rejection == "" || update.Selection != "" || update.Local != "" {
+			return nil, nil, newError(responses.ErrorGeneric, "invalid lyrics preference parameters")
+		}
+		return nil, nil, nil
+	case "select", "offset":
+		if err := exactlyOneOf(update.Selection, update.Local); err != nil {
+			return nil, nil, err
+		}
+		if update.Selection != "" {
+			variant, err := api.validateProviderSelection(ctx, mf, variants, update.Selection)
+			if err != nil {
+				return nil, nil, err
+			}
+			if update.Action == "select" && isMismatch(variant.Match) {
+				return nil, nil, newError(responses.ErrorGeneric, "lyrics selection is a known mismatch; reject it instead")
+			}
+			return &variant, nil, nil
+		}
+		identity, err := validateLocalSelection(locals, update.Local)
+		if err != nil {
+			return nil, nil, err
+		}
+		return nil, &identity, nil
+	default:
+		return nil, nil, newError(responses.ErrorGeneric, "invalid lyrics preference action")
+	}
+}
+
+func applyLyricsPreferenceUpdate(record *model.LyricsPreferenceRecord, update LyricsPreferenceUpdate, provider *model.LyricsVariant, local *model.LyricsLocalIdentity) error {
+	switch update.Action {
+	case "auto":
+		return clearProviderAndLocalSelection(record)
+	case "select":
+		return applySelect(record, provider, local)
+	case "offset":
+		return applyOffset(record, provider, local, update.OffsetMs)
+	case "reject":
+		return applyRejection(record, provider)
+	case "restore":
+		return applyRestore(record, update.Rejection)
+	}
+	return errNoPreferenceChange
 }
 
 func (api *Router) validateProviderSelection(ctx context.Context, mf *model.MediaFile, variants []model.LyricsVariant, token string) (model.LyricsVariant, error) {
@@ -319,12 +311,7 @@ func applySelect(record *model.LyricsPreferenceRecord, provider *model.LyricsVar
 }
 
 func applyOffset(record *model.LyricsPreferenceRecord, provider *model.LyricsVariant, local *model.LyricsLocalIdentity, offsetMs int64) error {
-	if offsetMs > 5000 {
-		offsetMs = 5000
-	}
-	if offsetMs < -5000 {
-		offsetMs = -5000
-	}
+	offsetMs = model.ClampLyricsOffset(offsetMs)
 	var key string
 	var offset model.LyricsPreferenceOffset
 	if provider != nil {
@@ -343,7 +330,7 @@ func applyOffset(record *model.LyricsPreferenceRecord, provider *model.LyricsVar
 				Role: identity.Role, Format: identity.Format,
 			}
 		}
-		key = offsetKeyForRecord(offset)
+		key = offset.Key()
 	} else {
 		identity := *local
 		offset = model.LyricsPreferenceOffset{
@@ -352,7 +339,7 @@ func applyOffset(record *model.LyricsPreferenceRecord, provider *model.LyricsVar
 		key = "local\x00" + identity.Token
 	}
 	for i := range record.Offsets {
-		if offsetKeyForRecord(record.Offsets[i]) != key {
+		if record.Offsets[i].Key() != key {
 			continue
 		}
 		if offsetMs == 0 {
@@ -374,14 +361,6 @@ func applyOffset(record *model.LyricsPreferenceRecord, provider *model.LyricsVar
 	offset.OffsetMs = offsetMs
 	record.Offsets = append(record.Offsets, offset)
 	return nil
-}
-
-func offsetKeyForRecord(offset model.LyricsPreferenceOffset) string {
-	if offset.Kind == model.LyricsPreferenceKindLocal && offset.Local != nil {
-		return "local\x00" + offset.Local.Token
-	}
-	return "provider\x00" + offset.Plugin + "\x00" + offset.Instance + "\x00" + offset.Recording +
-		"\x00" + offset.Language + "\x00" + offset.Role + "\x00" + offset.Format
 }
 
 func applyRejection(record *model.LyricsPreferenceRecord, provider *model.LyricsVariant) error {

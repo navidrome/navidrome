@@ -250,16 +250,7 @@ func postOnly(r chi.Router, path string, f handlerRaw) {
 	r.Post("/"+path, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "private, no-store")
 		res, err := f(w, r)
-		if err != nil {
-			sendError(w, r, err)
-			return
-		}
-		if r.Context().Err() != nil {
-			return
-		}
-		if res != nil {
-			sendResponse(w, r, res)
-		}
+		writeSubsonicResponse(w, r, res, err)
 	})
 }
 
@@ -272,23 +263,27 @@ func h(r chi.Router, path string, f handler) {
 
 // Add a Subsonic handler that requires an http.ResponseWriter (ex: stream, getCoverArt...)
 func hr(r chi.Router, path string, f handlerRaw) {
-	handle := func(w http.ResponseWriter, r *http.Request) {
+	addHandler(r, path, func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
-		if err != nil {
-			sendError(w, r, err)
-			return
-		}
-		if r.Context().Err() != nil {
-			if log.IsGreaterOrEqualTo(log.LevelDebug) {
-				log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
-			}
-			return
-		}
-		if res != nil {
-			sendResponse(w, r, res)
-		}
+		writeSubsonicResponse(w, r, res, err)
+	})
+}
+
+// writeSubsonicResponse is the shared tail of handler and handlerRaw routes.
+func writeSubsonicResponse(w http.ResponseWriter, r *http.Request, res *responses.Subsonic, err error) {
+	if err != nil {
+		sendError(w, r, err)
+		return
 	}
-	addHandler(r, path, handle)
+	if r.Context().Err() != nil {
+		if log.IsGreaterOrEqualTo(log.LevelDebug) {
+			log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
+		}
+		return
+	}
+	if res != nil {
+		sendResponse(w, r, res)
+	}
 }
 
 // Add a handler that returns 501 - Not implemented. Used to signal that an endpoint is not implemented yet
