@@ -44,7 +44,7 @@ func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err err
 	}
 }
 
-// maxPlaylistBody fits 50,000 GUIDs (about 1.7 MiB) with room to spare.
+// maxPlaylistBody fits the default track limit's GUIDs (about 1.7 MiB) with room to spare.
 const maxPlaylistBody = 2 << 20
 
 // resolvePlaylistIDs decodes and expands client ids into track ids, answering 413 or 404 itself on failure.
@@ -281,7 +281,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) ([]stri
 		} else {
 			out = append(out, id) // well-formed but unresolved — left for the caller's write to handle
 		}
-		if playlists.TooManyTracks(len(out)) {
+		if maxTracks > 0 && len(out) > maxTracks {
 			return nil, false
 		}
 	}

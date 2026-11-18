@@ -165,8 +165,12 @@ func (api *Router) removeRating(w http.ResponseWriter, r *http.Request) {
 // updateUserItemData writes Rating, Likes and IsFavorite; omitted or null fields are left untouched.
 // Play state is ignored because it only changes through playback reporting.
 func (api *Router) updateUserItemData(w http.ResponseWriter, r *http.Request) {
-	body, ok := decodeUserDataBody(w, r)
-	if !ok {
+	var body *dto.UpdateUserItemDataDto
+	if !decodeJSONBody(w, r, maxUserDataBody, &body) {
+		return
+	}
+	if body == nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 	change := userDataChange{favorite: body.IsFavorite}
@@ -186,15 +190,3 @@ func (api *Router) updateUserItemData(w http.ResponseWriter, r *http.Request) {
 }
 
 const maxUserDataBody = 64 << 10
-
-func decodeUserDataBody(w http.ResponseWriter, r *http.Request) (*dto.UpdateUserItemDataDto, bool) {
-	var body *dto.UpdateUserItemDataDto
-	if !decodeJSONBody(w, r, maxUserDataBody, &body) {
-		return nil, false
-	}
-	if body == nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return nil, false
-	}
-	return body, true
-}

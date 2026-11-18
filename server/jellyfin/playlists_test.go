@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -366,13 +367,7 @@ var _ = Describe("Playlists", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}})
 		})
 
-		repeat := func(id string, n int) []string {
-			ids := make([]string, n)
-			for i := range ids {
-				ids[i] = id
-			}
-			return ids
-		}
+		repeat := func(id string, n int) []string { return slices.Repeat([]string{id}, n) }
 		// An artist whose expansion alone is just over a per-request track limit of 5.
 		withHugeArtist := func() {
 			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
@@ -435,13 +430,16 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.createdName).To(BeEmpty())
 		})
 
-		tooManyIDs := func() any {
+		tooManyIDs := func() []string {
 			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
-			return map[string]any{"Name": "Mix", "Ids": repeat(song, 6)}
+			return repeat(song, 6)
 		}
-		expandsTooFar := func() any {
+		expandsTooFar := func() []string {
 			withHugeArtist()
-			return map[string]any{"Name": "Mix", "Ids": []string{artist}}
+			return []string{artist}
+		}
+		withIDs := func(ids func() []string) func() any {
+			return func() any { return map[string]any{"Name": "Mix", "Ids": ids()} }
 		}
 		bodyTooBig := func() any { return map[string]any{"Name": strings.Repeat("x", maxPlaylistBody)} }
 
@@ -452,11 +450,11 @@ var _ = Describe("Playlists", func() {
 				Expect(fp.createdIds).To(BeNil())
 				Expect(fp.updatePlaylistID).To(BeEmpty())
 			},
-			Entry("create, more ids than DevMaxPlaylistTracksPerRequest", create, tooManyIDs),
-			Entry("create, ids that expand past DevMaxPlaylistTracksPerRequest", create, expandsTooFar),
+			Entry("create, more ids than DevMaxPlaylistTracksPerRequest", create, withIDs(tooManyIDs)),
+			Entry("create, ids that expand past DevMaxPlaylistTracksPerRequest", create, withIDs(expandsTooFar)),
 			Entry("create, a body over the size limit", create, bodyTooBig),
-			Entry("update, more ids than DevMaxPlaylistTracksPerRequest", update, tooManyIDs),
-			Entry("update, ids that expand past DevMaxPlaylistTracksPerRequest", update, expandsTooFar),
+			Entry("update, more ids than DevMaxPlaylistTracksPerRequest", update, withIDs(tooManyIDs)),
+			Entry("update, ids that expand past DevMaxPlaylistTracksPerRequest", update, withIDs(expandsTooFar)),
 			Entry("update, a body over the size limit", update, bodyTooBig),
 		)
 
@@ -473,14 +471,8 @@ var _ = Describe("Playlists", func() {
 				Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
 				Expect(fp.addPlaylistID).To(BeEmpty())
 			},
-			Entry("more ids than DevMaxPlaylistTracksPerRequest", func() []string {
-				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
-				return repeat(song, 6)
-			}),
-			Entry("ids that expand past DevMaxPlaylistTracksPerRequest", func() []string {
-				withHugeArtist()
-				return []string{artist}
-			}),
+			Entry("more ids than DevMaxPlaylistTracksPerRequest", tooManyIDs),
+			Entry("ids that expand past DevMaxPlaylistTracksPerRequest", expandsTooFar),
 		)
 	})
 

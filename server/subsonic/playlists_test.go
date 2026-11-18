@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -390,31 +391,23 @@ var _ = Describe("playlist track limit", func() {
 		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 3 })
 	})
 
-	songParams := func(param string, n int) []string {
-		params := make([]string, n)
-		for i := range params {
-			params[i] = param + "=s1"
-		}
-		return params
-	}
+	songParams := func(param string, n int) []string { return slices.Repeat([]string{param + "=s1"}, n) }
 	expectGenericError := func(err error) {
 		var subErr subError
 		Expect(errors.As(err, &subErr)).To(BeTrue())
 		Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 	}
 
-	It("creates a playlist with up to DevMaxPlaylistTracksPerRequest songs", func() {
-		_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", 3)...)...))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fp.lastCreate).To(HaveLen(3))
-	})
-
-	It("accepts any number of songs when the limit is 0", func() {
-		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 0 })
-		_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", 4)...)...))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fp.lastCreate).To(HaveLen(4))
-	})
+	DescribeTable("creates a playlist with up to DevMaxPlaylistTracksPerRequest songs",
+		func(limit, sent int) {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = limit })
+			_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", sent)...)...))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fp.lastCreate).To(HaveLen(sent))
+		},
+		Entry("exactly the limit", 3, 3),
+		Entry("any number when the limit is 0", 0, 4),
+	)
 
 	It("rejects createPlaylist with more songs than the limit, with error code 0", func() {
 		_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", 4)...)...))

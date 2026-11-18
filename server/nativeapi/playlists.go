@@ -36,7 +36,7 @@ func writePlaylistError(w http.ResponseWriter, err error, defaultStatus int) {
 	}
 }
 
-// maxPlaylistJSONBody fits 50,000 ids (about 1.3 MiB) with room to spare.
+// maxPlaylistJSONBody fits the default track limit's ids (about 1.3 MiB) with room to spare.
 const maxPlaylistJSONBody = 4 << 20
 
 // maxContainerIDs keeps album, artist and disc lists under SQLite's variable and expression-depth limits.
@@ -84,7 +84,7 @@ func getPlaylistTrack(pls playlists.Playlists) http.HandlerFunc {
 	return playlistTracksHandler(pls, rest.Get[model.PlaylistTrack], func(*http.Request) bool { return true })
 }
 
-// maxM3UUploadSize fits 50,000 entries with long paths and #EXTINF lines.
+// maxM3UUploadSize fits the default track limit's entries with long paths and #EXTINF lines.
 const maxM3UUploadSize = 32 << 20
 
 func createPlaylistFromM3U(pls playlists.Playlists) http.HandlerFunc {
