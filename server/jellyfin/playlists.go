@@ -281,7 +281,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) ([]stri
 		} else {
 			out = append(out, id) // well-formed but unresolved — left for the caller's write to handle
 		}
-		if maxTracks > 0 && len(out) > maxTracks {
+		if playlists.TooManyTracks(len(out)) {
 			return nil, false
 		}
 	}
