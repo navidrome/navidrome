@@ -19,8 +19,8 @@ import (
 
 const (
 	maxSeeds = 5
-	// Subsonic passes the client's count through unbounded, and it ends up as a SQL limit. 500 is
-	// what the widest caller (similarAlbums, limit*5) legitimately asks for.
+	// maxSimilarSongs caps the client's count, which Subsonic passes through unbounded and ends up as a SQL
+	// limit. 500 is what the widest caller (similarAlbums, limit*5) legitimately asks for.
 	maxSimilarSongs = 500
 )
 

@@ -169,6 +169,7 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 }
 
 // TODO Change all sortMappings to have a consistent case
+
 func (r sqlRepository) sortMapping(sort string) string {
 	if mapping, _, ok := r.lookupSortMapping(sort); ok {
 		return mapping

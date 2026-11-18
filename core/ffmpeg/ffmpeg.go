@@ -552,7 +552,7 @@ func bitDepthToSampleFmt(bitDepth int) string {
 	}
 }
 
-// Path will always be an absolute path
+// createFFmpegCommand expects path to always be an absolute path
 func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 	var args []string
 	for _, s := range fixCmd(cmd) {

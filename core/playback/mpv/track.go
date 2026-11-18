@@ -76,7 +76,7 @@ func (t *MpvTrack) String() string {
 	return fmt.Sprintf("Name: %s, Socket: %s", t.MediaFile.Path, t.IPCSocketName)
 }
 
-// Used to control the playback volume. A float value between 0.0 and 1.0.
+// SetVolume controls the playback volume. A float value between 0.0 and 1.0.
 func (t *MpvTrack) SetVolume(value float32) {
 	// mpv's volume as described in the --volume parameter:
 	// Set the startup volume. 0 means silence, 100 means no volume reduction or amplification.

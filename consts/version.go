@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	// This will be set in build time. If not, version will be set to "dev"
+	// gitTag will be set in build time. If not, version will be set to "dev"
 	gitTag string
 	gitSha string
 )

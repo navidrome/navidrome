@@ -12,7 +12,7 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// Format of a tag in the DB
+// dbTag is the format of a tag in the DB
 type dbTag struct {
 	ID    string `json:"id"`
 	Value string `json:"value"`

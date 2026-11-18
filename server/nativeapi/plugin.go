@@ -41,7 +41,7 @@ func (api *Router) rescanPlugins(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Middleware to check if plugins feature is enabled
+// pluginsEnabledMiddleware checks if the plugins feature is enabled
 func pluginsEnabledMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !conf.Server().Plugins.Enabled {
