@@ -144,7 +144,6 @@ var _ = Describe("Tag Library Filtering", func() {
 		}
 
 		Context("Admin User", func() {
-			// Regression for #6500
 			It("should see all tags even without user_library assignments", func() {
 				unassignedAdmin := model.User{ID: "admin-without-libraries", IsAdmin: true}
 				Expect(readAllTags(&unassignedAdmin)).To(HaveLen(3))
