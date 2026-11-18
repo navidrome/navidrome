@@ -3,9 +3,11 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"time"
 
 	"github.com/deluan/rest"
@@ -212,6 +214,39 @@ var _ = Describe("handleExportPlaylist", func() {
 	})
 })
 
+var _ = Describe("createPlaylistFromM3U", func() {
+	// Drains the body like the real importer, so the size limit is hit while reading.
+	drainingImport := func(_ context.Context, reader io.Reader) (*model.Playlist, error) {
+		if _, err := io.Copy(io.Discard, reader); err != nil {
+			return nil, err
+		}
+		pl := &model.Playlist{Name: "Uploaded"}
+		pl.AddMediaFiles(model.MediaFiles{{ID: "1", Path: "/music/song.mp3", Title: "Song"}})
+		return pl, nil
+	}
+	upload := func(svc *mockPlaylistsService, body io.Reader) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/playlist", body)
+		req.Header.Set("Content-Type", "audio/x-mpegurl")
+		w := httptest.NewRecorder()
+		createPlaylistFromM3U(svc).ServeHTTP(w, req)
+		return w
+	}
+
+	It("creates the playlist and returns it as M3U", func() {
+		w := upload(&mockPlaylistsService{importM3UFn: drainingImport}, strings.NewReader("/music/song.mp3\n"))
+
+		Expect(w.Code).To(Equal(http.StatusCreated))
+		Expect(w.Body.String()).To(ContainSubstring("/music/song.mp3"))
+	})
+
+	It("rejects a body larger than the upload limit", func() {
+		body := strings.NewReader(strings.Repeat("x", maxM3UUploadSize+1))
+		w := upload(&mockPlaylistsService{importM3UFn: drainingImport}, body)
+
+		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+	})
+})
+
 var _ = Describe("writePlaylistError", func() {
 	DescribeTable("maps a service error to an HTTP status",
 		func(err error, expected int) {
@@ -223,6 +258,8 @@ var _ = Describe("writePlaylistError", func() {
 		Entry("not authorized -> 403", model.ErrNotAuthorized, http.StatusForbidden),
 		Entry("rest permission denied -> 403", rest.ErrPermissionDenied, http.StatusForbidden),
 		Entry("not editable -> 409", model.ErrPlaylistNotEditable, http.StatusConflict),
+		Entry("too many entries -> 413", fmt.Errorf("wrapped: %w", playlists.ErrTooManyEntries), http.StatusRequestEntityTooLarge),
+		Entry("body too large -> 413", &http.MaxBytesError{Limit: 1}, http.StatusRequestEntityTooLarge),
 		Entry("unrecognized -> default", model.ErrValidation, http.StatusBadRequest),
 	)
 })
@@ -256,6 +293,11 @@ type mockPlaylistsService struct {
 	playlist      *model.Playlist
 	removeImageFn func(ctx context.Context, id string) error
 	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
+	importM3UFn   func(ctx context.Context, reader io.Reader) (*model.Playlist, error)
+}
+
+func (m *mockPlaylistsService) ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error) {
+	return m.importM3UFn(ctx, reader)
 }
 
 func (m *mockPlaylistsService) RemoveImage(ctx context.Context, id string) error {

@@ -2,11 +2,14 @@ package playlists_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"testing/iotest"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -995,6 +998,73 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(pls.Tracks[2].Path).To(Equal("album2/test2.mp3"))
 		})
 
+		Describe("entry limit", func() {
+			repeat := func(n int) string {
+				return strings.Repeat("/music/tests/test.mp3\n", n)
+			}
+			BeforeEach(func() {
+				repo.data = []string{"tests/test.mp3"}
+			})
+
+			It("imports a playlist with exactly the maximum number of entries, duplicates included", func() {
+				pls, err := ps.ImportM3U(ctx, strings.NewReader(repeat(playlists.MaxImportM3UEntries)))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(playlists.MaxImportM3UEntries))
+			})
+
+			It("rejects a playlist over the maximum without saving it", func() {
+				_, err := ps.ImportM3U(ctx, strings.NewReader(repeat(playlists.MaxImportM3UEntries+1)))
+				Expect(err).To(MatchError(playlists.ErrTooManyEntries))
+				Expect(mockPlsRepo.Last).To(BeNil())
+			})
+
+			It("does not cap playlists imported from disk", func() {
+				tmpDir := GinkgoT().TempDir()
+				libDir := filepath.Join(tmpDir, "music")
+				Expect(os.Mkdir(libDir, 0755)).To(Succeed())
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: libDir}})
+				plsFile := filepath.Join(tmpDir, "big.m3u")
+				content := strings.Repeat(libDir+"/tests/test.mp3\n", playlists.MaxImportM3UEntries+1)
+				Expect(os.WriteFile(plsFile, []byte(content), 0600)).To(Succeed())
+
+				pls, err := ps.ImportFile(ctx, plsFile, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(playlists.MaxImportM3UEntries + 1))
+			})
+		})
+
+		It("makes a second upload wait for the running one, without reading its body", func() {
+			repo.data = []string{"tests/test.mp3"}
+			pr, pw := io.Pipe()
+			firstDone := make(chan error, 1)
+			go func() {
+				_, err := ps.ImportM3U(ctx, pr)
+				firstDone <- err
+			}()
+			_, err := pw.Write([]byte("/music/tests/test.mp3\n"))
+			Expect(err).ToNot(HaveOccurred())
+
+			waiting, cancel := context.WithCancel(ctx)
+			cancel()
+			second := &readRecorder{}
+			_, err = ps.ImportM3U(waiting, second)
+			Expect(err).To(MatchError(context.Canceled))
+			Expect(second.read).To(BeFalse())
+
+			Expect(pw.Close()).To(Succeed())
+			Eventually(firstDone).Should(Receive(BeNil()))
+		})
+
+		It("fails on a read error instead of saving a truncated playlist", func() {
+			repo.data = []string{"tests/test.mp3"}
+			readErr := errors.New("body too large")
+			body := io.MultiReader(strings.NewReader("/music/tests/test.mp3\n"), iotest.ErrReader(readErr))
+
+			_, err := ps.ImportM3U(ctx, body)
+			Expect(err).To(MatchError(readErr))
+			Expect(mockPlsRepo.Last).To(BeNil())
+		})
+
 		It("is case-insensitive when comparing paths", func() {
 			repo.data = []string{
 				"abc/tEsT1.Mp3",
@@ -1253,4 +1323,11 @@ func (m *mockFolderRepoForImport) GetByPath(_ context.Context, _ model.Library, 
 
 func hashOf(content string) string {
 	return id.Encode(xxh3.Hash128([]byte(content)).Bytes())
+}
+
+type readRecorder struct{ read bool }
+
+func (r *readRecorder) Read([]byte) (int, error) {
+	r.read = true
+	return 0, io.EOF
 }

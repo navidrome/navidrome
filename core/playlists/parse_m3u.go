@@ -18,13 +18,15 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *model.Folder, reader io.Reader) error {
+// parseM3U fails with ErrTooManyEntries if maxEntries > 0 and the playlist has more audio entries.
+func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *model.Folder, reader io.Reader, maxEntries int) error {
 	mediaFileRepository := s.ds.MediaFile()
 	resolver, err := newPathResolver(ctx, s.ds)
 	if err != nil {
 		return err
 	}
 	var mfs model.MediaFiles
+	entries := 0
 	// Chunked so a huge playlist is not held in memory at once. Each line yields up to
 	// 4 lookup candidates (NFC/NFD × raw/lowercase), far below SQLite's 32766 variables.
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 100) {
@@ -52,6 +54,10 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 				continue
 			}
 			filteredLines = append(filteredLines, line)
+		}
+		entries += len(filteredLines)
+		if maxEntries > 0 && entries > maxEntries {
+			return fmt.Errorf("%w (limit is %d)", ErrTooManyEntries, maxEntries)
 		}
 		resolvedPaths, err := resolver.resolvePaths(ctx, folder, filteredLines)
 		if err != nil {
