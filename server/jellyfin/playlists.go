@@ -44,15 +44,13 @@ func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err err
 	}
 }
 
-// maxPlaylistIDs caps the ids one request may name: each unresolved id costs several lookups.
-const maxPlaylistIDs = 10_000
-
-// maxPlaylistBody fits maxPlaylistIDs GUIDs (about 350 KiB) with room to spare.
-const maxPlaylistBody = 1 << 20
+// maxPlaylistBody fits 50,000 GUIDs (about 1.7 MiB) with room to spare.
+const maxPlaylistBody = 2 << 20
 
 // resolvePlaylistIDs decodes and expands client ids into track ids, answering 413 or 404 itself on failure.
 func (api *Router) resolvePlaylistIDs(w http.ResponseWriter, r *http.Request, guids []string) ([]string, bool) {
-	if len(guids) > maxPlaylistIDs {
+	// Only an empty album or artist yields no track, so too many ids fail here, before any lookup.
+	if playlists.TooManyTracks(len(guids)) {
 		http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
 		return nil, false
 	}

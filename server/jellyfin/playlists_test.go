@@ -405,11 +405,19 @@ var _ = Describe("Playlists", func() {
 			return w
 		}
 
-		It("creates a playlist naming up to maxPlaylistIDs ids", func() {
-			w := create(map[string]any{"Name": "Mix", "Ids": repeat(song, maxPlaylistIDs)})
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(fp.createdIds).To(HaveLen(maxPlaylistIDs))
-		})
+		DescribeTable("creates a playlist naming up to DevMaxPlaylistTracksPerRequest ids",
+			func(limit, sent int) {
+				if limit >= 0 {
+					conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = limit })
+				}
+				w := create(map[string]any{"Name": "Mix", "Ids": repeat(song, sent)})
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(fp.createdIds).To(HaveLen(sent))
+			},
+			Entry("exactly the limit", 5, 5),
+			Entry("any number when the limit is 0", 0, 6),
+			Entry("the default limit, in a body larger than 1 MiB", -1, 50_000),
+		)
 
 		It("expands without a track limit when DevMaxPlaylistTracksPerRequest is 0", func() {
 			withHugeArtist()
@@ -427,7 +435,10 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.createdName).To(BeEmpty())
 		})
 
-		tooManyIDs := func() any { return map[string]any{"Name": "Mix", "Ids": repeat(song, maxPlaylistIDs+1)} }
+		tooManyIDs := func() any {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			return map[string]any{"Name": "Mix", "Ids": repeat(song, 6)}
+		}
 		expandsTooFar := func() any {
 			withHugeArtist()
 			return map[string]any{"Name": "Mix", "Ids": []string{artist}}
@@ -441,18 +452,19 @@ var _ = Describe("Playlists", func() {
 				Expect(fp.createdIds).To(BeNil())
 				Expect(fp.updatePlaylistID).To(BeEmpty())
 			},
-			Entry("create, more than maxPlaylistIDs ids", create, tooManyIDs),
+			Entry("create, more ids than DevMaxPlaylistTracksPerRequest", create, tooManyIDs),
 			Entry("create, ids that expand past DevMaxPlaylistTracksPerRequest", create, expandsTooFar),
 			Entry("create, a body over the size limit", create, bodyTooBig),
-			Entry("update, more than maxPlaylistIDs ids", update, tooManyIDs),
+			Entry("update, more ids than DevMaxPlaylistTracksPerRequest", update, tooManyIDs),
 			Entry("update, ids that expand past DevMaxPlaylistTracksPerRequest", update, expandsTooFar),
 			Entry("update, a body over the size limit", update, bodyTooBig),
 		)
 
-		It("adds items naming up to maxPlaylistIDs ids", func() {
-			w := addItems(repeat(song, maxPlaylistIDs))
+		It("adds items naming up to DevMaxPlaylistTracksPerRequest ids", func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			w := addItems(repeat(song, 5))
 			Expect(w.Code).To(Equal(http.StatusNoContent))
-			Expect(fp.addIds).To(HaveLen(maxPlaylistIDs))
+			Expect(fp.addIds).To(HaveLen(5))
 		})
 
 		DescribeTable("adding items rejects oversized requests with 413 without adding",
@@ -461,7 +473,10 @@ var _ = Describe("Playlists", func() {
 				Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
 				Expect(fp.addPlaylistID).To(BeEmpty())
 			},
-			Entry("more than maxPlaylistIDs ids", func() []string { return repeat(song, maxPlaylistIDs+1) }),
+			Entry("more ids than DevMaxPlaylistTracksPerRequest", func() []string {
+				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+				return repeat(song, 6)
+			}),
 			Entry("ids that expand past DevMaxPlaylistTracksPerRequest", func() []string {
 				withHugeArtist()
 				return []string{artist}
