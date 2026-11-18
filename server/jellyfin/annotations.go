@@ -1,9 +1,7 @@
 package jellyfin
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -189,16 +187,14 @@ func (api *Router) updateUserItemData(w http.ResponseWriter, r *http.Request) {
 
 const maxUserDataBody = 64 << 10
 
-// decodeUserDataBody accepts exactly one JSON object; Decode alone would ignore anything after it.
 func decodeUserDataBody(w http.ResponseWriter, r *http.Request) (*dto.UpdateUserItemDataDto, bool) {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxUserDataBody))
 	var body *dto.UpdateUserItemDataDto
-	err := dec.Decode(&body)
-	if err == nil && body != nil {
-		if _, err = dec.Token(); errors.Is(err, io.EOF) {
-			return body, true
-		}
+	if !decodeJSONBody(w, r, maxUserDataBody, &body) {
+		return nil, false
 	}
-	http.Error(w, "Bad Request", http.StatusBadRequest)
-	return nil, false
+	if body == nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return nil, false
+	}
+	return body, true
 }

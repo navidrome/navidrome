@@ -2,7 +2,6 @@ package jellyfin
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
@@ -51,18 +50,6 @@ const maxPlaylistIDs = 10_000
 // maxPlaylistBody fits maxPlaylistIDs GUIDs (about 350 KiB) with room to spare.
 const maxPlaylistBody = 1 << 20
 
-// decodePlaylistBody decodes a bounded JSON body, answering 413 or 400 itself on failure.
-func decodePlaylistBody(w http.ResponseWriter, r *http.Request, v any) bool {
-	err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaylistBody)).Decode(v)
-	switch {
-	case errors.As(err, new(*http.MaxBytesError)):
-		http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
-	case err != nil:
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-	}
-	return err == nil
-}
-
 // resolvePlaylistIDs decodes and expands client ids into track ids, answering 413 or 404 itself on failure.
 func (api *Router) resolvePlaylistIDs(w http.ResponseWriter, r *http.Request, guids []string) ([]string, bool) {
 	if len(guids) > maxPlaylistIDs {
@@ -92,7 +79,7 @@ type createPlaylistRequest struct {
 // replace an existing one), owned by the authenticated user.
 func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var body createPlaylistRequest
-	if !decodePlaylistBody(w, r, &body) {
+	if !decodeJSONBody(w, r, maxPlaylistBody, &body) {
 		return
 	}
 	ids, ok := api.resolvePlaylistIDs(w, r, body.Ids)
@@ -129,7 +116,7 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body updatePlaylistRequest
-	if !decodePlaylistBody(w, r, &body) {
+	if !decodeJSONBody(w, r, maxPlaylistBody, &body) {
 		return
 	}
 

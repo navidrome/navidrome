@@ -506,7 +506,7 @@ var _ = Describe("Annotations", func() {
 		It("rejects a body larger than the limit", func() {
 			mfRepo := songWith(model.Annotations{Rating: 4})
 			big := `{"Rating":8,"Pad":"` + strings.Repeat("x", 70<<10) + `"}`
-			Expect(post(big).Code).To(Equal(http.StatusBadRequest))
+			Expect(post(big).Code).To(Equal(http.StatusRequestEntityTooLarge))
 			Expect(mfRepo.Data[testID("s1")].Rating).To(Equal(4))
 		})
 

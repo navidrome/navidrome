@@ -419,6 +419,14 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.createdIds).To(HaveLen(6))
 		})
 
+		It("rejects a create body with data after the JSON object with 400", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix"} {"Name":"Other"}`)).WithContext(ctx)
+			invoke(api.createPlaylist, w, r)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			Expect(fp.createdName).To(BeEmpty())
+		})
+
 		tooManyIDs := func() any { return map[string]any{"Name": "Mix", "Ids": repeat(song, maxPlaylistIDs+1)} }
 		expandsTooFar := func() any {
 			withHugeArtist()
