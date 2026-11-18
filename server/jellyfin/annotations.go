@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
@@ -166,7 +167,7 @@ func (api *Router) removeRating(w http.ResponseWriter, r *http.Request) {
 // Play state is ignored because it only changes through playback reporting.
 func (api *Router) updateUserItemData(w http.ResponseWriter, r *http.Request) {
 	var body *dto.UpdateUserItemDataDto
-	if !decodeJSONBody(w, r, maxUserDataBody, &body) {
+	if !server.DecodeJSONBody(w, r, maxUserDataBody, &body) {
 		return
 	}
 	if body == nil {
