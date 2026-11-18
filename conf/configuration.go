@@ -820,13 +820,31 @@ func (s *Options) validatePlaylistsPath() error {
 // or '{' stays an escape only when the matching close is escaped too, so `\[Mix\]` still matches
 // "[Mix]" while `Playlists\[0-9]*` and `Playlists\{a,b}` keep their glob after a Windows
 // separator. Any other backslash, including one before '*' or '?' (as in `Playlists\**`), is a
-// Windows path separator and becomes '/'. Trailing separators are dropped.
+// Windows path separator and becomes '/'. Inside a bracket class a backslash is always an escape,
+// so `[a\-z]` keeps its literal hyphen. Trailing separators are dropped.
 func NormalizePlaylistsPattern(pattern string) string {
 	var b strings.Builder
 	b.Grow(len(pattern))
+	inClass := false
 	for i := 0; i < len(pattern); i++ {
 		c := pattern[i]
+		if inClass {
+			b.WriteByte(c)
+			switch c {
+			case '\\':
+				if i+1 < len(pattern) {
+					b.WriteByte(pattern[i+1])
+					i++
+				}
+			case ']':
+				inClass = false
+			}
+			continue
+		}
 		if c != '\\' {
+			if c == '[' {
+				inClass = true
+			}
 			b.WriteByte(c)
 			continue
 		}
