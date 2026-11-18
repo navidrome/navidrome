@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-// User-library association endpoints (admin only)
+// addUserLibraryRoute adds the user-library association endpoints (admin only)
 func (api *Router) addUserLibraryRoute(r chi.Router) {
 	r.Route("/user/{id}/library", func(r chi.Router) {
 		r.Use(parseUserIDMiddleware)
@@ -23,7 +23,7 @@ func (api *Router) addUserLibraryRoute(r chi.Router) {
 
 type userIDKey struct{}
 
-// Middleware to parse user ID from URL
+// parseUserIDMiddleware parses the user ID from the URL
 func parseUserIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := chi.URLParam(r, "id")

@@ -61,7 +61,7 @@ func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitr
 	return a.zipAlbums(ctx, id, format, bitrate, out, filter, model.Artist{ID: id}.CoverArtID())
 }
 
-// rootArt, when set, is added to the archive root.
+// zipAlbums writes the songs matching filters to out. rootArt, when set, is added to the archive root.
 func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer, rootArt model.ArtworkID) error {
 	mfs, err := a.ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: filters, Sort: "album"})
 	if err != nil {
@@ -112,8 +112,8 @@ func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 	return z
 }
 
-// Tried in order; the first one whose values are distinct across the clashing albums wins.
-// One album may have an empty value: it keeps the plain name, which the others can't clash with.
+// albumDisambiguators are tried in order; the first one whose values are distinct across the clashing
+// albums wins. One album may have an empty value: it keeps the plain name, which the others can't clash with.
 var albumDisambiguators = []func(model.MediaFile) string{
 	func(mf model.MediaFile) string { return mf.Tags.First(model.TagAlbumVersion) },
 	func(mf model.MediaFile) string {
@@ -346,7 +346,7 @@ func (a *archiver) readCoverArt(ctx context.Context, artID model.ArtworkID) ([]b
 	return io.ReadAll(img)
 }
 
-// Resizing may re-encode the image, so the type comes from its bytes.
+// coverArtExtension takes the type from the image bytes, because resizing may re-encode the image.
 func coverArtExtension(data []byte) string {
 	switch http.DetectContentType(data) {
 	case "image/jpeg":

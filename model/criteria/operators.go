@@ -1,6 +1,7 @@
 package criteria
 
-// Conjunctions need to implement this interface, to allow Criteria to extract child playlist references recursively
+// conjunction must be implemented by Conjunctions, to allow Criteria to extract child playlist references
+// recursively
 type conjunction interface {
 	ChildPlaylistIds() []string
 	ChildPlaylistPaths() []string

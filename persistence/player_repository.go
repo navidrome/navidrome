@@ -191,7 +191,8 @@ func (r *playerRepository) Delete(ctx context.Context, ids ...string) error {
 	return r.deleteOwnedAll(ctx, ids...)
 }
 
-// Keys are long random strings, not user-chosen passwords, so a fast unsalted hash is enough and keeps lookups indexed.
+// hashAPIKey uses a fast unsalted hash: keys are long random strings, not user-chosen passwords, so that is
+// enough and keeps lookups indexed.
 func hashAPIKey(key string) string {
 	sum := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(sum[:])

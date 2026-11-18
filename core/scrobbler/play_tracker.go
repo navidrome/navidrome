@@ -532,7 +532,7 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 	})
 }
 
-// Take this verdict before incPlay mutates what a filter reads, and independently of
+// isFilteredOut must take its verdict before incPlay mutates what a filter reads, and independently of
 // which scrobblers are active: it can be stored on a session and dispatched much later.
 // Any parse or query failure fails open, because filtering must not break scrobbling.
 func (p *playTracker) isFilteredOut(ctx context.Context, t *model.MediaFile) bool {

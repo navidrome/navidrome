@@ -36,7 +36,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 
 	JustBeforeEach(func() {
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest("GET", "/getOpenSubsonicExtensions?f=json", nil)
+		r = httptest.NewRequest(http.MethodGet, "/getOpenSubsonicExtensions?f=json", nil)
 	})
 
 	Context("without sonic similarity plugin", func() {

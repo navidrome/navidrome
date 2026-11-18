@@ -247,7 +247,7 @@ func (api *Router) addInsightsRoute(r chi.Router) {
 	})
 }
 
-// Middleware to ensure only admin users can access endpoints
+// adminOnlyMiddleware ensures only admin users can access endpoints
 func adminOnlyMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := request.UserFrom(r.Context())

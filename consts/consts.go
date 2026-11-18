@@ -212,13 +212,11 @@ var (
 var HTTPUserAgent = "Navidrome/" + Version + " - https://github.com/navidrome"
 
 var (
-	VariousArtists = "Various Artists"
-	// TODO This will be dynamic when using disambiguation
-	VariousArtistsID = "63sqASlAfjbGMuLP4JhnZU"
-	UnknownAlbum     = "[Unknown Album]"
-	UnknownArtist    = "[Unknown Artist]"
-	// TODO This will be dynamic when using disambiguation
-	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
+	VariousArtists      = "Various Artists"
+	VariousArtistsID    = "63sqASlAfjbGMuLP4JhnZU" // TODO This will be dynamic when using disambiguation
+	UnknownAlbum        = "[Unknown Album]"
+	UnknownArtist       = "[Unknown Artist]"
+	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist)) // TODO This will be dynamic when using disambiguation
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ArtistJoiner = " • "

@@ -93,7 +93,7 @@ func naturalSort(col string) string {
 	return fmt.Sprintf("(%s collate %s)", col, db.NaturalCollation)
 }
 
-// Convert the order_* columns to a collated sort expression, falling back to the
+// mapSortOrder converts the order_* columns to a collated sort expression, falling back to the
 // sort_* column when those are preferred. Example:
 // order_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
 // It finds order column names anywhere in the substring

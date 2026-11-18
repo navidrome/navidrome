@@ -30,7 +30,7 @@ func (pd *Queue) String() string {
 	return fmt.Sprintf("#Items: %d, idx: %d, files: %s", len(pd.Items), pd.Index, filenames.String())
 }
 
-// returns the current mediafile or nil
+// Current returns the current mediafile or nil
 func (pd *Queue) Current() *model.MediaFile {
 	if pd.Index == -1 {
 		return nil
@@ -43,7 +43,7 @@ func (pd *Queue) Current() *model.MediaFile {
 	return &pd.Items[pd.Index]
 }
 
-// returns the whole queue
+// Get returns the whole queue
 func (pd *Queue) Get() model.MediaFiles {
 	return pd.Items
 }
@@ -56,13 +56,13 @@ func (pd *Queue) IsEmpty() bool {
 	return len(pd.Items) < 1
 }
 
-// set is similar to a clear followed by a add, but will not change the currently playing track.
+// Set is similar to a clear followed by an add, but will not change the currently playing track.
 func (pd *Queue) Set(items model.MediaFiles) {
 	pd.Clear()
 	pd.Items = append(pd.Items, items...)
 }
 
-// adding mediafiles to the queue
+// Add appends mediafiles to the queue
 func (pd *Queue) Add(items model.MediaFiles) {
 	pd.Items = append(pd.Items, items...)
 	if pd.Index == -1 && len(pd.Items) > 0 {
@@ -70,13 +70,13 @@ func (pd *Queue) Add(items model.MediaFiles) {
 	}
 }
 
-// empties whole queue
+// Clear empties the whole queue
 func (pd *Queue) Clear() {
 	pd.Index = -1
 	pd.Items = nil
 }
 
-// idx Zero-based index of the song to skip to or remove.
+// Remove removes the song at idx, a zero-based index.
 func (pd *Queue) Remove(idx int) {
 	current := pd.Current()
 	backupID := ""
@@ -120,18 +120,18 @@ func (pd *Queue) getMediaFileIndexByID(id string) (int, error) {
 	return -1, fmt.Errorf("ID not found in playlist: %s", id)
 }
 
-// Sets the index to a new, valid value inside the Items. Values lower than zero are going to be zero,
-// values above will be limited by number of items.
+// SetIndex sets the index to a new, valid value inside the Items. Values lower than zero are going to be
+// zero, values above will be limited by number of items.
 func (pd *Queue) SetIndex(idx int) {
 	pd.Index = max(0, min(idx, len(pd.Items)-1))
 }
 
-// Are we at the last track?
+// IsAtLastElement reports whether we are at the last track.
 func (pd *Queue) IsAtLastElement() bool {
 	return (pd.Index + 1) >= len(pd.Items)
 }
 
-// Goto next index
+// IncreaseIndex moves to the next index, unless at the last track.
 func (pd *Queue) IncreaseIndex() {
 	if !pd.IsAtLastElement() {
 		pd.SetIndex(pd.Index + 1)

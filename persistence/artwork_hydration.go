@@ -12,8 +12,8 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// Keeps the id IN-list under SQLite's bound-parameter limit; a whole multiple of artworkBatchSize
-// so a page re-chunks into even hydration batches.
+// artworkChunkSize keeps the id IN-list under SQLite's bound-parameter limit; a whole multiple of
+// artworkBatchSize so a page re-chunks into even hydration batches.
 const artworkChunkSize = artworkBatchSize * 3
 
 // streamByIDs yields rows in id chunks through the caller's hydrating fetch. Resolving ids first

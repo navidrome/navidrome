@@ -11,7 +11,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-// Use this in migrations that need to communicate something important (breaking changes, forced reindexes, etc...)
+// notice is for migrations that need to communicate something important (breaking changes, forced
+// reindexes, etc...)
 func notice(ctx context.Context, tx *sql.Tx, msg string) {
 	if isDBInitialized(ctx, tx) {
 		line := strings.Repeat("*", len(msg)+8)
@@ -19,7 +20,7 @@ func notice(ctx context.Context, tx *sql.Tx, msg string) {
 	}
 }
 
-// Call this in migrations that requires a full rescan
+// forceFullRescan is for migrations that require a full rescan
 func forceFullRescan(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, fmt.Sprintf(`
 INSERT OR REPLACE into property (id, value) values ('%s', '1');
@@ -64,8 +65,8 @@ func createExecuteFunc(ctx context.Context, tx *sql.Tx) execStmtFunc {
 	}
 }
 
-// Hack way to add a new `not null` column to a table, setting the initial value for existing rows based on a
-// SQL expression. It is done in 3 steps:
+// createAddColumnFunc is a hack to add a new `not null` column to a table, setting the initial value for
+// existing rows based on a SQL expression. It is done in 3 steps:
 //  1. Add the column as nullable. Due to the way SQLite manipulates the DDL in memory, we need to add extra padding
 //     to the default value to avoid truncating it when changing the column to not null
 //  2. Update the column with the initial value

@@ -224,6 +224,7 @@ func (r *albumRepository) Put(ctx context.Context, al *model.Album) error {
 }
 
 // TODO Move external metadata to a separated table
+
 func (r *albumRepository) UpdateExternalInfo(ctx context.Context, al *model.Album) error {
 	_, err := r.put(ctx, al.ID, &dbAlbum{Album: al}, "description", "small_image_url", "medium_image_url", "large_image_url", "external_url", "external_info_updated_at")
 	return err

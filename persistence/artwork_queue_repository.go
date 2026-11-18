@@ -14,11 +14,11 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// Keeps each multi-row insert under SQLite's bind-variable limit (at most 7 vars per row).
+// enqueueChunkSize keeps each multi-row insert under SQLite's bind-variable limit (at most 7 vars per row).
 const enqueueChunkSize = 100
 
-// Every insert writes these, in this order; the INSERT..SELECT forms must project them to match.
-// DequeueBatch also selects exactly these, to leave the drain's rows free of the trace it never reads.
+// enqueueColumns are written by every insert, in this order; the INSERT..SELECT forms must project them to
+// match. DequeueBatch also selects exactly these, to leave the drain's rows free of the trace it never reads.
 var enqueueColumns = []string{"item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at"}
 
 type artworkQueueRepository struct {
@@ -92,7 +92,8 @@ func (r *artworkQueueRepository) EnqueueIfMissing(ctx context.Context, items ...
 	return nil
 }
 
-// DO NOTHING is deliberate: a recheck must not bump the priority or retry_at of an already-queued item.
+// skipIfQueued uses DO NOTHING on purpose: a recheck must not bump the priority or retry_at of an
+// already-queued item.
 const skipIfQueued = ` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`
 
 // insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE.

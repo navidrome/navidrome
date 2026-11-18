@@ -43,7 +43,7 @@ var _ = Describe("Quick Connect endpoints", func() {
 	Describe("GET /quickconnect", func() {
 		lookup := func(code string) *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			lookupQuickConnect(qc)(w, asUser(httptest.NewRequest("GET", "/quickconnect?code="+code, nil)))
+			lookupQuickConnect(qc)(w, asUser(httptest.NewRequest(http.MethodGet, "/quickconnect?code="+code, nil)))
 			return w
 		}
 
@@ -72,7 +72,7 @@ var _ = Describe("Quick Connect endpoints", func() {
 	Describe("POST /quickconnect/authorize", func() {
 		authorize := func(body string) *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			authorizeQuickConnect(qc)(w, asUser(httptest.NewRequest("POST", "/quickconnect/authorize", strings.NewReader(body))))
+			authorizeQuickConnect(qc)(w, asUser(httptest.NewRequest(http.MethodPost, "/quickconnect/authorize", strings.NewReader(body))))
 			return w
 		}
 
@@ -103,7 +103,7 @@ var _ = Describe("Quick Connect endpoints", func() {
 			r := chi.NewRouter()
 			(&Router{quickConnect: qc}).addQuickConnectRoute(r)
 			w := httptest.NewRecorder()
-			r.ServeHTTP(w, asUser(httptest.NewRequest("GET", "/quickconnect?code="+pending.Code, nil)))
+			r.ServeHTTP(w, asUser(httptest.NewRequest(http.MethodGet, "/quickconnect?code="+pending.Code, nil)))
 			return w.Code
 		}
 
@@ -127,7 +127,7 @@ var _ = Describe("Quick Connect endpoints", func() {
 			(&Router{quickConnect: qc}).addQuickConnectRoute(r)
 			attempt := func() int {
 				w := httptest.NewRecorder()
-				req := httptest.NewRequest("GET", "/quickconnect?code=000000", nil)
+				req := httptest.NewRequest(http.MethodGet, "/quickconnect?code=000000", nil)
 				req.RemoteAddr = "10.0.0.1:1234"
 				r.ServeHTTP(w, asUser(req))
 				return w.Code

@@ -12,22 +12,24 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-// support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]
+// timeRegexString supports the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]
 const timeRegexString = `\[([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(\.[0-9]{1,3})?\]`
 
 var (
-	// Should either be at the beginning of file, or beginning of line
+	// syncRegex only matches at the beginning of file, or beginning of line
 	syncRegex  = regexp.MustCompile(`(^|\n)\s*` + timeRegexString)
 	timeRegex  = regexp.MustCompile(timeRegexString)
 	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset|lang):([^]]+)]`)
 
-	// Non-standard background-vocal tag: [bg: <mm:ss.mm>word...] attaches to the preceding line
+	// bgTagRegex matches the non-standard background-vocal tag: [bg: <mm:ss.mm>word...] attaches to the
+	// preceding line
 	bgTagRegex = regexp.MustCompile(`^\[bg:(.*)]$`)
 
-	// Any other [name:value] line is a tag we don't support (e.g. [al:], [by:]) and must be skipped whole
+	// unknownTagRegex matches any other [name:value] line, a tag we don't support (e.g. [al:], [by:]) that
+	// must be skipped whole
 	unknownTagRegex = regexp.MustCompile(`^\[[A-Za-z][^]:]*:[^]]*]`)
 
-	// Enhanced LRC: inline word-level timing markers like <00:12.34>
+	// enhancedLRCTimeString matches Enhanced LRC inline word-level timing markers like <00:12.34>
 	enhancedLRCTimeString = `<([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(\.[0-9]{1,3})?>`
 	enhancedLRCRegex      = regexp.MustCompile(enhancedLRCTimeString)
 )
