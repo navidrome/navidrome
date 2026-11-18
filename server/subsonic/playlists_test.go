@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -10,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -378,14 +380,75 @@ var _ = Describe("UpdatePlaylist", func() {
 	})
 })
 
+var _ = Describe("playlist track limit", func() {
+	var router *Router
+	var fp *fakePlaylists
+
+	BeforeEach(func() {
+		fp = &fakePlaylists{}
+		router = New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil)
+		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 3 })
+	})
+
+	songParams := func(param string, n int) []string {
+		params := make([]string, n)
+		for i := range params {
+			params[i] = param + "=s1"
+		}
+		return params
+	}
+	expectGenericError := func(err error) {
+		var subErr subError
+		Expect(errors.As(err, &subErr)).To(BeTrue())
+		Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+	}
+
+	It("creates a playlist with up to DevMaxPlaylistTracksPerRequest songs", func() {
+		_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", 3)...)...))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fp.lastCreate).To(HaveLen(3))
+	})
+
+	It("accepts any number of songs when the limit is 0", func() {
+		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 0 })
+		_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", 4)...)...))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fp.lastCreate).To(HaveLen(4))
+	})
+
+	It("rejects createPlaylist with more songs than the limit, with error code 0", func() {
+		_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", 4)...)...))
+		expectGenericError(err)
+		Expect(fp.createCalled).To(BeFalse())
+	})
+
+	It("rejects updatePlaylist adding more songs than the limit, with error code 0", func() {
+		_, err := router.UpdatePlaylist(newGetRequest(append([]string{"playlistId=123"}, songParams("songIdToAdd", 4)...)...))
+		expectGenericError(err)
+		Expect(fp.lastPlaylistID).To(BeEmpty())
+	})
+})
+
 type fakePlaylists struct {
 	playlists.Playlists
+	createCalled   bool
+	lastCreate     []string
 	lastPlaylistID string
 	lastName       *string
 	lastComment    *string
 	lastPublic     *bool
 	lastAdd        []string
 	lastRemove     []int
+}
+
+func (f *fakePlaylists) Create(_ context.Context, _ string, _ string, ids []string) (string, error) {
+	f.createCalled = true
+	f.lastCreate = ids
+	return "new-id", nil
+}
+
+func (f *fakePlaylists) GetWithTracks(_ context.Context, id string) (*model.Playlist, error) {
+	return &model.Playlist{ID: id}, nil
 }
 
 func (f *fakePlaylists) Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {

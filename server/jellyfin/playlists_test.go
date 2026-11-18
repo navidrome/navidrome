@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -372,10 +373,11 @@ var _ = Describe("Playlists", func() {
 			}
 			return ids
 		}
-		// An artist whose expansion alone is just over the per-request track limit.
+		// An artist whose expansion alone is just over a per-request track limit of 5.
 		withHugeArtist := func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
 			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
-			songs := make(model.MediaFiles, playlists.MaxTracksPerRequest+1)
+			songs := make(model.MediaFiles, 6)
 			for i := range songs {
 				songs[i] = model.MediaFile{ID: testID(fmt.Sprintf("big-%d", i))}
 			}
@@ -409,6 +411,14 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.createdIds).To(HaveLen(maxPlaylistIDs))
 		})
 
+		It("expands without a track limit when DevMaxPlaylistTracksPerRequest is 0", func() {
+			withHugeArtist()
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 0 })
+			w := create(map[string]any{"Name": "Mix", "Ids": []string{artist}})
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(fp.createdIds).To(HaveLen(6))
+		})
+
 		tooManyIDs := func() any { return map[string]any{"Name": "Mix", "Ids": repeat(song, maxPlaylistIDs+1)} }
 		expandsTooFar := func() any {
 			withHugeArtist()
@@ -424,10 +434,10 @@ var _ = Describe("Playlists", func() {
 				Expect(fp.updatePlaylistID).To(BeEmpty())
 			},
 			Entry("create, more than maxPlaylistIDs ids", create, tooManyIDs),
-			Entry("create, ids that expand past MaxTracksPerRequest", create, expandsTooFar),
+			Entry("create, ids that expand past DevMaxPlaylistTracksPerRequest", create, expandsTooFar),
 			Entry("create, a body over the size limit", create, bodyTooBig),
 			Entry("update, more than maxPlaylistIDs ids", update, tooManyIDs),
-			Entry("update, ids that expand past MaxTracksPerRequest", update, expandsTooFar),
+			Entry("update, ids that expand past DevMaxPlaylistTracksPerRequest", update, expandsTooFar),
 			Entry("update, a body over the size limit", update, bodyTooBig),
 		)
 
@@ -444,7 +454,7 @@ var _ = Describe("Playlists", func() {
 				Expect(fp.addPlaylistID).To(BeEmpty())
 			},
 			Entry("more than maxPlaylistIDs ids", func() []string { return repeat(song, maxPlaylistIDs+1) }),
-			Entry("ids that expand past MaxTracksPerRequest", func() []string {
+			Entry("ids that expand past DevMaxPlaylistTracksPerRequest", func() []string {
 				withHugeArtist()
 				return []string{artist}
 			}),

@@ -36,7 +36,7 @@ func writePlaylistError(w http.ResponseWriter, err error, defaultStatus int) {
 	}
 }
 
-// maxPlaylistJSONBody fits MaxTracksPerRequest ids (about 1.3 MiB) with room to spare.
+// maxPlaylistJSONBody fits 50,000 ids (about 1.3 MiB) with room to spare.
 const maxPlaylistJSONBody = 4 << 20
 
 // maxContainerIDs keeps album, artist and disc lists under SQLite's variable and expression-depth limits.
@@ -181,7 +181,7 @@ func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if len(payload.Ids) > playlists.MaxTracksPerRequest ||
+		if playlists.TooManyTracks(len(payload.Ids)) ||
 			len(payload.AlbumIds)+len(payload.ArtistIds)+len(payload.Discs) > maxContainerIDs {
 			http.Error(w, "too many ids in one request", http.StatusRequestEntityTooLarge)
 			return

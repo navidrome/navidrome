@@ -144,6 +144,7 @@ type Options struct {
 	DevUIShowConfig                   bool
 	DevNewEventStream                 bool
 	DevOffsetOptimize                 int
+	DevMaxPlaylistTracksPerRequest    int
 	DevArtworkMaxRequests             int
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
@@ -1120,6 +1121,7 @@ func setViperDefaults() {
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devapiv1", false)
 	viper.SetDefault("devoffsetoptimize", 50000)
+	viper.SetDefault("devmaxplaylisttracksperrequest", 50000)
 	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
 	// scrobbles and the UI. See MaxOpenConns.
 	viper.SetDefault("jellyfin.maxconcurrentstreams", max(2, MaxOpenConns()/2))

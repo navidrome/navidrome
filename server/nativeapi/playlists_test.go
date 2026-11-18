@@ -129,17 +129,22 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	}
 
 	Describe("POST /playlist/{playlistId}/tracks", func() {
-		It("adds up to MaxTracksPerRequest ids", func() {
-			ids := make([]string, playlists.MaxTracksPerRequest)
-			for i := range ids {
-				ids[i] = fmt.Sprintf("%022d", i)
-			}
-			req := createAuthenticatedRequestWithBody("POST", "/playlist/pls-1/tracks", jsonBody(map[string]any{"ids": ids}))
-			router.ServeHTTP(w, req)
+		DescribeTable("adds ids up to DevMaxPlaylistTracksPerRequest",
+			func(limit, sent int) {
+				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = limit })
+				ids := make([]string, sent)
+				for i := range ids {
+					ids[i] = fmt.Sprintf("%022d", i)
+				}
+				req := createAuthenticatedRequestWithBody("POST", "/playlist/pls-1/tracks", jsonBody(map[string]any{"ids": ids}))
+				router.ServeHTTP(w, req)
 
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(plsSvc.addedIds).To(HaveLen(playlists.MaxTracksPerRequest))
-		})
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(plsSvc.addedIds).To(HaveLen(sent))
+			},
+			Entry("exactly the limit", 5, 5),
+			Entry("any number when the limit is 0", 0, 6),
+		)
 
 		DescribeTable("rejects oversized requests with 413 without adding anything",
 			func(payload func() any) {
@@ -149,8 +154,9 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 				Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
 				Expect(plsSvc.addCalls).To(BeZero())
 			},
-			Entry("more than MaxTracksPerRequest ids", func() any {
-				return map[string]any{"ids": make([]string, playlists.MaxTracksPerRequest+1)}
+			Entry("more than DevMaxPlaylistTracksPerRequest ids", func() any {
+				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+				return map[string]any{"ids": make([]string, 6)}
 			}),
 			Entry("too many album ids", func() any {
 				return map[string]any{"albumIds": make([]string, maxContainerIDs+1)}

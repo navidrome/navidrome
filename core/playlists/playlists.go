@@ -17,8 +17,16 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
-// MaxTracksPerRequest caps how many tracks one API request may add or set, the same bound as an M3U upload.
-const MaxTracksPerRequest = 50_000
+// MaxTracksPerRequest is how many tracks one API request may add or set; 0 means no limit.
+func MaxTracksPerRequest() int {
+	return max(conf.Server().DevMaxPlaylistTracksPerRequest, 0)
+}
+
+// TooManyTracks reports whether n tracks exceed MaxTracksPerRequest.
+func TooManyTracks(n int) bool {
+	limit := MaxTracksPerRequest()
+	return limit > 0 && n > limit
+}
 
 type Playlists interface {
 	// Reads

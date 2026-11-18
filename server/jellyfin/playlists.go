@@ -278,9 +278,13 @@ func queryIDs(r *http.Request, key string) []string {
 func (api *Router) expandContainerIDs(ctx context.Context, ids []string) ([]string, bool) {
 	songs := api.songsByIDs(ctx, ids)
 	out := make([]string, 0, len(ids))
+	maxTracks := playlists.MaxTracksPerRequest()
 	for _, id := range ids {
 		// One past the room left, so an oversized container is detected without loading all of it.
-		limit := playlists.MaxTracksPerRequest - len(out) + 1
+		limit := 0
+		if maxTracks > 0 {
+			limit = maxTracks - len(out) + 1
+		}
 		if _, ok := songs[id]; ok {
 			out = append(out, id) // already a song
 		} else if _, err := api.ds.Album().Get(ctx, id); err == nil {
@@ -292,7 +296,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) ([]stri
 		} else {
 			out = append(out, id) // well-formed but unresolved — left for the caller's write to handle
 		}
-		if len(out) > playlists.MaxTracksPerRequest {
+		if playlists.TooManyTracks(len(out)) {
 			return nil, false
 		}
 	}
