@@ -83,10 +83,12 @@ func (r *userRepository) selectUserWithLibraries(ctx context.Context, options ..
 				'updated_at', library.updated_at,
 				'created_at', library.created_at
 			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
-		LeftJoin("user_library ul ON user.id = ul.user_id").
-		LeftJoin("library ON ul.library_id = library.id").
+		LeftJoin("library ON " + userCanAccessLibrary).
 		GroupBy("user.id")
 }
+
+// userCanAccessLibrary does not rely on admins' user_library rows, which can be missing
+const userCanAccessLibrary = "(user.is_admin OR library.id IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = user.id))"
 
 func (r *userRepository) CountAll(ctx context.Context, qo ...model.QueryOptions) (int64, error) {
 	return r.count(ctx, Select(), qo...)
@@ -483,11 +485,11 @@ func (r *userRepository) decryptAllPasswords(ctx context.Context, users model.Us
 // Library association methods
 
 func (r *userRepository) GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error) {
-	sel := Select("l.*").
-		From("library l").
-		Join("user_library ul ON l.id = ul.library_id").
-		Where(Eq{"ul.user_id": userID}).
-		OrderBy("l.name")
+	sel := Select("library.*").
+		From("library").
+		Join("user ON user.id = ?", userID).
+		Where(userCanAccessLibrary).
+		OrderBy("library.name")
 
 	var res model.Libraries
 	err := r.queryAll(ctx, sel, &res)
