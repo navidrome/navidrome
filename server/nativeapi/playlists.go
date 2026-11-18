@@ -46,12 +46,8 @@ const maxContainerIDs = 500
 func limitPlaylistJSON(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxPlaylistJSONBody))
-		if errors.As(err, new(*http.MaxBytesError)) {
-			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
-			return
-		}
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writePlaylistError(w, err, http.StatusBadRequest)
 			return
 		}
 		r.Body = io.NopCloser(bytes.NewReader(body))
@@ -88,7 +84,7 @@ func getPlaylistTrack(pls playlists.Playlists) http.HandlerFunc {
 	return playlistTracksHandler(pls, rest.Get[model.PlaylistTrack], func(*http.Request) bool { return true })
 }
 
-// maxM3UUploadSize fits playlists.MaxImportM3UEntries entries with long paths and #EXTINF lines.
+// maxM3UUploadSize fits 50,000 entries with long paths and #EXTINF lines.
 const maxM3UUploadSize = 32 << 20
 
 func createPlaylistFromM3U(pls playlists.Playlists) http.HandlerFunc {
@@ -173,17 +169,13 @@ func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 		playlistId, _ := p.String(":playlistId")
 		var payload addTracksPayload
 		err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaylistJSONBody)).Decode(&payload)
-		if errors.As(err, new(*http.MaxBytesError)) {
-			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
-			return
-		}
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writePlaylistError(w, err, http.StatusBadRequest)
 			return
 		}
 		if playlists.TooManyTracks(len(payload.Ids)) ||
 			len(payload.AlbumIds)+len(payload.ArtistIds)+len(payload.Discs) > maxContainerIDs {
-			http.Error(w, "too many ids in one request", http.StatusRequestEntityTooLarge)
+			writePlaylistError(w, playlists.ErrTooManyEntries, http.StatusBadRequest)
 			return
 		}
 		count, c := 0, 0
