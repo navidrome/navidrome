@@ -3,16 +3,13 @@ import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
 import {
-  filterRejectedLyrics,
   findLyricVariant,
-  getPreferredLyricLanguage,
   hasNudgeableTiming,
   hasStructuredLyricContent,
   hasWordTiming,
   isPlayableVariant,
   isRejectedRecording,
   legacyVariantKey,
-  selectLyricLayers,
 } from './lyrics'
 import {
   buildConvertedLyricsDownload,
@@ -117,12 +114,20 @@ const usePlayerLyrics = ({
     local: '',
   })
   const effectivePersonalRef = useRef(null)
+  const preferenceSequenceRef = useRef(0)
+  const latestTargetSequenceRef = useRef(new Map())
+
+  // Keep send-time guards current in the same render that receives a new
+  // account/track. Effect-only ref updates leave a narrow window in which a
+  // debounced timer could dispatch a previous target after an account switch.
+  authIdentityRef.current = authIdentity
+  trackIdRef.current = trackId
 
   const {
     variants,
     evidence = [],
     layers: fetchedLyricLayers,
-    structuredLyrics,
+    selectLayersWithRejections,
     loading: lyricsLoading,
     refreshing: lyricsRefreshing,
     sourcesIncomplete,
@@ -156,35 +161,27 @@ const usePlayerLyrics = ({
     (identityOverride.revision || 0) > (personal?.revision || 0)
       ? identityOverride
       : personal
+  effectivePersonalRef.current = effectivePersonal
   const rejectionList = useMemo(
     () => personalRejections(effectivePersonal),
     [effectivePersonal],
   )
-  const preferredLyricLanguage = getPreferredLyricLanguage()
   // A rejection accepted from this client must affect the rendered layers and
   // the export target immediately, including when the follow-up read is
-  // coalesced or fails. Re-select from the raw response with the latest
-  // personal rejections applied; the hook's layers already reflect the read's
-  // own personal state.
-  const lyricLayers = useMemo(() => {
-    if (!structuredLyrics || personalSupported !== true) {
-      return fetchedLyricLayers
-    }
-    const filtered = filterRejectedLyrics(structuredLyrics, rejectionList)
-    if (filtered.length === structuredLyrics.length) return fetchedLyricLayers
-    return selectLyricLayers(
-      filtered,
-      preferredLyricLanguage,
-      selectedSourceKey,
-    )
-  }, [
-    fetchedLyricLayers,
-    personalSupported,
-    preferredLyricLanguage,
-    rejectionList,
-    selectedSourceKey,
-    structuredLyrics,
-  ])
+  // coalesced or fails. The lyrics hook owns the selection rule; the parent
+  // only supplies the latest personal rejections.
+  const lyricLayers = useMemo(
+    () =>
+      personalSupported === true
+        ? selectLayersWithRejections(rejectionList)
+        : fetchedLyricLayers,
+    [
+      fetchedLyricLayers,
+      personalSupported,
+      rejectionList,
+      selectLayersWithRejections,
+    ],
+  )
   const visibleVariants = useMemo(
     () =>
       variants.filter(
@@ -211,6 +208,12 @@ const usePlayerLyrics = ({
     lyricLayers.main?.source?.format || selectedVariant?.source?.format || ''
   const exportSelection = lyricLayers.main?.selection || ''
   const exportLocalToken = lyricLayers.main?.local?.token || ''
+  currentOffsetTargetRef.current = {
+    authIdentity,
+    trackId,
+    selection: exportSelection,
+    local: exportLocalToken,
+  }
   const exportTarget = {
     trackId,
     variantKey: resolvedVariantKey,
@@ -272,21 +275,6 @@ const usePlayerLyrics = ({
   )
 
   useEffect(() => {
-    authIdentityRef.current = authIdentity
-    trackIdRef.current = trackId
-    currentOffsetTargetRef.current = {
-      authIdentity,
-      trackId,
-      selection: exportSelection,
-      local: exportLocalToken,
-    }
-  }, [authIdentity, exportLocalToken, exportSelection, trackId])
-
-  useEffect(() => {
-    effectivePersonalRef.current = effectivePersonal
-  }, [effectivePersonal])
-
-  useEffect(() => {
     setPersonalOverride(null)
     setScopedSourceKey(readScopedSource(authIdentity, trackId))
     setSelectedSourceKey(null)
@@ -301,6 +289,7 @@ const usePlayerLyrics = ({
       window.clearTimeout(entry.timer)
     }
     pendingOffsetsRef.current.clear()
+    latestTargetSequenceRef.current.clear()
     preferenceQueueRef.current = Promise.resolve()
   }, [authIdentity])
 
@@ -337,6 +326,10 @@ const usePlayerLyrics = ({
 
   useEffect(() => {
     if (personalSupported === true) {
+      const pendingKey = [trackId, exportSelection, exportLocalToken].join(
+        '\u0000',
+      )
+      if (pendingOffsetsRef.current.has(pendingKey)) return
       if (exportSelection || exportLocalToken) {
         setOffsetMs(
           personalOffsetFor(effectivePersonal, {
@@ -735,6 +728,8 @@ const usePlayerLyrics = ({
     const identity = target?.authIdentity
     const targetTrack = target?.trackId
     if (!identity || !targetTrack) return Promise.resolve()
+    const sequence = ++preferenceSequenceRef.current
+    latestTargetSequenceRef.current.set(targetTrack, sequence)
     const run = async () => {
       if (authIdentityRef.current !== identity) return
       const response = await subsonic.updateLyricsPreference(
@@ -747,6 +742,9 @@ const usePlayerLyrics = ({
       ) {
         return
       }
+      // Only the last enqueued operation for this target may update the
+      // visible state; an earlier response is represented by the later one.
+      if (latestTargetSequenceRef.current.get(targetTrack) !== sequence) return
       const next = readMutationPersonal(response)
       if (next) {
         setPersonalOverride({

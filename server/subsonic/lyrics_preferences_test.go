@@ -394,7 +394,6 @@ var _ = Describe("Lyrics personal preferences", func() {
 			Language: "en", Role: "main", Format: "lrc",
 		}
 		identityB := identityA
-		identityB.Instance = "shared-instance-b"
 		record := model.LyricsPreferenceRecord{
 			Version: model.LyricsPreferenceVersion, Revision: 1,
 			Selection: &model.LyricsPreferenceSelection{

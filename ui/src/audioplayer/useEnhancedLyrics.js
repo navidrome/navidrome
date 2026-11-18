@@ -617,11 +617,23 @@ const useEnhancedLyrics = ({
     [preferredLanguage, selectedSourceKey, structuredLyrics],
   )
 
+  const selectLayersWithRejections = useCallback(
+    (rejections) => {
+      if (!structuredLyrics) return layers
+      return selectLyricLayers(
+        filterRejectedLyrics(structuredLyrics, rejections),
+        preferredLanguage,
+        selectedSourceKey,
+      )
+    },
+    [layers, preferredLanguage, selectedSourceKey, structuredLyrics],
+  )
+
   if (state.cacheKey !== cacheKey) {
     return {
       variants: [],
       layers: emptyLyricLayers,
-      structuredLyrics: null,
+      selectLayersWithRejections,
       evidence: [],
       personal: null,
       personalSupported: null,
@@ -636,7 +648,7 @@ const useEnhancedLyrics = ({
   return {
     variants,
     layers,
-    structuredLyrics,
+    selectLayersWithRejections,
     evidence: state.evidence || EMPTY_EVIDENCE,
     personal: state.personal || null,
     personalSupported: state.personalSupported ?? null,
