@@ -247,6 +247,16 @@ var _ = Describe("createPlaylistFromM3U", func() {
 	})
 })
 
+var _ = Describe("reorderItem", func() {
+	It("rejects a body over the size limit with 413", func() {
+		body := `{"insert_before":"` + strings.Repeat("1", maxSmallJSONBody) + `"}`
+		req := httptest.NewRequest(http.MethodPut, "/playlist/pls-1/tracks/1?:id=1", strings.NewReader(body))
+		w := httptest.NewRecorder()
+		reorderItem(&mockPlaylistsService{})(w, req)
+		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+	})
+})
+
 var _ = Describe("writePlaylistError", func() {
 	DescribeTable("maps a service error to an HTTP status",
 		func(err error, expected int) {

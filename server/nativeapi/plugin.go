@@ -63,6 +63,9 @@ type PluginUpdateRequest struct {
 	AllowWriteAccess *bool   `json:"allowWriteAccess,omitempty"`
 }
 
+// maxPluginUpdateBody leaves room for large plugin configs.
+const maxPluginUpdateBody = 1 << 20
+
 func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	ctx := r.Context()
@@ -85,9 +88,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 
 	// Parse update request
 	var req PluginUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error(ctx, "Error decoding request", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if !server.DecodeJSONBody(w, r, maxPluginUpdateBody, &req) {
 		return
 	}
 

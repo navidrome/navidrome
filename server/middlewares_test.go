@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -546,5 +547,42 @@ var _ = Describe("middlewares", func() {
 				Expect(attempt("10.0.0.1:4", "X-Forwarded-For", "203.0.113.2")).To(Equal(http.StatusOK))
 			})
 		})
+	})
+})
+
+var _ = Describe("DecodeJSONBody", func() {
+	type payload struct {
+		Name string `json:"name"`
+	}
+	decode := func(body string, limit int64) (*httptest.ResponseRecorder, payload, bool) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		var v payload
+		ok := DecodeJSONBody(w, r, limit, &v)
+		return w, v, ok
+	}
+
+	It("decodes one JSON value, allowing trailing whitespace", func() {
+		_, v, ok := decode("{\"name\":\"Mix\"}\r\n\t ", 1024)
+		Expect(ok).To(BeTrue())
+		Expect(v.Name).To(Equal("Mix"))
+	})
+
+	DescribeTable("answers 400 for a body that is not exactly one JSON value",
+		func(body string) {
+			w, _, ok := decode(body, 1024)
+			Expect(ok).To(BeFalse())
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		},
+		Entry("empty body", ""),
+		Entry("malformed JSON", `{"name":`),
+		Entry("trailing garbage", `{"name":"Mix"} x`),
+		Entry("a second JSON value", `{"name":"Mix"}{"name":"Other"}`),
+	)
+
+	It("answers 413 for a body over the limit", func() {
+		w, _, ok := decode(`{"name":"`+strings.Repeat("x", 64)+`"}`, 32)
+		Expect(ok).To(BeFalse())
+		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
 	})
 })

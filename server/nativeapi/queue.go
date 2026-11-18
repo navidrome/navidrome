@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -82,12 +83,14 @@ func fallbackCurrent(ctx context.Context, w http.ResponseWriter, ds model.DataSt
 	return current, current != stored.Current, true
 }
 
+// maxQueueBody fits a queue of 100,000 ids with room to spare.
+const maxQueueBody = 4 << 20
+
 // decodeUpdatePayload decodes the JSON payload from the request body.
 // Returns false if decoding fails (and sends error response), true if successful.
 func decodeUpdatePayload(w http.ResponseWriter, r *http.Request) (*updateQueuePayload, bool) {
 	var payload updateQueuePayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !server.DecodeJSONBody(w, r, maxQueueBody, &payload) {
 		return nil, false
 	}
 	return &payload, true

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -29,6 +30,21 @@ var _ = Describe("Queue Endpoints", func() {
 		_ = userRepo.Put(GinkgoT().Context(), &user)
 		ds = &tests.MockDataStore{MockedPlayQueue: repo, MockedUser: userRepo, MockedProperty: &tests.MockedPropertyRepo{}}
 	})
+
+	DescribeTable("rejects a body over the size limit with 413 without saving",
+		func(method string, handler func(model.DataStore) http.HandlerFunc) {
+			body := `{"ids":["` + strings.Repeat("x", maxQueueBody) + `"]}`
+			req := httptest.NewRequest(method, "/queue", strings.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			handler(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+			Expect(repo.Queue).To(BeNil())
+		},
+		Entry("POST", http.MethodPost, saveQueue),
+		Entry("PUT", http.MethodPut, updateQueue),
+	)
 
 	Describe("POST /queue", func() {
 		It("saves the queue", func() {

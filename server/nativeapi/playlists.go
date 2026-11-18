@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -198,9 +199,7 @@ func reorderItem(pls playlists.Playlists) http.HandlerFunc {
 			return
 		}
 		var payload reorderPayload
-		err := json.NewDecoder(r.Body).Decode(&payload)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if !server.DecodeJSONBody(w, r, maxSmallJSONBody, &payload) {
 			return
 		}
 		newPos, err := strconv.Atoi(payload.InsertBefore)
