@@ -113,10 +113,7 @@ func (s *playlists) importFromFolder(ctx context.Context, folder *model.Folder, 
 // noEntryLimit is passed to parseM3U for on-disk playlists.
 const noEntryLimit = 0
 
-// MaxImportM3UEntries caps uploads only: on-disk playlists in the scanner can legitimately be larger.
-const MaxImportM3UEntries = 50_000
-
-// ErrTooManyEntries is returned by ImportM3U when the playlist has more than MaxImportM3UEntries entries.
+// ErrTooManyEntries is returned by ImportM3U when the playlist has more than MaxTracksPerRequest entries.
 var ErrTooManyEntries = errors.New("playlist has too many entries")
 
 // importM3USlot runs one upload import at a time, so concurrent uploads cannot stack their memory use.
@@ -150,7 +147,8 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 		Sync:    false,
 	}
 	body := &errReader{r: reader}
-	err := s.parseM3U(ctx, pls, nil, body, MaxImportM3UEntries)
+	// Uploads only: on-disk playlists in the scanner can legitimately be larger.
+	err := s.parseM3U(ctx, pls, nil, body, MaxTracksPerRequest())
 	if err == nil {
 		err = body.err
 	}
