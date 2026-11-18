@@ -77,7 +77,7 @@ func createAddColumnFunc(ctx context.Context, tx *sql.Tx) addColumnFunc {
 	return func(tableName, columnName, columnType, defaultValue, initialValue string) execFunc {
 		return func() error {
 			// Format the `default null` value to have the same length as the final defaultValue
-			finalLen := len(fmt.Sprintf(`%s not`, defaultValue))
+			finalLen := len(defaultValue + " not")
 			tempDefault := fmt.Sprintf(`default %s null`, strings.Repeat(" ", finalLen))
 			_, err := tx.ExecContext(ctx, fmt.Sprintf(`
 alter table %s add column %s %s %s;`, tableName, columnName, columnType, tempDefault))

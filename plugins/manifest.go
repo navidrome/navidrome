@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -55,11 +56,11 @@ func (m *Manifest) Validate() error {
 	// SubsonicAPI permission requires users permission
 	if m.Permissions != nil && m.Permissions.Users == nil {
 		if m.Permissions.Subsonicapi != nil {
-			return fmt.Errorf("'subsonicapi' permission requires 'users' permission to be declared")
+			return errors.New("'subsonicapi' permission requires 'users' permission to be declared")
 		}
 
 		if m.Permissions.ScrobbleRetriever != nil {
-			return fmt.Errorf("'scrobbleRetriever' permission requires 'users' permission to be declared")
+			return errors.New("'scrobbleRetriever' permission requires 'users' permission to be declared")
 		}
 	}
 
@@ -67,7 +68,7 @@ func (m *Manifest) Validate() error {
 	// is what exposes a library scope for configuration).
 	if m.Permissions != nil && m.Permissions.Matcher != nil {
 		if m.Permissions.Library == nil {
-			return fmt.Errorf("'matcher' permission requires 'library' permission to be declared")
+			return errors.New("'matcher' permission requires 'library' permission to be declared")
 		}
 	}
 
@@ -100,7 +101,7 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 	// Scrobbler capability requires users permission
 	if hasCapability(capabilities, CapabilityScrobbler) {
 		if m.Permissions == nil || m.Permissions.Users == nil {
-			return fmt.Errorf("scrobbler capability requires 'users' permission to be declared in manifest")
+			return errors.New("scrobbler capability requires 'users' permission to be declared in manifest")
 		}
 	}
 

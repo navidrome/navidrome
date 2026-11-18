@@ -3,6 +3,7 @@ package playback
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/log"
@@ -24,7 +25,7 @@ func NewQueue() *Queue {
 func (pd *Queue) String() string {
 	var filenames strings.Builder
 	for idx, item := range pd.Items {
-		filenames.WriteString(fmt.Sprint(idx) + ":" + item.Path + " ")
+		filenames.WriteString(strconv.Itoa(idx) + ":" + item.Path + " ")
 	}
 	return fmt.Sprintf("#Items: %d, idx: %d, files: %s", len(pd.Items), pd.Index, filenames.String())
 }

@@ -55,7 +55,7 @@ var _ = Describe("SimpleCache", func() {
 	Describe("GetWithLoader", func() {
 		It("should retrieve a value using the loader function", func() {
 			loader := func(key string) (string, time.Duration, error) {
-				return fmt.Sprintf("%s=value", key), 1 * time.Minute, nil
+				return key + "=value", 1 * time.Minute, nil
 			}
 
 			value, err := cache.GetWithLoader("key", loader)

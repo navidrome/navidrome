@@ -174,7 +174,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 
 	if r.ApiKey != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))
+		req.Header.Add("Authorization", "Token "+r.ApiKey)
 	}
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz %s request", req.Method), "url", req.URL)

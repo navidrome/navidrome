@@ -49,7 +49,7 @@ func computePID(mf model.MediaFile, md Metadata, spec, albumSpec string, prepend
 			values[i] = v
 		}
 		if hasValue {
-			pid += strings.Join(values, "\\")
+			pid = strings.Join(values, "\\")
 			break
 		}
 	}

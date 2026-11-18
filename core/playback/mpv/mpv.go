@@ -17,7 +17,7 @@ import (
 
 func start(ctx context.Context, args []string) (Executor, error) {
 	if len(args) == 0 {
-		return Executor{}, fmt.Errorf("no command arguments provided")
+		return Executor{}, errors.New("no command arguments provided")
 	}
 	log.Debug("Executing mpv command", "cmd", args)
 	j := Executor{args: args}
@@ -34,7 +34,7 @@ func (j *Executor) Cancel() error {
 	if j.cmd != nil {
 		return j.cmd.Cancel()
 	}
-	return fmt.Errorf("there is non command to cancel")
+	return errors.New("there is non command to cancel")
 }
 
 type Executor struct {

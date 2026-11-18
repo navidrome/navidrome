@@ -2,6 +2,7 @@ package playlists
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -144,7 +145,7 @@ type pathResolution struct {
 // Format: "libraryID:relativePath" with forward slashes for path separators.
 func (r pathResolution) ToQualifiedString() (string, error) {
 	if !r.valid {
-		return "", fmt.Errorf("invalid path resolution")
+		return "", errors.New("invalid path resolution")
 	}
 	relativePath, err := filepath.Rel(r.libraryPath, r.absolutePath)
 	if err != nil {

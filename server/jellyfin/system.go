@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"net/netip"
@@ -29,7 +28,7 @@ func serverName() string {
 	if conf.Server().Jellyfin.ServerName != "" {
 		return conf.Server().Jellyfin.ServerName
 	}
-	return fmt.Sprintf("Navidrome %s", consts.Version)
+	return "Navidrome " + consts.Version
 }
 
 func (api *Router) serverID(ctx context.Context) string {

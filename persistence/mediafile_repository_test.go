@@ -1278,7 +1278,7 @@ var _ = Describe("MediaRepository", func() {
 		It("does not panic when the cursor yields a dbMediaFile with nil MediaFile", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbMediaFile (where MediaFile is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbMediaFile, error) bool) {
 				var empty dbMediaFile // MediaFile pointer is nil
 				yield(empty, dbErr)

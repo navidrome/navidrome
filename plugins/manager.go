@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -319,7 +320,7 @@ func (m *Manager) GetPluginInfo() map[string]PluginInfo {
 // Returns an error if the plugin is not found in DB or fails to load.
 func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
@@ -367,7 +368,7 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 // Returns an error if the plugin is not found in DB.
 func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
@@ -404,7 +405,7 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 // Returns nil if validation passes, or an error describing the validation failure.
 func (m *Manager) ValidatePluginConfig(ctx context.Context, id, configJSON string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
@@ -460,7 +461,7 @@ func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON s
 func (m *Manager) RescanPlugins(ctx context.Context) error {
 	folder := conf.Server().Plugins.Folder.String()
 	if folder == "" {
-		return fmt.Errorf("plugins folder not configured")
+		return errors.New("plugins folder not configured")
 	}
 	log.Info(ctx, "Manual plugin rescan requested", "folder", folder)
 	return m.syncPlugins(ctx, folder)
@@ -472,7 +473,7 @@ func (m *Manager) RescanPlugins(ctx context.Context) error {
 // but no longer satisfied, the plugin will be disabled.
 func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn func(*model.Plugin)) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
@@ -632,14 +633,14 @@ func (m *Manager) checkPermissionGates(p *model.Plugin) error {
 	// Check users permission gate
 	if manifest.Permissions != nil && manifest.Permissions.Users != nil {
 		if !hasValidUsersConfig(p.Users, p.AllUsers) {
-			return fmt.Errorf("users permission requires configuration: select users or enable 'all users' access")
+			return errors.New("users permission requires configuration: select users or enable 'all users' access")
 		}
 	}
 
 	// Check library permission gate
 	if manifest.Permissions != nil && manifest.Permissions.Library != nil {
 		if !hasValidLibrariesConfig(p.Libraries, p.AllLibraries) {
-			return fmt.Errorf("library permission requires configuration: select libraries or enable 'all libraries' access")
+			return errors.New("library permission requires configuration: select libraries or enable 'all libraries' access")
 		}
 	}
 

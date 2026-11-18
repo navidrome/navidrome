@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -822,7 +823,7 @@ func (m *mockMusicFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	if dirFile, ok := f.(fs.ReadDirFile); ok {
 		return dirFile.ReadDir(-1)
 	}
-	return nil, fmt.Errorf("not a directory")
+	return nil, errors.New("not a directory")
 }
 
 // ReadLink returns the target of the named symbolic link (implements fs.ReadLinkFS).
@@ -833,7 +834,7 @@ func (m *mockMusicFS) ReadLink(name string) (string, error) {
 		return "", &fs.PathError{Op: "readlink", Path: name, Err: fs.ErrNotExist}
 	}
 	if entry.Mode&fs.ModeSymlink == 0 {
-		return "", &fs.PathError{Op: "readlink", Path: name, Err: fmt.Errorf("not a symlink")}
+		return "", &fs.PathError{Op: "readlink", Path: name, Err: errors.New("not a symlink")}
 	}
 	return string(entry.Data), nil
 }

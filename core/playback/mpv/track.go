@@ -7,6 +7,7 @@ package mpv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -36,7 +37,7 @@ func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName str
 
 	args := createMPVCommand(deviceName, mf.AbsolutePath(), tmpSocketName)
 	if len(args) == 0 {
-		return nil, fmt.Errorf("no mpv command arguments provided")
+		return nil, errors.New("no mpv command arguments provided")
 	}
 	exe, err := start(ctx, args)
 	if err != nil {
