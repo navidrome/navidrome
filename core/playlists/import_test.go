@@ -1004,18 +1004,26 @@ var _ = Describe("Playlists - Import", func() {
 			}
 			BeforeEach(func() {
 				repo.data = []string{"tests/test.mp3"}
+				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 3 })
 			})
 
-			It("imports a playlist with exactly the maximum number of entries, duplicates included", func() {
-				pls, err := ps.ImportM3U(ctx, strings.NewReader(repeat(playlists.MaxImportM3UEntries)))
+			It("imports a playlist with exactly DevMaxPlaylistTracksPerRequest entries, duplicates included", func() {
+				pls, err := ps.ImportM3U(ctx, strings.NewReader(repeat(3)))
 				Expect(err).ToNot(HaveOccurred())
-				Expect(pls.Tracks).To(HaveLen(playlists.MaxImportM3UEntries))
+				Expect(pls.Tracks).To(HaveLen(3))
 			})
 
-			It("rejects a playlist over the maximum without saving it", func() {
-				_, err := ps.ImportM3U(ctx, strings.NewReader(repeat(playlists.MaxImportM3UEntries+1)))
+			It("rejects a playlist over the limit without saving it", func() {
+				_, err := ps.ImportM3U(ctx, strings.NewReader(repeat(4)))
 				Expect(err).To(MatchError(playlists.ErrTooManyEntries))
 				Expect(mockPlsRepo.Last).To(BeNil())
+			})
+
+			It("imports any number of entries when the limit is 0", func() {
+				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 0 })
+				pls, err := ps.ImportM3U(ctx, strings.NewReader(repeat(4)))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(4))
 			})
 
 			It("does not cap playlists imported from disk", func() {
@@ -1024,12 +1032,12 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(os.Mkdir(libDir, 0755)).To(Succeed())
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: libDir}})
 				plsFile := filepath.Join(tmpDir, "big.m3u")
-				content := strings.Repeat(libDir+"/tests/test.mp3\n", playlists.MaxImportM3UEntries+1)
+				content := strings.Repeat(libDir+"/tests/test.mp3\n", 4)
 				Expect(os.WriteFile(plsFile, []byte(content), 0600)).To(Succeed())
 
 				pls, err := ps.ImportFile(ctx, plsFile, false)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(pls.Tracks).To(HaveLen(playlists.MaxImportM3UEntries + 1))
+				Expect(pls.Tracks).To(HaveLen(4))
 			})
 		})
 

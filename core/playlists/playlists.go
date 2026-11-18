@@ -17,6 +17,18 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
+// MaxTracksPerRequest is how many tracks one API request may add or set; 0 means no limit.
+// Native album, artist and disc ids are not counted: their expansion is bounded by the library size.
+func MaxTracksPerRequest() int {
+	return max(conf.Server().DevMaxPlaylistTracksPerRequest, 0)
+}
+
+// TooManyTracks reports whether n tracks exceed MaxTracksPerRequest.
+func TooManyTracks(n int) bool {
+	limit := MaxTracksPerRequest()
+	return limit > 0 && n > limit
+}
+
 type Playlists interface {
 	// Reads
 	GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error)

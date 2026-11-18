@@ -2,7 +2,6 @@ package jellyfin
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -44,6 +44,28 @@ func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err err
 	}
 }
 
+// maxPlaylistBody fits the default track limit's GUIDs (about 1.7 MiB) with room to spare.
+const maxPlaylistBody = 2 << 20
+
+// resolvePlaylistIDs decodes and expands client ids into track ids, answering 413 or 404 itself on failure.
+func (api *Router) resolvePlaylistIDs(w http.ResponseWriter, r *http.Request, guids []string) ([]string, bool) {
+	// Only an empty album or artist yields no track, so too many ids fail here, before any lookup.
+	if playlists.TooManyTracks(len(guids)) {
+		http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
+		return nil, false
+	}
+	decoded, ok := dto.DecodeIDs(guids)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return nil, false
+	}
+	ids, ok := api.expandContainerIDs(r.Context(), decoded)
+	if !ok {
+		http.Error(w, "Request Entity Too Large", http.StatusRequestEntityTooLarge)
+	}
+	return ids, ok
+}
+
 type createPlaylistRequest struct {
 	Name      string   `json:"Name"`
 	Ids       []string `json:"Ids"`
@@ -55,16 +77,13 @@ type createPlaylistRequest struct {
 // replace an existing one), owned by the authenticated user.
 func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var body createPlaylistRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, maxPlaylistBody, &body) {
 		return
 	}
-	decoded, ok := dto.DecodeIDs(body.Ids)
+	ids, ok := api.resolvePlaylistIDs(w, r, body.Ids)
 	if !ok {
-		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	ids := api.expandContainerIDs(r.Context(), decoded)
 	id, err := api.playlists.Create(r.Context(), "", body.Name, ids)
 	if err != nil {
 		api.internalError(w, r, err)
@@ -95,8 +114,7 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body updatePlaylistRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+	if !decodeJSONBody(w, r, maxPlaylistBody, &body) {
 		return
 	}
 
@@ -109,12 +127,10 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			decoded, ok := dto.DecodeIDs(*body.Ids)
+			ids, ok := api.resolvePlaylistIDs(w, r, *body.Ids)
 			if !ok {
-				http.Error(w, "Not Found", http.StatusNotFound)
 				return
 			}
-			ids := api.expandContainerIDs(ctx, decoded)
 			if _, err := api.playlists.Create(ctx, id, "", ids); err != nil {
 				api.playlistError(w, r, err)
 				return
@@ -243,27 +259,46 @@ func queryIDs(r *http.Request, key string) []string {
 // expandContainerIDs expands the container ids (albums, artists, playlists) a client sends when
 // building a playlist into their track ids, in order, since core/playlists only understands media
 // file ids. Unknown ids pass through unchanged. Songs are classified with one batched query; only
-// the rest pays per-id container probes.
-func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []string {
+// the rest pays per-id container probes. ok is false once the result exceeds MaxTracksPerRequest.
+func (api *Router) expandContainerIDs(ctx context.Context, ids []string) ([]string, bool) {
 	songs := api.songsByIDs(ctx, ids)
 	out := make([]string, 0, len(ids))
+	maxTracks := playlists.MaxTracksPerRequest()
 	for _, id := range ids {
+		// One past the room left, so an oversized container is detected without loading all of it.
+		limit := 0
+		if maxTracks > 0 {
+			limit = maxTracks - len(out) + 1
+		}
 		if _, ok := songs[id]; ok {
 			out = append(out, id) // already a song
 		} else if _, err := api.ds.Album().Get(ctx, id); err == nil {
-			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id))...)
+			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id), limit)...)
 		} else if _, err := api.ds.Artist().Get(ctx, id); err == nil {
-			out = append(out, api.songIDs(ctx, filter.SongsByArtistID(id))...)
-		} else if pl, err := api.playlists.GetWithTracks(ctx, id); err == nil {
-			out = append(out, slice.Map(pl.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })...)
+			out = append(out, api.songIDs(ctx, filter.SongsByArtistID(id), limit)...)
+		} else if repo, err := api.playlists.Tracks(ctx, id); err == nil {
+			out = append(out, playlistSongIDs(ctx, repo, limit)...)
 		} else {
 			out = append(out, id) // well-formed but unresolved — left for the caller's write to handle
 		}
+		if playlists.TooManyTracks(len(out)) {
+			return nil, false
+		}
 	}
-	return out
+	return out, true
 }
 
-func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []string {
+func playlistSongIDs(ctx context.Context, repo model.PlaylistTrackRepository, limit int) []string {
+	ids, err := repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id", Filters: notMissing, Max: limit})
+	if err != nil {
+		log.Error(ctx, "Jellyfin: error expanding playlist to tracks", err)
+		return nil
+	}
+	return ids
+}
+
+func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions, limit int) []string {
+	opts.Max = limit
 	mfs, err := api.ds.MediaFile().GetAll(ctx, opts)
 	if err != nil {
 		log.Error(ctx, "Jellyfin: error expanding container to tracks", err)
@@ -280,12 +315,10 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	decoded, ok := dto.DecodeIDs(queryIDs(r, "ids"))
+	ids, ok := api.resolvePlaylistIDs(w, r, queryIDs(r, "ids"))
 	if !ok {
-		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	ids := api.expandContainerIDs(ctx, decoded)
 	var err error
 	if position, perr := req.Params(r).Int64("position"); perr == nil {
 		_, err = api.playlists.InsertTracks(ctx, id, ids, insertPosition(position))
