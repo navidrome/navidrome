@@ -85,6 +85,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("defaultUIVolume", func(c *conf.Options) { c.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
 		Entry("uiSearchDebounceMs", func(c *conf.Options) { c.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
 		Entry("uiCoverArtSize", func(c *conf.Options) { c.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
+		Entry("uiAppendRemixers", func(c *conf.Options) { c.UIAppendRemixers = false }, "uiAppendRemixers", false),
 		Entry("enableCoverAnimation", func(c *conf.Options) { c.EnableCoverAnimation = true }, "enableCoverAnimation", true),
 		Entry("pidAlbum", func(c *conf.Options) { c.PID.Album = "folder" }, "pidAlbum", "folder"),
 		Entry("pidTrack", func(c *conf.Options) { c.PID.Track = "title" }, "pidTrack", "title"),

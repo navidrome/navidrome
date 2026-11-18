@@ -22,6 +22,7 @@ const defaultConfig = {
   defaultUIVolume: 100,
   uiSearchDebounceMs: 200,
   uiCoverArtSize: 600,
+  uiAppendRemixers: true,
   enableUserEditing: true,
   enableArtworkUpload: true,
   enableSharing: true,
