@@ -33,6 +33,7 @@ import {
   personalOffsetFor,
   personalRejections,
   personalSelectionLabel,
+  personalSelectionPending,
   personalSelectionUnavailable,
   personalSelectionVariantKey,
   readMutationPersonal,
@@ -586,6 +587,8 @@ const usePlayerLyrics = ({
       rejectedTitle: translate('player.lyricsRejectedTitleText'),
       restoreRejection: translate('player.lyricsRestoreRejectionText'),
       personalFallback: translate('player.lyricsPersonalFallbackText'),
+      personalPending: translate('player.lyricsPersonalPendingText'),
+      rejectUnavailable: translate('player.lyricsRejectUnavailableText'),
       preferenceError: translate('player.lyricsPreferenceErrorText'),
       download: translate('player.downloadLyricsText'),
       downloadTitle: translate('player.downloadLyricsTitleText'),
@@ -621,7 +624,12 @@ const usePlayerLyrics = ({
         ? translate('player.lyricsPersonalFallbackText', {
             label: personalSelectionLabel(effectivePersonal, labels),
           })
-        : null
+        : personalSupported === true &&
+            personalSelectionPending(effectivePersonal)
+          ? translate('player.lyricsPersonalPendingText', {
+              label: personalSelectionLabel(effectivePersonal, labels),
+            })
+          : null
   const rejectionRows = useMemo(
     () =>
       personalRejections(effectivePersonal).map((rejection) => ({

@@ -23,6 +23,7 @@ import {
   formatLyricsOffset,
   stepLyricsOffset,
 } from './lyrics'
+import { recordingScope } from './lyrics'
 import { formatSourceValue, getVariantLabel } from './lyricsSource'
 
 const noop = () => {}
@@ -445,8 +446,19 @@ const LyricsLayerControls = ({
                   {variant.lyric?.selection ? (
                     <IconButton
                       size="small"
-                      aria-label={`${labels.rejectMatch || 'Reject this recording'}: ${getVariantLabel(variant.source, labels)}`}
-                      title={labels.rejectMatch || 'Reject this recording'}
+                      disabled={!recordingScope(variant.lyric?.variant)}
+                      aria-label={
+                        recordingScope(variant.lyric?.variant)
+                          ? `${labels.rejectMatch || 'Reject this recording'}: ${getVariantLabel(variant.source, labels)}`
+                          : labels.rejectUnavailable ||
+                            'This source cannot identify the recording reliably, so it cannot be rejected'
+                      }
+                      title={
+                        recordingScope(variant.lyric?.variant)
+                          ? labels.rejectMatch || 'Reject this recording'
+                          : labels.rejectUnavailable ||
+                            'This source cannot identify the recording reliably, so it cannot be rejected'
+                      }
                       data-testid={`lyrics-reject-${variant.key}`}
                       onClick={(event) => rejectVariant(event, variant)}
                       className={classes.controlButton}

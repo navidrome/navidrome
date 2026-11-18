@@ -784,7 +784,9 @@
     "lyricsRestoreRejectionText": "Restore",
     "lyricsPersonalFallbackText": "Your selected lyrics (%{label}) are temporarily unavailable. Showing the best available match.",
     "lyricsPreferenceErrorText": "Could not save your lyrics choice",
-    "lyricsPreferencesUnsupportedText": "Saved lyrics choices could not be read by this server version. Automatic selection is still available."
+    "lyricsPreferencesUnsupportedText": "Saved lyrics choices could not be read by this server version. Automatic selection is still available.",
+    "lyricsPersonalPendingText": "Your selected lyrics (%{label}) are still being checked. Showing the best available match for now.",
+    "lyricsRejectUnavailableText": "This source can't identify the recording reliably, so it can't be rejected"
   },
   "about": {
     "links": {

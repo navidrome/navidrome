@@ -84,3 +84,6 @@ export const personalSelectionLabel = (personal, labels = {}) => {
 
 export const personalSelectionUnavailable = (personal) =>
   personal?.selection?.status === 'unavailable'
+
+export const personalSelectionPending = (personal) =>
+  personal?.selection?.status === 'pending'

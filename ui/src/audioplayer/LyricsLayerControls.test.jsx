@@ -38,6 +38,7 @@ const labels = {
   downloadAdjusted: 'Timing-adjusted %{format} (%{offset})',
   downloadAdjustedHint: 'Selected variant with your timing correction',
   rejectMatch: 'Reject this recording',
+  rejectUnavailable: "This source can't identify the recording reliably",
   rejectedTitle: 'Rejected recordings',
   restoreRejection: 'Restore',
 }
@@ -144,7 +145,16 @@ describe('<LyricsLayerControls />', () => {
     const onRestoreRejection = vi.fn()
     const providerVariants = variants.map((variant) => ({
       ...variant,
-      lyric: { selection: `selection-${variant.key}` },
+      lyric: {
+        selection: `selection-${variant.key}`,
+        variant: {
+          version: 1,
+          instance: 'plugin-instance',
+          recording: `${variant.key}@0123456789abcdef0123456789abcdef`,
+          role: 'main',
+          format: 'lrc',
+        },
+      },
     }))
     renderControls({
       variants: providerVariants,
@@ -166,6 +176,31 @@ describe('<LyricsLayerControls />', () => {
 
     fireEvent.click(screen.getByRole('menuitem', { name: /LRCLib · r-l/ }))
     expect(onRestoreRejection).toHaveBeenCalledWith('reject-token')
+  })
+
+  it('explains why a content-only recording cannot be rejected', () => {
+    const contentOnly = {
+      ...variants[0],
+      key: 'content-only',
+      lyric: {
+        selection: 'content-only-selection',
+        variant: {
+          version: 1,
+          instance: 'plugin-instance',
+          recording:
+            'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+          role: 'main',
+          format: 'lrc',
+        },
+      },
+    }
+    renderControls({ variants: [contentOnly] })
+    openSourceMenu()
+    const button = screen.getByRole('button', {
+      name: labels.rejectUnavailable,
+    })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('title', labels.rejectUnavailable)
   })
 
   it('keeps the source menu reachable when only rejected recordings remain', () => {

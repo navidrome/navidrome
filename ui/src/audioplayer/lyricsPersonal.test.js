@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   personalOffsetFor,
   personalSelectionLabel,
+  personalSelectionPending,
   personalSelectionUnavailable,
   personalSelectionVariantKey,
 } from './lyricsPersonal'
@@ -35,6 +36,11 @@ describe('lyrics personal helpers', () => {
     expect(
       personalSelectionUnavailable({
         selection: { kind: 'local', local, status: 'unavailable' },
+      }),
+    ).toBe(true)
+    expect(
+      personalSelectionPending({
+        selection: { kind: 'provider', status: 'pending' },
       }),
     ).toBe(true)
   })

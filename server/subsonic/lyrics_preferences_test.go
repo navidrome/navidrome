@@ -161,6 +161,10 @@ var _ = Describe("Lyrics personal preferences", func() {
 		Expect(personal.Selection.Local.Token).To(Equal(sidecar.Token))
 		Expect(personal.Selection.Selection).To(BeEmpty())
 		Expect(personal.Offsets).To(BeEmpty())
+		record, _, status, err := router.loadPersonal(ctx, "account-a", trackID)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(status).To(Equal(model.LyricsPreferenceOK))
+		Expect(record.Offsets).To(HaveLen(1), "the correction stays durable while its variant is unavailable")
 
 		// The sibling is still available for automatic playback, but the
 		// preference never becomes it.

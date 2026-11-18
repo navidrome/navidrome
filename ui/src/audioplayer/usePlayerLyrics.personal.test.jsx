@@ -220,6 +220,30 @@ describe('usePlayerLyrics personal corrections', () => {
     expect(result.current.desktopLyricsProps.offsetMs).toBe(500)
   })
 
+  it('explains a pin that is still waiting for a later source pass', async () => {
+    const lrclib = providerEntry('LRCLib', 'LRCLib line', 'token-lrclib')
+    subsonic.getLyricsBySongId.mockResolvedValue(
+      lyricsResponse([lrclib], {
+        revision: 2,
+        selection: {
+          ...providerSelection(
+            '',
+            identity('r-a@0123456789abcdef0123456789abcdef'),
+          ),
+          status: 'pending',
+        },
+      }),
+    )
+
+    const { result } = renderPlayerLyrics()
+    await showLyrics(result)
+
+    expect(result.current.desktopLyricsProps.personalNotice).toContain(
+      'player.lyricsPersonalPendingText',
+    )
+    expect(result.current.desktopLyricsProps.selectedSourceKey).toBeNull()
+  })
+
   it('does not select a sibling when the stored local choice is unavailable', async () => {
     const embeddedEntry = localEntry('Embedded line', embedded)
     const sidecarEntry = localEntry('Sidecar line', local)
