@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -63,17 +62,21 @@ var _ = Describe("agentErr", func() {
 var _ = Describe("MetadataAgent username", func() {
 	withUsers := &Manifest{Permissions: &Permissions{Users: &UsersPermission{}}}
 	withoutUsers := &Manifest{}
-	ctx := request.WithUser(context.Background(), model.User{ID: "user-1", UserName: "alice"})
+	alice := &model.User{ID: "user-1", UserName: "alice"}
 
 	DescribeTable("only reveals users the plugin was granted",
-		func(p *plugin, ctx context.Context, want string) {
+		func(p *plugin, user *model.User, want string) {
+			ctx := GinkgoT().Context()
+			if user != nil {
+				ctx = request.WithUser(ctx, *user)
+			}
 			Expect(newMetadataAgent(p).username(ctx)).To(Equal(want))
 		},
-		Entry("all users allowed", &plugin{manifest: withUsers, allUsers: true}, ctx, "alice"),
-		Entry("user in allowed list", &plugin{manifest: withUsers, allowedUserIDs: []string{"user-1"}}, ctx, "alice"),
-		Entry("user not in allowed list", &plugin{manifest: withUsers, allowedUserIDs: []string{"user-2"}}, ctx, ""),
-		Entry("no users permission", &plugin{manifest: withoutUsers, allUsers: true}, ctx, ""),
-		Entry("no user in context", &plugin{manifest: withUsers, allUsers: true}, context.Background(), ""),
+		Entry("all users allowed", &plugin{manifest: withUsers, allUsers: true}, alice, "alice"),
+		Entry("user in allowed list", &plugin{manifest: withUsers, allowedUserIDs: []string{"user-1"}}, alice, "alice"),
+		Entry("user not in allowed list", &plugin{manifest: withUsers, allowedUserIDs: []string{"user-2"}}, alice, ""),
+		Entry("no users permission", &plugin{manifest: withoutUsers, allUsers: true}, alice, ""),
+		Entry("no user in context", &plugin{manifest: withUsers, allUsers: true}, nil, ""),
 	)
 })
 
