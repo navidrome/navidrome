@@ -22,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/onsi/gomega"
 	"go.uber.org/goleak"
 )
 
@@ -41,6 +42,8 @@ func BenchmarkScan(b *testing.B) {
 	)
 
 	tests.Init(b, false)
+	// storagetest builds its fixtures with Gomega assertions
+	gomega.RegisterTestingT(b)
 
 	tmpDir := b.TempDir()
 	conf.Update(func(c *conf.Options) {

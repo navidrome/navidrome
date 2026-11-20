@@ -2,7 +2,6 @@ package scanner_test
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing/fstest"
 	"time"
@@ -15,49 +14,27 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ScanFolders", Ordered, func() {
+var _ = Describe("ScanFolders", func() {
 	var ctx context.Context
 	var lib model.Library
 	var ds model.DataStore
 	var s model.Scanner
 	var fsys storagetest.FakeFS
 
-	BeforeAll(func() {
-		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		// db.Db() is a process-wide singleton, so this dir may hold the open DB until
-		// the suite ends, and Windows can't delete an open file
-		tmpDir, err := os.MkdirTemp("", "scanner-test")
-		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
-		DeferCleanup(conf.SnapshotConfig())
-		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL") })
-		log.Warn("Using DB at " + conf.Server().DbPath)
-		db.Db().SetMaxOpenConns(1)
-	})
-
 	BeforeEach(func() {
-		DeferCleanup(conf.SnapshotConfig())
-		conf.Update(func(c *conf.Options) {
-			c.MusicFolder = "fake:///music"
-			c.DevExternalScanner = false
-		})
-
-		db.Init(ctx)
-		DeferCleanup(func() {
-			Expect(tests.ClearDB(ctx)).To(Succeed())
-		})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
+		conf.Update(func(c *conf.Options) { c.DevExternalScanner = false })
 
 		ds = persistence.New(db.Db())
 
@@ -70,6 +47,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			NewPassword: "password",
 		}
 		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		persistencetest.SetLibraries(ctx, ds, "fake:///music")
 
 		s = scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
@@ -214,6 +192,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(allTracks).To(HaveLen(4))
 
+				album1TrackIDs, album2TrackIDs = nil, nil
 				// Store track IDs for later verification
 				for _, t := range allTracks {
 					switch t.Album {
