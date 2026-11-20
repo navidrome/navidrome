@@ -115,6 +115,11 @@ func (a userAccess) allows(userID string) bool {
 	return ok
 }
 
+// configured reports whether the plugin has any user scope (all, or specific).
+func (a userAccess) configured() bool {
+	return a.allUsers || len(a.userIDSet) > 0
+}
+
 // resolve looks up a user by username and authorizes it against this access set,
 // distinguishing an absent user from a backend failure.
 //
@@ -122,7 +127,7 @@ func (a userAccess) allows(userID string) bool {
 // single fixed error, so a caller cannot tell a real account from a missing one by
 // the error text (username enumeration).
 func (a userAccess) resolve(ctx context.Context, ds model.DataStore, username string) (*model.User, error) {
-	if !a.allUsers && len(a.userIDSet) == 0 {
+	if !a.configured() {
 		return nil, errors.New("plugin is not authorized to scope by user")
 	}
 	usr, err := ds.User().FindByUsername(ctx, username)

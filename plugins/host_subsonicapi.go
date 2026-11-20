@@ -133,7 +133,7 @@ func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username 
 	}
 
 	// Must have at least one allowed user ID configured
-	if len(s.users.userIDSet) == 0 {
+	if !s.users.configured() {
 		return fmt.Errorf("no users configured for plugin %s", s.pluginID)
 	}
 

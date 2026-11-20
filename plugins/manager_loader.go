@@ -331,7 +331,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("parsing plugin libraries: %w", err)
 		}
 	}
-	libAccess := newLibraryAccess(allowedLibraries, p.AllLibraries)
+	libraries := newLibraryAccess(allowedLibraries, p.AllLibraries)
 
 	// Open the .ndp package to get manifest and wasm bytes
 	pkg, err := openPackage(p.Path)
@@ -348,11 +348,11 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 		if pkg.Manifest.HasLibraryFilesystemPermission() {
 			adminCtx := adminContext(ctx)
-			libraries, err := m.ds.Library().GetAll(adminCtx)
+			allLibs, err := m.ds.Library().GetAll(adminCtx)
 			if err != nil {
 				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 			}
-			mounts = buildMounts(ctx, libraries, libAccess, p.AllowWriteAccess)
+			mounts = buildMounts(ctx, allLibs, libraries, p.AllowWriteAccess)
 		}
 
 		if pkg.Manifest.HasStoragePermission() {
@@ -387,7 +387,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		permissions: pkg.Manifest.Permissions,
 		config:      pluginConfig,
 		users:       users,
-		libraries:   libAccess,
+		libraries:   libraries,
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
@@ -442,7 +442,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		closers:      closers,
 		metrics:      m.metrics,
 		users:        users,
-		libraries:    libAccess,
+		libraries:    libraries,
 		fsConfig:     fsConfig,
 		lyricsSem:    make(chan struct{}, maxConcurrentLyricsCalls),
 	}

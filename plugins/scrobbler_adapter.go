@@ -35,13 +35,12 @@ func init() {
 }
 
 func newScrobblerPlugin(p *plugin) *ScrobblerPlugin {
-	return &ScrobblerPlugin{name: p.name, plugin: p}
+	return &ScrobblerPlugin{plugin: p}
 }
 
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
 // the scrobbler.Scrobbler interface for scrobbling to external services.
 type ScrobblerPlugin struct {
-	name   string
 	plugin *plugin
 }
 
