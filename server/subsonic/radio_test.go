@@ -2,39 +2,47 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Radio", func() {
 	var api *Router
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var ctx context.Context
-	var radioRepo *tests.MockedRadioRepo
+
+	putRadios := func(radios ...model.Radio) {
+		GinkgoHelper()
+		adminCtx := request.WithUser(ctx, model.User{ID: "admin-id", IsAdmin: true})
+		for i := range radios {
+			Expect(ds.Radio().Put(adminCtx, &radios[i])).To(Succeed())
+		}
+	}
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
 		api = &Router{ds: ds}
-		radioRepo = tests.CreateMockedRadioRepo()
-		ds.MockedRadio = radioRepo
 	})
 
 	Describe("GetInternetRadios", func() {
 		BeforeEach(func() {
-			radioRepo.All = model.Radios{
-				{ID: "rd-1", Name: "Radio 1", StreamUrl: "http://stream1.example.com", HomePageUrl: "http://home1.example.com", UploadedImage: "rd-1_cover.jpg"},
-				{ID: "rd-2", Name: "Radio 2", StreamUrl: "http://stream2.example.com"},
-			}
+			putRadios(
+				model.Radio{ID: "rd-1", Name: "Radio 1", StreamUrl: "http://stream1.example.com", HomePageUrl: "http://home1.example.com", UploadedImage: "rd-1_cover.jpg"},
+				model.Radio{ID: "rd-2", Name: "Radio 2", StreamUrl: "http://stream2.example.com"},
+			)
 		})
 
 		It("returns all radios with basic fields", func() {
@@ -76,10 +84,12 @@ var _ = Describe("Radio", func() {
 			})
 
 			It("suffixes coverArt with the content hash when resolved and omits it when known absent", func() {
-				radioRepo.All = model.Radios{
-					{ID: "rd-1", Name: "Radio 1", UploadedImage: "rd-1_cover.jpg", ImageHash: "0123456789abcdef"},
-					{ID: "rd-2", Name: "Radio 2", UploadedImage: "rd-2_cover.jpg", ImageAbsent: true},
-				}
+				putRadios(
+					model.Radio{ID: "rd-1", Name: "Radio 1", StreamUrl: "http://stream1.example.com", UploadedImage: "rd-1_cover.jpg"},
+					model.Radio{ID: "rd-2", Name: "Radio 2", StreamUrl: "http://stream2.example.com", UploadedImage: "rd-2_cover.jpg"},
+				)
+				putItemArtwork(ctx, ds, model.KindRadioArtwork, "rd-1", "0123456789abcdef")
+				putItemArtwork(ctx, ds, model.KindRadioArtwork, "rd-2", "")
 				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
@@ -145,7 +155,7 @@ var _ = Describe("Radio", func() {
 		})
 
 		It("returns error when repository fails", func() {
-			radioRepo.SetError(true)
+			api = &Router{ds: persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return failingRadios{ds} })}
 
 			r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 			r = r.WithContext(ctx)
@@ -155,3 +165,13 @@ var _ = Describe("Radio", func() {
 		})
 	})
 })
+
+type failingRadios struct{ model.DataStore }
+
+func (d failingRadios) Radio() model.RadioRepository { return failingRadioRepo{d.DataStore.Radio()} }
+
+type failingRadioRepo struct{ model.RadioRepository }
+
+func (failingRadioRepo) GetAll(context.Context, ...model.QueryOptions) (model.Radios, error) {
+	return nil, errors.New("db error")
+}

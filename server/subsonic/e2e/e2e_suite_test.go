@@ -87,7 +87,7 @@ const firstFixtureLine = "Should auld acquaintance be forgot,"
 // Shared test state
 var (
 	ctx         context.Context
-	ds          *tests.MockDataStore
+	ds          model.DataStore
 	router      *subsonic.Router
 	streamerSpy *harness.SpyStreamer
 	goldenDB    *harness.DB
@@ -428,7 +428,7 @@ func setupTestDB() {
 	// Restore DB to golden state (no scan needed)
 	goldenDB.Restore()
 
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds = persistence.New(db.Db())
 	auth.Init(ds)
 
 	streamerSpy = &harness.SpyStreamer{}

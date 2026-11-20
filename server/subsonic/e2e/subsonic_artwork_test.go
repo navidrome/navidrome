@@ -34,7 +34,6 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/tests/harness"
 	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
@@ -102,7 +101,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		})
 
 		goldenDB.Restore()
-		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
 
 		// Re-scanning already-populated data deadlocks the parallel album-refresh phase at the
