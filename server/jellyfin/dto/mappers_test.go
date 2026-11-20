@@ -106,6 +106,60 @@ var _ = Describe("mappers", func() {
 		})
 	})
 
+	Describe("artist and album external metadata", func() {
+		ar := model.Artist{
+			ID: testID("ar-meta"), Name: "Fleetwood Mac", MbzArtistID: "bd13909f-1c29-4c27-a874-d4aaf27c5b1a",
+			Biography: "A British and American rock band.", ExternalUrl: "https://www.last.fm/music/Fleetwood+Mac",
+		}
+
+		It("is omitted unless asked for via Fields", func() {
+			item := ArtistToBaseItem(ar, nil)
+			Expect(item.Overview).To(BeEmpty())
+			Expect(item.ProviderIds).To(BeNil())
+			Expect(item.ExternalUrls).To(BeEmpty())
+		})
+
+		It("carries the biography, MusicBrainz id and external link for an artist", func() {
+			item := ArtistToBaseItem(ar, ParseFields("Overview,ProviderIds,ExternalUrls"))
+			Expect(item.Overview).To(Equal("A British and American rock band."))
+			Expect(item.ProviderIds).To(Equal(map[string]string{"MusicBrainzArtist": "bd13909f-1c29-4c27-a874-d4aaf27c5b1a"}))
+			Expect(item.ExternalUrls).To(Equal([]ExternalUrl{{Name: "Last.fm", Url: "https://www.last.fm/music/Fleetwood+Mac"}}))
+		})
+
+		It("omits fields the artist has no data for", func() {
+			item := ArtistToBaseItem(model.Artist{ID: testID("ar-bare"), Name: "Bare"}, ParseFields("Overview,ProviderIds,ExternalUrls"))
+			Expect(item.Overview).To(BeEmpty())
+			Expect(item.ProviderIds).To(BeNil())
+			Expect(item.ExternalUrls).To(BeEmpty())
+		})
+
+		It("labels an unknown external host by its hostname", func() {
+			item := ArtistToBaseItem(model.Artist{ID: testID("ar-x"), Name: "X", ExternalUrl: "https://www.example.org/x"}, ParseFields("ExternalUrls"))
+			Expect(item.ExternalUrls).To(Equal([]ExternalUrl{{Name: "example.org", Url: "https://www.example.org/x"}}))
+		})
+
+		It("carries MusicBrainz ids for an album, skipping empty ones", func() {
+			al := model.Album{ID: testID("al-meta"), Name: "Rumours", MbzAlbumID: "alb-id", MbzReleaseGroupID: "rg-id"}
+			Expect(AlbumToBaseItem(al, nil).ProviderIds).To(BeNil())
+			Expect(AlbumToBaseItem(al, ParseFields("ProviderIds")).ProviderIds).To(Equal(map[string]string{
+				"MusicBrainzAlbum": "alb-id", "MusicBrainzReleaseGroup": "rg-id",
+			}))
+		})
+
+		It("takes the album artist's MusicBrainz id from the participants, falling back to the legacy field", func() {
+			al := model.Album{ID: testID("al-aa"), Name: "Rumours", Participants: model.Participants{}}
+			al.Participants.Add(model.RoleAlbumArtist, model.Artist{ID: testID("ar-aa"), Name: "Fleetwood Mac", MbzArtistID: "participant-id"})
+			Expect(AlbumToBaseItem(al, ParseFields("ProviderIds")).ProviderIds).To(Equal(map[string]string{
+				"MusicBrainzAlbumArtist": "participant-id",
+			}))
+
+			legacy := model.Album{ID: testID("al-legacy"), Name: "Rumours", MbzAlbumArtistID: "legacy-id"}
+			Expect(AlbumToBaseItem(legacy, ParseFields("ProviderIds")).ProviderIds).To(Equal(map[string]string{
+				"MusicBrainzAlbumArtist": "legacy-id",
+			}))
+		})
+	})
+
 	It("omits ImageBlurHashes when a song has no album", func() {
 		mf := model.MediaFile{ID: testID("song-noalbum"), Title: "Song", Duration: 60}
 		item := SongToBaseItem(mf, nil)
