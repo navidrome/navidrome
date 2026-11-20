@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/filter"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
@@ -44,8 +45,8 @@ func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err err
 	}
 }
 
-// maxPlaylistBody fits the default track limit's GUIDs (about 1.7 MiB) with room to spare.
-const maxPlaylistBody = 2 << 20
+// maxPlaylistBody leaves about 64 bytes per GUID, with a 2 MiB floor.
+func maxPlaylistBody() int64 { return playlists.MaxRequestBytes(2<<20, 64) }
 
 // resolvePlaylistIDs decodes and expands client ids into track ids, answering 413 or 404 itself on failure.
 func (api *Router) resolvePlaylistIDs(w http.ResponseWriter, r *http.Request, guids []string) ([]string, bool) {
@@ -77,7 +78,7 @@ type createPlaylistRequest struct {
 // replace an existing one), owned by the authenticated user.
 func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var body createPlaylistRequest
-	if !decodeJSONBody(w, r, maxPlaylistBody, &body) {
+	if !server.DecodeJSONBody(w, r, maxPlaylistBody(), &body) {
 		return
 	}
 	ids, ok := api.resolvePlaylistIDs(w, r, body.Ids)
@@ -114,7 +115,7 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body updatePlaylistRequest
-	if !decodeJSONBody(w, r, maxPlaylistBody, &body) {
+	if !server.DecodeJSONBody(w, r, maxPlaylistBody(), &body) {
 		return
 	}
 

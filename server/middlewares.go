@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -394,5 +395,43 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 			}
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// DecodeJSONBody decodes exactly one JSON value of at most limit bytes into v, answering 413 or 400 itself on failure.
+func DecodeJSONBody(w http.ResponseWriter, r *http.Request, limit int64, v any) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
+	if err := dec.Decode(v); err != nil {
+		status, msg := jsonBodyError(err)
+		http.Error(w, msg, status)
+		return false
+	}
+	// Decode alone would ignore anything after the first value.
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		status, msg := jsonBodyError(err)
+		if status == http.StatusBadRequest {
+			msg = "Request body must only contain a single JSON value"
+		}
+		http.Error(w, msg, status)
+		return false
+	}
+	return true
+}
+
+func jsonBodyError(err error) (int, string) {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	var sizeErr *http.MaxBytesError
+	switch {
+	case errors.As(err, &sizeErr):
+		return http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body must not be larger than %d bytes", sizeErr.Limit)
+	case errors.Is(err, io.EOF):
+		return http.StatusBadRequest, "Request body must not be empty"
+	case errors.As(err, &syntaxErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxErr.Offset)
+	case errors.As(err, &typeErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", typeErr.Field, typeErr.Offset)
+	default:
+		return http.StatusBadRequest, "Request body contains badly-formed JSON"
 	}
 }

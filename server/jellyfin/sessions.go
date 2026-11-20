@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -19,13 +20,16 @@ type playbackReport struct {
 	IsPaused      bool   `json:"IsPaused"`
 }
 
+// maxPlaybackReportBody fits a report carrying a long NowPlayingQueue.
+const maxPlaybackReportBody = 4 << 20
+
 // decodeReport reads the playback report body. ItemId falls back to a query param (some clients send
 // it there) and is decoded here since it flows straight into scrobbler lookups by media file id.
 // These endpoints always answer 204 (see reportPlaybackStart), so a malformed id isn't a request
 // failure; it just can't identify a track, same as an absent one.
 func (api *Router) decodeReport(r *http.Request) playbackReport {
 	var body playbackReport
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = json.NewDecoder(io.LimitReader(r.Body, maxPlaybackReportBody)).Decode(&body)
 	if body.ItemId == "" {
 		body.ItemId = r.URL.Query().Get("itemid")
 	}

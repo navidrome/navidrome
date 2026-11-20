@@ -86,6 +86,18 @@ var _ = Describe("Sessions", func() {
 			Expect(pt.reported[0].ClientName).To(Equal("Finamp"))
 		})
 
+		It("ignores a body over the size limit, still answering 204", func() {
+			w := httptest.NewRecorder()
+			body := `{"ItemId":"` + dto.EncodeID(testID("s1")) + `","Pad":"` + strings.Repeat("x", maxPlaybackReportBody) + `"}`
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing", strings.NewReader(body)))
+
+			invoke(api.reportPlaybackStart, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(pt.reported).To(HaveLen(1))
+			Expect(pt.reported[0].MediaId).To(BeEmpty())
+		})
+
 		It("falls back to the ItemId query param when the body has none", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing?ItemId="+dto.EncodeID(testID("s2")), nil))

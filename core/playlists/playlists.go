@@ -3,6 +3,7 @@ package playlists
 import (
 	"context"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,16 @@ func MaxTracksPerRequest() int {
 func TooManyTracks(n int) bool {
 	limit := MaxTracksPerRequest()
 	return limit > 0 && n > limit
+}
+
+// MaxRequestBytes is a body limit that grows with MaxTracksPerRequest, so raising the track limit is not undone by a 413.
+// It never goes below floor, and there is no limit when the track limit is 0.
+func MaxRequestBytes(floor, perTrack int64) int64 {
+	tracks := MaxTracksPerRequest()
+	if tracks == 0 {
+		return math.MaxInt64
+	}
+	return max(floor, int64(tracks)*perTrack)
 }
 
 type Playlists interface {
