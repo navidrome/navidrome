@@ -3,32 +3,29 @@ package playlists
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("pathResolver", func() {
-	var ds *tests.MockDataStore
-	var mockLibRepo *tests.MockLibraryRepo
 	var resolver *pathResolver
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-		mockLibRepo = &tests.MockLibraryRepo{}
-		ds = &tests.MockDataStore{
-			MockedLibrary: mockLibRepo,
-		}
+		ds := persistence.New(db.Db())
 
-		// Setup test libraries
-		mockLibRepo.SetData([]model.Library{
-			{ID: 1, Path: "/music"},
-			{ID: 2, Path: "/music-classical"},
-			{ID: 3, Path: "/podcasts"},
-		})
+		// Setup test libraries; library 1's path can only be changed through StoreMusicFolder
+		conf.Update(func(c *conf.Options) { c.MusicFolder = "/music" })
+		Expect(ds.Library().StoreMusicFolder(ctx)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Name: "Classical", Path: "/music-classical"})).To(Succeed())
+		Expect(ds.Library().Put(ctx, &model.Library{ID: 3, Name: "Podcasts", Path: "/podcasts"})).To(Succeed())
 
 		var err error
 		resolver, err = newPathResolver(ctx, ds)
