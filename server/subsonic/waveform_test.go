@@ -15,14 +15,14 @@ import (
 )
 
 type fakeWaveform struct {
-	peaks   []uint8
-	err     error
-	samples int
+	levels []int16
+	err    error
+	calls  int
 }
 
-func (f *fakeWaveform) Get(_ context.Context, _ *model.MediaFile, samples int) ([]uint8, error) {
-	f.samples = samples
-	return waveform.Downsample(f.peaks, samples), f.err
+func (f *fakeWaveform) Get(context.Context, *model.MediaFile) ([]int16, error) {
+	f.calls++
+	return f.levels, f.err
 }
 
 var _ = Describe("GetWaveform", func() {
@@ -36,28 +36,36 @@ var _ = Describe("GetWaveform", func() {
 		mockRepo = tests.CreateMockMediaFileRepo()
 		mockRepo.SetData(model.MediaFiles{{ID: "1", Duration: 12.5}})
 		ds := &tests.MockDataStore{MockedMediaFile: mockRepo}
-		wf = &fakeWaveform{peaks: []uint8{0, 64, 255, 128}}
+		wf = &fakeWaveform{levels: []int16{waveform.Silence, -3142, -602, -1204}}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, wf)
 	})
 
-	It("returns the song's peaks", func() {
-		response, err := router.GetWaveform(newGetRequest("id=1", "samples=4"))
+	It("returns every stored level when samples is missing", func() {
+		response, err := router.GetWaveform(newGetRequest("id=1"))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(response.Waveform).To(Equal(&responses.Waveform{
-			ID: "1", Duration: 12.5, Samples: 4, Peaks: []int32{0, 64, 255, 128},
+			ID: "1", Duration: 12.5, Interval: 100, Samples: 4, Levels: []float64{-120, -31.42, -6.02, -12.04},
 		}))
 	})
 
-	It("uses the default resolution when samples is missing", func() {
-		_, err := router.GetWaveform(newGetRequest("id=1"))
+	It("downsamples to exactly samples values, keeping the highest of each group", func() {
+		response, err := router.GetWaveform(newGetRequest("id=1", "samples=2"))
 		Expect(err).ToNot(HaveOccurred())
-		Expect(wf.samples).To(Equal(waveform.DefaultSamples))
+		Expect(response.Waveform).To(Equal(&responses.Waveform{
+			ID: "1", Duration: 12.5, Interval: 200, Samples: 2, Levels: []float64{-31.42, -6.02},
+		}))
 	})
 
-	It("caps samples at the stored resolution", func() {
-		_, err := router.GetWaveform(newGetRequest("id=1", "samples=100000"))
+	It("returns every stored level when samples is larger than the stored count", func() {
+		response, err := router.GetWaveform(newGetRequest("id=1", "samples=100000"))
 		Expect(err).ToNot(HaveOccurred())
-		Expect(wf.samples).To(Equal(waveform.MaxSamples))
+		Expect(response.Waveform.Samples).To(Equal(int32(4)))
+		Expect(response.Waveform.Interval).To(Equal(100.0))
+	})
+
+	It("rejects samples that are not a number", func() {
+		_, err := router.GetWaveform(newGetRequest("id=1", "samples=abc"))
+		Expect(err).To(HaveOccurred())
 	})
 
 	It("rejects non-positive samples", func() {
@@ -94,7 +102,7 @@ var _ = Describe("GetWaveform", func() {
 			var subErr subError
 			Expect(errors.As(err, &subErr)).To(BeTrue())
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
-			Expect(wf.samples).To(BeZero())
+			Expect(wf.calls).To(BeZero())
 		})
 	})
 

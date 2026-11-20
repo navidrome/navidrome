@@ -50,94 +50,80 @@ func (c *passthroughCache) Available(context.Context) bool { return true }
 func (c *passthroughCache) Disabled(context.Context) bool  { return false }
 
 var _ = Describe("Waveform", func() {
-	Describe("windowEnergy", func() {
-		It("returns the mean square amplitude of each window", func() {
+	Describe("windowLevels", func() {
+		It("returns the RMS level of each window in hundredths of dBFS", func() {
 			var samples []int16
 			samples = append(samples, constant(16384)...)
 			samples = append(samples, constant(-8192)...)
 			samples = append(samples, -32768) // partial last window
-			energies, err := windowEnergy(bytes.NewReader([]byte(pcm(samples...))), maxWindows)
+			levels, err := windowLevels(bytes.NewReader([]byte(pcm(samples...))), 0)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(energies).To(Equal([]float32{0.25, 0.0625, 1}))
+			// 0.5 and 0.25 of full scale are -6.02 and -12.04 dBFS; a full-scale sample is 0 dBFS
+			Expect(levels).To(Equal([]int16{-602, -1204, 0}))
 		})
 
-		It("ignores a trailing odd byte", func() {
-			energies, err := windowEnergy(bytes.NewReader(append([]byte(pcm(16384)), 0x7f)), maxWindows)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(energies).To(Equal([]float32{0.25}))
+		It("covers 100 ms per window", func() {
+			Expect(windowSize).To(Equal(sampleRate / 10))
 		})
 
-		It("merges windows in pairs to stay within the limit", func() {
-			var samples []int16
-			for _, v := range []int16{16384, 16384, 8192, 8192, 16384, 16384, 8192} {
-				samples = append(samples, constant(v)...)
-			}
-			energies, err := windowEnergy(bytes.NewReader([]byte(pcm(samples...))), 4)
+		It("returns -120 dBFS for digital silence", func() {
+			levels, err := windowLevels(bytes.NewReader([]byte(pcm(constant(0)...))), 0)
 			Expect(err).ToNot(HaveOccurred())
-			// The first 4 windows merge into 2 when the limit is reached; the next 2 windows fill
-			// one double-size window, and the last one is a partial double-size window.
-			Expect(energies).To(Equal([]float32{0.25, 0.0625, 0.25, 0.0625}))
-		})
-
-		It("never keeps more than limit values, however long the track", func() {
-			silence := bytes.NewReader(make([]byte, 1000*windowSize*2))
-			energies, err := windowEnergy(silence, 8)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(len(energies)).To(BeNumerically(">=", 4))
-			Expect(cap(energies)).To(Equal(8))
-		})
-
-		It("returns no energies for empty input", func() {
-			energies, err := windowEnergy(bytes.NewReader(nil), maxWindows)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(energies).To(BeEmpty())
+			Expect(levels).To(Equal([]int16{Silence}))
 		})
 	})
 
-	Describe("envelope", func() {
-		It("returns the RMS of each slice, relative to the loudest one", func() {
-			Expect(envelope([]float32{0.25, 0.25, 0.0625, 0.0625}, 2)).To(Equal([]uint8{255, 128}))
+	Describe("level", func() {
+		It("clamps levels below -120 dBFS", func() {
+			Expect(level(1e-13)).To(Equal(int16(Silence)))
 		})
 
-		It("averages energy, not amplitude, within a slice", func() {
-			// RMS of the slice is sqrt((1+0)/2) = 0.707, relative to the loudest slice (1)
-			Expect(envelope([]float32{1, 0, 1, 1}, 2)).To(Equal([]uint8{180, 255}))
+		It("rounds to hundredths of a dB", func() {
+			Expect(level(0.5)).To(Equal(int16(-301)))
+			Expect(level(1)).To(Equal(int16(0)))
+		})
+		It("ignores a trailing odd byte", func() {
+			levels, err := windowLevels(bytes.NewReader(append([]byte(pcm(16384)), 0x7f)), 0)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(levels).To(Equal([]int16{-602}))
 		})
 
-		It("never returns more slices than windows", func() {
-			Expect(envelope([]float32{1, 0.25}, 10)).To(Equal([]uint8{255, 128}))
-		})
-
-		It("returns zeros for silence", func() {
-			Expect(envelope([]float32{0, 0}, 2)).To(Equal([]uint8{0, 0}))
+		It("returns no levels for empty input", func() {
+			levels, err := windowLevels(bytes.NewReader(nil), 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(levels).To(BeEmpty())
 		})
 	})
 
 	Describe("Downsample", func() {
-		It("returns the quadratic mean of each group", func() {
-			Expect(Downsample([]uint8{100, 100, 255, 0, 3, 4}, 3)).To(Equal([]uint8{100, 180, 4}))
+		It("returns the highest level of each group", func() {
+			Expect(Downsample([]int16{-1000, -900, -12000, -300, -3000, -4000}, 3)).To(Equal([]int16{-900, -300, -3000}))
 		})
 
 		It("handles uneven groups", func() {
-			Expect(Downsample([]uint8{10, 10, 10, 10, 10}, 2)).To(Equal([]uint8{10, 10}))
+			// 5 values into 2: groups are [0, 2) and [2, 5)
+			Expect(Downsample([]int16{-100, -200, -300, -400, -500}, 2)).To(Equal([]int16{-100, -300}))
 		})
 
 		It("never upsamples", func() {
-			values := []uint8{1, 2, 3}
-			Expect(Downsample(values, 10)).To(Equal(values))
-			Expect(Downsample(values, 0)).To(Equal(values))
+			levels := []int16{-1, -2, -3}
+			Expect(Downsample(levels, 3)).To(Equal(levels))
+			Expect(Downsample(levels, 10)).To(Equal(levels))
+			Expect(Downsample(levels, 0)).To(Equal(levels))
 		})
 	})
 
 	Describe("encode/decode", func() {
-		It("round-trips peaks", func() {
-			peaks, err := decode(encode([]uint8{1, 2, 3}))
+		It("round-trips levels", func() {
+			levels, err := decode(encode([]int16{Silence, -3142, 0}))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(peaks).To(Equal([]uint8{1, 2, 3}))
+			Expect(levels).To(Equal([]int16{Silence, -3142, 0}))
 		})
 
-		It("rejects other format versions", func() {
+		It("rejects other format versions and truncated data", func() {
 			_, err := decode([]byte{formatVersion + 1, 1, 2})
+			Expect(err).To(HaveOccurred())
+			_, err = decode([]byte{formatVersion, 1})
 			Expect(err).To(HaveOccurred())
 			_, err = decode(nil)
 			Expect(err).To(HaveOccurred())
@@ -163,30 +149,23 @@ var _ = Describe("Waveform", func() {
 			fc.w = w
 		})
 
-		It("returns the peaks at the requested resolution", func() {
-			peaks, err := w.Get(GinkgoT().Context(), mf, 2)
+		It("returns the level of every 100 ms window", func() {
+			levels, err := w.Get(GinkgoT().Context(), mf)
 			Expect(err).ToNot(HaveOccurred())
-			// Stored as {255, 0, 128, 0}, then each pair is combined by quadratic mean
-			Expect(peaks).To(Equal([]uint8{180, 91}))
+			Expect(levels).To(Equal([]int16{-602, Silence, -1204, Silence}))
 			Expect(ff.IsClosed()).To(BeTrue())
-		})
-
-		It("returns all stored peaks when samples is 0", func() {
-			peaks, err := w.Get(GinkgoT().Context(), mf, 0)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(peaks).To(Equal([]uint8{255, 0, 128, 0}))
 		})
 
 		It("returns ErrDisabled when the feature is off", func() {
 			conf.Server.EnableWaveform = false
-			_, err := w.Get(GinkgoT().Context(), mf, 2)
+			_, err := w.Get(GinkgoT().Context(), mf)
 			Expect(err).To(MatchError(ErrDisabled))
 			Expect(fc.calls).To(BeZero())
 		})
 
 		It("returns ffmpeg errors", func() {
 			ff.Error = errors.New("boom")
-			_, err := w.Get(GinkgoT().Context(), mf, 2)
+			_, err := w.Get(GinkgoT().Context(), mf)
 			Expect(err).To(MatchError("boom"))
 		})
 	})
