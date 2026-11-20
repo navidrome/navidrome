@@ -490,7 +490,7 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 // buildTemplateArgs handles user-customized command templates, with dynamic injection
 // of sample rate, channels, and bit depth when requested by the transcode decision.
 // Values in opts have already been clamped to codec limits upstream (see
-// core/stream/codec.go codecMax* helpers), so injecting them unconditionally is safe —
+// core/stream/codec.go codecSampleRate and codecMaxChannels), so injecting them unconditionally is safe —
 // ffmpeg honors the last occurrence of a duplicate flag.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)

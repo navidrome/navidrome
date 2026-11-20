@@ -84,16 +84,29 @@ func codecFixedOutputSampleRate(codec string) int {
 	return 0
 }
 
-// codecMaxSampleRate returns the hard maximum output sample rate for a codec.
-// Returns 0 if the codec has no hard limit.
-func codecMaxSampleRate(codec string) int {
-	switch strings.ToLower(codec) {
-	case "mp3":
-		return 48000
-	case "aac":
-		return 96000
+// codecSampleRates lists, in ascending order, the only sample rates some
+// encoders accept. ffmpeg's libmp3lame and aac encoders exit with an error for
+// any other rate (e.g. 32728Hz from Nintendo 3DS rips).
+var codecSampleRates = map[string][]int{
+	"mp3": {8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000},
+	"aac": {7350, 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000},
+}
+
+// codecSampleRate returns a sample rate the codec's encoder accepts: the
+// lowest supported rate at or above sampleRate, or the codec's highest rate if
+// sampleRate is above it. Codecs with no fixed set, and a zero (unknown) rate,
+// are returned unchanged.
+func codecSampleRate(codec string, sampleRate int) int {
+	rates := codecSampleRates[strings.ToLower(codec)]
+	if len(rates) == 0 || sampleRate <= 0 {
+		return sampleRate
 	}
-	return 0
+	for _, r := range rates {
+		if r >= sampleRate {
+			return r
+		}
+	}
+	return rates[len(rates)-1]
 }
 
 // codecMaxChannels returns the hard maximum number of audio channels a codec

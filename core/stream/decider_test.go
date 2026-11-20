@@ -1042,6 +1042,22 @@ var _ = Describe("Decider", func() {
 				Expect(decision.CanTranscode).To(BeTrue())
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(44100))
 			})
+
+			It("moves a rate LAME does not accept up to a supported one", func() {
+				// Nintendo 3DS rips are 32728Hz, which libmp3lame rejects
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 800, Channels: 2, SampleRate: 32728, BitDepth: new(16)})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 192,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.SampleRate).To(Equal(44100))
+				Expect(decision.TargetSampleRate).To(Equal(44100))
+			})
 		})
 
 		Context("AAC max sample rate", func() {

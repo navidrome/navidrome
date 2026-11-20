@@ -285,9 +285,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	if fixedRate := codecFixedOutputSampleRate(ts.Codec); fixedRate > 0 {
 		ts.SampleRate = fixedRate
 	}
-	if maxRate := codecMaxSampleRate(ts.Codec); maxRate > 0 && ts.SampleRate > maxRate {
-		ts.SampleRate = maxRate
-	}
+	ts.SampleRate = codecSampleRate(ts.Codec, ts.SampleRate)
 	if maxCh := codecMaxChannels(ts.Codec); maxCh > 0 && ts.Channels > maxCh {
 		ts.Channels = maxCh
 	}
