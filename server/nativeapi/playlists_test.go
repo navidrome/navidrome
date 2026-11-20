@@ -145,6 +145,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			},
 			Entry("exactly the limit", 5, 5),
 			Entry("any number when the limit is 0", 0, 6),
+			Entry("a raised limit, in a body larger than 4 MiB", 200_000, 200_000),
 		)
 
 		DescribeTable("rejects oversized requests with 413 without adding anything",
@@ -170,7 +171,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 				}
 			}),
 			Entry("a body over the size limit", func() any {
-				return map[string]any{"ids": []string{strings.Repeat("x", maxPlaylistJSONBody)}}
+				return map[string]any{"ids": []string{strings.Repeat("x", int(maxPlaylistJSONBody()))}}
 			}),
 		)
 	})
@@ -186,8 +187,18 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			Expect(plsSvc.repo.(*mockPlaylistRestRepo).saved).To(HaveExactElements(HaveField("Name", "Mix")))
 		})
 
+		It("accepts a JSON body larger than 4 MiB when the track limit is raised", func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 100_000 })
+			body := jsonBody(map[string]any{"name": strings.Repeat("x", 4<<20)})
+			req := createAuthenticatedRequestWithBody("POST", "/playlist", body)
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(plsSvc.repo.(*mockPlaylistRestRepo).saved).To(HaveLen(1))
+		})
+
 		It("rejects a JSON body over the size limit with 413", func() {
-			body := jsonBody(map[string]any{"name": strings.Repeat("x", maxPlaylistJSONBody)})
+			body := jsonBody(map[string]any{"name": strings.Repeat("x", int(maxPlaylistJSONBody()))})
 			req := createAuthenticatedRequestWithBody("POST", "/playlist", body)
 			router.ServeHTTP(w, req)
 
@@ -198,7 +209,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 
 	Describe("PUT /playlist/{id}", func() {
 		It("rejects a JSON body over the size limit with 413", func() {
-			body := jsonBody(map[string]any{"comment": strings.Repeat("x", maxPlaylistJSONBody)})
+			body := jsonBody(map[string]any{"comment": strings.Repeat("x", int(maxPlaylistJSONBody()))})
 			req := createAuthenticatedRequestWithBody("PUT", "/playlist/pls-1", body)
 			router.ServeHTTP(w, req)
 
@@ -213,7 +224,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			mw := multipart.NewWriter(&buf)
 			part, err := mw.CreateFormFile("image", "cover.png")
 			Expect(err).ToNot(HaveOccurred())
-			_, err = part.Write(bytes.Repeat([]byte{0}, maxPlaylistJSONBody+1))
+			_, err = part.Write(bytes.Repeat([]byte{0}, int(maxPlaylistJSONBody())+1))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mw.Close()).To(Succeed())
 
@@ -354,8 +365,16 @@ var _ = Describe("createPlaylistFromM3U", func() {
 		Expect(w.Body.String()).To(ContainSubstring(filepath.FromSlash("/music/song.mp3")))
 	})
 
+	It("reads an upload larger than 32 MiB when the track limit is raised", func() {
+		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 100_000 })
+		body := strings.NewReader(strings.Repeat("x", 32<<20+1))
+		w := upload(&mockPlaylistsService{importM3UFn: drainingImport}, body)
+
+		Expect(w.Code).To(Equal(http.StatusCreated))
+	})
+
 	It("rejects a body larger than the upload limit", func() {
-		body := strings.NewReader(strings.Repeat("x", maxM3UUploadSize+1))
+		body := strings.NewReader(strings.Repeat("x", int(maxM3UUploadSize())+1))
 		w := upload(&mockPlaylistsService{importM3UFn: drainingImport}, body)
 
 		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))

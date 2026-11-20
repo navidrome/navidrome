@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
@@ -33,7 +34,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 	DescribeTable("rejects a body over the size limit with 413 without saving",
 		func(method string, handler func(model.DataStore) http.HandlerFunc) {
-			body := `{"ids":["` + strings.Repeat("x", maxQueueBody) + `"]}`
+			body := `{"ids":["` + strings.Repeat("x", int(maxQueueBody())) + `"]}`
 			req := httptest.NewRequest(method, "/queue", strings.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
@@ -45,6 +46,18 @@ var _ = Describe("Queue Endpoints", func() {
 		Entry("POST", http.MethodPost, saveQueue),
 		Entry("PUT", http.MethodPut, updateQueue),
 	)
+
+	It("saves a body larger than 4 MiB when the track limit is raised", func() {
+		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 100_000 })
+		body := `{"ids":["` + strings.Repeat("x", 4<<20) + `"],"current":0}`
+		req := httptest.NewRequest(http.MethodPost, "/queue", strings.NewReader(body))
+		req = req.WithContext(request.WithUser(req.Context(), user))
+		w := httptest.NewRecorder()
+
+		saveQueue(ds)(w, req)
+		Expect(w.Code).To(Equal(http.StatusNoContent))
+		Expect(repo.Queue.Items).To(HaveLen(1))
+	})
 
 	Describe("POST /queue", func() {
 		It("saves the queue", func() {

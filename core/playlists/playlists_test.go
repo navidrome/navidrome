@@ -2,6 +2,7 @@ package playlists_test
 
 import (
 	"context"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -519,4 +520,16 @@ var _ = Describe("Playlists", func() {
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 	})
+})
+
+var _ = Describe("MaxRequestBytes", func() {
+	DescribeTable("scales the body limit with DevMaxPlaylistTracksPerRequest",
+		func(tracks int, expected int64) {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = tracks })
+			Expect(playlists.MaxRequestBytes(4<<20, 64)).To(Equal(expected))
+		},
+		Entry("keeps the floor when the tracks need less", 50_000, int64(4<<20)),
+		Entry("grows past the floor when the tracks need more", 100_000, int64(6_400_000)),
+		Entry("has no limit when the track limit is 0", 0, int64(math.MaxInt64)),
+	)
 })

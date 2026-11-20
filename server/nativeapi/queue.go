@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -83,14 +84,14 @@ func fallbackCurrent(ctx context.Context, w http.ResponseWriter, ds model.DataSt
 	return current, current != stored.Current, true
 }
 
-// maxQueueBody fits a queue of 100,000 ids with room to spare.
-const maxQueueBody = 4 << 20
+// maxQueueBody leaves about 64 bytes per track id, with a 4 MiB floor.
+func maxQueueBody() int64 { return playlists.MaxRequestBytes(4<<20, 64) }
 
 // decodeUpdatePayload decodes the JSON payload from the request body.
 // Returns false if decoding fails (and sends error response), true if successful.
 func decodeUpdatePayload(w http.ResponseWriter, r *http.Request) (*updateQueuePayload, bool) {
 	var payload updateQueuePayload
-	if !server.DecodeJSONBody(w, r, maxQueueBody, &payload) {
+	if !server.DecodeJSONBody(w, r, maxQueueBody(), &payload) {
 		return nil, false
 	}
 	return &payload, true

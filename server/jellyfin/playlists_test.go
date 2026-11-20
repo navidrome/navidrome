@@ -413,6 +413,7 @@ var _ = Describe("Playlists", func() {
 			Entry("exactly the limit", 5, 5),
 			Entry("any number when the limit is 0", 0, 6),
 			Entry("the default limit, in a body larger than 1 MiB", -1, 50_000),
+			Entry("a raised limit, in a body larger than 2 MiB", 100_000, 100_000),
 		)
 
 		It("expands without a track limit when DevMaxPlaylistTracksPerRequest is 0", func() {
@@ -457,7 +458,7 @@ var _ = Describe("Playlists", func() {
 		withIDs := func(ids func() []string) func() any {
 			return func() any { return map[string]any{"Name": "Mix", "Ids": ids()} }
 		}
-		bodyTooBig := func() any { return map[string]any{"Name": strings.Repeat("x", maxPlaylistBody)} }
+		bodyTooBig := func() any { return map[string]any{"Name": strings.Repeat("x", int(maxPlaylistBody()))} }
 
 		DescribeTable("create and update reject oversized requests with 413 without writing",
 			func(send func(any) *httptest.ResponseRecorder, body func() any) {
