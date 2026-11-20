@@ -429,7 +429,7 @@ func setupTestDB() {
 	goldenDB.Restore()
 
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-	auth.Init(ds)
+	auth.Init(ctx, ds)
 
 	// Create the Subsonic Router with real DS, streamer spy, and real Decider and Archiver
 	streamerSpy = &harness.SpyStreamer{}

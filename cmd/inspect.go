@@ -76,7 +76,7 @@ func runInspector(ctx context.Context, args []string) {
 		if !ok && len(libs) > 0 {
 			log.Warn("File is not in any library, using the global PID config", "file", filePath)
 		}
-		output, err := core.Inspect(filePath, lib, "")
+		output, err := core.Inspect(ctx, filePath, lib, "")
 		if err != nil {
 			log.Warn("Unable to process file", "file", filePath, "error", err)
 			continue

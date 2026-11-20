@@ -79,8 +79,8 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		Expect(service).ToNot(BeNil())
 		testService = &testableWebSocketService{webSocketServiceImpl: service}
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
+		DeferCleanup(func(ctx SpecContext) {
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})

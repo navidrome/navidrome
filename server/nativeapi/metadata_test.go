@@ -65,7 +65,7 @@ var _ = Describe("Metadata API", func() {
 			MockedArtist:       artistRepo,
 			MockedPlaylist:     playlistRepo,
 		}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		provider = &fakeProvider{}
 		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, provider, nil)
 		router = server.JWTVerifier(nativeRouter)

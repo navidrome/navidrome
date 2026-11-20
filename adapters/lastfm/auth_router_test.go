@@ -36,7 +36,7 @@ var _ = Describe("auth_router", func() {
 			MockedProperty:  &tests.MockedPropertyRepo{},
 			MockedUserProps: userProps,
 		}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 
 		httpClient = &tests.FakeHttpClient{}
 		router = &Router{

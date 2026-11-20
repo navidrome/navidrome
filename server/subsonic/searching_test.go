@@ -21,7 +21,7 @@ var _ = Describe("Search", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 

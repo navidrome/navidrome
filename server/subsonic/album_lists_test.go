@@ -25,7 +25,7 @@ var _ = Describe("Album Lists", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		mockRepo = ds.Album().(*tests.MockAlbumRepo)
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()

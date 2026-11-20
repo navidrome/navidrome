@@ -326,7 +326,7 @@ func runReprocess(ctx context.Context) {
 	var imageAgents artwork.ImageAgentCount
 	if needsImageAgents(kinds) {
 		mgr := loadPluginAgents(ctx, false)
-		defer func() { _ = mgr.Stop() }()
+		defer func() { _ = mgr.Stop(ctx) }()
 		imageAgents = artwork.NewImageAgentCount(agents.GetAgents(ds, mgr))
 	}
 
@@ -1001,7 +1001,7 @@ func runExplain(ctx context.Context, args []string) {
 		// the same manager.
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
 			mgr := loadPluginAgents(ctx, explainLive)
-			defer func() { _ = mgr.Stop() }()
+			defer func() { _ = mgr.Stop(ctx) }()
 			rep.agents = explainAgents(conf.Server().Agents, availableImageAgents(ds, mgr, kind))
 		}
 		switch {

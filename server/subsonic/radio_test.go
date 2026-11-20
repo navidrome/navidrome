@@ -23,7 +23,7 @@ var _ = Describe("Radio", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		api = &Router{ds: ds}
 		radioRepo = tests.CreateMockedRadioRepo()
 		ds.MockedRadio = radioRepo

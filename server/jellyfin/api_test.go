@@ -54,7 +54,7 @@ var _ = Describe("Router", func() {
 
 	It("registers a player on a general authenticated request, not just playback reports", func() {
 		ds := &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		ur := ds.User().(*tests.MockedUserRepo)
 		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		token, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
@@ -101,7 +101,7 @@ var _ = Describe("Router", func() {
 			c.Jellyfin.QuickConnect = true
 		})
 		ds := &tests.MockDataStore{}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		usr := model.User{ID: testID("alice"), UserName: "alice"}
 		Expect(ds.User().Put(ctx, &usr)).To(Succeed())
 		token, err := auth.CreateAPIToken(&usr, auth.AudienceJellyfin)

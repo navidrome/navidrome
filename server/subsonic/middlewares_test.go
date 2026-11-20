@@ -236,7 +236,7 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
-				auth.Init(ds)
+				auth.Init(ctx, ds)
 			})
 
 			It("passes authentication with correct token", func() {
@@ -828,7 +828,7 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
-				auth.Init(ds)
+				auth.Init(ctx, ds)
 
 				usr = &model.User{UserName: "admin"}
 				var err error
@@ -860,7 +860,7 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
-				auth.Init(ds)
+				auth.Init(ctx, ds)
 				usr = &model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}
 			})
 

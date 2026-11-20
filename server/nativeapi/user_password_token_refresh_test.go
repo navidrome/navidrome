@@ -45,7 +45,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 		DeferCleanup(db.Init(GinkgoT().Context()))
 
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		userService := core.NewUser(ds, noopPluginUnloader{})
 		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), userService, nil, nil, nil, nil, nil)

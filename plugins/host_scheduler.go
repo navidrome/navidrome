@@ -74,7 +74,7 @@ func (s *schedulerServiceImpl) ScheduleOneTime(ctx context.Context, delaySeconds
 
 	capturedID := scheduleID
 	timer := timeAfterFunc(time.Duration(delaySeconds)*time.Second, func() {
-		s.invokeCallback(context.Background(), capturedID)
+		s.invokeCallback(s.manager.lifecycleCtx(), capturedID)
 		// Clean up the entry after firing
 		s.mu.Lock()
 		delete(s.schedules, capturedID)
@@ -99,7 +99,7 @@ func (s *schedulerServiceImpl) ScheduleRecurring(ctx context.Context, cronExpres
 
 	capturedID := scheduleID
 	callback := func() {
-		s.invokeCallback(context.Background(), capturedID)
+		s.invokeCallback(s.manager.lifecycleCtx(), capturedID)
 	}
 
 	s.mu.Lock()

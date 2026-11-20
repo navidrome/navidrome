@@ -33,7 +33,7 @@ var _ = Describe("Missing Files Endpoint", func() {
 		})
 		userRepo := tests.CreateMockUserRepo()
 		ds := &tests.MockDataStore{MockedMediaFile: mfRepo, MockedUser: userRepo, MockedProperty: &tests.MockedPropertyRepo{}}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 
 		user := model.User{ID: "user-1", UserName: "user", NewPassword: "pass"}
 		Expect(userRepo.Put(GinkgoT().Context(), &user)).To(Succeed())

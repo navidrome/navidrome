@@ -11,11 +11,14 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("SchedulerService", Ordered, func() {
@@ -88,9 +91,9 @@ var _ = Describe("SchedulerService", Ordered, func() {
 		testService = &testableSchedulerService{schedulerServiceImpl: service}
 		testService.scheduler = mockSched
 
-		DeferCleanup(func() {
+		DeferCleanup(func(ctx SpecContext) {
 			timeAfterFunc = origAfterFn
-			_ = manager.Stop()
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
@@ -135,6 +138,31 @@ var _ = Describe("SchedulerService", Ordered, func() {
 
 			// One-time schedules should self-cleanup
 			Expect(testService.GetScheduleCount()).To(Equal(0))
+		})
+
+		It("should not hand the scheduling call's ctx to the callback", func() {
+			prevLevel := log.CurrentLevel()
+			l, hook := test.NewNullLogger()
+			prevLogger := log.SetDefaultLogger(l)
+			log.SetLevel(log.LevelDebug)
+			DeferCleanup(func() {
+				log.SetDefaultLogger(prevLogger)
+				log.SetLevel(prevLevel)
+			})
+
+			ctx := log.NewContext(GinkgoT().Context(), "scheduledBy", "caller")
+			_, err := testService.ScheduleOneTime(ctx, 1, "data", "ctx-id")
+			Expect(err).ToNot(HaveOccurred())
+			mockTimers.TriggerAll()
+
+			var invoked *logrus.Entry
+			for _, e := range hook.AllEntries() {
+				if e.Message == "Scheduler callback invoked" {
+					invoked = e
+				}
+			}
+			Expect(invoked).ToNot(BeNil())
+			Expect(invoked.Data).ToNot(HaveKey("scheduledBy"))
 		})
 
 		It("should reject duplicate schedule ID", func() {
@@ -299,7 +327,7 @@ var _ = Describe("SchedulerService", Ordered, func() {
 			Expect(mockSched.GetCallbackCount()).To(Equal(1)) // Only recurring task uses scheduler
 			Expect(mockTimers.GetTimerCount()).To(Equal(1))   // Only one-time task uses timer
 
-			err = manager.unloadPlugin("test-scheduler")
+			err = manager.unloadPlugin(GinkgoT().Context(), "test-scheduler")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(findSchedulerService(manager, "test-scheduler")).To(BeNil())

@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -107,7 +108,7 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 	// checks if the file exists when the timer fires. This handles sequences like
 	// Remove+Create+Rename correctly by checking actual file state after debounce.
 	m.debounceTimers[pluginName] = time.AfterFunc(debounceDuration, func() {
-		m.processPluginEvent(pluginName)
+		m.processPluginEvent(m.ctx, pluginName)
 	})
 	m.debounceMu.Unlock()
 }
@@ -139,7 +140,7 @@ func determinePluginAction(path string) pluginAction {
 // processPluginEvent handles the actual plugin load/unload/reload after debouncing.
 // - If file exists: extract manifest, add or update plugin in DB
 // - If file gone: unload if enabled, delete from DB
-func (m *Manager) processPluginEvent(pluginName string) {
+func (m *Manager) processPluginEvent(ctx context.Context, pluginName string) {
 	// Don't process if manager is stopping/stopped (atomic check to avoid race with Stop())
 	if m.stopped.Load() {
 		return
@@ -154,9 +155,9 @@ func (m *Manager) processPluginEvent(pluginName string) {
 	ndpPath := filepath.Join(folder, pluginName+PackageExtension)
 
 	action := determinePluginAction(ndpPath)
-	log.Debug(m.ctx, "Plugin event action", "plugin", pluginName, "action", action, "path", ndpPath)
+	log.Debug(ctx, "Plugin event action", "plugin", pluginName, "action", action, "path", ndpPath)
 
-	ctx := adminContext(m.ctx)
+	ctx = adminContext(ctx)
 	repo := m.ds.Plugin()
 
 	switch action {
@@ -164,7 +165,7 @@ func (m *Manager) processPluginEvent(pluginName string) {
 		// File changed - check SHA256 first, then extract manifest if needed
 		sha256Hash, err := ComputeFileSHA256(ndpPath)
 		if err != nil {
-			log.Error(m.ctx, "Failed to compute SHA256 for changed plugin", "plugin", pluginName, err)
+			log.Error(ctx, "Failed to compute SHA256 for changed plugin", "plugin", pluginName, err)
 			return
 		}
 
@@ -173,11 +174,11 @@ func (m *Manager) processPluginEvent(pluginName string) {
 			// Plugin not in DB yet, need full manifest extraction to add it
 			metadata, extractErr := m.extractManifest(ndpPath)
 			if extractErr != nil {
-				log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, extractErr)
+				log.Error(ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, extractErr)
 				return
 			}
 			if addErr := m.addPluginToDB(ctx, repo, pluginName, ndpPath, metadata); addErr != nil {
-				log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, addErr)
+				log.Error(ctx, "Failed to add plugin to DB", "plugin", pluginName, addErr)
 			}
 			return
 		}
@@ -190,12 +191,12 @@ func (m *Manager) processPluginEvent(pluginName string) {
 		// Plugin changed - now extract full manifest
 		metadata, err := m.extractManifest(ndpPath)
 		if err != nil {
-			log.Error(m.ctx, "Failed to extract manifest from changed plugin", "plugin", pluginName, err)
+			log.Error(ctx, "Failed to extract manifest from changed plugin", "plugin", pluginName, err)
 			// Update error in DB
 			dbPlugin.LastError = err.Error()
 			dbPlugin.UpdatedAt = time.Now()
 			if dbPlugin.Enabled {
-				_ = m.unloadPlugin(pluginName)
+				_ = m.unloadPlugin(ctx, pluginName)
 				dbPlugin.Enabled = false
 			}
 			_ = repo.Put(ctx, dbPlugin)
@@ -203,19 +204,19 @@ func (m *Manager) processPluginEvent(pluginName string) {
 		}
 
 		if err := m.updatePluginInDB(ctx, repo, dbPlugin, ndpPath, metadata); err != nil {
-			log.Error(m.ctx, "Failed to update plugin in DB", "plugin", pluginName, err)
+			log.Error(ctx, "Failed to update plugin in DB", "plugin", pluginName, err)
 		}
 
 	case actionRemove:
 		// File removed - unload if enabled, delete from DB
 		dbPlugin, err := repo.Get(ctx, pluginName)
 		if err != nil {
-			log.Debug(m.ctx, "Removed plugin not in DB", "plugin", pluginName)
+			log.Debug(ctx, "Removed plugin not in DB", "plugin", pluginName)
 			return
 		}
 
 		if err := m.removePluginFromDB(ctx, repo, dbPlugin); err != nil {
-			log.Error(m.ctx, "Failed to delete plugin from DB", "plugin", pluginName, err)
+			log.Error(ctx, "Failed to delete plugin from DB", "plugin", pluginName, err)
 		}
 	case actionNone:
 	}

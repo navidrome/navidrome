@@ -254,7 +254,7 @@ func contextWithUser(ctx context.Context, ds model.DataStore, username string) (
 	return ctx, err
 }
 
-func authenticateRequest(ds model.DataStore, r *http.Request, findUsernameFns ...func(r *http.Request) string) (context.Context, error) {
+func authenticateRequest(ctx context.Context, ds model.DataStore, r *http.Request, findUsernameFns ...func(r *http.Request) string) (context.Context, error) {
 	var username string
 	for _, fn := range findUsernameFns {
 		username = fn(r)
@@ -266,13 +266,13 @@ func authenticateRequest(ds model.DataStore, r *http.Request, findUsernameFns ..
 		return nil, ErrUnauthenticated
 	}
 
-	return contextWithUser(r.Context(), ds, username)
+	return contextWithUser(ctx, ds, username)
 }
 
 func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, err := authenticateRequest(ds, r, UsernameFromConfig, UsernameFromToken, UsernameFromExtAuthHeader)
+			ctx, err := authenticateRequest(r.Context(), ds, r, UsernameFromConfig, UsernameFromToken, UsernameFromExtAuthHeader)
 			if err != nil || !tokenAllowed(ctx) {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return

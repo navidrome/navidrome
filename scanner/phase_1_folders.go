@@ -300,7 +300,7 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 		}
 		for filePath, info := range allInfo {
 			md := metadata.New(filePath, info)
-			track := md.ToMediaFile(entry.job.lib, entry.id)
+			track := md.ToMediaFile(p.ctx, entry.job.lib, entry.id)
 			tracks = append(tracks, track)
 			for _, t := range track.Tags.FlattenAll() {
 				uniqueTags[t.ID] = t
