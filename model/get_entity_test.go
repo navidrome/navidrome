@@ -2,24 +2,27 @@ package model_test
 
 import (
 	"context"
+	"errors"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("GetEntityByID", func() {
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
 		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 	})
 
 	It("returns the entity matching the id", func() {
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+		putAlbum(ctx, ds, "a1", "One")
 		entity, err := model.GetEntityByID(ctx, ds, "a1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(entity).To(BeAssignableToTypeOf(&model.Album{}))
@@ -27,29 +30,32 @@ var _ = Describe("GetEntityByID", func() {
 	})
 
 	It("returns ErrNotFound when no entity matches", func() {
+		putAlbum(ctx, ds, "a1", "One")
 		_, err := model.GetEntityByID(ctx, ds, "missing")
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	It("propagates unexpected repository errors instead of reporting not-found", func() {
-		ds.Album().(*tests.MockAlbumRepo).SetError(true)
+		putAlbum(ctx, ds, "a1", "One")
+		ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
+			return failingAlbums{ds}
+		})
 		_, err := model.GetEntityByID(ctx, ds, "a1")
-		Expect(err).To(HaveOccurred())
-		Expect(err).ToNot(MatchError(model.ErrNotFound))
+		Expect(err).To(MatchError(errAlbumGet))
 	})
 })
 
 var _ = Describe("GetEntityKindByID", func() {
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
 		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 	})
 
 	It("returns the artwork kind for the matching id", func() {
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1"}})
+		putAlbum(ctx, ds, "a1", "")
 		kind, err := model.GetEntityKindByID(ctx, ds, "a1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(kind).To(Equal(model.KindAlbumArtwork))
@@ -60,3 +66,18 @@ var _ = Describe("GetEntityKindByID", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 })
+
+func putAlbum(ctx context.Context, ds model.DataStore, id, name string) {
+	GinkgoHelper()
+	Expect(ds.Album().Put(ctx, &model.Album{ID: id, Name: name, LibraryID: model.DefaultLibraryID})).To(Succeed())
+}
+
+var errAlbumGet = errors.New("album lookup failed")
+
+type failingAlbums struct{ model.DataStore }
+
+func (f failingAlbums) Album() model.AlbumRepository { return failingAlbumRepo{f.DataStore.Album()} }
+
+type failingAlbumRepo struct{ model.AlbumRepository }
+
+func (failingAlbumRepo) Get(context.Context, string) (*model.Album, error) { return nil, errAlbumGet }

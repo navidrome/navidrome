@@ -7,8 +7,9 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/sonic"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -48,14 +49,14 @@ func (m *mockProvider) FindSonicPath(_ context.Context, _, _ *model.MediaFile, _
 var _ = Describe("Sonic", func() {
 	var (
 		ctx     context.Context
-		ds      *tests.MockDataStore
+		ds      model.DataStore
 		loader  *mockPluginLoader
 		service *sonic.Sonic
 	)
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		loader = &mockPluginLoader{}
 	})
 
@@ -85,19 +86,16 @@ var _ = Describe("Sonic", func() {
 			loader.names = []string{"test-plugin"}
 			loader.provider = &mockProvider{}
 			loader.loadOk = true
-			ds.MockedMediaFile = &tests.MockMediaFileRepo{}
 			service = sonic.New(ds, loader, matcher.New(ds))
 			_, err := service.GetSonicSimilarTracks(ctx, "nonexistent", 10)
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
 		It("returns matched results from plugin", func() {
-			mf1 := model.MediaFile{ID: "song-1", Title: "Test Song", Artist: "Test Artist"}
-			mf2 := model.MediaFile{ID: "song-2", Title: "Similar Song", Artist: "Test Artist"}
-
-			mockRepo := tests.CreateMockMediaFileRepo()
-			mockRepo.SetData(model.MediaFiles{mf1, mf2})
-			ds.MockedMediaFile = mockRepo
+			putSongs(ctx, ds,
+				model.MediaFile{ID: "song-1", Title: "Test Song", Artist: "Test Artist"},
+				model.MediaFile{ID: "song-2", Title: "Similar Song", Artist: "Test Artist"},
+			)
 
 			provider := &mockProvider{
 				similarResults: []sonic.SimilarResult{
@@ -126,12 +124,10 @@ var _ = Describe("Sonic", func() {
 		})
 
 		It("returns error when plugin call fails", func() {
-			mf1 := model.MediaFile{ID: "song-1", Title: "Start", Artist: "Artist"}
-			mf2 := model.MediaFile{ID: "song-2", Title: "End", Artist: "Artist"}
-
-			mockRepo := tests.CreateMockMediaFileRepo()
-			mockRepo.SetData(model.MediaFiles{mf1, mf2})
-			ds.MockedMediaFile = mockRepo
+			putSongs(ctx, ds,
+				model.MediaFile{ID: "song-1", Title: "Start", Artist: "Artist"},
+				model.MediaFile{ID: "song-2", Title: "End", Artist: "Artist"},
+			)
 
 			provider := &mockProvider{pathErr: errors.New("plugin error")}
 			loader.names = []string{"test-plugin"}
@@ -144,3 +140,12 @@ var _ = Describe("Sonic", func() {
 		})
 	})
 })
+
+func putSongs(ctx context.Context, ds model.DataStore, songs ...model.MediaFile) {
+	GinkgoHelper()
+	for i := range songs {
+		songs[i].LibraryID = model.DefaultLibraryID
+		songs[i].Path = songs[i].ID + ".mp3"
+		Expect(ds.MediaFile().Put(ctx, &songs[i])).To(Succeed())
+	}
+}

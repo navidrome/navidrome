@@ -2,8 +2,9 @@ package matcher
 
 import (
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -230,11 +231,10 @@ var _ = Describe("bucketTracks", func() {
 var _ = Describe("resolveArtists ID fast-path", func() {
 	It("owns an artist supplied by ID without a name match", func() {
 		ctx := GinkgoT().Context()
-		artistRepo := tests.CreateMockArtistRepo()
-		artistRepo.SetData(model.Artists{
-			{ID: "ar-x", Name: "Some Artist", OrderArtistName: "some artist", MbzArtistID: "mbz-x"},
-		})
-		ds := &tests.MockDataStore{MockedArtist: artistRepo}
+		ds := persistence.New(db.Db())
+		artist := model.Artist{ID: "ar-x", Name: "Some Artist", OrderArtistName: "some artist", MbzArtistID: "mbz-x"}
+		Expect(ds.Artist().Put(ctx, &artist)).To(Succeed())
+		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, artist.ID)).To(Succeed())
 		m := New(ds)
 
 		queries := []indexedQuery{
