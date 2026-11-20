@@ -24,10 +24,9 @@ type serviceContext struct {
 	manager          *Manager
 	permissions      *Permissions
 	config           map[string]string
-	allowedUsers     []string // User IDs this plugin can access
-	allUsers         bool     // If true, plugin can access all users
-	allowedLibraries []int    // Library IDs this plugin can access
-	allLibraries     bool     // If true, plugin can access all libraries
+	users            userAccess
+	allowedLibraries []int // Library IDs this plugin can access
+	allLibraries     bool  // If true, plugin can access all libraries
 }
 
 // baseCtx returns the manager's lifecycle context, for host services that
@@ -64,7 +63,7 @@ var hostServices = []hostServiceEntry{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.users)
 			return host.RegisterSubsonicAPIHostFunctions(service), nil, nil
 		},
 	},
@@ -126,7 +125,7 @@ var hostServices = []hostServiceEntry{
 		name:          "Users",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Users != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			service := newUsersService(ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
+			service := newUsersService(ctx.manager.ds, ctx.users)
 			return host.RegisterUsersHostFunctions(service), nil, nil
 		},
 	},
@@ -137,7 +136,7 @@ var hostServices = []hostServiceEntry{
 			hasFilesystemPerm := ctx.permissions.Library != nil && ctx.permissions.Library.Filesystem
 			service := newMatcherService(
 				ctx.manager.ds, hasFilesystemPerm,
-				newUserAccess(ctx.allowedUsers, ctx.allUsers),
+				ctx.users,
 				newLibraryAccess(ctx.allowedLibraries, ctx.allLibraries),
 			)
 			return host.RegisterMatcherHostFunctions(service), nil, nil
@@ -183,7 +182,7 @@ var hostServices = []hostServiceEntry{
 		name:          "ScrobbleRetriever",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.ScrobbleRetriever != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			service := newScrobbleRetrieverService(ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
+			service := newScrobbleRetrieverService(ctx.manager.ds, ctx.users)
 			return host.RegisterScrobbleRetrieverHostFunctions(service), nil, nil
 		},
 	},
@@ -324,6 +323,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("parsing plugin users: %w", err)
 		}
 	}
+	users := newUserAccess(allowedUsers, p.AllUsers)
 
 	// Parse libraries from JSON
 	var allowedLibraries []int
@@ -386,8 +386,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		manager:          m,
 		permissions:      pkg.Manifest.Permissions,
 		config:           pluginConfig,
-		allowedUsers:     allowedUsers,
-		allUsers:         p.AllUsers,
+		users:            users,
 		allowedLibraries: allowedLibraries,
 		allLibraries:     p.AllLibraries,
 	}
@@ -436,18 +435,17 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	loadedPlugin := &plugin{
-		name:           p.ID,
-		path:           p.Path,
-		manifest:       pkg.Manifest,
-		compiled:       compiled,
-		capabilities:   capabilities,
-		closers:        closers,
-		metrics:        m.metrics,
-		allowedUserIDs: allowedUsers,
-		allUsers:       p.AllUsers,
-		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
-		fsConfig:       fsConfig,
-		lyricsSem:      make(chan struct{}, maxConcurrentLyricsCalls),
+		name:         p.ID,
+		path:         p.Path,
+		manifest:     pkg.Manifest,
+		compiled:     compiled,
+		capabilities: capabilities,
+		closers:      closers,
+		metrics:      m.metrics,
+		users:        users,
+		libraries:    newLibraryAccess(allowedLibraries, p.AllLibraries),
+		fsConfig:     fsConfig,
+		lyricsSem:    make(chan struct{}, maxConcurrentLyricsCalls),
 	}
 	m.mu.Lock()
 	m.plugins[p.ID] = loadedPlugin

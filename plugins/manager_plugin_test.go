@@ -32,3 +32,16 @@ var _ = Describe("plugin", func() {
 		})
 	})
 })
+
+var _ = Describe("userAccess", func() {
+	DescribeTable("allows",
+		func(ids []string, all bool, userID string, want bool) {
+			Expect(newUserAccess(ids, all).allows(userID)).To(Equal(want))
+		},
+		Entry("any user when allUsers is set", nil, true, "any-user", true),
+		Entry("nobody when the list is nil", nil, false, "user-1", false),
+		Entry("nobody when the list is empty", []string{}, false, "user-1", false),
+		Entry("a user in the list", []string{"user-1", "user-2"}, false, "user-1", true),
+		Entry("not a user outside the list", []string{"user-1", "user-2"}, false, "user-3", false),
+	)
+})
