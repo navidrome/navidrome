@@ -32,6 +32,7 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
+import history from '../history'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 
@@ -367,7 +368,7 @@ const Player = () => {
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
     if (mode === 'full' && audioInfo?.song?.albumId) {
-      window.location.href = `#/album/${audioInfo.song.albumId}/show`
+      history.push(`/album/${audioInfo.song.albumId}/show`)
     }
   }, [])
 
