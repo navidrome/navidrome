@@ -650,7 +650,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 // newJSONPostRequest creates an HTTP POST request with JSON body and query params
 func newJSONPostRequest(queryParams string, jsonBody string) *http.Request {
-	r := httptest.NewRequest(http.MethodPost, "/getTranscodeDecision?"+queryParams, bytes.NewBufferString(jsonBody))
+	r := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPost, "/getTranscodeDecision?"+queryParams, bytes.NewBufferString(jsonBody))
 	r.Header.Set("Content-Type", "application/json")
 	return r
 }

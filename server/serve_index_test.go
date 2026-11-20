@@ -21,16 +21,19 @@ import (
 )
 
 var _ = Describe("serveIndex", func() {
+	var ctx context.Context
+
 	var ds model.DataStore
 	mockUser := &mockedUserRepo{}
 	fs := os.DirFS("tests/fixtures")
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{MockedUser: mockUser}
 	})
 
 	It("adds app_config to index.html", func() {
-		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -42,7 +45,7 @@ var _ = Describe("serveIndex", func() {
 
 	It("sets firstTime = true when User table is empty", func() {
 		mockUser.empty = true
-		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -53,7 +56,7 @@ var _ = Describe("serveIndex", func() {
 
 	It("sets firstTime = false when User table is not empty", func() {
 		mockUser.empty = false
-		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -65,7 +68,7 @@ var _ = Describe("serveIndex", func() {
 	DescribeTable("sets configuration values",
 		func(configSetter func(*conf.Options), configKey string, expectedValue any) {
 			conf.Update(configSetter)
-			r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 			w := httptest.NewRecorder()
 
 			serveIndex(ds, fs, nil)(w, r)
@@ -116,7 +119,7 @@ var _ = Describe("serveIndex", func() {
 		conf.Update(func(c *conf.Options) {
 			c.UIWelcomeMessage = `&lt;img src=x onerror=alert(1)&gt;&lt;b&gt;Hello&lt;/b&gt;`
 		})
-		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -128,7 +131,7 @@ var _ = Describe("serveIndex", func() {
 
 	DescribeTable("sets other UI configuration values",
 		func(configKey string, expectedValueFunc func() any) {
-			r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 			w := httptest.NewRecorder()
 
 			serveIndex(ds, fs, nil)(w, r)
@@ -152,7 +155,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default URL", func() {
 				It("points to the default URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL })
-					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -164,7 +167,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default offline URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline })
-					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -176,7 +179,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is a custom URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = "https://example.com/images/1.jpg" })
-					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -193,7 +196,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default URL", func() {
 				It("points to the default URL with BaseURL prefix", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL })
-					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -205,7 +208,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default offline URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline })
-					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -217,7 +220,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is a custom URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = "https://example.com/images/1.jpg" })
-					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -232,14 +235,16 @@ var _ = Describe("serveIndex", func() {
 
 var _ = Describe("addShareData", func() {
 	var (
+		ctx       context.Context
 		r         *http.Request
 		data      map[string]any
 		shareInfo *model.Share
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		data = make(map[string]any)
-		r = httptest.NewRequest(http.MethodGet, "/", nil)
+		r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	})
 
 	Context("when shareInfo is nil or has an empty ID", func() {

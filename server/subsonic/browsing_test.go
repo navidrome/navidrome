@@ -45,7 +45,7 @@ var _ = Describe("Browsing", func() {
 			ctx := contextWithUser(ctx, "user-id", 1, 2, 3)
 
 			// Create request
-			r := httptest.NewRequest(http.MethodGet, "/rest/getMusicFolders", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getMusicFolders", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -68,7 +68,7 @@ var _ = Describe("Browsing", func() {
 			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=2 (not accessible)
-			r := httptest.NewRequest(http.MethodGet, "/rest/getIndexes?musicFolderId=2", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getIndexes?musicFolderId=2", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -98,7 +98,7 @@ var _ = Describe("Browsing", func() {
 			})
 
 			// Create request without musicFolderId
-			r := httptest.NewRequest(http.MethodGet, "/rest/getIndexes", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getIndexes", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -117,7 +117,7 @@ var _ = Describe("Browsing", func() {
 			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=3 (not accessible)
-			r := httptest.NewRequest(http.MethodGet, "/rest/getArtists?musicFolderId=3", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getArtists?musicFolderId=3", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -147,7 +147,7 @@ var _ = Describe("Browsing", func() {
 			})
 
 			// Create request without musicFolderId
-			r := httptest.NewRequest(http.MethodGet, "/rest/getArtists", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getArtists", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -163,7 +163,7 @@ var _ = Describe("Browsing", func() {
 	Describe("GetAlbumInfo", func() {
 		It("emits image URLs when the album artwork is unresolved", func() {
 			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1"}}
-			r := httptest.NewRequest(http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
 			resp, err := api.GetAlbumInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumInfo.SmallImageUrl).ToNot(BeEmpty())
@@ -171,7 +171,7 @@ var _ = Describe("Browsing", func() {
 		})
 		It("omits image URLs when the album artwork is known absent", func() {
 			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ImageAbsent: true}}
-			r := httptest.NewRequest(http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
 			resp, err := api.GetAlbumInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumInfo.SmallImageUrl).To(BeEmpty())
@@ -183,14 +183,14 @@ var _ = Describe("Browsing", func() {
 	Describe("GetArtistInfo", func() {
 		It("emits image URLs when the artist artwork is unresolved", func() {
 			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1"}}
-			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistInfo.SmallImageUrl).ToNot(BeEmpty())
 		})
 		It("omits image URLs when the artist artwork is known absent", func() {
 			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ImageAbsent: true}}
-			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistInfo.SmallImageUrl).To(BeEmpty())

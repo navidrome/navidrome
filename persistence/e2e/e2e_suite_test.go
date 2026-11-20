@@ -295,7 +295,7 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(ds.MediaFile().IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
-	rows, err := db.Db().Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
+	rows, err := db.Db().QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
 	defer rows.Close()
 	for rows.Next() {
@@ -305,7 +305,7 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(rows.Err()).To(Succeed())
 
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+	_, err = db.Db().ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
 	Expect(err).ToNot(HaveOccurred())
 	data, err := os.ReadFile(dbFilePath)
 	Expect(err).ToNot(HaveOccurred())
@@ -319,26 +319,26 @@ var _ = AfterSuite(func() {
 func restoreDB() {
 	sqlDB := db.Db()
 
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	_, err := sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = OFF")
 	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
+	defer func() { _, _ = sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = ON") }()
 
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
+	_, err = sqlDB.ExecContext(ctx, "ATTACH DATABASE ? AS snapshot", snapshotPath)
 	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("DETACH DATABASE snapshot") }()
+	defer func() { _, _ = sqlDB.ExecContext(ctx, "DETACH DATABASE snapshot") }()
 
-	_, err = sqlDB.Exec("BEGIN TRANSACTION")
+	_, err = sqlDB.ExecContext(ctx, "BEGIN TRANSACTION")
 	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("ROLLBACK") }()
+	defer func() { _, _ = sqlDB.ExecContext(ctx, "ROLLBACK") }()
 
 	for _, table := range snapshotTables {
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
+		_, err = sqlDB.ExecContext(ctx, `DELETE FROM main."`+table+`"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
+		_, err = sqlDB.ExecContext(ctx, `INSERT INTO main."`+table+`" SELECT * FROM snapshot."`+table+`"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	_, err = sqlDB.Exec("COMMIT")
+	_, err = sqlDB.ExecContext(ctx, "COMMIT")
 	Expect(err).ToNot(HaveOccurred())
 }
 

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,11 @@ import (
 var _ = pprof.NewProfile("nd-profiler-test")
 
 var _ = Describe("profilerHandler", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	// Mirrors how server.MountRouter mounts the handler.
 	mount := func() http.Handler {
 		router := chi.NewRouter()
@@ -31,7 +37,7 @@ var _ = Describe("profilerHandler", func() {
 
 			w := httptest.NewRecorder()
 			target := path.Join(basePath, "/debug/pprof/nd-profiler-test") + "?debug=1"
-			mount().ServeHTTP(w, httptest.NewRequest(http.MethodGet, target, nil))
+			mount().ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, target, nil))
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Body.String()).To(HavePrefix("nd-profiler-test profile: total 0"))

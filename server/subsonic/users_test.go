@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -14,10 +15,13 @@ import (
 )
 
 var _ = Describe("Users", func() {
+	var ctx context.Context
+
 	var router *Router
 	var testUser model.User
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		router = &Router{}
 
 		testUser = model.User{
@@ -44,7 +48,7 @@ var _ = Describe("Users", func() {
 			}
 
 			// Create request with user in context
-			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=testuser", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getUser?username=testuser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -138,7 +142,7 @@ var _ = Describe("Users", func() {
 
 	Describe("GetUser authorization", func() {
 		It("should allow user to request their own information", func() {
-			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=testuser", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getUser?username=testuser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -151,7 +155,7 @@ var _ = Describe("Users", func() {
 		})
 
 		It("should deny user from requesting another user's information", func() {
-			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=anotheruser", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getUser?username=anotheruser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -167,7 +171,7 @@ var _ = Describe("Users", func() {
 		})
 
 		It("should return error when username parameter is missing", func() {
-			req := httptest.NewRequest(http.MethodGet, "/rest/getUser", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getUser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -178,7 +182,7 @@ var _ = Describe("Users", func() {
 		})
 
 		It("should return error when user context is missing", func() {
-			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=testuser", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getUser?username=testuser", nil)
 
 			response, err := router.GetUser(req)
 

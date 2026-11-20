@@ -521,7 +521,7 @@ func callTestUsersPlugin(ctx context.Context, manager *Manager, input testUsersI
 	if err != nil {
 		return nil, err
 	}
-	_, outputBytes, err := instance.Call("nd_test_users", inputBytes)
+	_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_users", inputBytes)
 	if err != nil {
 		return nil, err
 	}

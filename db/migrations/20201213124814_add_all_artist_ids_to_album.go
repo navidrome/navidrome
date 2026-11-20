@@ -38,7 +38,7 @@ select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, 
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update album set all_artist_ids = ? where id = ?")
+	stmt, err := tx.PrepareContext(ctx, "update album set all_artist_ids = ? where id = ?")
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, 
 			return err
 		}
 		all := str.SanitizeStrings(artistId, albumArtistId, songArtistIds.String)
-		_, err = stmt.Exec(all, id)
+		_, err = stmt.ExecContext(ctx, all, id)
 		if err != nil {
 			log.Error("Error setting album's artist_ids", "album", name, "albumId", id, err)
 		}

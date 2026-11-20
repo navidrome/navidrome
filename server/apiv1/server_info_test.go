@@ -27,7 +27,7 @@ var _ = Describe("GET /server", func() {
 	})
 
 	get := func() (*httptest.ResponseRecorder, ServerInfo) {
-		w := serve(New(ds), httptest.NewRequest(http.MethodGet, "/api/v1/server", nil))
+		w := serve(New(ds), httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/server", nil))
 		var info ServerInfo
 		if w.Code == http.StatusOK {
 			ExpectWithOffset(1, json.Unmarshal(w.Body.Bytes(), &info)).To(Succeed())

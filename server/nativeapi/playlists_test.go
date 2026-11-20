@@ -28,13 +28,17 @@ import (
 )
 
 var _ = Describe("Playlist Image Endpoints", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	DescribeTable("uploadPlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequest(http.MethodPost, "/playlist/pls-1/image", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
 			req = req.WithContext(ctx)
 
@@ -53,7 +57,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequest(http.MethodDelete, "/playlist/pls-1/image", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
 			req = req.WithContext(ctx)
 
@@ -70,6 +74,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 
 var _ = Describe("Playlist Tracks Endpoint", func() {
 	var (
+		ctx      context.Context
 		router   http.Handler
 		plsSvc   *mockPlaylistsService
 		userRepo *tests.MockedUserRepo
@@ -77,6 +82,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) {
 			c.EnableSharing = false
 			c.SessionTimeout = time.Minute
@@ -108,7 +114,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	})
 
 	createAuthenticatedRequestWithBody := func(method, path string, body io.Reader) *http.Request {
-		req := httptest.NewRequest(method, path, body)
+		req := httptest.NewRequestWithContext(ctx, method, path, body)
 		if body != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
@@ -310,13 +316,18 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 })
 
 var _ = Describe("handleExportPlaylist", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	export := func(name string) *httptest.ResponseRecorder {
 		r := chi.NewRouter()
 		r.Get("/playlist/{playlistId}", handleExportPlaylist(&mockPlaylistsService{
 			playlist: &model.Playlist{ID: "pls-1", Name: name},
 		}))
 		w := httptest.NewRecorder()
-		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/playlist/pls-1", nil))
+		r.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/playlist/pls-1", nil))
 		return w
 	}
 
@@ -341,6 +352,11 @@ var _ = Describe("handleExportPlaylist", func() {
 })
 
 var _ = Describe("createPlaylistFromM3U", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	// Drains the body like the real importer, so the size limit is hit while reading.
 	drainingImport := func(_ context.Context, reader io.Reader) (*model.Playlist, error) {
 		if _, err := io.Copy(io.Discard, reader); err != nil {
@@ -351,7 +367,7 @@ var _ = Describe("createPlaylistFromM3U", func() {
 		return pl, nil
 	}
 	upload := func(svc *mockPlaylistsService, body io.Reader) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(http.MethodPost, "/playlist", body)
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/playlist", body)
 		req.Header.Set("Content-Type", "audio/x-mpegurl")
 		w := httptest.NewRecorder()
 		createPlaylistFromM3U(svc).ServeHTTP(w, req)
@@ -382,9 +398,14 @@ var _ = Describe("createPlaylistFromM3U", func() {
 })
 
 var _ = Describe("reorderItem", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("rejects a body over the size limit with 413", func() {
 		body := `{"insert_before":"` + strings.Repeat("1", maxSmallJSONBody) + `"}`
-		req := httptest.NewRequest(http.MethodPut, "/playlist/pls-1/tracks/1?:id=1", strings.NewReader(body))
+		req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/playlist/pls-1/tracks/1?:id=1", strings.NewReader(body))
 		w := httptest.NewRecorder()
 		reorderItem(&mockPlaylistsService{})(w, req)
 		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))

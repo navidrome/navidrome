@@ -74,7 +74,7 @@ var _ = BeforeSuite(func() {
 	db.Db().SetMaxOpenConns(1)
 	db.Init(request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", IsAdmin: true}))
 
-	userTables = harness.ResettableTables()
+	userTables = harness.ResettableTables(GinkgoT().Context())
 })
 
 var _ = AfterSuite(func() {
@@ -97,7 +97,7 @@ func setupResolutionHarness() {
 	})
 
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
-	harness.TruncateDB(userTables)
+	harness.TruncateDB(rctx, userTables)
 
 	rds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 

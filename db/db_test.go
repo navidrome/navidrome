@@ -48,7 +48,7 @@ var _ = Describe("IsSchemaEmpty", func() {
 	})
 
 	It("returns false if the goose metadata table is found", func() {
-		_, err := database.Exec("create table goose_db_version (id primary key);")
+		_, err := database.ExecContext(ctx, "create table goose_db_version (id primary key);")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(db.IsSchemaEmpty(ctx, database)).To(BeFalse())
 	})

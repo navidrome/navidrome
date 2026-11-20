@@ -71,7 +71,7 @@ var _ = Describe("getLyrics", func() {
 		w := httptest.NewRecorder()
 		// Clients send hex-encoded ids (matching real traffic and the other handler tests).
 		enc := dto.EncodeID(id)
-		r := httptest.NewRequest(http.MethodGet, "/Audio/"+enc+"/Lyrics", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+enc+"/Lyrics", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", enc)
 		invoke(api.getLyrics, w, r)
 		return w

@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 
 var _ = Describe("Queue Endpoints", func() {
 	var (
+		ctx      context.Context
 		ds       *tests.MockDataStore
 		repo     *tests.MockPlayQueueRepo
 		user     model.User
@@ -25,6 +27,7 @@ var _ = Describe("Queue Endpoints", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		repo = &tests.MockPlayQueueRepo{}
 		user = model.User{ID: "u1", UserName: "user"}
 		userRepo = tests.CreateMockUserRepo()
@@ -35,7 +38,7 @@ var _ = Describe("Queue Endpoints", func() {
 	DescribeTable("rejects a body over the size limit with 413 without saving",
 		func(method string, handler func(model.DataStore) http.HandlerFunc) {
 			body := `{"ids":["` + strings.Repeat("x", int(maxQueueBody())) + `"]}`
-			req := httptest.NewRequest(method, "/queue", strings.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, method, "/queue", strings.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -50,7 +53,7 @@ var _ = Describe("Queue Endpoints", func() {
 	It("saves a body larger than 4 MiB when the track limit is raised", func() {
 		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 100_000 })
 		body := `{"ids":["` + strings.Repeat("x", 4<<20) + `"],"current":0}`
-		req := httptest.NewRequest(http.MethodPost, "/queue", strings.NewReader(body))
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/queue", strings.NewReader(body))
 		req = req.WithContext(request.WithUser(req.Context(), user))
 		w := httptest.NewRecorder()
 
@@ -63,7 +66,7 @@ var _ = Describe("Queue Endpoints", func() {
 		It("saves the queue", func() {
 			payload := updateQueuePayload{Ids: new([]string{"s1", "s2"}), Current: new(1), Position: new(int64(10))}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPost, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/queue", bytes.NewReader(body))
 			ctx := request.WithUser(req.Context(), user)
 			ctx = request.WithClient(ctx, "TestClient")
 			req = req.WithContext(ctx)
@@ -81,7 +84,7 @@ var _ = Describe("Queue Endpoints", func() {
 		It("saves an empty queue", func() {
 			payload := updateQueuePayload{Ids: new([]string{}), Current: new(0), Position: new(int64(0))}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPost, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -94,7 +97,7 @@ var _ = Describe("Queue Endpoints", func() {
 		It("returns bad request for invalid current index (negative)", func() {
 			payload := updateQueuePayload{Ids: new([]string{"s1", "s2"}), Current: new(-1), Position: new(int64(10))}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPost, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -106,7 +109,7 @@ var _ = Describe("Queue Endpoints", func() {
 		It("returns bad request for invalid current index (too large)", func() {
 			payload := updateQueuePayload{Ids: new([]string{"s1", "s2"}), Current: new(2), Position: new(int64(10))}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPost, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -116,7 +119,7 @@ var _ = Describe("Queue Endpoints", func() {
 		})
 
 		It("returns bad request for malformed JSON", func() {
-			req := httptest.NewRequest(http.MethodPost, "/queue", bytes.NewReader([]byte("invalid json")))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/queue", bytes.NewReader([]byte("invalid json")))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -128,7 +131,7 @@ var _ = Describe("Queue Endpoints", func() {
 			repo.Err = true
 			payload := updateQueuePayload{Ids: new([]string{"s1"}), Current: new(0), Position: new(int64(10))}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPost, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -150,7 +153,7 @@ var _ = Describe("Queue Endpoints", func() {
 				},
 			}
 			repo.Queue = queue
-			req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/queue", nil)
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -168,7 +171,7 @@ var _ = Describe("Queue Endpoints", func() {
 		})
 
 		It("returns empty queue when user has no queue", func() {
-			req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/queue", nil)
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -184,7 +187,7 @@ var _ = Describe("Queue Endpoints", func() {
 		It("returns the loaded tracks when some of them fail to load", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "track1"}}}
 			repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
-			req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/queue", nil)
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -197,7 +200,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 		It("returns internal server error when retrieve fails", func() {
 			repo.Err = true
-			req := httptest.NewRequest(http.MethodGet, "/queue", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/queue", nil)
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -211,7 +214,7 @@ var _ = Describe("Queue Endpoints", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}, {ID: "s3"}}}
 			payload := updateQueuePayload{Current: new(2), Position: new(int64(20))}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 			ctx := request.WithUser(req.Context(), user)
 			ctx = request.WithClient(ctx, "TestClient")
 			req = req.WithContext(ctx)
@@ -229,7 +232,7 @@ var _ = Describe("Queue Endpoints", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 1}
 			payload := updateQueuePayload{Ids: new([]string{"s1", "s2"})}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -246,7 +249,7 @@ var _ = Describe("Queue Endpoints", func() {
 				Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}}}
 			repo.WithMediaFilesErr = fmt.Errorf("%w: chunk failed", model.ErrIncompleteQueue)
 			body, _ := json.Marshal(updateQueuePayload{Ids: new([]string{"s1", "s2", "s3", "s4"})})
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -267,7 +270,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 			put := func(payload updateQueuePayload) int {
 				body, _ := json.Marshal(payload)
-				req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+				req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 				req = req.WithContext(request.WithUser(req.Context(), user))
 				w := httptest.NewRecorder()
 				updateQueue(ds)(w, req)
@@ -332,7 +335,7 @@ var _ = Describe("Queue Endpoints", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID}
 			payload := updateQueuePayload{Ids: new([]string{"s1", "s2"}), Current: new(1)}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -347,7 +350,7 @@ var _ = Describe("Queue Endpoints", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2}
 			payload := updateQueuePayload{Ids: new([]string{"s1", "s2"})}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -359,7 +362,7 @@ var _ = Describe("Queue Endpoints", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}}}
 			payload := updateQueuePayload{Current: new(3)}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -368,7 +371,7 @@ var _ = Describe("Queue Endpoints", func() {
 		})
 
 		It("returns bad request for malformed JSON", func() {
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader([]byte("{")))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader([]byte("{")))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -380,7 +383,7 @@ var _ = Describe("Queue Endpoints", func() {
 			repo.Err = true
 			payload := updateQueuePayload{Position: new(int64(10))}
 			body, _ := json.Marshal(payload)
-			req := httptest.NewRequest(http.MethodPut, "/queue", bytes.NewReader(body))
+			req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -392,7 +395,7 @@ var _ = Describe("Queue Endpoints", func() {
 	Describe("DELETE /queue", func() {
 		It("clears the queue", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}}}
-			req := httptest.NewRequest(http.MethodDelete, "/queue", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/queue", nil)
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 
@@ -403,7 +406,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 		It("returns internal server error when clear fails", func() {
 			repo.Err = true
-			req := httptest.NewRequest(http.MethodDelete, "/queue", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/queue", nil)
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
 

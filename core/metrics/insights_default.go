@@ -2,8 +2,11 @@
 
 package metrics
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
-func getOSVersion() (string, string) { return "", "" }
+func getOSVersion(context.Context) (string, string) { return "", "" }
 
 func getFilesystemType(_ string) (string, error) { return "", errors.New("not implemented") }

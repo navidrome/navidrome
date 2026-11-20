@@ -1,6 +1,7 @@
 package apiv1
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,12 +20,15 @@ func decodeProblem(w *httptest.ResponseRecorder) Problem {
 }
 
 var _ = Describe("problem", func() {
+	var ctx context.Context
+
 	var w *httptest.ResponseRecorder
 	var r *http.Request
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest(http.MethodGet, "/api/v1/server", nil)
+		r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/server", nil)
 	})
 
 	Describe("writeProblem", func() {

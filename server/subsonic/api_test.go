@@ -21,14 +21,16 @@ import (
 
 var _ = Describe("sendResponse", func() {
 	var (
+		ctx     context.Context
 		w       *httptest.ResponseRecorder
 		r       *http.Request
 		payload *responses.Subsonic
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest(http.MethodGet, "/somepath", nil)
+		r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/somepath", nil)
 		payload = &responses.Subsonic{
 			Status:  responses.StatusOK,
 			Version: "1.16.1",
@@ -159,7 +161,7 @@ var _ = Describe("sendResponse", func() {
 
 	It("responds with HTTP 429 and Retry-After when the transcode limiter rejects", func() {
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest(http.MethodGet, "/rest/stream", nil)
+		r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/stream", nil)
 
 		sendError(w, r, fmt.Errorf("rejected: %w", stream.ErrTooManyTranscodes))
 

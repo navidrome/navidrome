@@ -141,9 +141,9 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	return manager, tmpDir
 }
 
-var _ = SynchronizedBeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func(ctx SpecContext) {
 	// Build once: the testdata Makefile is not safe to run concurrently.
-	buildTestPlugins(testDataDir)
+	buildTestPlugins(ctx, testDataDir)
 }, func() {
 	// Get testdata directory (where test plugin .ndp packages live)
 	_, currentFile, _, ok := runtime.Caller(0)

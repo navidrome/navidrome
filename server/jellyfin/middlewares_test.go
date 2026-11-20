@@ -43,7 +43,7 @@ var _ = Describe("authenticate middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 		r.Header.Set("X-Emby-Token", tokenFor("alice"))
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -57,7 +57,7 @@ var _ = Describe("authenticate middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 		r.Header.Set("Authorization", `MediaBrowser Token="`+tokenFor("alice")+`", Client="Test", DeviceId="dev1"`)
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -67,7 +67,7 @@ var _ = Describe("authenticate middleware", func() {
 	It("rejects a missing token with 401", func() {
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
@@ -79,7 +79,7 @@ var _ = Describe("authenticate middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 		r.Header.Set("X-Emby-Token", "not-a-jwt")
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -92,7 +92,7 @@ var _ = Describe("authenticate middleware", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 		r.Header.Set("X-Emby-Token", t)
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -112,7 +112,7 @@ var _ = Describe("authenticate middleware", func() {
 				w.WriteHeader(http.StatusOK)
 			})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 			r.Header.Set("X-Emby-Token", token)
 			api.authenticate(next).ServeHTTP(w, r)
 			return w
@@ -146,10 +146,13 @@ var _ = Describe("authenticate middleware", func() {
 })
 
 var _ = Describe("withPlayer middleware", func() {
+	var ctx context.Context
+
 	var api *Router
 	var players *fakePlayers
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		players = &fakePlayers{}
 		api = &Router{ds: &tests.MockDataStore{}, players: players}
 	})
@@ -164,7 +167,7 @@ var _ = Describe("withPlayer middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Audio/s1/stream", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/s1/stream", nil)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Finamp", Device="Pixel", DeviceId="dev1", Version="1.0"`)
 		api.withPlayer(next).ServeHTTP(w, r)
 		return gotPlayer, gotTrc, hasTrc
@@ -185,26 +188,31 @@ var _ = Describe("withPlayer middleware", func() {
 })
 
 var _ = Describe("tokenFromRequest", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("accepts the recommended Authorization: MediaBrowser scheme", func() {
-		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 		r.Header.Set("Authorization", `MediaBrowser Token="tok123", Client="Finamp", Device="Pixel", DeviceId="dev1", Version="1.0"`)
 		Expect(tokenFromRequest(r)).To(Equal("tok123"))
 	})
 
 	It("prefers the Authorization scheme token over deprecated token headers", func() {
-		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 		r.Header.Set("Authorization", `MediaBrowser Token="scheme-token"`)
 		r.Header.Set("X-Emby-Token", "legacy-token")
 		Expect(tokenFromRequest(r)).To(Equal("scheme-token"))
 	})
 
 	It("accepts the lowercase api_key query param", func() {
-		r := httptest.NewRequest(http.MethodGet, "/Items/s1/File?api_key=tok123", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/s1/File?api_key=tok123", nil)
 		Expect(tokenFromRequest(r)).To(Equal("tok123"))
 	})
 
 	It("accepts a PascalCase ApiKey query param once normalizeQueryKeys has folded it", func() {
-		r := httptest.NewRequest(http.MethodGet, "/Items/s1/File?ApiKey=tok123", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/s1/File?ApiKey=tok123", nil)
 		var got string
 		invoke(func(_ http.ResponseWriter, r *http.Request) { got = tokenFromRequest(r) }, httptest.NewRecorder(), r)
 		Expect(got).To(Equal("tok123"))
@@ -212,8 +220,13 @@ var _ = Describe("tokenFromRequest", func() {
 })
 
 var _ = Describe("parseMediaBrowserAuth", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	authFor := func(header string) mediaBrowserAuth {
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		r.Header.Set("X-Emby-Authorization", header)
 		return parseMediaBrowserAuth(r)
 	}
@@ -237,7 +250,7 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 	})
 
 	It("prefers the recommended Authorization header over the deprecated X-Emby-Authorization", func() {
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		r.Header.Set("Authorization", `MediaBrowser Client="New", DeviceId="dev-new"`)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Old", DeviceId="dev-old"`)
 		a := parseMediaBrowserAuth(r)
@@ -248,7 +261,7 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 	It("falls back to X-Emby-Authorization when Authorization carries a foreign scheme", func() {
 		// A reverse proxy may inject Basic/Digest credentials; the client's MediaBrowser data must
 		// still be honored.
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		r.Header.Set("Authorization", `Digest username="proxy", realm="site"`)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Finamp", DeviceId="dev1", Token="tok"`)
 		a := parseMediaBrowserAuth(r)
@@ -257,7 +270,7 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 	})
 
 	It("rejects a foreign scheme even when its parameters mimic MediaBrowser fields", func() {
-		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		r.Header.Set("Authorization", `Custom Token="not-for-us"`)
 		Expect(parseMediaBrowserAuth(r).Token).To(BeEmpty())
 	})
@@ -275,10 +288,15 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 })
 
 var _ = Describe("normalizeQueryKeys", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	// keyFor runs a request through normalizeQueryKeys and reports the value the handler sees for
 	// the given (lowercase) key — i.e. what a case-insensitive read would find.
 	keyFor := func(rawQuery, key string) string {
-		r := httptest.NewRequest(http.MethodGet, "/Items?"+rawQuery, nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items?"+rawQuery, nil)
 		var got string
 		invoke(func(_ http.ResponseWriter, r *http.Request) { got = r.URL.Query().Get(key) }, httptest.NewRecorder(), r)
 		return got
@@ -298,7 +316,7 @@ var _ = Describe("normalizeQueryKeys", func() {
 	})
 
 	It("merges values when two keys fold to the same name instead of dropping one", func() {
-		r := httptest.NewRequest(http.MethodGet, "/Items?Ids=aaa&ids=bbb", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items?Ids=aaa&ids=bbb", nil)
 		var got []string
 		invoke(func(_ http.ResponseWriter, r *http.Request) { got = r.URL.Query()["ids"] }, httptest.NewRecorder(), r)
 		Expect(got).To(ConsistOf("aaa", "bbb"))
@@ -306,6 +324,11 @@ var _ = Describe("normalizeQueryKeys", func() {
 })
 
 var _ = Describe("throttleStreams", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	// serve fires n concurrent requests through the middleware and reports the highest number that
 	// were ever inside the handler at once.
 	serve := func(limit, n int) int32 {
@@ -326,7 +349,7 @@ var _ = Describe("throttleStreams", func() {
 		var wg sync.WaitGroup
 		for range n {
 			wg.Go(func() {
-				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/Items", nil))
+				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil))
 			})
 		}
 		// Give the admitted requests time to pile up before letting them finish.
@@ -351,7 +374,7 @@ var _ = Describe("throttleStreams", func() {
 		var wg sync.WaitGroup
 		for range 8 {
 			wg.Go(func() {
-				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/Items", nil))
+				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil))
 			})
 		}
 		close(release)
@@ -368,10 +391,13 @@ var _ = Describe("throttleStreams", func() {
 })
 
 var _ = Describe("caseInsensitivePaths", func() {
+	var ctx context.Context
+
 	var handler http.Handler
 	var gotID, gotContainer string
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		gotID, gotContainer = "", ""
 		r := chi.NewRouter()
 		// Routes are registered lowercase, mirroring the real router.
@@ -392,7 +418,7 @@ var _ = Describe("caseInsensitivePaths", func() {
 
 	serve := func(path string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		handler.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil))
 		return w
 	}
 
@@ -420,7 +446,7 @@ var _ = Describe("caseInsensitivePaths", func() {
 		parent := chi.NewRouter()
 		parent.Mount("/jellyfin", handler)
 		w := httptest.NewRecorder()
-		parent.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/jellyfin/FOO/abc/BAR", nil))
+		parent.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/jellyfin/FOO/abc/BAR", nil))
 		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 })
