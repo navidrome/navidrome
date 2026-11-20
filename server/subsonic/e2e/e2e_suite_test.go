@@ -431,12 +431,17 @@ func setupTestDB() {
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)
 
-	// Create the Subsonic Router with real DS, streamer spy, and real Decider and Archiver
 	streamerSpy = &harness.SpyStreamer{}
+	router = newRouter(nil)
+}
+
+// newRouter builds a Subsonic Router with real DS, streamer spy, and real Decider and Archiver.
+// Call it after any config change the routes depend on, such as Jukebox.Enabled.
+func newRouter(pb playback.PlaybackServer) *subsonic.Router {
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	s := scanner.New(ctx, ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
-	router = subsonic.New(
+	return subsonic.New(
 		ds,
 		noopArtwork{},
 		streamerSpy,
@@ -448,7 +453,7 @@ func setupTestDB() {
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
-		playback.PlaybackServer(nil),
+		pb,
 		metrics.NewNoopInstance(),
 		lyrics.NewLyrics(ds, nil),
 		decider,
