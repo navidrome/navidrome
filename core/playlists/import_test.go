@@ -1215,14 +1215,98 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other/**:playlists/**" })
+			conf.Update(func(c *conf.Options) {
+				c.PlaylistsPath = strings.Join([]string{"other/**", "playlists/**"}, string(filepath.ListSeparator))
+			})
 			Expect(playlists.InPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if folder matches a PlaylistsPath joined with the OS separator", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = filepath.Join("Playlists", "navidrome") })
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+		})
+
+		It("returns true if folder matches a forward-slash PlaylistsPath", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "Playlists/navidrome" })
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+		})
+
+		It("returns true if folder matches a backslash PlaylistsPath on any OS", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\navidrome` })
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\navidrome\` })
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\**` })
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+		})
+
+		It("keeps backslash escapes of glob characters", func() {
+			mix := model.Folder{
+				LibraryPath: "/music",
+				Path:        "",
+				Name:        "[Mix]",
+			}
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `\[Mix\]` })
+			Expect(playlists.InPath(mix)).To(BeTrue())
+
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `\[Mix\]\**` })
+			Expect(playlists.InPath(mix)).To(BeTrue())
+		})
+
+		It("keeps a glob after a Windows separator", func() {
+			nested := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "Rock",
+			}
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\[QR]ock` })
+			Expect(playlists.InPath(nested)).To(BeTrue())
+
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\{Rock,Jazz}` })
+			Expect(playlists.InPath(nested)).To(BeTrue())
+
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = `Playlists\{Pop,Jazz}` })
+			Expect(playlists.InPath(nested)).To(BeFalse())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
 			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other" })
 			Expect(playlists.InPath(folder)).To(BeFalse())
+		})
+
+		It("returns false for a different directory after normalization", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			sibling := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "other",
+			}
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = filepath.Join("Other", "dir") })
+			Expect(playlists.InPath(nsp)).To(BeFalse())
+
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = filepath.Join("Playlists", "navidrome", "**") })
+			Expect(playlists.InPath(sibling)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
