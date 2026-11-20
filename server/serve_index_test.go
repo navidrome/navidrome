@@ -30,7 +30,7 @@ var _ = Describe("serveIndex", func() {
 	})
 
 	It("adds app_config to index.html", func() {
-		r := httptest.NewRequest("GET", "/index.html", nil)
+		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -42,7 +42,7 @@ var _ = Describe("serveIndex", func() {
 
 	It("sets firstTime = true when User table is empty", func() {
 		mockUser.empty = true
-		r := httptest.NewRequest("GET", "/index.html", nil)
+		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -53,7 +53,7 @@ var _ = Describe("serveIndex", func() {
 
 	It("sets firstTime = false when User table is not empty", func() {
 		mockUser.empty = false
-		r := httptest.NewRequest("GET", "/index.html", nil)
+		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -65,7 +65,7 @@ var _ = Describe("serveIndex", func() {
 	DescribeTable("sets configuration values",
 		func(configSetter func(*conf.Options), configKey string, expectedValue any) {
 			conf.Update(configSetter)
-			r := httptest.NewRequest("GET", "/index.html", nil)
+			r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 			w := httptest.NewRecorder()
 
 			serveIndex(ds, fs, nil)(w, r)
@@ -85,6 +85,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("defaultUIVolume", func(c *conf.Options) { c.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
 		Entry("uiSearchDebounceMs", func(c *conf.Options) { c.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
 		Entry("uiCoverArtSize", func(c *conf.Options) { c.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
+		Entry("uiAppendRemixers", func(c *conf.Options) { c.UIAppendRemixers = false }, "uiAppendRemixers", false),
 		Entry("enableCoverAnimation", func(c *conf.Options) { c.EnableCoverAnimation = true }, "enableCoverAnimation", true),
 		Entry("pidAlbum", func(c *conf.Options) { c.PID.Album = "folder" }, "pidAlbum", "folder"),
 		Entry("pidTrack", func(c *conf.Options) { c.PID.Track = "title" }, "pidTrack", "title"),
@@ -115,7 +116,7 @@ var _ = Describe("serveIndex", func() {
 		conf.Update(func(c *conf.Options) {
 			c.UIWelcomeMessage = `&lt;img src=x onerror=alert(1)&gt;&lt;b&gt;Hello&lt;/b&gt;`
 		})
-		r := httptest.NewRequest("GET", "/index.html", nil)
+		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
 		serveIndex(ds, fs, nil)(w, r)
@@ -127,7 +128,7 @@ var _ = Describe("serveIndex", func() {
 
 	DescribeTable("sets other UI configuration values",
 		func(configKey string, expectedValueFunc func() any) {
-			r := httptest.NewRequest("GET", "/index.html", nil)
+			r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 			w := httptest.NewRecorder()
 
 			serveIndex(ds, fs, nil)(w, r)
@@ -151,7 +152,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default URL", func() {
 				It("points to the default URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL })
-					r := httptest.NewRequest("GET", "/index.html", nil)
+					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -163,7 +164,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default offline URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline })
-					r := httptest.NewRequest("GET", "/index.html", nil)
+					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -175,7 +176,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is a custom URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = "https://example.com/images/1.jpg" })
-					r := httptest.NewRequest("GET", "/index.html", nil)
+					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -192,7 +193,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default URL", func() {
 				It("points to the default URL with BaseURL prefix", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL })
-					r := httptest.NewRequest("GET", "/index.html", nil)
+					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -204,7 +205,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is the default offline URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline })
-					r := httptest.NewRequest("GET", "/index.html", nil)
+					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -216,7 +217,7 @@ var _ = Describe("serveIndex", func() {
 			When("it is a custom URL", func() {
 				It("points to the offline URL", func() {
 					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = "https://example.com/images/1.jpg" })
-					r := httptest.NewRequest("GET", "/index.html", nil)
+					r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 					w := httptest.NewRecorder()
 
 					serveIndex(ds, fs, nil)(w, r)
@@ -238,7 +239,7 @@ var _ = Describe("addShareData", func() {
 
 	BeforeEach(func() {
 		data = make(map[string]any)
-		r = httptest.NewRequest("GET", "/", nil)
+		r = httptest.NewRequest(http.MethodGet, "/", nil)
 	})
 
 	Context("when shareInfo is nil or has an empty ID", func() {

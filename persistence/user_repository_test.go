@@ -634,6 +634,44 @@ var _ = Describe("UserRepository", func() {
 			Expect(user.Libraries).To(HaveLen(1))
 			Expect(user.Libraries[0].ID).To(Equal(1))
 		})
+
+		Context("admin without user_library rows", func() {
+			var admin model.User
+			var allLibIDs []int
+
+			libIDs := func(libs model.Libraries) []int {
+				return slice.Map(libs, func(l model.Library) int { return l.ID })
+			}
+
+			BeforeEach(func() {
+				admin = model.User{ID: "unassigned-admin", UserName: "unassignedadmin", NewPassword: "password", IsAdmin: true}
+				Expect(repo.Put(ctx, &admin)).To(Succeed())
+				DeferCleanup(func() { _ = repo.(*userRepository).delete(ctx, squirrel.Eq{"id": admin.ID}) })
+				_, err := repo.(*userRepository).executeSQL(ctx, squirrel.Delete("user_library").Where(squirrel.Eq{"user_id": admin.ID}))
+				Expect(err).ToNot(HaveOccurred())
+
+				all, err := libRepo.GetAll(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				allLibIDs = libIDs(all)
+				Expect(allLibIDs).To(ContainElements(library1.ID, library2.ID))
+			})
+
+			It("populates every library when loading the user", func() {
+				user, err := repo.Get(ctx, admin.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(libIDs(user.Libraries)).To(ConsistOf(allLibIDs))
+
+				user, err = repo.FindByUsername(ctx, admin.UserName)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(libIDs(user.Libraries)).To(ConsistOf(allLibIDs))
+			})
+
+			It("returns every library from GetUserLibraries", func() {
+				libraries, err := repo.GetUserLibraries(ctx, admin.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(libIDs(libraries)).To(ConsistOf(allLibIDs))
+			})
+		})
 	})
 
 	Describe("validateScrobbleFilter", func() {

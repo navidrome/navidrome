@@ -236,7 +236,7 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 
 	var response Response
 	jsonErr := decoder.Decode(&response)
-	if resp.StatusCode != 200 && jsonErr != nil {
+	if resp.StatusCode != http.StatusOK && jsonErr != nil {
 		return nil, fmt.Errorf("last.fm http status: (%d)", resp.StatusCode)
 	}
 	if jsonErr != nil {

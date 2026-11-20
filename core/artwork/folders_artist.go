@@ -28,7 +28,7 @@ const (
 func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if libFS == nil {
-			return nil, "", fmt.Errorf("artist folder lookup unavailable")
+			return nil, "", errors.New("artist folder lookup unavailable")
 		}
 		rel, err := filepath.Rel(libPath, artistFolder)
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {

@@ -7,6 +7,7 @@ package playback
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
@@ -106,7 +107,7 @@ func (ps *playbackServer) getDefaultDevice() (*playbackDevice, error) {
 			return &ps.playbackDevices[idx], nil
 		}
 	}
-	return nil, fmt.Errorf("no default device found")
+	return nil, errors.New("no default device found")
 }
 
 // GetMediaFile retrieves the MediaFile given by the id parameter

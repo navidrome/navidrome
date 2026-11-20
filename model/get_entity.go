@@ -6,6 +6,7 @@ import (
 )
 
 // TODO: Should the type be encoded in the ID?
+
 func GetEntityByID(ctx context.Context, ds DataStore, id string) (any, error) {
 	entity, _, err := getEntity(ctx, ds, id)
 	return entity, err

@@ -170,7 +170,7 @@ func (r *clientInfoRequest) validate() error {
 	return nil
 }
 
-// Only support songs for now
+// validMediaTypes only supports songs for now
 var validMediaTypes = []string{
 	"song",
 }

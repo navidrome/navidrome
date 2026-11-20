@@ -82,7 +82,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 	Describe("NowPlaying", func() {
 		It("updates NowPlaying successfully", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: http.StatusOK}
 
 			err := agent.NowPlaying(ctx, "user-1", track, 0)
 			Expect(err).ToNot(HaveOccurred())
@@ -102,14 +102,14 @@ var _ = Describe("listenBrainzAgent", func() {
 		})
 
 		It("sends a Scrobble successfully", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: http.StatusOK}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("sets the Timestamp properly", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: http.StatusOK}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).ToNot(HaveOccurred())
@@ -130,7 +130,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrRetryLater on error 503", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 503, "error": "Cannot submit listens to queue, please try again later."}`)),
-				StatusCode: 503,
+				StatusCode: http.StatusServiceUnavailable,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
@@ -140,7 +140,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrRetryLater on error 500", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 500, "error": "Something went wrong. Please try again."}`)),
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
@@ -150,7 +150,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrRetryLater on http errors", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad Gateway`)),
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
@@ -160,7 +160,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrUnrecoverable on other errors", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400, "error": "BadRequest: Invalid JSON document submitted."}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
@@ -169,7 +169,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("keeps a 429 scrobble for retry and carries the delay", func() {
 			httpClient.Res = http.Response{
-				StatusCode: 429,
+				StatusCode: http.StatusTooManyRequests,
 				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"7"}},
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code":429,"error":"rate limited"}`)),
 			}
@@ -193,7 +193,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns artist url when MBID present", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.homepage.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetArtistURL(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56")).To(Equal("http://projectmili.com/"))
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
@@ -201,7 +201,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns error when url not present", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.no_homepage.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -219,7 +219,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns error when ListenBrainz returns an error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400,"error": "artist mbid 1 is not valid."}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
 			Expect(err).To(HaveOccurred())
@@ -249,7 +249,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns an error on listenbrainz error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code":400,"error":"artist_mbid: '1' is not a valid uuid"}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetArtistTopSongs(ctx, "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
@@ -259,7 +259,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns all tracks when asked", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			data, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]agents.Song{
@@ -286,7 +286,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns only one track when prompted", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			data, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]agents.Song{
@@ -312,7 +312,7 @@ var _ = Describe("listenBrainzAgent", func() {
 				"release_mbid": "rel-1",
 				"length": 200000
 			}]`
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(body)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(body)), StatusCode: http.StatusOK}
 			data, err := agent.GetArtistTopSongs(ctx, "", "", "mbid-drake", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(HaveLen(1))
@@ -324,7 +324,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("leaves Artists nil when the top song carries no name or MBIDs", func() {
 			body := `[{"recording_name": "Anon", "recording_mbid": "rec-1", "artist_name": "", "artist_mbids": []}]`
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(body)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(body)), StatusCode: http.StatusOK}
 			data, err := agent.GetArtistTopSongs(ctx, "", "", "x", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(HaveLen(1))
@@ -356,7 +356,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns an error on listenbrainz error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetSimilarArtists(ctx, "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
@@ -366,7 +366,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns all data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -380,7 +380,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns subset of data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -416,7 +416,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns an error on listenbrainz error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
@@ -426,7 +426,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns all data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -458,7 +458,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns subset of data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 1)
 			Expect(err).ToNot(HaveOccurred())

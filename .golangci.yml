@@ -22,6 +22,7 @@ linters:
     - ginkgolinter
     - gocritic
     - gocyclo
+    - godoclint
     - goprintffuncname
     - gosec
     - misspell
@@ -29,10 +30,12 @@ linters:
     - nakedret
     - nilerr
     - nolintlint
+    - perfsprint
     - rowserrcheck
     - staticcheck
     - thelper
     - unconvert
+    - usestdlibvars
     - usetesting
     - whitespace
   settings:
@@ -137,6 +140,14 @@ linters:
       force-succeed: true
       force-tonot: true
       validate-async-intervals: true
+    godoclint:
+      # a doc comment that names another symbol (left behind by a move or a paste) is a bug
+      default: none
+      enable:
+        - start-with-name
+      options:
+        start-with-name:
+          include-unexported: true
     gocritic:
       disable-all: true
       enabled-checks:

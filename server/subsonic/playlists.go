@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -62,6 +63,9 @@ func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	ctx := r.Context()
 	p := req.Params(r)
 	songIds := p.Strings("songId")
+	if err := checkTrackCount(songIds); err != nil {
+		return nil, err
+	}
 	playlistId, _ := p.String("playlistId")
 	name, _ := p.String("name")
 	if playlistId == "" && name == "" {
@@ -99,6 +103,9 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 	songsToAdd := p.Strings("songIdToAdd")
+	if err := checkTrackCount(songsToAdd); err != nil {
+		return nil, err
+	}
 	songIndexesToRemove, _ := p.Ints("songIndexToRemove")
 	var plsName *string
 	if s, err := p.String("name"); err == nil {
@@ -123,6 +130,13 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 	return newResponse(), nil
+}
+
+func checkTrackCount(ids []string) error {
+	if playlists.TooManyTracks(len(ids)) {
+		return newError(responses.ErrorGeneric, "too many songs in one request (limit is %d)", playlists.MaxTracksPerRequest())
+	}
+	return nil
 }
 
 func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) responses.Playlist {

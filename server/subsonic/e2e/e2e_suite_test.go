@@ -289,13 +289,13 @@ func buildReq(user model.User, endpoint string, params ...string) *http.Request 
 	for i := 0; i < len(params); i += 2 {
 		q.Add(params[i], params[i+1])
 	}
-	return httptest.NewRequest("GET", "/"+endpoint+"?"+q.Encode(), nil)
+	return httptest.NewRequest(http.MethodGet, "/"+endpoint+"?"+q.Encode(), nil)
 }
 
 // buildPostReq creates a POST request with a JSON body and Subsonic auth params in the query string.
 func buildPostReq(user model.User, endpoint string, body string, params ...string) *http.Request {
 	getReq := buildReq(user, endpoint, params...)
-	r := httptest.NewRequest("POST", getReq.URL.RequestURI(), bytes.NewReader([]byte(body)))
+	r := httptest.NewRequest(http.MethodPost, getReq.URL.RequestURI(), bytes.NewReader([]byte(body)))
 	r.Header.Set("Content-Type", "application/json")
 	return r
 }

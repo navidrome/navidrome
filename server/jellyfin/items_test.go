@@ -58,7 +58,7 @@ var _ = Describe("Items", func() {
 			libs := model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}}
 			getRoot := func(query string, ctx context.Context) dto.QueryResult {
 				w := httptest.NewRecorder()
-				invoke(api.getItems, w, httptest.NewRequest("GET", "/Items?"+query, nil).WithContext(ctx))
+				invoke(api.getItems, w, httptest.NewRequest(http.MethodGet, "/Items?"+query, nil).WithContext(ctx))
 				Expect(w.Code).To(Equal(http.StatusOK))
 				var res dto.QueryResult
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -123,7 +123,7 @@ var _ = Describe("Items", func() {
 		It("lists albums when IncludeItemTypes=MusicAlbum", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&Recursive=true", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&Recursive=true", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -137,7 +137,7 @@ var _ = Describe("Items", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", AlbumID: testID("a1")}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -150,7 +150,7 @@ var _ = Describe("Items", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", AlbumID: testID("a1")}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=music", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=music", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -164,7 +164,7 @@ var _ = Describe("Items", func() {
 				{ID: "2", MediaFileID: testID("s2"), PlaylistID: testID("pl1"), MediaFile: model.MediaFile{ID: testID("s2")}},
 			}}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("pl1"))+"&IncludeItemTypes=Audio", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeID(testID("pl1"))+"&IncludeItemTypes=Audio", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -183,7 +183,7 @@ var _ = Describe("Items", func() {
 				{ID: "3", MediaFileID: testID("s3"), PlaylistID: testID("pl1"), MediaFile: model.MediaFile{ID: testID("s3")}},
 			}}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("pl1"))+"&StartIndex=1&Limit=1", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeID(testID("pl1"))+"&StartIndex=1&Limit=1", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -201,7 +201,7 @@ var _ = Describe("Items", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), AlbumID: testID("a1")}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -214,7 +214,7 @@ var _ = Describe("Items", func() {
 		It("returns 500 when the song cursor fails to open, instead of a truncated 200", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetError(true)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&Recursive=true", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio&Recursive=true", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
@@ -229,7 +229,7 @@ var _ = Describe("Items", func() {
 
 			It("returns no songs for a library parent, as tracks are never its direct children", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio&Recursive=false", nil).
+				r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio&Recursive=false", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -241,7 +241,7 @@ var _ = Describe("Items", func() {
 
 			It("drops only Audio from a multi-type library query", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio,MusicAlbum&Recursive=false", nil).
+				r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio,MusicAlbum&Recursive=false", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
@@ -252,7 +252,7 @@ var _ = Describe("Items", func() {
 
 			It("still lists albums for a library parent, as they are its direct children", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=MusicAlbum&Recursive=false", nil).
+				r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=MusicAlbum&Recursive=false", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
@@ -263,7 +263,7 @@ var _ = Describe("Items", func() {
 			It("still lists an album's tracks, as they are its direct children", func() {
 				fp.getErr = model.ErrNotFound
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio&Recursive=false", nil).
+				r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio&Recursive=false", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
@@ -274,7 +274,7 @@ var _ = Describe("Items", func() {
 
 			It("keeps returning every song when no parent scopes the query", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&Recursive=false", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio&Recursive=false", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -285,7 +285,7 @@ var _ = Describe("Items", func() {
 			// `recursive ?? false`, so an omitted Recursive is a non-recursive request.
 			It("treats an omitted Recursive as false, like Jellyfin", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio", nil).
+				r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio", nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
@@ -297,7 +297,7 @@ var _ = Describe("Items", func() {
 		It("lists an artist's albums when ParentId is an artist and type is MusicAlbum", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One", AlbumArtistID: testID("ar1")}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("ar1"))+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeID(testID("ar1"))+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -311,7 +311,7 @@ var _ = Describe("Items", func() {
 		It("lists artists when IncludeItemTypes=MusicArtist", func() {
 			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicArtist", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -321,7 +321,7 @@ var _ = Describe("Items", func() {
 
 		It("lists genres when IncludeItemTypes=MusicGenre", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicGenre", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicGenre", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -332,7 +332,7 @@ var _ = Describe("Items", func() {
 		It("lists playlists when IncludeItemTypes=Playlist", func() {
 			ds.Playlist().(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("p1"), Name: "My Mix", SongCount: 5}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Playlist", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Playlist", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -347,7 +347,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -364,7 +364,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Salt"}})
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "Salt"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?SearchTerm=Salt&IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?SearchTerm=Salt&IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -380,7 +380,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Salt"}})
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "Salt"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio,MusicAlbum", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio,MusicAlbum", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -397,7 +397,7 @@ var _ = Describe("Items", func() {
 			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
 			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "My Mix", Starred: true}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -418,7 +418,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite&Filters=IsPlayed", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite&Filters=IsPlayed", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, _, err := albumRepo.Options.Filters.ToSql()
@@ -431,7 +431,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}, {ID: testID("s2"), Title: "Song2"}})
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -447,7 +447,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			// The merged window is [1, 3): each type needs at most its first 3 rows, not the table.
@@ -461,7 +461,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=-1&Limit=2", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=-1&Limit=2", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -478,7 +478,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&StartIndex=-1&Limit=10", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&StartIndex=-1&Limit=10", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(albumRepo.Options.Offset).To(Equal(0))
@@ -493,7 +493,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&"+query, nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&"+query, nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, _, err := albumRepo.Options.Filters.ToSql()
@@ -533,7 +533,7 @@ var _ = Describe("Items", func() {
 				ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes="+itemType+"&SearchTerm=one&Filters="+filters, nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -562,7 +562,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -574,7 +574,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(albumRepo.Options.Max).To(Equal(defaultSearchLimit + 1))
@@ -584,7 +584,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=500", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=500", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -595,7 +595,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=999999", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=999999", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -606,7 +606,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=%20%20", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&SearchTerm=%20%20", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -624,7 +624,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&Limit=10", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&Limit=10", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -640,7 +640,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", startIndex), nil).
+				r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", startIndex), nil).
 					WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -661,7 +661,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET",
+			r := httptest.NewRequest(http.MethodGet,
 				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", maxSearchLimit),
 				nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
@@ -682,7 +682,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET",
+			r := httptest.NewRequest(http.MethodGet,
 				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=10", maxSearchLimit-1),
 				nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
@@ -702,7 +702,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song", nil).
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song", nil).
 				WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -721,7 +721,7 @@ var _ = Describe("Items", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET",
+			r := httptest.NewRequest(http.MethodGet,
 				fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d", defaultSearchLimit+50),
 				nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
@@ -738,7 +738,7 @@ var _ = Describe("Items", func() {
 				{ID: testID("r1"), Name: "Alpha"}, {ID: testID("r2"), Name: "Beta"}, {ID: testID("r3"), Name: "Gamma"},
 			})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist&SearchTerm=a&Limit=1", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicArtist&SearchTerm=a&Limit=1", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -751,7 +751,7 @@ var _ = Describe("Items", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&StartIndex=5&Limit=10", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&StartIndex=5&Limit=10", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(albumRepo.Options.Offset).To(Equal(5))
@@ -764,7 +764,7 @@ var _ = Describe("Items", func() {
 			It("returns exactly the requested item when Ids has a single id", func() {
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?Ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?Ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				var res dto.QueryResult
@@ -779,7 +779,7 @@ var _ = Describe("Items", func() {
 				ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				var res dto.QueryResult
@@ -796,7 +796,7 @@ var _ = Describe("Items", func() {
 				mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}, {ID: testID("s2"), Title: "Song2", LibraryID: 1}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				var res dto.QueryResult
@@ -812,7 +812,7 @@ var _ = Describe("Items", func() {
 				ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 2}}) // alice only has access to library 1
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?Ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?Ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				var res dto.QueryResult
@@ -831,7 +831,7 @@ var _ = Describe("Items", func() {
 					mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 					mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 					w := httptest.NewRecorder()
-					r := httptest.NewRequest("GET", "/Items?IncludeItemTypes="+itemType+"&SortBy="+sortBy, nil).WithContext(ctxUser())
+					r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes="+itemType+"&SortBy="+sortBy, nil).WithContext(ctxUser())
 					invoke(api.getItems, w, r)
 					Expect(w.Code).To(Equal(http.StatusOK))
 					got := mfRepo.Options.Sort
@@ -865,7 +865,7 @@ var _ = Describe("Items", func() {
 					albumRepo := ds.Album().(*tests.MockAlbumRepo)
 					albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 					w := httptest.NewRecorder()
-					r := httptest.NewRequest("GET",
+					r := httptest.NewRequest(http.MethodGet,
 						"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder="+sortOrder, nil).WithContext(ctxUser())
 					invoke(api.getItems, w, r)
 					Expect(w.Code).To(Equal(http.StatusOK))
@@ -881,7 +881,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName,PlayCount&SortOrder=Descending,Ascending", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -894,7 +894,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime&SortBy=SortName", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -905,7 +905,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder=Ascending&SortOrder=Descending", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -921,7 +921,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}, {ID: 2}}
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -935,7 +935,7 @@ var _ = Describe("Items", func() {
 				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}, {ID: 2}}
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio", nil).WithContext(ctxUserWithLibraries(libs))
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := mfRepo.Options.Filters.ToSql()
@@ -949,7 +949,7 @@ var _ = Describe("Items", func() {
 				artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}, {ID: 2}}
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicArtist", nil).WithContext(ctxUserWithLibraries(libs))
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := artistRepo.Options.Filters.ToSql()
@@ -963,7 +963,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}, {ID: 2}}
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(2)+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeLibraryID(2)+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -978,7 +978,7 @@ var _ = Describe("Items", func() {
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}} // no access to library 99
-				r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeLibraryID(99)+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
+				r := httptest.NewRequest(http.MethodGet, "/Items?ParentId="+dto.EncodeLibraryID(99)+"&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUserWithLibraries(libs))
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -995,7 +995,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}, {ID: testID("a2"), Name: "Two", LibraryID: 2}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum", nil).WithContext(ctxAdmin())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum", nil).WithContext(ctxAdmin())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				// accessibleLibraryIDs is empty for an admin (Libraries is nil), so
@@ -1015,7 +1015,7 @@ var _ = Describe("Items", func() {
 			It("404s a malformed ParentId instead of listing every song", func() {
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&ParentId=not-a-valid-id", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio&ParentId=not-a-valid-id", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusNotFound))
 			})
@@ -1023,7 +1023,7 @@ var _ = Describe("Items", func() {
 			It("404s a malformed AlbumArtistIds instead of listing every album", func() {
 				ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusNotFound))
 			})
@@ -1031,7 +1031,7 @@ var _ = Describe("Items", func() {
 			It("404s a malformed ArtistIds instead of listing every song", func() {
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&ArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio&ArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusNotFound))
 			})
@@ -1039,7 +1039,7 @@ var _ = Describe("Items", func() {
 			It("404s when a later repeated ArtistIds value is malformed", func() {
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes=Audio&ArtistIds="+dto.EncodeID(testID("ar1"))+"&ArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -1049,7 +1049,7 @@ var _ = Describe("Items", func() {
 				mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes=Audio&ArtistIds="+dto.EncodeID(testID("ar1"))+"&ArtistIds="+dto.EncodeID(testID("ar2")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -1062,7 +1062,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds="+dto.EncodeID(testID("ar1"))+","+dto.EncodeID(testID("ar2")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -1075,7 +1075,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET",
+				r := httptest.NewRequest(http.MethodGet,
 					"/Items?IncludeItemTypes=MusicAlbum&contributingArtistIds="+dto.EncodeID(testID("ar1"))+","+dto.EncodeID(testID("ar2")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -1090,7 +1090,7 @@ var _ = Describe("Items", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds="+dto.EncodeID(testID("no-such-artist")), nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds="+dto.EncodeID(testID("no-such-artist")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, _, err := albumRepo.Options.Filters.ToSql()
@@ -1102,7 +1102,7 @@ var _ = Describe("Items", func() {
 				mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&ParentId="+dto.EncodeID(testID("no-such-album")), nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio&ParentId="+dto.EncodeID(testID("no-such-album")), nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := mfRepo.Options.Filters.ToSql()
@@ -1120,7 +1120,7 @@ var _ = Describe("Items", func() {
 
 			It("returns a mix of both types, not all of one", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -1136,7 +1136,7 @@ var _ = Describe("Items", func() {
 
 			It("interleaves types round-robin (Audio first, per IncludeItemTypes order)", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -1146,7 +1146,7 @@ var _ = Describe("Items", func() {
 
 			It("honors Limit across the merged set", func() {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=1", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=1", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -1158,7 +1158,7 @@ var _ = Describe("Items", func() {
 				// A deep StartIndex on a random merge must not materialize offset+limit rows; since random
 				// reshuffles per request, offset 0 is an equivalent fresh draw. Old behavior returned empty.
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SortBy=Random&Recursive=true&StartIndex=1000&Limit=4", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&SortBy=Random&Recursive=true&StartIndex=1000&Limit=4", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				var res dto.QueryResult
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -1168,7 +1168,7 @@ var _ = Describe("Items", func() {
 			It("propagates a per-type query error", func() {
 				ds.MediaFile().(*tests.MockMediaFileRepo).SetError(true)
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				r := httptest.NewRequest(http.MethodGet, "/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusInternalServerError))
 			})
@@ -1179,7 +1179,7 @@ var _ = Describe("Items", func() {
 		It("returns an album by id", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -1191,7 +1191,7 @@ var _ = Describe("Items", func() {
 
 		It("returns 404 when the id doesn't match any entity", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/missing", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items/missing", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -1200,7 +1200,7 @@ var _ = Describe("Items", func() {
 		It("returns 404 for an album in a library the user can't access", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -1209,7 +1209,7 @@ var _ = Describe("Items", func() {
 		It("returns 404 for a song in a library the user can't access", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1")), nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -1218,7 +1218,7 @@ var _ = Describe("Items", func() {
 		It("returns an album to an admin even when it's outside their (empty) Libraries", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxAdmin()) // admin, Libraries: nil
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxAdmin()) // admin, Libraries: nil
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -1233,7 +1233,7 @@ var _ = Describe("Items", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
 			ds.Library().(*tests.MockLibraryRepo).SetData(libs)
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -1249,7 +1249,7 @@ var _ = Describe("Items", func() {
 		It("does not resolve a library-view id the user has no access to", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 2, Name: "Other"}} // no access to library 1
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -1260,7 +1260,7 @@ var _ = Describe("Items", func() {
 		It("resolves a playlist id via the playlists service", func() {
 			fp.getByIDPls = &model.Playlist{ID: testID("p1"), Name: "My Mix", SongCount: 5}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("p1")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -1274,7 +1274,7 @@ var _ = Describe("Items", func() {
 		It("returns 404 for a non-owned or absent playlist id", func() {
 			fp.getByIDErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("p1")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -1284,7 +1284,7 @@ var _ = Describe("Items", func() {
 		It("resolves a genre id as a MusicGenre item", func() {
 			Expect(ds.Genre().(*tests.MockedGenreRepo).Put(&model.Genre{ID: testID("g1"), Name: "Rock"})).To(Succeed())
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("g1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("g1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("g1")))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -1298,7 +1298,7 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
 			ds.Library().(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxAdmin())
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxAdmin())
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -1314,7 +1314,7 @@ var _ = Describe("Items", func() {
 		It("returns a bare array of the newest albums", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Users/u1/Items/Latest", nil).WithContext(ctxUser())
+			r := httptest.NewRequest(http.MethodGet, "/Users/u1/Items/Latest", nil).WithContext(ctxUser())
 			invoke(api.getLatest, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var items []dto.BaseItemDto
@@ -1328,7 +1328,7 @@ var _ = Describe("Items", func() {
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1}, {ID: 2}}
-			r := httptest.NewRequest("GET", "/Users/u1/Items/Latest", nil).WithContext(ctxUserWithLibraries(libs))
+			r := httptest.NewRequest(http.MethodGet, "/Users/u1/Items/Latest", nil).WithContext(ctxUserWithLibraries(libs))
 			invoke(api.getLatest, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := albumRepo.Options.Filters.ToSql()
@@ -1393,7 +1393,7 @@ var _ = Describe("Items", func() {
 
 		It("keeps entries from every value of a repeated param", func() {
 			repeated := func(rawURL string) string {
-				r := httptest.NewRequest("GET", rawURL, nil)
+				r := httptest.NewRequest(http.MethodGet, rawURL, nil)
 				return knownItemKinds(joinedStrings(req.Params(r), "includeitemtypes"))
 			}
 			Expect(repeated("/Items?includeitemtypes=MusicArtist&includeitemtypes=Audio&includeitemtypes=MusicAlbum")).
@@ -1430,21 +1430,21 @@ var _ = Describe("Items", func() {
 
 	Describe("decodedQueryIDs", func() {
 		It("decodes every entry when all are well-formed", func() {
-			r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("a2")), nil)
+			r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("a2")), nil)
 			ids, ok := decodedQueryIDs(r, "ids")
 			Expect(ok).To(BeTrue())
 			Expect(ids).To(Equal([]string{testID("a1"), testID("a2")}))
 		})
 
 		It("reports not ok and an empty list, not a partially-decoded one, for a mix of valid and malformed entries", func() {
-			r := httptest.NewRequest("GET", "/Items?ids="+dto.EncodeID(testID("a1"))+",not-a-valid-id", nil)
+			r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+",not-a-valid-id", nil)
 			ids, ok := decodedQueryIDs(r, "ids")
 			Expect(ok).To(BeFalse())
 			Expect(ids).To(BeEmpty())
 		})
 
 		It("reports ok for an absent param, decoding to an empty list", func() {
-			r := httptest.NewRequest("GET", "/Items", nil)
+			r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 			ids, ok := decodedQueryIDs(r, "ids")
 			Expect(ok).To(BeTrue())
 			Expect(ids).To(BeEmpty())

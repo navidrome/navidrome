@@ -3,6 +3,7 @@ package playlists
 import (
 	"context"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,28 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 )
+
+// MaxTracksPerRequest is how many tracks one API request may add or set; 0 means no limit.
+// Native album, artist and disc ids are not counted: their expansion is bounded by the library size.
+func MaxTracksPerRequest() int {
+	return max(conf.Server().DevMaxPlaylistTracksPerRequest, 0)
+}
+
+// TooManyTracks reports whether n tracks exceed MaxTracksPerRequest.
+func TooManyTracks(n int) bool {
+	limit := MaxTracksPerRequest()
+	return limit > 0 && n > limit
+}
+
+// MaxRequestBytes is a body limit that grows with MaxTracksPerRequest, so raising the track limit is not undone by a 413.
+// It never goes below floor, and there is no limit when the track limit is 0.
+func MaxRequestBytes(floor, perTrack int64) int64 {
+	tracks := MaxTracksPerRequest()
+	if tracks == 0 {
+		return math.MaxInt64
+	}
+	return max(floor, int64(tracks)*perTrack)
+}
 
 type Playlists interface {
 	// Reads

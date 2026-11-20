@@ -188,7 +188,7 @@ func delAs(u model.User, path string) *httptest.ResponseRecorder { return jReq(u
 // upload performs an authenticated POST with a custom Content-Type and raw body (image upload).
 func upload(user model.User, path, contentType string, body []byte) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("POST", path, bytes.NewReader(body))
+	r := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
 	token, err := auth.CreateToken(&user)
 	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("X-Emby-Token", token)

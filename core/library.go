@@ -111,7 +111,7 @@ func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, li
 func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error {
 	user, ok := request.UserFrom(ctx)
 	if !ok {
-		return fmt.Errorf("user not found in context")
+		return errors.New("user not found in context")
 	}
 
 	// Admin users have access to all libraries
@@ -350,7 +350,7 @@ func updatesColumn(cols []string, col string) bool {
 func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, library *model.Library) error {
 	// Validate path format
 	if !filepath.IsAbs(library.Path) {
-		return fmt.Errorf("library path must be absolute")
+		return errors.New("library path must be absolute")
 	}
 
 	// Clean the path to normalize it
@@ -377,7 +377,7 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 	}
 
 	if !info.IsDir() {
-		return fmt.Errorf("resources.library.validation.pathNotDirectory")
+		return errors.New("resources.library.validation.pathNotDirectory")
 	}
 
 	return nil

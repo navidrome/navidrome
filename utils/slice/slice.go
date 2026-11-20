@@ -142,7 +142,7 @@ func LinesFrom(reader io.Reader) iter.Seq[string] {
 	}
 }
 
-// From https://stackoverflow.com/a/41433698
+// scanLines is based on https://stackoverflow.com/a/41433698
 func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil

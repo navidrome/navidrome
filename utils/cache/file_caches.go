@@ -292,7 +292,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		size = consts.DefaultCacheSize
 	}
 	if size == 0 {
-		log.Warn(fmt.Sprintf("%s cache disabled", name))
+		log.Warn(name + " cache disabled")
 		return nil, nil, nil
 	}
 

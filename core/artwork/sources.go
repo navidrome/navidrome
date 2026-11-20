@@ -56,7 +56,7 @@ func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern 
 	}
 }
 
-// These regexes are used to match the picture type in the file, in the order they are listed.
+// picTypeRegexes match the picture type in the file, in the order they are listed.
 var picTypeRegexes = []*regexp.Regexp{
 	regexp.MustCompile(`(?i).*cover.*front.*|.*front.*cover.*`),
 	regexp.MustCompile(`(?i).*front.*`),

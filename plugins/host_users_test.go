@@ -58,7 +58,7 @@ var _ = Describe("UsersService", Ordered, func() {
 
 		Context("with allUsers=true", func() {
 			BeforeEach(func() {
-				service = newUsersService(ds, nil, true)
+				service = newUsersService(ds, newUserAccess(nil, true))
 			})
 
 			It("should return all users", func() {
@@ -97,7 +97,7 @@ var _ = Describe("UsersService", Ordered, func() {
 		Context("with specific allowed users", func() {
 			BeforeEach(func() {
 				// Only allow access to user1 and user3
-				service = newUsersService(ds, []string{"user1", "user3"}, false)
+				service = newUsersService(ds, newUserAccess([]string{"user1", "user3"}, false))
 			})
 
 			It("should return only allowed users", func() {
@@ -116,7 +116,7 @@ var _ = Describe("UsersService", Ordered, func() {
 
 		Context("with empty allowed users and allUsers=false", func() {
 			BeforeEach(func() {
-				service = newUsersService(ds, []string{}, false)
+				service = newUsersService(ds, newUserAccess([]string{}, false))
 			})
 
 			It("should return no users", func() {
@@ -129,7 +129,7 @@ var _ = Describe("UsersService", Ordered, func() {
 		Context("when datastore returns error", func() {
 			BeforeEach(func() {
 				mockUserRepo.Error = model.ErrNotFound
-				service = newUsersService(ds, nil, true)
+				service = newUsersService(ds, newUserAccess(nil, true))
 			})
 
 			It("should propagate the error", func() {
@@ -167,7 +167,7 @@ var _ = Describe("UsersService", Ordered, func() {
 
 		Context("with allUsers=true", func() {
 			BeforeEach(func() {
-				service = newUsersService(ds, nil, true)
+				service = newUsersService(ds, newUserAccess(nil, true))
 			})
 
 			It("should return only admin users", func() {
@@ -182,7 +182,7 @@ var _ = Describe("UsersService", Ordered, func() {
 		Context("with specific allowed users including admin", func() {
 			BeforeEach(func() {
 				// Allow access to user1 (admin) and user2 (non-admin)
-				service = newUsersService(ds, []string{"user1", "user2"}, false)
+				service = newUsersService(ds, newUserAccess([]string{"user1", "user2"}, false))
 			})
 
 			It("should return only admin users from allowed list", func() {
@@ -196,7 +196,7 @@ var _ = Describe("UsersService", Ordered, func() {
 		Context("with specific allowed users excluding admin", func() {
 			BeforeEach(func() {
 				// Only allow access to non-admin users
-				service = newUsersService(ds, []string{"user2", "user3"}, false)
+				service = newUsersService(ds, newUserAccess([]string{"user2", "user3"}, false))
 			})
 
 			It("should return empty when no admins in allowed list", func() {
@@ -209,7 +209,7 @@ var _ = Describe("UsersService", Ordered, func() {
 		Context("when datastore returns error", func() {
 			BeforeEach(func() {
 				mockUserRepo.Error = model.ErrNotFound
-				service = newUsersService(ds, nil, true)
+				service = newUsersService(ds, newUserAccess(nil, true))
 			})
 
 			It("should propagate the error", func() {

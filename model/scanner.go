@@ -77,7 +77,7 @@ func ParseTargets(libFolders []string) ([]ScanTarget, error) {
 	}
 
 	if len(targets) == 0 {
-		return nil, fmt.Errorf("no valid targets found")
+		return nil, errors.New("no valid targets found")
 	}
 
 	return targets, nil

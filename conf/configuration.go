@@ -3,6 +3,7 @@ package conf
 import (
 	"cmp"
 	"encoding"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -101,6 +102,7 @@ type Options struct {
 	DefaultUIVolume                 int
 	UISearchDebounceMs              int
 	UICoverArtSize                  int
+	UIAppendRemixers                bool // Whether to show remixers after the track artists in the UI
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
@@ -142,6 +144,7 @@ type Options struct {
 	DevUIShowConfig                   bool
 	DevNewEventStream                 bool
 	DevOffsetOptimize                 int
+	DevMaxPlaylistTracksPerRequest    int
 	DevArtworkMaxRequests             int
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
@@ -392,7 +395,7 @@ func Load(noConfigDump bool) {
 	out := os.Stderr
 	if s.LogFile != "" {
 		if mkErr := os.MkdirAll(filepath.Dir(s.LogFile), os.ModePerm); mkErr != nil {
-			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+			logFatal("Error creating log file directory: " + mkErr.Error())
 		}
 		out, err = os.OpenFile(s.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
@@ -728,7 +731,7 @@ func asWrittenInConfigFile(keys []string) []string {
 	})
 }
 
-// Matches keys and section headers in all supported config formats.
+// configFileKeyRx matches keys and section headers in all supported config formats.
 var configFileKeyRx = regexp.MustCompile(`(?m)^\s*\[?\s*"?([\w.]+)"?\s*[]=:]`)
 
 // configKeys maps every accepted option name, lowercased, to its canonical spelling,
@@ -863,7 +866,7 @@ func (s *Options) validateEnforceNonRootUser() error {
 	}
 
 	if getEUID() == 0 {
-		return fmt.Errorf("EnforceNonRootUser is enabled but Navidrome is running as root")
+		return errors.New("EnforceNonRootUser is enabled but Navidrome is running as root")
 	}
 
 	return nil
@@ -1019,6 +1022,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)
 	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
+	viper.SetDefault("uiappendremixers", true)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
@@ -1117,6 +1121,7 @@ func setViperDefaults() {
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devapiv1", false)
 	viper.SetDefault("devoffsetoptimize", 50000)
+	viper.SetDefault("devmaxplaylisttracksperrequest", 50000)
 	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
 	// scrobbles and the UI. See MaxOpenConns.
 	viper.SetDefault("jellyfin.maxconcurrentstreams", max(2, MaxOpenConns()/2))

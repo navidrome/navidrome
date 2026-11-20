@@ -19,7 +19,7 @@ import (
 
 const timeout = 10 * time.Minute
 
-// Initiate is unauthenticated, so the number of live requests must be bounded.
+// maxPending bounds the number of live requests, because Initiate is unauthenticated.
 const maxPending = 1000
 
 var (
@@ -197,7 +197,7 @@ func newSecret() string {
 	return hex.EncodeToString(b)
 }
 
-// Users often type the code in groups ("123 456").
+// normalizeCode removes whitespace: users often type the code in groups ("123 456").
 func normalizeCode(code string) string {
 	return strings.Join(strings.Fields(code), "")
 }

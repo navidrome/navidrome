@@ -1202,7 +1202,7 @@ var _ = Describe("AlbumRepository", func() {
 		It("does not panic when the cursor yields a dbAlbum with nil Album", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbAlbum (where Album is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbAlbum, error) bool) {
 				var empty dbAlbum // Album pointer is nil
 				yield(empty, dbErr)

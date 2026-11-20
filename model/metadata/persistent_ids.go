@@ -49,7 +49,7 @@ func computePID(mf model.MediaFile, md Metadata, spec, albumSpec string, prepend
 			values[i] = v
 		}
 		if hasValue {
-			pid += strings.Join(values, "\\")
+			pid = strings.Join(values, "\\")
 			break
 		}
 	}
@@ -121,6 +121,7 @@ func (md Metadata) albumID(mf model.MediaFile, pidConf string) string {
 }
 
 // BFR Must be configurable?
+
 func (md Metadata) artistID(name string) string {
 	mf := model.MediaFile{AlbumArtist: name}
 	return computePID(mf, md, "albumartistid", "", false, id.NewHash)
