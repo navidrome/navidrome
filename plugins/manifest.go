@@ -129,6 +129,10 @@ func (m *Manifest) HasLibraryFilesystemPermission() bool {
 		m.Permissions.Library.Filesystem
 }
 
+func (m *Manifest) HasUsersPermission() bool {
+	return m.Permissions != nil && m.Permissions.Users != nil
+}
+
 func (m *Manifest) HasStoragePermission() bool {
 	return m.Permissions != nil && m.Permissions.Storage != nil
 }

@@ -196,6 +196,8 @@ Provides artist and album metadata. All methods are **optional** — implement o
 | `nd_get_similar_songs_by_album`   | `{id, name, artist, ...}`  | `{songs: [{name, artist}]}`      | Similar songs by album   |
 | `nd_get_similar_songs_by_artist`  | `{id, name, mbid?, count}` | `{songs: [{name, artist}]}`      | Similar songs by artist  |
 
+Similar-songs requests also carry optional `username` field. It is set only when the plugin has the [`users`](#users) permission and has been granted access to that user, otherwise it is empty.
+
 To use the plugin as a metadata agent, add it to your config:
 
 ```toml

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/model"
@@ -61,6 +62,10 @@ func (p *plugin) Close() error {
 
 func (p *plugin) hasLibraryFilesystemAccess(libID int) bool {
 	return p.manifest.HasLibraryFilesystemPermission() && p.libraries.contains(libID)
+}
+
+func (p *plugin) hasUserAccess(userID string) bool {
+	return p.manifest.HasUsersPermission() && (p.allUsers || slices.Contains(p.allowedUserIDs, userID))
 }
 
 // libraryAccess captures the set of libraries a plugin is permitted to see,
