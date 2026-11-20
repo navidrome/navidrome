@@ -90,6 +90,11 @@ describe('loadWaveform', () => {
     )
   })
 
+  it('maps the silence floor to zero amplitude', async () => {
+    subsonic.getWaveform.mockResolvedValue(waveformResponse([-120, -120]))
+    await expect(loadWaveform('song-1')).resolves.toEqual([0, 0])
+  })
+
   it('passes the abort signal to the request', async () => {
     subsonic.getWaveform.mockResolvedValue(waveformResponse([0]))
     const controller = new AbortController()

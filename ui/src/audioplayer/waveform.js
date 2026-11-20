@@ -7,6 +7,7 @@ const BAR_WIDTH = 2
 const BAR_GAP = 1
 const UNPLAYED_ALPHA = 0.5
 const MAX_CACHED = 50
+const SILENCE_DB = -120
 
 const cache = new Map()
 
@@ -23,12 +24,13 @@ export const loadWaveform = (id, signal) => {
   const promise = subsonic
     .getWaveform(id, WAVEFORM_SAMPLES, { signal })
     .then((resp) => {
-      // The server sends RMS levels in dBFS (-120 to 0), converted here to linear amplitude.
+      // The server sends RMS levels in dBFS (-120 to 0), converted here to linear amplitude. The
+      // -120 dBFS floor is silence and maps to 0, so a silent track draws flat instead of full height.
       const levels = resp.json['subsonic-response']?.waveform?.levels
       if (!levels?.length) {
         throw new Error('No waveform available')
       }
-      return levels.map((db) => 10 ** (db / 20))
+      return levels.map((db) => (db <= SILENCE_DB ? 0 : 10 ** (db / 20)))
     })
   const evict = () => {
     if (cache.get(id) === promise) {
