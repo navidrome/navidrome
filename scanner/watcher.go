@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -245,7 +246,7 @@ func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, 
 			log.Debug(ctx, "Watcher stopped due to context cancellation", "libraryID", lib.ID, "name", lib.Name)
 			return nil
 		case path := <-events:
-			path, err := filepath.Rel(absLibPath, path)
+			path, err := utils.RelPath(absLibPath, path)
 			if err != nil {
 				log.Error(ctx, "Error getting relative path", "libraryID", lib.ID, "absolutePath", absLibPath, "path", path, err)
 				continue

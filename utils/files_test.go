@@ -223,3 +223,26 @@ var _ = Describe("FileExists", func() {
 		Expect(result).To(Or(BeTrue(), BeFalse()))      // Should not panic
 	})
 })
+
+var _ = Describe("RelPath", func() {
+	DescribeTable("returns the same result as filepath.Rel",
+		func(base, target string) {
+			base, target = filepath.FromSlash(base), filepath.FromSlash(target)
+			expected, expectedErr := filepath.Rel(base, target)
+			rel, err := utils.RelPath(base, target)
+			Expect(rel).To(Equal(expected))
+			if expectedErr == nil {
+				Expect(err).ToNot(HaveOccurred())
+			} else {
+				Expect(err).To(MatchError(expectedErr.Error()))
+			}
+		},
+		Entry("same path", "/music", "/music"),
+		Entry("same path with trailing separator", "/music", "/music/"),
+		Entry("child path", "/music", "/music/artist/album"),
+		Entry("sibling path", "/music/a", "/music/b"),
+		Entry("parent path", "/music/artist", "/music"),
+		Entry("relative paths", "music", "music/artist"),
+		Entry("absolute and relative paths", "/music", "music"),
+	)
+})
