@@ -26,7 +26,6 @@ import (
 	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega" //nolint:staticcheck
 )
@@ -58,7 +57,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	db.Db().SetMaxOpenConns(1)
 	db.Init(ctx)
 
-	ds := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds := persistence.New(db.Db())
 	auth.Init(ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
