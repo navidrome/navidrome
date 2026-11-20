@@ -7,15 +7,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -26,13 +28,14 @@ var _ = Describe("Library API", func() {
 	var router http.Handler
 	var adminUser, regularUser model.User
 	var library1, library2 model.Library
+	var library1Path, library2Path string
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
+		nativeRouter := newTestRouter(ds, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -51,21 +54,11 @@ var _ = Describe("Library API", func() {
 			NewPassword: "userpass",
 		}
 
-		// Create test libraries
-		library1 = model.Library{
-			ID:   1,
-			Name: "Test Library 1",
-			Path: "/music/library1",
-		}
-		library2 = model.Library{
-			ID:   2,
-			Name: "Test Library 2",
-			Path: "/music/library2",
-		}
-
-		// Store in mock datastore
-		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
-		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
+		putUsers(ctx, ds, &adminUser, &regularUser)
+		library1Path, library2Path = GinkgoT().TempDir(), GinkgoT().TempDir()
+		persistencetest.SetLibraries(ctx, ds, library1Path, library2Path)
+		library1 = model.Library{ID: 1, Name: "Test Library 1", Path: library1Path}
+		library2 = model.Library{ID: 2, Name: "Test Library 2", Path: library2Path}
 		Expect(ds.Library().Put(ctx, &library1)).To(Succeed())
 		Expect(ds.Library().Put(ctx, &library2)).To(Succeed())
 	})
@@ -111,7 +104,7 @@ var _ = Describe("Library API", func() {
 					err := json.Unmarshal(w.Body.Bytes(), &library)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(library.Name).To(Equal("Test Library 1"))
-					Expect(library.Path).To(Equal("/music/library1"))
+					Expect(library.Path).To(Equal(library1Path))
 				})
 
 				It("returns 404 for non-existent library", func() {
@@ -137,7 +130,7 @@ var _ = Describe("Library API", func() {
 				It("creates a new library", func() {
 					newLibrary := model.Library{
 						Name: "New Library",
-						Path: "/music/new",
+						Path: GinkgoT().TempDir(),
 					}
 					body, _ := json.Marshal(newLibrary)
 					req := createAuthenticatedRequest("POST", "/library", bytes.NewBuffer(body), adminToken)
@@ -145,13 +138,21 @@ var _ = Describe("Library API", func() {
 
 					router.ServeHTTP(w, req)
 
-					Expect(w.Code).To(Equal(http.StatusOK))
+					Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+					var created struct{ ID string }
+					Expect(json.Unmarshal(w.Body.Bytes(), &created)).To(Succeed())
+					id, err := strconv.Atoi(created.ID)
+					Expect(err).ToNot(HaveOccurred())
+					stored, err := ds.Library().Get(ctx, id)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(stored.Name).To(Equal("New Library"))
+					Expect(stored.Path).To(Equal(newLibrary.Path))
 				})
 
 				It("validates required fields", func() {
 					invalidLibrary := model.Library{
 						Name: "", // Missing name
-						Path: "/music/invalid",
+						Path: GinkgoT().TempDir(),
 					}
 					body, _ := json.Marshal(invalidLibrary)
 					req := createAuthenticatedRequest("POST", "/library", bytes.NewBuffer(body), adminToken)
@@ -160,7 +161,7 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("library name is required"))
+					Expect(w.Body.String()).To(ContainSubstring(`"name":"ra.validation.required"`))
 				})
 
 				It("validates path field", func() {
@@ -175,18 +176,18 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("library path is required"))
+					Expect(w.Body.String()).To(ContainSubstring(`"path":"ra.validation.required"`))
 				})
 			})
 
 			Describe("PUT /api/library/{id}", func() {
 				It("updates an existing library", func() {
 					updatedLibrary := model.Library{
-						Name: "Updated Library 1",
-						Path: "/music/updated",
+						Name: "Updated Library 2",
+						Path: GinkgoT().TempDir(),
 					}
 					body, _ := json.Marshal(updatedLibrary)
-					req := createAuthenticatedRequest("PUT", "/library/1", bytes.NewBuffer(body), adminToken)
+					req := createAuthenticatedRequest("PUT", "/library/2", bytes.NewBuffer(body), adminToken)
 					w := httptest.NewRecorder()
 
 					router.ServeHTTP(w, req)
@@ -196,34 +197,43 @@ var _ = Describe("Library API", func() {
 					var updated model.Library
 					err := json.Unmarshal(w.Body.Bytes(), &updated)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(updated.ID).To(Equal(1))
-					Expect(updated.Name).To(Equal("Updated Library 1"))
-					Expect(updated.Path).To(Equal("/music/updated"))
+					Expect(updated.ID).To(Equal(2))
+					Expect(updated.Name).To(Equal("Updated Library 2"))
+					Expect(updated.Path).To(Equal(updatedLibrary.Path))
+					stored, err := ds.Library().Get(ctx, 2)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(stored.Name).To(Equal("Updated Library 2"))
+					Expect(stored.Path).To(Equal(updatedLibrary.Path))
 				})
 
 				It("validates required fields on update", func() {
 					invalidLibrary := model.Library{
 						Name: "",
-						Path: "/music/path",
+						Path: library2Path,
 					}
 					body, _ := json.Marshal(invalidLibrary)
-					req := createAuthenticatedRequest("PUT", "/library/1", bytes.NewBuffer(body), adminToken)
+					req := createAuthenticatedRequest("PUT", "/library/2", bytes.NewBuffer(body), adminToken)
 					w := httptest.NewRecorder()
 
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
+					stored, err := ds.Library().Get(ctx, 2)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(stored.Name).To(Equal("Test Library 2"))
 				})
 			})
 
 			Describe("DELETE /api/library/{id}", func() {
 				It("deletes an existing library", func() {
-					req := createAuthenticatedRequest("DELETE", "/library/1", nil, adminToken)
+					req := createAuthenticatedRequest("DELETE", "/library/2", nil, adminToken)
 					w := httptest.NewRecorder()
 
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusOK))
+					_, err := ds.Library().Get(ctx, 2)
+					Expect(err).To(MatchError(model.ErrNotFound))
 				})
 
 				It("returns 404 for non-existent library", func() {
@@ -332,6 +342,7 @@ var _ = Describe("Library API", func() {
 				})
 
 				It("sets user's libraries", func() {
+					Expect(ds.User().SetUserLibraries(ctx, regularUser.ID, []int{1})).To(Succeed())
 					request := map[string][]int{
 						"libraryIds": {1, 2},
 					}
@@ -347,6 +358,9 @@ var _ = Describe("Library API", func() {
 					err := json.Unmarshal(w.Body.Bytes(), &libraries)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(libraries).To(HaveLen(2))
+					stored, err := ds.User().GetUserLibraries(ctx, regularUser.ID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(stored).To(HaveLen(2))
 				})
 
 				It("validates library IDs exist", func() {
@@ -360,7 +374,7 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("library ID 999 does not exist"))
+					Expect(w.Body.String()).To(ContainSubstring("one or more library IDs are invalid"))
 				})
 
 				It("requires at least one library for regular users", func() {

@@ -6,26 +6,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-type noopPluginUnloader struct{}
-
-func (noopPluginUnloader) UnloadDisabledPlugins(context.Context) {}
 
 // Pins that the token-epoch handoff survives a real request through the real middleware chain.
 var _ = Describe("PUT /user/{id}: token refresh on self password change", func() {
@@ -39,17 +31,10 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 			c.EnableUserEditing = true
 			c.EnableSharing = false
 			c.SessionTimeout = time.Hour
-			c.DbPath = filepath.Join(GinkgoT().TempDir(), "nativeapi-user-refresh.db") + "?_journal_mode=WAL"
 		})
-		// db.Db() is a process-wide singleton that this DeferCleanup closes for the whole binary; keep this the only real-DB spec in this package.
-		DeferCleanup(db.Init(GinkgoT().Context()))
-
-		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-
-		userService := core.NewUser(ds, noopPluginUnloader{})
-		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), userService, nil, nil, nil, nil, nil)
-		router = server.JWTVerifier(nativeRouter)
+		router = server.JWTVerifier(newTestRouter(ds, nil, nil, nil))
 	})
 
 	It("carries the bumped epoch in the refreshed token, not the epoch the token was minted with", func() {

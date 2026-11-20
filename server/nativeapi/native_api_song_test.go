@@ -4,33 +4,62 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+type failingMediaFileReads struct{ model.MediaFileRepository }
+
+var errMediaFileReads = errors.New("db unavailable")
+
+func (failingMediaFileReads) Count(context.Context, ...rest.QueryOptions) (int64, error) {
+	return 0, errMediaFileReads
+}
+
+func (failingMediaFileReads) ReadAll(context.Context, ...rest.QueryOptions) ([]model.MediaFile, error) {
+	return nil, errMediaFileReads
+}
+
+func (failingMediaFileReads) Read(context.Context, string) (*model.MediaFile, error) {
+	return nil, errMediaFileReads
+}
+
+type failingMediaFiles struct{ model.DataStore }
+
+func (f failingMediaFiles) MediaFile() model.MediaFileRepository {
+	return failingMediaFileReads{f.DataStore.MediaFile()}
+}
 
 var _ = Describe("Song Endpoints", func() {
 	var (
 		ctx       context.Context
 		router    http.Handler
-		ds        *tests.MockDataStore
-		mfRepo    *tests.MockMediaFileRepo
-		userRepo  *tests.MockedUserRepo
+		ds        model.DataStore
 		w         *httptest.ResponseRecorder
 		testUser  model.User
 		testSongs model.MediaFiles
 	)
+
+	useFailingMediaFiles := func() {
+		router = server.JWTVerifier(newTestRouter(persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
+			return failingMediaFiles{ds}
+		}), nil, nil, nil))
+	}
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
@@ -39,17 +68,7 @@ var _ = Describe("Song Endpoints", func() {
 			c.SessionTimeout = time.Minute
 		})
 
-		// Setup mock repositories
-		mfRepo = tests.CreateMockMediaFileRepo()
-		userRepo = tests.CreateMockUserRepo()
-
-		ds = &tests.MockDataStore{
-			MockedMediaFile: mfRepo,
-			MockedUser:      userRepo,
-			MockedProperty:  &tests.MockedPropertyRepo{},
-		}
-
-		// Initialize auth system
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
 
 		// Create test user
@@ -60,13 +79,13 @@ var _ = Describe("Song Endpoints", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(ctx, &testUser)
-		Expect(err).ToNot(HaveOccurred())
+		putUsers(ctx, ds, &testUser)
 
 		// Create test songs
 		testSongs = model.MediaFiles{
 			{
 				ID:        "song-1",
+				LibraryID: model.DefaultLibraryID,
 				Title:     "Test Song 1",
 				Artist:    "Test Artist 1",
 				Album:     "Test Album 1",
@@ -82,6 +101,7 @@ var _ = Describe("Song Endpoints", func() {
 			},
 			{
 				ID:        "song-2",
+				LibraryID: model.DefaultLibraryID,
 				Title:     "Test Song 2",
 				Artist:    "Test Artist 2",
 				Album:     "Test Album 2",
@@ -96,11 +116,11 @@ var _ = Describe("Song Endpoints", func() {
 				UpdatedAt: time.Now(),
 			},
 		}
-		mfRepo.SetData(testSongs)
+		for i := range testSongs {
+			Expect(ds.MediaFile().Put(ctx, &testSongs[i])).To(Succeed())
+		}
 
-		// Create the native API router and wrap it with the JWTVerifier middleware
-		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
-		router = server.JWTVerifier(nativeRouter)
+		router = server.JWTVerifier(newTestRouter(ds, nil, nil, nil))
 		w = httptest.NewRecorder()
 	})
 
@@ -150,7 +170,7 @@ var _ = Describe("Song Endpoints", func() {
 			})
 
 			It("handles repository errors gracefully", func() {
-				mfRepo.SetError(true)
+				useFailingMediaFiles()
 
 				req := createAuthenticatedRequest("GET", "/song", nil)
 				router.ServeHTTP(w, req)
@@ -194,7 +214,7 @@ var _ = Describe("Song Endpoints", func() {
 			})
 
 			It("handles repository errors gracefully", func() {
-				mfRepo.SetError(true)
+				useFailingMediaFiles()
 
 				req := createAuthenticatedRequest("GET", "/song/song-1", nil)
 				router.ServeHTTP(w, req)
@@ -274,13 +294,11 @@ var _ = Describe("Song Endpoints", func() {
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
-				// Should still return all songs since our mock doesn't implement pagination
-				// but the request should be processed successfully
-				Expect(response).ToNot(BeEmpty())
+				Expect(response).To(HaveLen(1))
 			})
 
 			It("handles sort parameters", func() {
-				req := createAuthenticatedRequest("GET", "/song?_sort=title&_order=ASC", nil)
+				req := createAuthenticatedRequest("GET", "/song?_sort=title&_order=DESC", nil)
 				router.ServeHTTP(w, req)
 
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -290,6 +308,8 @@ var _ = Describe("Song Endpoints", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(response).To(HaveLen(2))
+				Expect(response[0].ID).To(Equal("song-2"))
+				Expect(response[1].ID).To(Equal("song-1"))
 			})
 
 			It("handles filter parameters", func() {
@@ -308,8 +328,8 @@ var _ = Describe("Song Endpoints", func() {
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
-				// Mock doesn't implement filtering, but request should be processed
-				Expect(response).ToNot(BeEmpty())
+				Expect(response).To(HaveLen(1))
+				Expect(response[0].ID).To(Equal("song-1"))
 			})
 		})
 	})
@@ -328,15 +348,14 @@ var _ = Describe("Song Endpoints", func() {
 			router.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			// The X-Total-Count header might be set by the REST framework
-			// We just verify the request is processed successfully
+			Expect(w.Header().Get("X-Total-Count")).To(Equal("2"))
 		})
 	})
 
 	Describe("Edge cases and error handling", func() {
 		Context("when repository is unavailable", func() {
 			It("handles database connection errors", func() {
-				mfRepo.SetError(true)
+				useFailingMediaFiles()
 
 				req := createAuthenticatedRequest("GET", "/song", nil)
 				router.ServeHTTP(w, req)
@@ -347,7 +366,9 @@ var _ = Describe("Song Endpoints", func() {
 
 		Context("when no songs exist", func() {
 			It("returns empty array when no songs are found", func() {
-				mfRepo.SetData(model.MediaFiles{}) // Empty dataset
+				for _, song := range testSongs {
+					Expect(ds.MediaFile().Delete(ctx, song.ID)).To(Succeed())
+				}
 
 				req := createAuthenticatedRequest("GET", "/song", nil)
 				router.ServeHTTP(w, req)
@@ -373,8 +394,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     true,
 					NewPassword: "adminpass",
 				}
-				err := userRepo.Put(ctx, &adminUser)
-				Expect(err).ToNot(HaveOccurred())
+				putUsers(ctx, ds, &adminUser)
 
 				// Create JWT token for admin user
 				token, err := auth.CreateToken(&adminUser)
@@ -396,8 +416,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     false,
 					NewPassword: "userpass",
 				}
-				err := userRepo.Put(ctx, &regularUser)
-				Expect(err).ToNot(HaveOccurred())
+				putUsers(ctx, ds, &regularUser)
 
 				// Create JWT token for regular user
 				token, err := auth.CreateToken(&regularUser)
