@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -80,7 +81,7 @@ var _ = Describe("processor.acquire", func() {
 
 	It("found-folder: persists state from a folder image, writes no store file, keeps sourcePath/refMtime", func() {
 		fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-		putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 		Expect(out).To(Equal(outcomeFound))
@@ -112,7 +113,7 @@ var _ = Describe("processor.acquire", func() {
 
 		It("holds it once across the write window", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "alL1", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alL1", Name: "Album", FolderIDs: []string{fid}})
 
 			out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL1"})
 			Expect(out).To(Equal(outcomeFound))
@@ -123,7 +124,7 @@ var _ = Describe("processor.acquire", func() {
 		// Resolution can reach the network, so holding the lock across it would let one slow
 		// provider block prune, and every drain queued behind prune's writer.
 		It("never takes it while only resolving", func() {
-			putAlbums(ctx, ds, model.Album{ID: "alL2", Name: "Album", FolderIDs: []string{"f1"}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alL2", Name: "Album", FolderIDs: []string{"f1"}})
 
 			out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alL2"})
 			Expect(out).To(Equal(outcomeAbsent))
@@ -132,7 +133,7 @@ var _ = Describe("processor.acquire", func() {
 	})
 
 	It("found-embedded: writes a store file and computes a non-empty blurhash from a real fixture", func() {
-		putAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{"f1"}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{"f1"}})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(out).To(Equal(outcomeFound))
@@ -152,7 +153,7 @@ var _ = Describe("processor.acquire", func() {
 	})
 
 	It("absent: no local source and no external error persists a known-absent state", func() {
-		putAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album"})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 		Expect(out).To(Equal(outcomeAbsent))
@@ -171,7 +172,7 @@ var _ = Describe("processor.acquire", func() {
 		Expect(os.MkdirAll(filepath.Join(libRoot, "an-album"), 0o755)).To(Succeed())
 		useLibrary(ctx, ds, libRoot)
 		fid := putFolder(ctx, ds, "an-album", "cover.jpg")
-		putAlbums(ctx, ds, model.Album{ID: "al-io", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-io", Name: "Album", FolderIDs: []string{fid}})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al-io"})
 		Expect(out).To(Equal(outcomeFailed))
@@ -230,7 +231,7 @@ var _ = Describe("processor.acquire", func() {
 
 	It("failed-on-extError: leaves the item's state untouched", func() {
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-		putAlbums(ctx, ds, model.Album{ID: "al4", Name: "Album"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al4", Name: "Album"})
 		imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 		out, _, retryIn := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
@@ -243,7 +244,7 @@ var _ = Describe("processor.acquire", func() {
 
 	It("failed-on-extError: reports the delay a throttled provider asked for", func() {
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-		putAlbums(ctx, ds, model.Album{ID: "al4r", Name: "Album"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al4r", Name: "Album"})
 		imageAgents(&fakeImageAgent{name: "throttled", err: &agents.RetryLaterError{RetryIn: 42 * time.Second}})
 
 		out, _, retryIn := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4r"})
@@ -254,7 +255,7 @@ var _ = Describe("processor.acquire", func() {
 	It("found-stale: a fallback hit after a transient external failure persists state and returns outcomeFoundStale", func() {
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
 		fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-		putAlbums(ctx, ds, model.Album{ID: "alstale", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alstale", Name: "Album", FolderIDs: []string{fid}})
 		imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})
@@ -272,7 +273,7 @@ var _ = Describe("processor.acquire", func() {
 		Expect(os.WriteFile(filepath.Join(libRoot, "album", "cover.jpg"), jxlCodestream, 0600)).To(Succeed())
 		useLibrary(ctx, ds, libRoot)
 		fid := putFolder(ctx, ds, "album", "cover.jpg")
-		putAlbums(ctx, ds, model.Album{ID: "alU", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alU", Name: "Album", FolderIDs: []string{fid}})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alU"})
 		Expect(out).To(Equal(outcomeFound))
@@ -292,7 +293,7 @@ var _ = Describe("processor.acquire", func() {
 		Expect(os.WriteFile(filepath.Join(libRoot, "album", "cover.jpg"), nil, 0600)).To(Succeed())
 		useLibrary(ctx, ds, libRoot)
 		fid := putFolder(ctx, ds, "album", "cover.jpg")
-		putAlbums(ctx, ds, model.Album{ID: "alE", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alE", Name: "Album", FolderIDs: []string{fid}})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alE"})
 		Expect(out).To(Equal(outcomeFailed))
@@ -309,7 +310,7 @@ var _ = Describe("processor.acquire", func() {
 		}))
 		DeferCleanup(srv.Close)
 
-		putAlbums(ctx, ds, model.Album{ID: "alX", Name: "Album"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alX", Name: "Album"})
 		imageAgents(&fakeImageAgent{name: "deezerFake", imgs: []agents.ExternalImage{{URL: srv.URL, Size: 500}}})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alX"})
@@ -328,7 +329,7 @@ var _ = Describe("processor.acquire", func() {
 		}))
 		DeferCleanup(srv.Close)
 
-		putAlbums(ctx, ds, model.Album{ID: "alext", Name: "Album"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alext", Name: "Album"})
 		imageAgents(&fakeImageAgent{name: "deezerFake", imgs: []agents.ExternalImage{{URL: srv.URL, Size: 500}}})
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alext"})
@@ -348,7 +349,7 @@ var _ = Describe("processor.acquire", func() {
 
 	It("dedup: a second item with identical bytes skips decode and reuses the artwork row", func() {
 		fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-		putAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album A", FolderIDs: []string{fid}}, model.Album{ID: "al6", Name: "Album B", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album A", FolderIDs: []string{fid}}, model.Album{ID: "al6", Name: "Album B", FolderIDs: []string{fid}})
 
 		out1, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
 		Expect(out1).To(Equal(outcomeFound))
@@ -382,7 +383,7 @@ var _ = Describe("processor.acquire", func() {
 			Expect(os.Chtimes(img, time.Unix(mtime, 0), time.Unix(mtime, 0))).To(Succeed())
 		}
 		useLibrary(ctx, ds, libRoot)
-		putAlbums(ctx, ds,
+		persistencetest.PutAlbums(ctx, ds,
 			model.Album{ID: "alA", Name: "Album A", FolderIDs: []string{putFolder(ctx, ds, "album-a", "cover.jpg")}},
 			model.Album{ID: "alB", Name: "Album B", FolderIDs: []string{putFolder(ctx, ds, "album-b", "cover.jpg")}},
 		)
@@ -506,7 +507,7 @@ var _ = Describe("processor.acquire", func() {
 		Expect(os.WriteFile(filepath.Join(libRoot, "album", "cover.jpg"), imgBytes, 0600)).To(Succeed())
 		useLibrary(ctx, ds, libRoot)
 		fid := putFolder(ctx, ds, "album", "cover.jpg")
-		putAlbums(ctx, ds, model.Album{ID: "alM", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alM", Name: "Album", FolderIDs: []string{fid}})
 
 		hash, err := hashImage(bytes.NewReader(imgBytes))
 		Expect(err).ToNot(HaveOccurred())
@@ -522,7 +523,7 @@ var _ = Describe("processor.acquire", func() {
 	})
 
 	It("store write failure: fails without writing state", func() {
-		putAlbums(ctx, ds, model.Album{ID: "al7", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{"f1"}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al7", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{"f1"}})
 
 		// A store root that is a plain file makes every MkdirAll under it fail.
 		blockedRoot := filepath.Join(GinkgoT().TempDir(), "not-a-dir")

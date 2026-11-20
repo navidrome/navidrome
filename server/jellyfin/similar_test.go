@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/model"
@@ -132,7 +133,7 @@ var _ = Describe("getInstantMix", func() {
 		DeferCleanup(func() { similarWait = old })
 
 		ds := persistence.New(db.Db())
-		putSongs(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Seed Song", LibraryID: 1})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Seed Song", LibraryID: 1})
 		release := make(chan struct{})
 		DeferCleanup(func() { close(release) })
 		api := &Router{ds: ds, provider: &blockingProvider{release: release}}
@@ -158,7 +159,7 @@ var _ = Describe("getInstantMix", func() {
 			songs = append(songs, model.MediaFile{ID: testID(fmt.Sprintf("t%d", i)), Title: fmt.Sprintf("Track %d", i), LibraryID: 1})
 		}
 		ds := persistence.New(db.Db())
-		putSongs(ctx, ds, songs[0])
+		persistencetest.PutMediaFiles(ctx, ds, songs[0])
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs[1:]}}
 
 		w := httptest.NewRecorder()
@@ -204,7 +205,7 @@ var _ = Describe("getSimilarAlbums", func() {
 		// With no external agent the provider falls back to the album's own tracks, which map
 		// straight back to the requested album.
 		ds := persistence.New(db.Db())
-		putAlbums(ctx, ds, model.Album{ID: testID("al-1"), Name: "Seed Album", LibraryID: 1})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("al-1"), Name: "Seed Album", LibraryID: 1})
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{
 			songs: model.MediaFiles{{ID: testID("m1"), AlbumID: testID("al-1"), LibraryID: 1}},
 		}}
@@ -223,7 +224,7 @@ var _ = Describe("getSimilarAlbums", func() {
 
 	It("returns albums derived from the provider's similar songs", func() {
 		ds := persistence.New(db.Db())
-		putAlbums(ctx, ds, model.Album{ID: testID("al-2"), Name: "Other", LibraryID: 1})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("al-2"), Name: "Other", LibraryID: 1})
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{
 			songs: model.MediaFiles{{ID: testID("m1"), AlbumID: testID("al-2"), LibraryID: 1}},
 		}}

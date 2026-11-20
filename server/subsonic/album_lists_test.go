@@ -40,7 +40,7 @@ var _ = Describe("Album Lists", func() {
 		GinkgoHelper()
 		base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		for i := 1; i <= 12; i++ {
-			putAlbums(ctx, ds, model.Album{ID: fmt.Sprintf("al-%02d", i), Name: fmt.Sprintf("Album %02d", i),
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: fmt.Sprintf("al-%02d", i), Name: fmt.Sprintf("Album %02d", i),
 				CreatedAt: base.Add(time.Duration(i) * time.Hour)})
 		}
 	}
@@ -57,8 +57,8 @@ var _ = Describe("Album Lists", func() {
 			n := strconv.Itoa(id)
 			Expect(ds.Tag().Add(ctx, id, rock)).To(Succeed())
 			putAlbumArtists(ctx, ds, id, model.Artist{ID: "ar-" + n, Name: "Artist " + n})
-			putAlbums(ctx, ds, model.Album{ID: "al-" + n, Name: "Album " + n, LibraryID: id})
-			putTracks(ctx, ds, model.MediaFile{ID: "mf-" + n, Title: "Song " + n, LibraryID: id,
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-" + n, Name: "Album " + n, LibraryID: id})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf-" + n, Title: "Song " + n, LibraryID: id,
 				Tags: model.Tags{model.TagGenre: {"rock"}}})
 			Expect(ds.Artist().SetStar(userCtx, true, "ar-"+n)).To(Succeed())
 			Expect(ds.Album().SetStar(userCtx, true, "al-"+n)).To(Succeed())
@@ -76,7 +76,9 @@ var _ = Describe("Album Lists", func() {
 	})
 
 	failingAlbumsRouter := func() *Router {
-		return New(persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return failingAlbumGetAll{ds} }),
+		return New(persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+			return failingAlbumGetAllRepo{r}
+		}}),
 			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	}
 
@@ -237,7 +239,7 @@ var _ = Describe("Album Lists", func() {
 
 	Describe("GetRandomSongs", func() {
 		It("should return random songs", func() {
-			putTracks(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "1", Title: "Song 1"},
 				model.MediaFile{ID: "2", Title: "Song 2"},
 			)
@@ -302,7 +304,7 @@ var _ = Describe("Album Lists", func() {
 			rock := model.NewTag(model.TagGenre, "rock")
 			jazz := model.NewTag(model.TagGenre, "jazz")
 			Expect(ds.Tag().Add(ctx, model.DefaultLibraryID, rock, jazz)).To(Succeed())
-			putTracks(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "1", Title: "Song 1", Tags: model.Tags{model.TagGenre: {"rock"}}},
 				model.MediaFile{ID: "2", Title: "Song 2", Tags: model.Tags{model.TagGenre: {"rock"}}},
 				model.MediaFile{ID: "3", Title: "Song 3", Tags: model.Tags{model.TagGenre: {"jazz"}}},
@@ -369,8 +371,8 @@ var _ = Describe("Album Lists", func() {
 		putUsers(ctx, ds, starredUser)
 		putAlbumArtists(ctx, ds, model.DefaultLibraryID,
 			model.Artist{ID: "ar-1", Name: "Artist 1"}, model.Artist{ID: "ar-2", Name: "Artist 2"})
-		putAlbums(ctx, ds, model.Album{ID: "al-1", Name: "Album 1"}, model.Album{ID: "al-2", Name: "Album 2"})
-		putTracks(ctx, ds, model.MediaFile{ID: "mf-1", Title: "Song 1"}, model.MediaFile{ID: "mf-2", Title: "Song 2"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-1", Name: "Album 1"}, model.Album{ID: "al-2", Name: "Album 2"})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf-1", Title: "Song 1"}, model.MediaFile{ID: "mf-2", Title: "Song 2"})
 		userCtx := request.WithUser(ctx, starredUser)
 		Expect(ds.Artist().SetStar(userCtx, true, "ar-1")).To(Succeed())
 		Expect(ds.Album().SetStar(userCtx, true, "al-1")).To(Succeed())
@@ -463,12 +465,6 @@ var _ = Describe("Album Lists", func() {
 		})
 	})
 })
-
-type failingAlbumGetAll struct{ model.DataStore }
-
-func (d failingAlbumGetAll) Album() model.AlbumRepository {
-	return failingAlbumGetAllRepo{d.DataStore.Album()}
-}
 
 type failingAlbumGetAllRepo struct{ model.AlbumRepository }
 

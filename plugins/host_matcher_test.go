@@ -222,9 +222,7 @@ var _ = Describe("MatcherService", func() {
 			})
 
 			It("surfaces a backend error rather than masking it as not-found", func() {
-				failing := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-					return failingUsers{DataStore: ds, err: errors.New("db is locked")}
-				})
+				failing := failingUsers(ds, errors.New("db is locked"))
 				svc := newMatcherService(failing, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 				_, err := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "alice"})
 				Expect(err).To(MatchError(ContainSubstring("db is locked")))
@@ -449,13 +447,8 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 // putMatcherTracks stores tracks at distinct paths, saving Starred and Rating as the context user's annotations.
 func putMatcherTracks(ctx context.Context, ds model.DataStore, tracks ...model.MediaFile) {
 	GinkgoHelper()
-	for i := range tracks {
-		mf := tracks[i]
-		if mf.LibraryID == 0 {
-			mf.LibraryID = model.DefaultLibraryID
-		}
-		mf.Path = mf.ID + ".mp3"
-		Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
+	persistencetest.PutMediaFiles(ctx, ds, tracks...)
+	for _, mf := range tracks {
 		if mf.Starred {
 			Expect(ds.MediaFile().SetStar(ctx, true, mf.ID)).To(Succeed())
 		}

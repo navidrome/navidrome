@@ -48,22 +48,10 @@ func (m *mockPluginLoader) LoadScrobbler(name string) (Scrobbler, bool) {
 	return s, ok
 }
 
-type failingCriteriaDS struct{ model.DataStore }
-
-func (d failingCriteriaDS) MediaFile() model.MediaFileRepository {
-	return failingCriteriaRepo{d.DataStore.MediaFile()}
-}
-
 type failingCriteriaRepo struct{ model.MediaFileRepository }
 
 func (failingCriteriaRepo) MatchesCriteria(context.Context, string, criteria.Criteria) (bool, error) {
 	return false, errors.New("boom")
-}
-
-type slowDS struct{ model.DataStore }
-
-func (d slowDS) MediaFile() model.MediaFileRepository {
-	return &slowMediaFileRepo{d.DataStore.MediaFile()}
 }
 
 // slowMediaFileRepo widens the window between a report's session check and its
@@ -460,7 +448,9 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("fails open when evaluation errors", func() {
-			tracker.ds = persistencetest.Overlay(ds, func(d model.DataStore) model.DataStore { return failingCriteriaDS{d} })
+			tracker.ds = persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+				return failingCriteriaRepo{r}
+			}})
 
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
@@ -1058,7 +1048,9 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("never lets a concurrent starting report downgrade the playing session", func() {
-				tracker.ds = persistencetest.Overlay(ds, func(d model.DataStore) model.DataStore { return slowDS{d} })
+				tracker.ds = persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+					return &slowMediaFileRepo{r}
+				}})
 				for i := range 20 {
 					raceClientId := fmt.Sprintf("race-client-%d", i)
 					var wg sync.WaitGroup

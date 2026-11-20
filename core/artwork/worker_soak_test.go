@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -40,7 +41,7 @@ var _ = Describe("Worker soak", func() {
 		ffm := tests.NewMockFFmpeg("")
 		ag := agents.GetAgents(ds, nil)
 		artRepo := ds.Artwork()
-		putAlbums(ctx, ds,
+		persistencetest.PutAlbums(ctx, ds,
 			model.Album{ID: "al-folder", Name: "Folder Album", FolderIDs: []string{fid}},
 			model.Album{ID: "al-embed", Name: "Embedded Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3"},
 		)

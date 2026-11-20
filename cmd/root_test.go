@@ -55,15 +55,6 @@ func (r failingLibraryRepo) GetAll(context.Context, ...model.QueryOptions) (mode
 	return nil, r.err
 }
 
-type failingLibraryDS struct {
-	model.DataStore
-	err error
-}
-
-func (d failingLibraryDS) Library() model.LibraryRepository {
-	return failingLibraryRepo{LibraryRepository: d.DataStore.Library(), err: d.err}
-}
-
 var _ = Describe("librariesWithChangedPID", func() {
 	var ctx context.Context
 	var ds model.DataStore
@@ -89,9 +80,9 @@ var _ = Describe("librariesWithChangedPID", func() {
 	})
 
 	It("returns the error from the repository", func() {
-		ds = persistencetest.Overlay(ds, func(inner model.DataStore) model.DataStore {
-			return failingLibraryDS{DataStore: inner, err: errors.New("db down")}
-		})
+		ds = persistencetest.Stub(ds, persistencetest.Repos{Library: func(r model.LibraryRepository) model.LibraryRepository {
+			return failingLibraryRepo{LibraryRepository: r, err: errors.New("db down")}
+		}})
 		_, err := librariesWithChangedPID(ctx, ds)
 		Expect(err).To(MatchError("db down"))
 	})

@@ -58,9 +58,7 @@ var _ = Describe("loadAlbumFoldersPaths", func() {
 		now = time.Now().Truncate(time.Second)
 		real := newTestDS(ctx)
 		repo = &spyFolderRepo{FolderRepository: real.Folder()}
-		ds = persistencetest.Overlay(real, func(ds model.DataStore) model.DataStore {
-			return &folderOverlay{DataStore: ds, folder: repo}
-		})
+		ds = persistencetest.Stub(real, persistencetest.Repos{Folder: func(model.FolderRepository) model.FolderRepository { return repo }})
 		album = model.Album{
 			ID:        "album1",
 			Name:      "Album",

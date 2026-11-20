@@ -183,9 +183,9 @@ var _ = Describe("System", func() {
 		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
 			Expect(ds.Property().Put(ctx, consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
 
-			r := &Router{ds: persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return failingProperties{DataStore: ds, err: errors.New("database is locked")}
-			})}
+			r := &Router{ds: persistencetest.Stub(ds, persistencetest.Repos{Property: func(r model.PropertyRepository) model.PropertyRepository {
+				return failingPropertyRepo{PropertyRepository: r, err: errors.New("database is locked")}
+			}})}
 			degraded := r.serverID(ctx)
 			Expect(degraded).ToNot(BeEmpty())
 			Expect(degraded).ToNot(Equal("6ba7b8109dad11d180b400c04fd430c8")) // temporary value, not the (unreadable) stored one

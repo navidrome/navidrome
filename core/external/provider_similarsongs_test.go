@@ -21,25 +21,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// nilTracksDS serves a playlist repository whose Tracks lookup fails, as the real one does when
-// it cannot load the playlist.
-type nilTracksDS struct{ model.DataStore }
-
-func (d nilTracksDS) Playlist() model.PlaylistRepository {
-	return nilTracksRepo{d.DataStore.Playlist()}
-}
-
+// nilTracksRepo is a playlist repository whose Tracks lookup fails, as the real one does when it
+// cannot load the playlist.
 type nilTracksRepo struct{ model.PlaylistRepository }
 
 func (nilTracksRepo) Tracks(context.Context, string, bool) model.PlaylistTrackRepository { return nil }
 
-// unboundedRandomDS serves a media file repository whose GetRandom ignores Max.
-type unboundedRandomDS struct{ model.DataStore }
-
-func (d unboundedRandomDS) MediaFile() model.MediaFileRepository {
-	return unboundedRandomRepo{d.DataStore.MediaFile()}
-}
-
+// unboundedRandomRepo is a media file repository whose GetRandom ignores Max.
 type unboundedRandomRepo struct{ model.MediaFileRepository }
 
 func (r unboundedRandomRepo) GetRandom(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -91,16 +79,16 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 	putTrackEntity := func() {
 		GinkgoHelper()
-		putArtists(ctx, ds, model.Artist{ID: "artist-1", Name: "Artist"})
-		putTracks(ctx, ds, model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "artist-1", Name: "Artist"})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"})
 	}
 
 	Describe("dispatch by entity type", func() {
 		Context("when ID is a MediaFile (track)", func() {
 			It("calls GetSimilarSongsByTrack and returns matched songs", func() {
 				dmArtist := model.Artist{ID: "dm-1", Name: "Depeche Mode", OrderArtistName: "depeche mode", MbzArtistID: "artist-mbid"}
-				putArtists(ctx, ds, dmArtist)
-				putTracks(ctx, ds,
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, dmArtist)
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "track-1", Title: "Just Can't Get Enough", Artist: "Depeche Mode", MbzRecordingID: "track-mbid"},
 					model.MediaFile{ID: "matched-1", Title: "Dreaming of Me", Artist: "Depeche Mode", Participants: credited(dmArtist)},
 				)
@@ -118,7 +106,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 			It("falls back to artist-based algorithm when GetSimilarSongsByTrack returns empty", func() {
 				putTrackEntity()
-				putTracks(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-1"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-1"})
 
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", mock.Anything).
 					Return([]agents.Song{}, nil).Once()
@@ -135,7 +123,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 			It("tops the mix up with the fallback when the agent's picks alone are too few", func() {
 				putTrackEntity()
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "agent-1", Title: "Agent Pick", MbzRecordingID: "mbid-agent"},
 					model.MediaFile{ID: "song-1", Title: "Song One", MbzRecordingID: "mbid-1"},
 				)
@@ -156,7 +144,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 			It("reaches a unique pick that sits past the count-th repeat", func() {
 				putTrackEntity()
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "t-a", Title: "Song A", MbzRecordingID: "mbid-a"},
 					model.MediaFile{ID: "t-b", Title: "Song B", MbzRecordingID: "mbid-b"},
 				)
@@ -178,7 +166,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 			It("keeps topping up when the agent's picks repeat a track", func() {
 				putTrackEntity()
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "t-a", Title: "Song A", MbzRecordingID: "mbid-a"},
 					model.MediaFile{ID: "t-b", Title: "Song B", MbzRecordingID: "mbid-b"},
 					model.MediaFile{ID: "t-c", Title: "Song C", MbzRecordingID: "mbid-c"},
@@ -203,8 +191,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		Context("when ID is an Album", func() {
 			It("calls GetSimilarSongsByAlbum and returns matched songs", func() {
-				putAlbums(ctx, ds, model.Album{ID: "album-1", Name: "Speak & Spell", AlbumArtist: "Depeche Mode", MbzAlbumID: "album-mbid"})
-				putTracks(ctx, ds, model.MediaFile{ID: "matched-1", Title: "New Life", Artist: "Depeche Mode", MbzRecordingID: "song-mbid"})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album-1", Name: "Speak & Spell", AlbumArtist: "Depeche Mode", MbzAlbumID: "album-mbid"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "matched-1", Title: "New Life", Artist: "Depeche Mode", MbzRecordingID: "song-mbid"})
 
 				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "album-1", "Speak & Spell", "Depeche Mode", "album-mbid", 1).
 					Return([]agents.Song{
@@ -218,11 +206,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 
 			It("falls back to sampled album tracks when GetSimilarSongsByAlbum returns ErrNotFound", func() {
-				putAlbums(ctx, ds,
+				persistencetest.PutAlbums(ctx, ds,
 					model.Album{ID: "album-1", Name: "Album", AlbumArtist: "Artist", AlbumArtistID: "artist-1"},
 					model.Album{ID: "album-2", Name: "Other"},
 				)
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "seed-1", Title: "Seed", Artist: "Artist", AlbumID: "album-1"},
 					model.MediaFile{ID: "gone", Title: "Gone", AlbumID: "album-1", Missing: true},
 					model.MediaFile{ID: "other", Title: "Other", AlbumID: "album-2"},
@@ -243,9 +231,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		Context("when ID is an Album and the album agent returns nothing (AudioMuse-only)", func() {
 			It("samples the album's tracks and returns their track-similars", func() {
 				aArtist := model.Artist{ID: "a1", Name: "A", OrderArtistName: "a"}
-				putArtists(ctx, ds, aArtist)
-				putAlbums(ctx, ds, model.Album{ID: "al-1", Name: "The Album", AlbumArtist: "A"})
-				putTracks(ctx, ds,
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, aArtist)
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-1", Name: "The Album", AlbumArtist: "A"})
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed", Artist: "A", AlbumID: "al-1"},
 					model.MediaFile{ID: "m1", Title: "AudioMuseResult", Artist: "A", Participants: credited(aArtist)},
 				)
@@ -265,8 +253,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		Context("when ID is an Artist", func() {
 			It("calls GetSimilarSongsByArtist and returns matched songs", func() {
-				putArtists(ctx, ds, model.Artist{ID: "artist-1", Name: "Depeche Mode", MbzArtistID: "artist-mbid"})
-				putTracks(ctx, ds, model.MediaFile{ID: "matched-1", Title: "Enjoy the Silence", Artist: "Depeche Mode", MbzRecordingID: "song-mbid"})
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "artist-1", Name: "Depeche Mode", MbzArtistID: "artist-mbid"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "matched-1", Title: "Enjoy the Silence", Artist: "Depeche Mode", MbzRecordingID: "song-mbid"})
 
 				agentsCombined.On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Depeche Mode", "artist-mbid", 1).
 					Return([]agents.Song{
@@ -284,11 +272,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("samples the artist's tracks and returns their track-similars", func() {
 				artist := model.Artist{ID: "ar-1", Name: "The Artist"}
 				other := model.Artist{ID: "ar-2", Name: "Someone Else"}
-				putArtists(ctx, ds, artist, other)
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist, other)
 				albumCredit := model.Participants{}
 				albumCredit.Add(model.RoleAlbumArtist, artist)
 				// An artist credited only on the album (compilations, classical) still yields seeds.
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed", Participants: albumCredit},
 					model.MediaFile{ID: "s2", Title: "Seed Two", Participants: credited(artist)},
 					model.MediaFile{ID: "gone", Title: "Gone", Participants: credited(artist), Missing: true},
@@ -313,8 +301,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		Context("when ID is an Artist and the similar-artists fallback can't fill the mix", func() {
 			It("tops the mix up with the artist's own track-similars", func() {
 				artist := model.Artist{ID: "ar-1", Name: "Thin Artist"}
-				putArtists(ctx, ds, artist)
-				putTracks(ctx, ds,
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist)
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "top-1", Title: "Top Song", ArtistID: "ar-1", MbzRecordingID: "mbid-top"},
 					model.MediaFile{ID: "s1", Title: "Seed", Artist: "Thin Artist", Participants: credited(artist)},
 					model.MediaFile{ID: "mix-1", Title: "Mix Song", MbzRecordingID: "mbid-mix"},
@@ -343,8 +331,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		Context("when ID is an Artist and the agent plus the similar-artists fallback already fill the mix", func() {
 			It("does not pay for seed-track sampling", func() {
 				artist := model.Artist{ID: "ar-1", Name: "The Artist"}
-				putArtists(ctx, ds, artist)
-				putTracks(ctx, ds,
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist)
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "t-a", Title: "A", MbzRecordingID: "mbid-a", Participants: credited(artist)},
 					model.MediaFile{ID: "t-b", Title: "B", MbzRecordingID: "mbid-b", Participants: credited(artist)},
 					model.MediaFile{ID: "t-c", Title: "C", MbzRecordingID: "mbid-c", Participants: credited(artist)},
@@ -372,8 +360,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		Context("when ID is a Playlist", func() {
 			It("samples playlist tracks and returns their track-similars", func() {
 				aArtist := model.Artist{ID: "a1", Name: "A", OrderArtistName: "a"}
-				putArtists(ctx, ds, aArtist)
-				putTracks(ctx, ds,
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, aArtist)
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed One", Artist: "A"},
 					model.MediaFile{ID: "m1", Title: "Similar", Artist: "A", Participants: credited(aArtist)},
 				)
@@ -391,7 +379,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("asks for a smart-playlist refresh so an unevaluated one still yields seeds", func() {
 				// A smart playlist materializes no playlist_tracks until it is evaluated, so sampling
 				// without the refresh would mix an empty seed set.
-				putTracks(ctx, ds, model.MediaFile{ID: "s1", Title: "Seed One"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "s1", Title: "Seed One"})
 				putPlaylist(model.Playlist{ID: "pl-smart", Name: "Smart", Rules: &criteria.Criteria{
 					Expression: criteria.All{criteria.Contains{"title": "seed"}},
 				}})
@@ -405,7 +393,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 			It("returns an error instead of panicking when the track repository is unavailable", func() {
 				putPlaylist(model.Playlist{ID: "pl-nil", Name: "Gone"})
-				useStore(persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return nilTracksDS{ds} }))
+				useStore(persistencetest.Stub(ds, persistencetest.Repos{Playlist: func(r model.PlaylistRepository) model.PlaylistRepository {
+					return nilTracksRepo{r}
+				}}))
 
 				_, err := provider.SimilarSongs(ctx, "pl-nil", 5)
 
@@ -413,7 +403,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 
 			It("does not seed a mix with missing tracks", func() {
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed One"},
 					model.MediaFile{ID: "gone", Title: "Gone", Missing: true},
 				)
@@ -429,7 +419,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("keeps a later seed's picks when an earlier seed overlaps it", func() {
 				// The matcher stops once it has count matches, and it re-emits the shared track, so
 				// matching only count of the merged set would spend slots on the duplicate.
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed One"},
 					model.MediaFile{ID: "s2", Title: "Seed Two"},
 					model.MediaFile{ID: "x", Title: "X"},
@@ -452,7 +442,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("returns a track once when two seeds recommend it", func() {
 				// The matcher re-emits a track when two inputs are identical, so overlapping
 				// recommendations would otherwise take two slots in the mix.
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed One"},
 					model.MediaFile{ID: "s2", Title: "Seed Two"},
 					model.MediaFile{ID: "m1", Title: "Shared"},
@@ -471,7 +461,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 
 			It("does not seed a mix twice with a track the playlist repeats", func() {
-				putTracks(ctx, ds, model.MediaFile{ID: "s1", Title: "Seed One"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "s1", Title: "Seed One"})
 				putPlaylist(model.Playlist{ID: "pl-dup", Name: "Dupes"}, "s1", "s1")
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 5).
 					Return([]agents.Song{}, nil).Once()
@@ -486,7 +476,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("clamps an enormous count before it reaches the queries", func() {
 				// count+1 in the local agent overflows on MaxInt64, and GetRandom omits the SQL
 				// limit unless Max is positive, so the query would hydrate the whole library.
-				putTracks(ctx, ds, model.MediaFile{ID: "s1", Title: "Seed One"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "s1", Title: "Seed One"})
 				putPlaylist(model.Playlist{ID: "pl-huge", Name: "Huge"}, "s1")
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Seed One", "", "", 500).
 					Return([]agents.Song{}, nil).Once()
@@ -506,7 +496,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 
 			It("blends results from every seed, not just the first", func() {
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed One"},
 					model.MediaFile{ID: "s2", Title: "Seed Two"},
 					model.MediaFile{ID: "a1", Title: "A1"},
@@ -532,7 +522,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			})
 
 			It("falls back to the seed tracks themselves when no similar songs are found", func() {
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed One", Artist: "A"},
 					model.MediaFile{ID: "s2", Title: "Seed Two", Artist: "B"},
 				)
@@ -552,8 +542,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("samples the album when the agent's picks are not in this library", func() {
 				// Last.fm answers from its own catalogue, so a small library can match none of it.
 				// An unmatched non-empty answer must not shortcut the sampling fallback.
-				putAlbums(ctx, ds, model.Album{ID: "al-nm", Name: "NoMatch", AlbumArtist: "A"})
-				putTracks(ctx, ds, model.MediaFile{ID: "s1", Title: "Album Track", AlbumID: "al-nm"})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-nm", Name: "NoMatch", AlbumArtist: "A"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "s1", Title: "Album Track", AlbumID: "al-nm"})
 				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "al-nm", "NoMatch", "A", "", 5).
 					Return([]agents.Song{{Name: "Not In Library"}}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "s1", "Album Track", "", "", 5).
@@ -568,11 +558,13 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("caps agent calls at maxSeeds when the repository ignores the bound", func() {
 				// Isolates seedMix's own cap: the album sampler bounds the query with Max, so this
 				// exercises the guard by having the repo hand back more rows than were asked for.
-				putAlbums(ctx, ds, model.Album{ID: "al-cap", Name: "Cap", AlbumArtist: "A"})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-cap", Name: "Cap", AlbumArtist: "A"})
 				for _, id := range []string{"t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"} {
-					putTracks(ctx, ds, model.MediaFile{ID: id, Title: id, AlbumID: "al-cap"})
+					persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: id, Title: id, AlbumID: "al-cap"})
 				}
-				useStore(persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return unboundedRandomDS{ds} }))
+				useStore(persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+					return unboundedRandomRepo{r}
+				}}))
 				agentsCombined.On("GetSimilarSongsByAlbum", mock.Anything, "al-cap", "Cap", "A", "", 5).
 					Return([]agents.Song{}, nil).Once()
 				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, 5).
@@ -588,9 +580,9 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				// The sampler over-fetches for exactly this case: a page bounded at maxSeeds could
 				// be entirely one repeated file and collapse to a single seed.
 				trackIDs := []string{"dup", "dup", "dup", "dup", "dup"}
-				putTracks(ctx, ds, model.MediaFile{ID: "dup", Title: "Dup", Artist: "A"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "dup", Title: "Dup", Artist: "A"})
 				for _, id := range []string{"seed-1", "seed-2", "seed-3", "seed-4", "seed-5"} {
-					putTracks(ctx, ds, model.MediaFile{ID: id, Title: id, Artist: "A"})
+					persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: id, Title: id, Artist: "A"})
 					trackIDs = append(trackIDs, id)
 				}
 				putPlaylist(model.Playlist{ID: "pl-3", Name: "Big List"}, trackIDs...)
@@ -608,7 +600,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			It("samples a different set of seeds across calls", func() {
 				var trackIDs []string
 				for _, id := range []string{"t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9"} {
-					putTracks(ctx, ds, model.MediaFile{ID: id, Title: id})
+					persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: id, Title: id})
 					trackIDs = append(trackIDs, id)
 				}
 				putPlaylist(model.Playlist{ID: "pl-random", Name: "Random"}, trackIDs...)
@@ -632,7 +624,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				jazz := model.NewTag(model.TagGenre, "Jazz")
 				rock := model.NewTag(model.TagGenre, "Rock")
 				Expect(ds.Tag().Add(ctx, 1, jazz, rock)).To(Succeed())
-				putTracks(ctx, ds,
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "s1", Title: "Seed", Tags: model.Tags{model.TagGenre: {"Jazz"}}},
 					model.MediaFile{ID: "gone", Title: "Gone", Tags: model.Tags{model.TagGenre: {"Jazz"}}, Missing: true},
 					model.MediaFile{ID: "rock", Title: "Rock", Tags: model.Tags{model.TagGenre: {"Rock"}}},
@@ -648,11 +640,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 	})
 
 	It("returns similar songs from main artist and similar artists", func() {
-		putArtists(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID,
 			model.Artist{ID: "artist-1", Name: "Artist One"},
 			model.Artist{ID: "artist-3", Name: "Similar Artist"},
 		)
-		putTracks(ctx, ds,
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-1"},
 			model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "mbid-2"},
 			model.MediaFile{ID: "song-3", Title: "Song Three", ArtistID: "artist-3", MbzRecordingID: "mbid-3"},
@@ -681,11 +673,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 	It("keeps picking until the fallback holds count distinct tracks", func() {
 		// A collaboration in two artists' top songs lands in the chooser twice. Picking a fixed
 		// count of entries lets those duplicates eat the budget and strand unique candidates.
-		putArtists(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID,
 			model.Artist{ID: "artist-1", Name: "Artist One"},
 			model.Artist{ID: "artist-3", Name: "Similar Artist"},
 		)
-		putTracks(ctx, ds,
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist One", ArtistID: "artist-1"},
 			model.MediaFile{ID: "t-a", Title: "Shared", MbzRecordingID: "mbid-a"},
 			model.MediaFile{ID: "t-b", Title: "B", MbzRecordingID: "mbid-b"},
@@ -719,8 +711,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 	})
 
 	It("returns songs from main artist when GetSimilarArtists returns error", func() {
-		putArtists(ctx, ds, model.Artist{ID: "artist-1", Name: "Artist One"})
-		putTracks(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-1"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "artist-1", Name: "Artist One"})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-1"})
 
 		agentsCombined.On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
 			Return(nil, agents.ErrNotFound).Once()
@@ -739,8 +731,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 	It("returns empty list when GetArtistTopSongs returns error", func() {
 		artist := model.Artist{ID: "artist-1", Name: "Artist One"}
-		putArtists(ctx, ds, artist)
-		putTracks(ctx, ds, model.MediaFile{ID: "gone", Title: "Gone", Participants: credited(artist), Missing: true})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist)
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "gone", Title: "Gone", Participants: credited(artist), Missing: true})
 
 		agentsCombined.On("GetSimilarSongsByArtist", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
 			Return(nil, agents.ErrNotFound).Once()
@@ -758,8 +750,8 @@ var _ = Describe("Provider - SimilarSongs", func() {
 	})
 
 	It("respects count parameter", func() {
-		putArtists(ctx, ds, model.Artist{ID: "artist-1", Name: "Artist One"})
-		putTracks(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "artist-1", Name: "Artist One"})
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-1"},
 			model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "mbid-2"},
 		)

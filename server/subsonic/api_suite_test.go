@@ -8,12 +8,12 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage/local"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -49,42 +49,13 @@ func putUsers(ctx context.Context, ds model.DataStore, users ...model.User) {
 	}
 }
 
-// putTracks stores the media files in library 1 unless they name another, with a path derived from each ID.
-func putTracks(ctx context.Context, ds model.DataStore, tracks ...model.MediaFile) {
-	GinkgoHelper()
-	for i := range tracks {
-		mf := tracks[i]
-		if mf.LibraryID == 0 {
-			mf.LibraryID = model.DefaultLibraryID
-		}
-		if mf.Path == "" {
-			mf.Path = mf.ID + ".mp3"
-		}
-		Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
-	}
-}
-
-func putAlbums(ctx context.Context, ds model.DataStore, albums ...model.Album) {
-	GinkgoHelper()
-	for i := range albums {
-		al := albums[i]
-		if al.LibraryID == 0 {
-			al.LibraryID = model.DefaultLibraryID
-		}
-		Expect(ds.Album().Put(ctx, &al)).To(Succeed())
-	}
-}
-
 // putAlbumArtists stores the artists as album artists of library libID, the role artist indexes list.
 func putAlbumArtists(ctx context.Context, ds model.DataStore, libID int, artists ...model.Artist) {
 	GinkgoHelper()
-	for i := range artists {
-		Expect(ds.Artist().Put(ctx, &artists[i])).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, libID, artists[i].ID)).To(Succeed())
-		_, err := db.Db().ExecContext(ctx, `UPDATE library_artist SET stats = '{"albumartist":{"m":1,"a":1}}' WHERE library_id = ? AND artist_id = ?`,
-			libID, artists[i].ID)
-		Expect(err).ToNot(HaveOccurred())
-	}
+	persistencetest.PutArtists(ctx, ds, libID, artists...)
+	persistencetest.SetArtistStats(ctx, libID, map[model.Role]model.ArtistStats{
+		model.RoleAlbumArtist: {SongCount: 1, AlbumCount: 1},
+	}, slice.Map(artists, func(a model.Artist) string { return a.ID })...)
 }
 
 // putItemArtwork records the resolved artwork of an item; an empty hash marks it known absent.

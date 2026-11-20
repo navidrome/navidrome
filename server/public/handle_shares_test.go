@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -35,7 +36,7 @@ var _ = Describe("handleM3U", func() {
 	}
 
 	It("sets the M3U content type", func() {
-		putMediaFiles(ctx, ds, model.MediaFile{ID: "t1", Title: "Track 1"})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "t1", Title: "Track 1"})
 		putShare(ctx, ds, model.Share{ID: "abc123", ResourceType: "media_file", ResourceIDs: "t1"})
 
 		w := makeRequest("abc123")

@@ -5,6 +5,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -232,9 +233,8 @@ var _ = Describe("resolveArtists ID fast-path", func() {
 	It("owns an artist supplied by ID without a name match", func() {
 		ctx := GinkgoT().Context()
 		ds := persistence.New(db.Db())
-		artist := model.Artist{ID: "ar-x", Name: "Some Artist", OrderArtistName: "some artist", MbzArtistID: "mbz-x"}
-		Expect(ds.Artist().Put(ctx, &artist)).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, artist.ID)).To(Succeed())
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID,
+			model.Artist{ID: "ar-x", Name: "Some Artist", OrderArtistName: "some artist", MbzArtistID: "mbz-x"})
 		m := New(ds)
 
 		queries := []indexedQuery{

@@ -144,39 +144,14 @@ func putFolder(ctx context.Context, ds model.DataStore, rel string, images ...st
 	return f.ID
 }
 
-func putAlbums(ctx context.Context, ds model.DataStore, albums ...model.Album) {
-	GinkgoHelper()
-	for _, al := range albums {
-		al.LibraryID = cmp.Or(al.LibraryID, model.DefaultLibraryID)
-		Expect(ds.Album().Put(ctx, &al)).To(Succeed())
-	}
-}
-
 // putArtistAlbums stores the artist and makes it the sole album artist of albums.
 func putArtistAlbums(ctx context.Context, ds model.DataStore, ar model.Artist, albums ...model.Album) {
 	GinkgoHelper()
-	putArtists(ctx, ds, ar)
+	persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, ar)
 	for i := range albums {
 		albums[i].Participants = model.Participants{model.RoleAlbumArtist: {{Artist: ar}}}
 	}
-	putAlbums(ctx, ds, albums...)
-}
-
-// putArtists stores the artists in library 1; an artist outside every library is never read back.
-func putArtists(ctx context.Context, ds model.DataStore, artists ...model.Artist) {
-	GinkgoHelper()
-	for _, ar := range artists {
-		Expect(ds.Artist().Put(ctx, &ar)).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, ar.ID)).To(Succeed())
-	}
-}
-
-func putMediaFiles(ctx context.Context, ds model.DataStore, mfs ...model.MediaFile) {
-	GinkgoHelper()
-	for _, mf := range mfs {
-		mf.LibraryID = cmp.Or(mf.LibraryID, model.DefaultLibraryID)
-		Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
-	}
+	persistencetest.PutAlbums(ctx, ds, albums...)
 }
 
 // putRadio stores the radio without the artwork request its Put enqueues.
@@ -193,7 +168,7 @@ func putPlaylist(ctx context.Context, ds model.DataStore, pls model.Playlist, al
 	pls.OwnerID = cmp.Or(pls.OwnerID, testAdmin.ID)
 	for _, albumID := range albumIDs {
 		mf := model.MediaFile{ID: pls.ID + "-" + albumID, AlbumID: albumID, Path: pls.ID + "/" + albumID + ".mp3"}
-		putMediaFiles(ctx, ds, mf)
+		persistencetest.PutMediaFiles(ctx, ds, mf)
 		pls.Tracks = append(pls.Tracks, model.PlaylistTrack{MediaFileID: mf.ID, MediaFile: mf})
 	}
 	Expect(ds.Playlist().Put(asAdmin(ctx), &pls)).To(Succeed())

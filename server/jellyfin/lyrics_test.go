@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -58,7 +59,7 @@ var _ = Describe("getLyrics", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
-		putSongs(ctx, ds,
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1},
 			model.MediaFile{ID: testID("s2"), Title: "Silent Song", LibraryID: 1},
 		)

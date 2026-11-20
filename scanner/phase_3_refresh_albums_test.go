@@ -56,9 +56,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 		})
 
 		It("returns an error if there is an error loading albums", func() {
-			phase = createPhaseRefreshAlbums(ctx, state, persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return &failingAlbumDS{DataStore: ds, err: errors.New("db error")}
-			}))
+			phase = createPhaseRefreshAlbums(ctx, state, withFailingAlbums(ds, errors.New("db error")))
 
 			err := phase.produce(func(album *model.Album) {})
 
@@ -116,9 +114,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 		})
 
 		It("returns an error if there is an error refreshing the album", func() {
-			phase = createPhaseRefreshAlbums(ctx, state, persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return &failingAlbumDS{DataStore: ds, err: errors.New("db error")}
-			}))
+			phase = createPhaseRefreshAlbums(ctx, state, withFailingAlbums(ds, errors.New("db error")))
 			album := &model.Album{ID: "album1", Name: "Album 1", LibraryID: 1}
 
 			result, err := phase.refreshAlbum(album)
@@ -130,14 +126,11 @@ var _ = Describe("phaseRefreshAlbums", func() {
 	})
 })
 
-// failingAlbumDS fails reading touched albums and saving albums.
-type failingAlbumDS struct {
-	model.DataStore
-	err error
-}
-
-func (d *failingAlbumDS) Album() model.AlbumRepository {
-	return &failingAlbumRepo{AlbumRepository: d.DataStore.Album(), err: d.err}
+// withFailingAlbums fails reading touched albums and saving albums.
+func withFailingAlbums(ds model.DataStore, err error) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+		return &failingAlbumRepo{AlbumRepository: r, err: err}
+	}})
 }
 
 type failingAlbumRepo struct {

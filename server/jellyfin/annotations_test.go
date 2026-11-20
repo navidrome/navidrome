@@ -45,7 +45,7 @@ var _ = Describe("Annotations", func() {
 	})
 
 	songWith := func(ann model.Annotations) {
-		putSongs(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1})
 		annotate(alice.ID, "media_file", testID("s1"), ann)
 	}
 	stored := func(label string) model.Annotations {
@@ -71,7 +71,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("stars an album and returns IsFavorite=true", func() {
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
@@ -121,7 +121,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not star an album in a library the user can't access", func() {
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
@@ -131,7 +131,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not star a song in a library the user can't access", func() {
-			putSongs(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 2})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 2})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -149,9 +149,9 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 500 (not 404) when a repository lookup fails for a reason other than not-found", func() {
-			api.ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return failingAlbums{DataStore: ds, err: errors.New("db down")}
-			})
+			api.ds = persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+				return failingAlbumRepo{AlbumRepository: r, err: errors.New("db down")}
+			}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("x1")))
@@ -170,7 +170,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("emits a refreshResource event when starring an album", func() {
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
@@ -180,7 +180,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("does not emit an event when the item is not accessible", func() {
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
@@ -206,7 +206,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("rates an album", func() {
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
@@ -239,7 +239,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not rate an album in a library the user can't access", func() {
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
@@ -523,7 +523,7 @@ var _ = Describe("Annotations", func() {
 			})
 
 			It("returns 404 and writes nothing for an album in a library the user can't access", func() {
-				putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 				w := httptest.NewRecorder()
 				r := httptest.NewRequest(http.MethodPost, "/UserItems/a1/UserData", strings.NewReader(`{"Rating":10,"IsFavorite":true}`)).WithContext(ctxUser())
 				invoke(api.updateUserItemData, w, withChiURLParam(r, "itemId", dto.EncodeID(testID("a1"))))
@@ -584,15 +584,6 @@ func storedAnnotation(userID, itemID string) model.Annotations {
 		ann.PlayDate = &playDate.Time
 	}
 	return ann
-}
-
-type failingAlbums struct {
-	model.DataStore
-	err error
-}
-
-func (f failingAlbums) Album() model.AlbumRepository {
-	return failingAlbumRepo{AlbumRepository: f.DataStore.Album(), err: f.err}
 }
 
 type failingAlbumRepo struct {

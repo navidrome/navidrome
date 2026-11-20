@@ -22,7 +22,7 @@ var _ = Describe("GetEntityByID", func() {
 	})
 
 	It("returns the entity matching the id", func() {
-		putAlbum(ctx, ds, "a1", "One")
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "a1", Name: "One"})
 		entity, err := model.GetEntityByID(ctx, ds, "a1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(entity).To(BeAssignableToTypeOf(&model.Album{}))
@@ -30,16 +30,16 @@ var _ = Describe("GetEntityByID", func() {
 	})
 
 	It("returns ErrNotFound when no entity matches", func() {
-		putAlbum(ctx, ds, "a1", "One")
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "a1", Name: "One"})
 		_, err := model.GetEntityByID(ctx, ds, "missing")
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	It("propagates unexpected repository errors instead of reporting not-found", func() {
-		putAlbum(ctx, ds, "a1", "One")
-		ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-			return failingAlbums{ds}
-		})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "a1", Name: "One"})
+		ds = persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+			return failingAlbumRepo{r}
+		}})
 		_, err := model.GetEntityByID(ctx, ds, "a1")
 		Expect(err).To(MatchError(errAlbumGet))
 	})
@@ -55,7 +55,7 @@ var _ = Describe("GetEntityKindByID", func() {
 	})
 
 	It("returns the artwork kind for the matching id", func() {
-		putAlbum(ctx, ds, "a1", "")
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "a1"})
 		kind, err := model.GetEntityKindByID(ctx, ds, "a1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(kind).To(Equal(model.KindAlbumArtwork))
@@ -67,16 +67,7 @@ var _ = Describe("GetEntityKindByID", func() {
 	})
 })
 
-func putAlbum(ctx context.Context, ds model.DataStore, id, name string) {
-	GinkgoHelper()
-	Expect(ds.Album().Put(ctx, &model.Album{ID: id, Name: name, LibraryID: model.DefaultLibraryID})).To(Succeed())
-}
-
 var errAlbumGet = errors.New("album lookup failed")
-
-type failingAlbums struct{ model.DataStore }
-
-func (f failingAlbums) Album() model.AlbumRepository { return failingAlbumRepo{f.DataStore.Album()} }
 
 type failingAlbumRepo struct{ model.AlbumRepository }
 

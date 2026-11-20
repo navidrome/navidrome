@@ -16,6 +16,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -34,13 +36,7 @@ var _ = Describe("Archiver", func() {
 
 	putTracks := func(mfs ...model.MediaFile) []string {
 		GinkgoHelper()
-		ids := make([]string, 0, len(mfs))
-		for _, mf := range mfs {
-			mf.LibraryID = model.DefaultLibraryID
-			Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
-			ids = append(ids, mf.ID)
-		}
-		return ids
+		return slice.Map(persistencetest.PutMediaFiles(ctx, ds, mfs...), func(mf model.MediaFile) string { return mf.ID })
 	}
 
 	byArtist := func(id string, mfs ...model.MediaFile) []model.MediaFile {

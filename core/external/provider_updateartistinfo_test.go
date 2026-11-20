@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -77,7 +78,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ag.On("GetArtistURL", ctx, "ar-existing", "Test Artist", expectedMBID).Return(expectedURL, nil).Once()
 		ag.On("GetSimilarArtists", ctx, "ar-existing", "Test Artist", expectedMBID, 100).Return(rawSimilar, nil).Once()
 
-		putArtists(ctx, ds, *originalArtist, similarInDS)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-existing", 10, false)
 
@@ -111,7 +112,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 	// Stamping a throttled round would cache the empty result for the whole TTL.
 	It("does not stamp ExternalInfoUpdatedAt when the agents are throttled", func() {
 		originalArtist := &model.Artist{ID: "ar-throttled", Name: "Throttled Artist"}
-		putArtists(ctx, ds, *originalArtist)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist)
 
 		ag.On("GetArtistMBID", ctx, "ar-throttled", "Throttled Artist").Return("", agents.ErrRetryLater).Once()
 		ag.On("GetArtistImages", ctx, "ar-throttled", "Throttled Artist", "").Return(nil, agents.ErrRetryLater).Once()
@@ -132,7 +133,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ID:   "ar-encoded-bio",
 			Name: "Encoded Bio Artist",
 		}
-		putArtists(ctx, ds, *originalArtist)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist)
 
 		expectedMBID := "mbid-encoded-bio"
 		expectedBio := "R&amp;B"
@@ -166,7 +167,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			},
 		}
 		similarInDS := model.Artist{ID: "ar-similar-present", Name: "Similar Present Updated"}
-		putArtists(ctx, ds, *originalArtist, similarInDS)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-cached", 5, false)
 
@@ -202,7 +203,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			},
 		}
 		similarInDS := model.Artist{ID: "ar-exp-similar", Name: "Expired Similar Updated"}
-		putArtists(ctx, ds, *originalArtist, similarInDS)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-expired", 5, false)
 
@@ -235,7 +236,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			},
 		}
 		similarInDS := model.Artist{ID: "ar-sim-present", Name: "Similar Present Updated"}
-		putArtists(ctx, ds, *originalArtist, similarInDS)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-similar-test", 5, true)
 
@@ -256,7 +257,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ID:   "ar-agent-fail",
 			Name: "Agent Fail Artist",
 		}
-		putArtists(ctx, ds, *originalArtist)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist)
 
 		expectedErr := errors.New("agent MBID failed")
 		ag.On("GetArtistMBID", ctx, "ar-agent-fail", "Agent Fail Artist").Return("", expectedErr).Once()
@@ -279,7 +280,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			Name: "ID Match Artist",
 		}
 		similarByID := model.Artist{ID: "ar-similar-by-id", Name: "Similar By ID", MbzArtistID: "mbid-similar"}
-		putArtists(ctx, ds, *originalArtist, similarByID)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarByID)
 
 		// Agent returns similar artist with ID (highest priority matching)
 		rawSimilar := []agents.Artist{
@@ -307,7 +308,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			Name: "MBID Match Artist",
 		}
 		similarByMBID := model.Artist{ID: "ar-similar-by-mbid", Name: "Similar By MBID", MbzArtistID: "mbid-similar"}
-		putArtists(ctx, ds, *originalArtist, similarByMBID)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarByMBID)
 
 		// Agent returns similar artist with only MBID (no ID)
 		rawSimilar := []agents.Artist{
@@ -335,7 +336,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			Name: "Name Match Artist",
 		}
 		similarByName := model.Artist{ID: "ar-similar-by-name", Name: "Similar By Name"}
-		putArtists(ctx, ds, *originalArtist, similarByName)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarByName)
 
 		// Agent returns similar artist with non-matching ID and MBID
 		rawSimilar := []agents.Artist{

@@ -6,43 +6,12 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/utils/slice"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 )
 
 var adminUser = model.User{ID: "admin-1", UserName: "admin-1", IsAdmin: true}
-
-// putArtists stores the artists and links them to library 1: artist queries only see linked artists.
-func putArtists(ctx context.Context, ds model.DataStore, artists ...model.Artist) {
-	GinkgoHelper()
-	for i := range artists {
-		Expect(ds.Artist().Put(ctx, &artists[i])).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, 1, artists[i].ID)).To(Succeed())
-	}
-}
-
-// putTracks stores the media files in library 1, with a path derived from each ID.
-func putTracks(ctx context.Context, ds model.DataStore, tracks ...model.MediaFile) {
-	GinkgoHelper()
-	for i := range tracks {
-		mf := tracks[i]
-		mf.LibraryID = 1
-		if mf.Path == "" {
-			mf.Path = mf.ID + ".mp3"
-		}
-		Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
-	}
-}
-
-func putAlbums(ctx context.Context, ds model.DataStore, albums ...model.Album) {
-	GinkgoHelper()
-	for i := range albums {
-		albums[i].LibraryID = 1
-		Expect(ds.Album().Put(ctx, &albums[i])).To(Succeed())
-	}
-}
 
 // credited returns participants crediting the artists in the main artist role.
 func credited(artists ...model.Artist) model.Participants {
@@ -53,14 +22,11 @@ func credited(artists ...model.Artist) model.Participants {
 
 var errDBDown = errors.New("db down")
 
-// failingArtistDS serves an artist repository whose lookups fail with err.
-type failingArtistDS struct {
-	model.DataStore
-	err error
-}
-
-func (d failingArtistDS) Artist() model.ArtistRepository {
-	return failingArtistRepo{d.DataStore.Artist(), d.err}
+// failingArtists serves an artist repository whose lookups fail with err.
+func failingArtists(ds model.DataStore, err error) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{Artist: func(r model.ArtistRepository) model.ArtistRepository {
+		return failingArtistRepo{r, err}
+	}})
 }
 
 type failingArtistRepo struct {

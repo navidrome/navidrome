@@ -39,12 +39,6 @@ func (failingMediaFileReads) Read(context.Context, string) (*model.MediaFile, er
 	return nil, errMediaFileReads
 }
 
-type failingMediaFiles struct{ model.DataStore }
-
-func (f failingMediaFiles) MediaFile() model.MediaFileRepository {
-	return failingMediaFileReads{f.DataStore.MediaFile()}
-}
-
 var _ = Describe("Song Endpoints", func() {
 	var (
 		ctx       context.Context
@@ -56,8 +50,8 @@ var _ = Describe("Song Endpoints", func() {
 	)
 
 	useFailingMediaFiles := func() {
-		router = server.JWTVerifier(newTestRouter(persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-			return failingMediaFiles{ds}
+		router = server.JWTVerifier(newTestRouter(persistencetest.Stub(ds, persistencetest.Repos{
+			MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository { return failingMediaFileReads{r} },
 		}), nil, nil, nil))
 	}
 

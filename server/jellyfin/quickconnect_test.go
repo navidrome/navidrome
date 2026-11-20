@@ -293,9 +293,9 @@ var _ = Describe("QuickConnect", func() {
 		It("returns 500 when the user lookup fails", func() {
 			req := initiate()
 			_, _ = qc.Authorize(req.Code, alice.ID)
-			api.ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return failingUsers{DataStore: ds, err: errors.New("db down")}
-			})
+			api.ds = persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+				return failingUserRepo{UserRepository: r, err: errors.New("db down")}
+			}})
 			Expect(redeemSecret(req.Secret).Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

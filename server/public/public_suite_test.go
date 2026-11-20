@@ -36,32 +36,10 @@ func putShare(ctx context.Context, ds model.DataStore, s model.Share) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func putMediaFiles(ctx context.Context, ds model.DataStore, mfs ...model.MediaFile) {
-	GinkgoHelper()
-	for _, mf := range mfs {
-		if mf.LibraryID == 0 {
-			mf.LibraryID = model.DefaultLibraryID
-		}
-		if mf.Path == "" {
-			mf.Path = mf.ID + ".mp3"
-		}
-		Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
-	}
-}
-
-type shareGetErrorDS struct {
-	model.DataStore
-	err error
-}
-
 func withShareGetError(ds model.DataStore, err error) model.DataStore {
-	return persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-		return &shareGetErrorDS{DataStore: ds, err: err}
-	})
-}
-
-func (d *shareGetErrorDS) Share() model.ShareRepository {
-	return &shareGetErrorRepo{ShareRepository: d.DataStore.Share(), err: d.err}
+	return persistencetest.Stub(ds, persistencetest.Repos{Share: func(r model.ShareRepository) model.ShareRepository {
+		return &shareGetErrorRepo{ShareRepository: r, err: err}
+	}})
 }
 
 type shareGetErrorRepo struct {

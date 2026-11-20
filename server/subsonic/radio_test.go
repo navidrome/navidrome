@@ -155,7 +155,9 @@ var _ = Describe("Radio", func() {
 		})
 
 		It("returns error when repository fails", func() {
-			api = &Router{ds: persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return failingRadios{ds} })}
+			api = &Router{ds: persistencetest.Stub(ds, persistencetest.Repos{Radio: func(r model.RadioRepository) model.RadioRepository {
+				return failingRadioRepo{r}
+			}})}
 
 			r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 			r = r.WithContext(ctx)
@@ -165,10 +167,6 @@ var _ = Describe("Radio", func() {
 		})
 	})
 })
-
-type failingRadios struct{ model.DataStore }
-
-func (d failingRadios) Radio() model.RadioRepository { return failingRadioRepo{d.DataStore.Radio()} }
 
 type failingRadioRepo struct{ model.RadioRepository }
 

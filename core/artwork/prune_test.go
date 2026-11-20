@@ -45,7 +45,7 @@ var _ = Describe("Prune", func() {
 	}
 
 	It("purges dangling item_artwork state for gone entities, summed across kinds", func() {
-		putArtists(ctx, ds, model.Artist{ID: "live-artist", Name: "Live"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "live-artist", Name: "Live"})
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "gone-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "live-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
@@ -61,7 +61,7 @@ var _ = Describe("Prune", func() {
 	})
 
 	It("purges dangling artwork_queue rows for gone entities", func() {
-		putAlbums(ctx, ds, model.Album{ID: "live-album", Name: "Live"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "live-album", Name: "Live"})
 		Expect(ds.ArtworkQueue().Enqueue(ctx,
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary},
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "live-album", ImageType: model.ImageTypePrimary},
@@ -104,7 +104,7 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
-		putAlbums(ctx, ds, model.Album{ID: "a1", Name: "Album"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "a1", Name: "Album"})
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
@@ -224,9 +224,9 @@ var _ = Describe("Prune", func() {
 	})
 
 	It("never sweeps files on a transient DB error", func() {
-		ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-			return &artworkOverlay{DataStore: ds, artwork: &flakyGetArtworkRepo{ArtworkRepository: ds.Artwork()}}
-		})
+		ds = persistencetest.Stub(ds, persistencetest.Repos{Artwork: func(r model.ArtworkRepository) model.ArtworkRepository {
+			return &flakyGetArtworkRepo{ArtworkRepository: r}
+		}})
 
 		data := []byte("live-bytes")
 		h, _ := hashImage(bytes.NewReader(data))
@@ -239,10 +239,3 @@ var _ = Describe("Prune", func() {
 		rc.Close()
 	})
 })
-
-type artworkOverlay struct {
-	model.DataStore
-	artwork model.ArtworkRepository
-}
-
-func (o *artworkOverlay) Artwork() model.ArtworkRepository { return o.artwork }

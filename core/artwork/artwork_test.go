@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
@@ -65,11 +66,11 @@ var _ = Describe("Artwork", func() {
 		switch kind {
 		case "al":
 			if _, err := ds.Album().Get(ctx, id); errors.Is(err, model.ErrNotFound) {
-				putAlbums(ctx, ds, model.Album{ID: id, Name: "Album"})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: id, Name: "Album"})
 			}
 		case "mf":
 			if _, err := ds.MediaFile().Get(ctx, id); errors.Is(err, model.ErrNotFound) {
-				putMediaFiles(ctx, ds, model.MediaFile{ID: id, Path: id + ".mp3"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: id, Path: id + ".mp3"})
 			}
 		}
 	}
@@ -267,7 +268,7 @@ var _ = Describe("Artwork", func() {
 	Describe("provisional read-through", func() {
 		It("serves local folder art, enqueues a Bump, and writes no state row", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album", FolderIDs: []string{fid}})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("al-al5"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -279,7 +280,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("returns ErrUnavailable and enqueues a Bump when nothing local resolves", func() {
-			putAlbums(ctx, ds, model.Album{ID: "al6", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al6", Name: "Album"})
 
 			_, err := svc.Get(ctx, tests.MustParseArtworkID("al-al6"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
@@ -302,7 +303,7 @@ var _ = Describe("Artwork", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			seedFoundStore("mf", "mf7", []byte("stale embedded track art"))
 			seedFoundStore("al", "albz", coverBytes)
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf7", AlbumID: "albz", Path: "mf7.mp3"})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf7", AlbumID: "albz", Path: "mf7.mp3"})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf7"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -312,7 +313,7 @@ var _ = Describe("Artwork", func() {
 		It("delegates to the album when the track's state is absent", func() {
 			seedFoundStore("al", "albm", coverBytes)
 			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "mf", ItemID: "mf2"})).To(Succeed())
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", AlbumID: "albm", Path: "mf2.mp3"})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", AlbumID: "albm", Path: "mf2.mp3"})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf2"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -323,7 +324,7 @@ var _ = Describe("Artwork", func() {
 		It("delegates to the album (no enqueue) when the track is not embedded-eligible", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			seedFoundStore("al", "albn", coverBytes)
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf3", AlbumID: "albn", Path: "mf3.mp3", HasCoverArt: false})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf3", AlbumID: "albn", Path: "mf3.mp3", HasCoverArt: false})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf3"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -333,7 +334,7 @@ var _ = Describe("Artwork", func() {
 
 		It("extracts embedded art provisionally and enqueues the track when eligible", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
-			putMediaFiles(ctx, ds, model.MediaFile{
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{
 				ID: "mf4", AlbumID: "albo", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3",
 			})
 
@@ -347,9 +348,9 @@ var _ = Describe("Artwork", func() {
 
 		It("delegates a multi-disc track to its disc art, not straight to the album", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "aldd", Name: "Album", FolderIDs: []string{fid}, Discs: model.Discs{1: "One", 2: "Two"}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldd", Name: "Album", FolderIDs: []string{fid}, Discs: model.Discs{1: "One", 2: "Two"}})
 			seedFoundStore("al", "aldd", []byte("album-art-distinct")) // album's own found art differs
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf5", AlbumID: "aldd", DiscNumber: 1, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf5", AlbumID: "aldd", DiscNumber: 1, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf5"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -360,10 +361,10 @@ var _ = Describe("Artwork", func() {
 		It("falls back to the album when an eligible track's embedded art will not extract", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			// HasCoverArt is set, but the file is not audio, so nothing extracts.
-			putMediaFiles(ctx, ds, model.MediaFile{
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{
 				ID: "mfbad", AlbumID: "albad", HasCoverArt: true, Path: fixtureAlbumDir + "/front.png",
 			})
-			putAlbums(ctx, ds, model.Album{ID: "albad", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "albad", Name: "Album"})
 			seedFoundStore("al", "albad", coverBytes)
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mfbad"), 0, false)
@@ -374,9 +375,9 @@ var _ = Describe("Artwork", func() {
 		It("routes a single-disc track through disc resolution too", func() {
 			// DiscArtPriority applies to single-disc albums too, over the album's own found art.
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "alsd", Name: "Album", FolderIDs: []string{fid}, Discs: model.Discs{1: ""}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alsd", Name: "Album", FolderIDs: []string{fid}, Discs: model.Discs{1: ""}})
 			seedFoundStore("al", "alsd", []byte("album-art-distinct"))
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf6", AlbumID: "alsd", DiscNumber: 1, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf6", AlbumID: "alsd", DiscNumber: 1, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf6"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -387,7 +388,7 @@ var _ = Describe("Artwork", func() {
 	Describe("disc", func() {
 		It("serves a local disc-folder image", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "aldc", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc", Name: "Album", FolderIDs: []string{fid}})
 
 			img, err := svc.Get(ctx, model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc", 1), nil), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -398,7 +399,7 @@ var _ = Describe("Artwork", func() {
 		// between the two requests is what shows a warm hit never touches the filesystem.
 		It("serves a sized disc image from cache without re-reading the source", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "aldc3", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc3", Name: "Album", FolderIDs: []string{fid}})
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc3", 1), nil)
 
 			first, err := svc.Get(ctx, discID, 64, false)
@@ -419,7 +420,7 @@ var _ = Describe("Artwork", func() {
 		It("invalidates the cached image when the folder's images change", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
 			setImagesUpdatedAt(fid, time.Now().Add(-time.Hour))
-			putAlbums(ctx, ds, model.Album{ID: "aldc4", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc4", Name: "Album", FolderIDs: []string{fid}})
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc4", 1), nil)
 
 			first, err := svc.Get(ctx, discID, 64, false)
@@ -438,7 +439,7 @@ var _ = Describe("Artwork", func() {
 		It("gives a full-size disc image a validator that tracks the source", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
 			setImagesUpdatedAt(fid, time.Now().Add(-time.Hour))
-			putAlbums(ctx, ds, model.Album{ID: "aldc5", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc5", Name: "Album", FolderIDs: []string{fid}})
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc5", 1), nil)
 
 			first, err := svc.Get(ctx, discID, 0, false)
@@ -454,7 +455,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("falls back to album art when no disc image matches", func() {
-			putAlbums(ctx, ds, model.Album{ID: "aldc2", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc2", Name: "Album"})
 			seedFoundStore("al", "aldc2", coverBytes)
 
 			img, err := svc.Get(ctx, model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc2", 1), nil), 0, false)
@@ -465,7 +466,7 @@ var _ = Describe("Artwork", func() {
 
 	Describe("GetOrPlaceholder", func() {
 		It("accepts a raw entity id and serves its cover art", func() {
-			putAlbums(ctx, ds, model.Album{ID: "rawal", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "rawal", Name: "Album"})
 			seedFoundStore("al", "rawal", coverBytes)
 
 			img, err := svc.GetOrPlaceholder(ctx, "rawal", 0, false)
@@ -525,8 +526,8 @@ var _ = Describe("EntityExists", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = newTestDS(ctx)
-		putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album"})
-		putArtists(ctx, ds, model.Artist{ID: "ar1", Name: "Artist"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist"})
 		putRadio(ctx, ds, model.Radio{ID: "ra1", Name: "R"})
 	})
 

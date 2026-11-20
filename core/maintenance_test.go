@@ -23,25 +23,6 @@ var _ = Describe("Maintenance", func() {
 	var service Maintenance
 	var ctx context.Context
 
-	putAlbums := func(albums ...model.Album) {
-		GinkgoHelper()
-		for _, al := range albums {
-			al.LibraryID = model.DefaultLibraryID
-			Expect(ds.Album().Put(ctx, &al)).To(Succeed())
-		}
-	}
-
-	putFiles := func(mfs ...model.MediaFile) {
-		GinkgoHelper()
-		for _, mf := range mfs {
-			mf.LibraryID = model.DefaultLibraryID
-			if mf.Path == "" {
-				mf.Path = mf.ID + ".mp3"
-			}
-			Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
-		}
-	}
-
 	fileExists := func(id string) bool {
 		GinkgoHelper()
 		exists, err := ds.MediaFile().Exists(ctx, id)
@@ -70,8 +51,7 @@ var _ = Describe("Maintenance", func() {
 
 	putArtist := func(id string) model.Participant {
 		GinkgoHelper()
-		Expect(ds.Artist().Put(ctx, &model.Artist{ID: id, Name: "Artist " + id})).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, id)).To(Succeed())
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: id, Name: "Artist " + id})
 		return model.Participant{ID: id, Name: "Artist " + id}
 	}
 
@@ -95,8 +75,8 @@ var _ = Describe("Maintenance", func() {
 	Describe("DeleteMissingFiles", func() {
 		Context("with specific IDs", func() {
 			It("deletes specific missing files and runs GC", func() {
-				putAlbums(model.Album{ID: "album1"}, model.Album{ID: "album2"}, model.Album{ID: "album3"})
-				putFiles(
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"}, model.Album{ID: "album3"})
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true},
 					model.MediaFile{ID: "mf2", AlbumID: "album2", Missing: true},
 					model.MediaFile{ID: "mf3", AlbumID: "album3", Missing: true},
@@ -115,8 +95,8 @@ var _ = Describe("Maintenance", func() {
 
 			It("triggers artist stats refresh and album refresh after deletion", func() {
 				artist := model.Participants{model.RoleArtist: {putArtist("ar1")}}
-				putAlbums(model.Album{ID: "album1", Name: "Test Album", SongCount: 5, Participants: artist})
-				putFiles(
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Test Album", SongCount: 5, Participants: artist})
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "mf1", AlbumID: "album1", Album: "Test Album", Missing: true, Participants: artist},
 					model.MediaFile{ID: "mf2", AlbumID: "album1", Album: "Test Album", Size: 1000, Duration: 180, Participants: artist},
 					model.MediaFile{ID: "mf3", AlbumID: "album1", Album: "Test Album", Size: 2000, Duration: 200, Participants: artist},
@@ -136,7 +116,7 @@ var _ = Describe("Maintenance", func() {
 			})
 
 			It("returns error if deletion fails", func() {
-				putFiles(model.MediaFile{ID: "mf1", Missing: true})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Missing: true})
 				service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{deleteMissing: errors.New("delete failed")}))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
@@ -147,7 +127,7 @@ var _ = Describe("Maintenance", func() {
 			})
 
 			It("continues even if album tracking fails", func() {
-				putFiles(model.MediaFile{ID: "mf1", Missing: true})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Missing: true})
 				service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{getAll: errors.New("get failed")}))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
@@ -157,7 +137,7 @@ var _ = Describe("Maintenance", func() {
 			})
 
 			It("returns error if GC fails", func() {
-				putFiles(model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true})
 				service = NewMaintenance(withGCError(ds, errors.New("gc failed")))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
@@ -169,7 +149,7 @@ var _ = Describe("Maintenance", func() {
 
 		Context("album ID extraction", func() {
 			It("extracts unique album IDs from missing files", func() {
-				putFiles(
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true},
 					model.MediaFile{ID: "mf2", AlbumID: "album1", Missing: true},
 					model.MediaFile{ID: "mf3", AlbumID: "album2", Missing: true},
@@ -183,7 +163,7 @@ var _ = Describe("Maintenance", func() {
 			})
 
 			It("skips files without album IDs", func() {
-				putFiles(
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "mf1", AlbumID: "", Missing: true},
 					model.MediaFile{ID: "mf2", AlbumID: "album1", Missing: true},
 				)
@@ -198,8 +178,8 @@ var _ = Describe("Maintenance", func() {
 
 	Describe("DeleteAllMissingFiles", func() {
 		It("deletes all missing files and runs GC", func() {
-			putAlbums(model.Album{ID: "album1"}, model.Album{ID: "album2"}, model.Album{ID: "album3"}, model.Album{ID: "album4"})
-			putFiles(
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"}, model.Album{ID: "album3"}, model.Album{ID: "album4"})
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true},
 				model.MediaFile{ID: "mf2", AlbumID: "album2", Missing: true},
 				model.MediaFile{ID: "mf3", AlbumID: "album3", Missing: true},
@@ -218,7 +198,7 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("returns error if deletion fails", func() {
-			putFiles(model.MediaFile{ID: "mf1", Missing: true})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Missing: true})
 			service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{deleteAllMissing: errors.New("delete failed")}))
 
 			err := service.DeleteAllMissingFiles(ctx)
@@ -228,7 +208,7 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("handles empty result gracefully", func() {
-			putFiles(model.MediaFile{ID: "mf1"})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1"})
 
 			err := service.DeleteAllMissingFiles(ctx)
 
@@ -240,7 +220,7 @@ var _ = Describe("Maintenance", func() {
 	Describe("Album refresh logic", func() {
 		Context("when album has no tracks after deletion", func() {
 			It("skips the album without updating it", func() {
-				putAlbums(model.Album{ID: "album1", Name: "Empty Album", SongCount: 1})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Empty Album", SongCount: 1})
 				lastUpdate := time.Now().Add(-time.Hour).Truncate(time.Second)
 				_, err := db.Db().Exec("UPDATE album SET updated_at = ? WHERE id = ?", lastUpdate, "album1")
 				Expect(err).ToNot(HaveOccurred())
@@ -255,8 +235,8 @@ var _ = Describe("Maintenance", func() {
 
 		Context("when Put fails for one album", func() {
 			It("continues processing other albums", func() {
-				putAlbums(model.Album{ID: "album1", Name: "Album 1"}, model.Album{ID: "album2", Name: "Album 2"})
-				putFiles(
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Album 1"}, model.Album{ID: "album2", Name: "Album 2"})
+				persistencetest.PutMediaFiles(ctx, ds,
 					model.MediaFile{ID: "mf1", AlbumID: "album1", Album: "Album 1", Missing: true},
 					model.MediaFile{ID: "mf2", AlbumID: "album1", Album: "Album 1", Size: 1000, Duration: 180},
 					model.MediaFile{ID: "mf3", AlbumID: "album2", Album: "Album 2", Missing: true},
@@ -284,8 +264,8 @@ var _ = Describe("Maintenance", func() {
 				hook, cleanup := tests.LogHook()
 				defer cleanup()
 
-				putAlbums(model.Album{ID: "album1", Name: "Album 1"})
-				putFiles(model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Album 1"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true})
 				service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{getAll: errors.New("get failed")}))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
@@ -305,8 +285,8 @@ var _ = Describe("Maintenance", func() {
 	Describe("RemapMissingFile", func() {
 		It("relocates the missing file's identity onto the target and runs GC", func() {
 			created := time.Now().Add(-30 * 24 * time.Hour).Truncate(time.Second)
-			putAlbums(model.Album{ID: "album1"}, model.Album{ID: "orphan"})
-			putFiles(
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "orphan"})
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", Path: "old/song.mp3", AlbumID: "album1", CreatedAt: created, Missing: true},
 				model.MediaFile{ID: "t1", Path: "new/song.mp3", AlbumID: "album1", Missing: false},
 			)
@@ -323,7 +303,7 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("moves the target's annotations, bookmarks and playlist entries onto the surviving id", func() {
-			putFiles(
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
 				model.MediaFile{ID: "t1", AlbumID: "album1", Missing: false},
 			)
@@ -350,8 +330,8 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("reassigns album annotations when the old album is emptied", func() {
-			putAlbums(model.Album{ID: "album1"}, model.Album{ID: "album2"})
-			putFiles(
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"})
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
 				model.MediaFile{ID: "t1", AlbumID: "album2", Missing: false},
 			)
@@ -363,8 +343,8 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("does not reassign album annotations when the old album is not emptied", func() {
-			putAlbums(model.Album{ID: "album1"}, model.Album{ID: "album2"})
-			putFiles(
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"})
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
 				model.MediaFile{ID: "m2", AlbumID: "album1", Missing: false},
 				model.MediaFile{ID: "t1", AlbumID: "album2", Missing: false},
@@ -378,7 +358,7 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("does not reassign annotations when the album is unchanged", func() {
-			putFiles(
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
 				model.MediaFile{ID: "t1", AlbumID: "album1", Missing: false},
 			)
@@ -391,13 +371,13 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("returns ErrNotFound when the missing file does not exist", func() {
-			putFiles(model.MediaFile{ID: "t1", Missing: false})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "t1", Missing: false})
 
 			Expect(service.RemapMissingFile(ctx, "nope", "t1")).To(MatchError(model.ErrNotFound))
 		})
 
 		It("refuses to remap from a file that is not missing", func() {
-			putFiles(
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", Missing: false},
 				model.MediaFile{ID: "t1", Missing: false},
 			)
@@ -406,13 +386,13 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("refuses to remap a file onto itself", func() {
-			putFiles(model.MediaFile{ID: "m1", Missing: true})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "m1", Missing: true})
 
 			Expect(service.RemapMissingFile(ctx, "m1", "m1")).To(MatchError(ErrSameFile))
 		})
 
 		It("refuses to remap onto a target that is itself missing", func() {
-			putFiles(
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", Missing: true},
 				model.MediaFile{ID: "t1", Missing: true},
 			)
@@ -422,11 +402,11 @@ var _ = Describe("Maintenance", func() {
 
 		It("refreshes artist and album stats right after the remap", func() {
 			artist := model.Participants{model.RoleArtist: {putArtist("ar1")}}
-			putAlbums(
+			persistencetest.PutAlbums(ctx, ds,
 				model.Album{ID: "album1", Name: "Old Album", SongCount: 2, Size: 1100, Duration: 110},
 				model.Album{ID: "album2", Name: "New Album", SongCount: 1, Size: 2000, Duration: 200, Participants: artist},
 			)
-			putFiles(
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", Path: "old/1.mp3", Album: "Old Album", AlbumID: "album1", Missing: true, Size: 100, Duration: 10},
 				model.MediaFile{ID: "k1", Path: "old/2.mp3", Album: "Old Album", AlbumID: "album1", Missing: false, Size: 1000, Duration: 100},
 				model.MediaFile{ID: "t1", Path: "new/1.mp3", Album: "New Album", AlbumID: "album2", Missing: false, Size: 2000, Duration: 200, Participants: artist},
@@ -449,7 +429,7 @@ var _ = Describe("Maintenance", func() {
 		})
 
 		It("returns an error if GC fails", func() {
-			putFiles(
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
 				model.MediaFile{ID: "t1", AlbumID: "album1", Missing: false},
 			)
@@ -462,7 +442,7 @@ var _ = Describe("Maintenance", func() {
 			Expect(ds.Artist().Put(ctx, &model.Artist{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"})).To(Succeed())
 			participant := model.Participant{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"}
 			stored := model.Participant{ID: "a1", Name: "Artist"}
-			putFiles(
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
 				model.MediaFile{ID: "t1", AlbumID: "album2", Missing: false, Participants: model.Participants{
 					model.RoleArtist: model.ParticipantList{participant},
@@ -483,18 +463,9 @@ type mediaFileErrors struct {
 }
 
 func withMediaFileErrors(ds model.DataStore, errs mediaFileErrors) model.DataStore {
-	return persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-		return &mediaFileErrorsDS{DataStore: ds, errs: errs}
-	})
-}
-
-type mediaFileErrorsDS struct {
-	model.DataStore
-	errs mediaFileErrors
-}
-
-func (d *mediaFileErrorsDS) MediaFile() model.MediaFileRepository {
-	return &mediaFileErrorsRepo{MediaFileRepository: d.DataStore.MediaFile(), errs: d.errs}
+	return persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+		return &mediaFileErrorsRepo{MediaFileRepository: r, errs: errs}
+	}})
 }
 
 type mediaFileErrorsRepo struct {
@@ -540,18 +511,9 @@ func (d *gcErrorDS) GC(context.Context, ...int) error { return d.err }
 func withAlbumPutFailures(ds model.DataStore, n int32) model.DataStore {
 	remaining := &atomic.Int32{}
 	remaining.Store(n)
-	return persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-		return &albumPutFailuresDS{DataStore: ds, remaining: remaining}
-	})
-}
-
-type albumPutFailuresDS struct {
-	model.DataStore
-	remaining *atomic.Int32
-}
-
-func (d *albumPutFailuresDS) Album() model.AlbumRepository {
-	return &albumPutFailuresRepo{AlbumRepository: d.DataStore.Album(), remaining: d.remaining}
+	return persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+		return &albumPutFailuresRepo{AlbumRepository: r, remaining: remaining}
+	}})
 }
 
 type albumPutFailuresRepo struct {
@@ -579,18 +541,9 @@ func (s *reassignSpy) calls() []string {
 }
 
 func withReassignSpy(ds model.DataStore, spy *reassignSpy) model.DataStore {
-	return persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-		return &reassignSpyDS{DataStore: ds, spy: spy}
-	})
-}
-
-type reassignSpyDS struct {
-	model.DataStore
-	spy *reassignSpy
-}
-
-func (d *reassignSpyDS) Album() model.AlbumRepository {
-	return &reassignSpyRepo{AlbumRepository: d.DataStore.Album(), spy: d.spy}
+	return persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+		return &reassignSpyRepo{AlbumRepository: r, spy: spy}
+	}})
 }
 
 type reassignSpyRepo struct {

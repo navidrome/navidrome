@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -229,7 +230,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 
 	It("records a pattern skipped because the album folder holds no images", func() {
 		fid := putFolder(ctx, ds, fixtureAlbumDir)
-		putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{fid}})
 
 		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 		Expect(err).ToNot(HaveOccurred())
@@ -245,7 +246,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 
 	It("records an evaluated pattern that matched nothing as a miss, not a skip", func() {
 		fid := putFolder(ctx, ds, fixtureAlbumDir, "artist.png")
-		putAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{fid}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{fid}})
 
 		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 		Expect(err).ToNot(HaveOccurred())
@@ -257,7 +258,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 
 	It("ignores an empty priority token", func() {
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg," })
-		putAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", FolderIDs: []string{putFolder(ctx, ds, fixtureAlbumDir)}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", FolderIDs: []string{putFolder(ctx, ds, fixtureAlbumDir)}})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(err).ToNot(HaveOccurred())
@@ -300,7 +301,7 @@ var _ = Describe("resolveArtist tracing", func() {
 
 	It("records the upload short-circuit as a hit", func() {
 		path := uploadPath("ar1_test.jpg")
-		putArtists(ctx, ds, model.Artist{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"})
 
 		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"})
 		Expect(err).ToNot(HaveOccurred())
@@ -310,7 +311,7 @@ var _ = Describe("resolveArtist tracing", func() {
 	})
 
 	It("records an upload miss before walking the chain", func() {
-		putArtists(ctx, ds, model.Artist{ID: "ar2", Name: "Artist"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar2", Name: "Artist"})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar2"})
 		Expect(err).ToNot(HaveOccurred())
@@ -334,7 +335,7 @@ var _ = Describe("resolveArtist tracing", func() {
 	})
 
 	It("records a configured pattern that could not be evaluated", func() {
-		putArtists(ctx, ds, model.Artist{ID: "ar5", Name: "Artist"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar5", Name: "Artist"})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"})
 		Expect(err).ToNot(HaveOccurred())
@@ -364,7 +365,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		path := uploadPath("ar3_test.jpg")
 		Expect(os.Chmod(path, 0o000)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(path, 0o600) })
-		putArtists(ctx, ds, model.Artist{ID: "ar3", Name: "Artist", UploadedImage: "ar3_test.jpg"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar3", Name: "Artist", UploadedImage: "ar3_test.jpg"})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"})
 		Expect(err).ToNot(HaveOccurred())
@@ -412,10 +413,10 @@ var _ = Describe("NewTracingResolver", func() {
 		BeforeEach(func() {
 			// Misses, so the chain falls through to the local tier and both are traced.
 			fake = &fakeImageAgent{name: "probe", err: agents.ErrNotFound}
-			putAlbums(ctx, ds, model.Album{
+			persistencetest.PutAlbums(ctx, ds, model.Album{
 				ID: "al1", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{putFolder(ctx, ds, fixtureAlbumDir)},
 			})
-			putArtists(ctx, ds, model.Artist{ID: "ar1", Name: "Artist"})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist"})
 		})
 
 		It("asks the agents and records what each answered", func() {
@@ -455,7 +456,7 @@ var _ = Describe("NewTracingResolver", func() {
 		It("closes the reader it does not hand back", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "embedded" })
 			ffm = tests.NewMockFFmpeg("fake image bytes")
-			putAlbums(ctx, ds, model.Album{
+			persistencetest.PutAlbums(ctx, ds, model.Album{
 				ID: "al2", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/no-such-file.mp3", FolderIDs: []string{putFolder(ctx, ds, fixtureAlbumDir)},
 			})
 
@@ -474,7 +475,7 @@ var _ = Describe("NewTracingResolver", func() {
 				c.CoverArtPriority = "external, cover.*"
 				c.EnableMediaFileCoverArt = true
 			})
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3"})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3"})
 			offline := NewTracingResolver(ds, imageAgents(fake), ffm, t, false)
 
 			_, err := offline.Resolve(ctx, model.KindDiscArtwork, "al1:1")
@@ -505,8 +506,8 @@ var _ = Describe("resolveDisc tracing", func() {
 	putDiscAlbum := func(images ...string) {
 		GinkgoHelper()
 		fid := putFolder(ctx, ds, fixtureAlbumDir, images...)
-		putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
-		putMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", AlbumID: "al1", DiscNumber: 2, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", AlbumID: "al1", DiscNumber: 2, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3"})
 	}
 
 	BeforeEach(func() {
@@ -577,7 +578,7 @@ var _ = Describe("resolveMediaFile tracing", func() {
 		Expect(err).ToNot(HaveOccurred())
 		ds = newTestDS(ctx)
 		useLibrary(ctx, ds, repoRoot)
-		putMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Title: "Song", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3"})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Title: "Song", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3"})
 		ffm = tests.NewMockFFmpeg("")
 	})
 
@@ -593,7 +594,7 @@ var _ = Describe("resolveMediaFile tracing", func() {
 	})
 
 	It("records a track with no embedded art as a miss", func() {
-		putMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", Title: "Song", Path: "song.mp3", HasCoverArt: false})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", Title: "Song", Path: "song.mp3", HasCoverArt: false})
 
 		_, err := newResolver(ds, nil, ffm, nil).resolveMediaFile(ctx, "mf2")
 

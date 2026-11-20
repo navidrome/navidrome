@@ -40,8 +40,8 @@ var _ = Describe("Search", func() {
 			for _, id := range libIDs {
 				n := strconv.Itoa(id)
 				putAlbumArtists(ctx, ds, id, model.Artist{ID: "ar-" + n, Name: "Test Artist " + n})
-				putAlbums(ctx, ds, model.Album{ID: "al-" + n, Name: "Test Album " + n, LibraryID: id})
-				putTracks(ctx, ds, model.MediaFile{ID: "mf-" + n, Title: "Test Song " + n, LibraryID: id})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-" + n, Name: "Test Album " + n, LibraryID: id})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf-" + n, Title: "Test Song " + n, LibraryID: id})
 			}
 		})
 

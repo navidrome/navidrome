@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -108,8 +109,8 @@ var _ = Describe("Housekeeping", func() {
 
 	Describe("EnqueueMissingAll", func() {
 		BeforeEach(func() {
-			putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album 1"}, model.Album{ID: "al2", Name: "Album 2"})
-			putArtists(ctx, ds, model.Artist{ID: "ar1", Name: "Artist"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album 1"}, model.Album{ID: "al2", Name: "Album 2"})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist"})
 			putPlaylist(ctx, ds, model.Playlist{ID: "pl1", Name: "Playlist"})
 			putRadio(ctx, ds, model.Radio{ID: "ra1", Name: "Radio"})
 		})
@@ -143,11 +144,11 @@ var _ = Describe("ItemName", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = newTestDS(ctx)
-		putAlbums(ctx, ds,
+		persistencetest.PutAlbums(ctx, ds,
 			model.Album{ID: "al-1", Name: "Kid A"},
 			model.Album{ID: "al-2", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}},
 		)
-		putArtists(ctx, ds, model.Artist{ID: "ar-1", Name: "Radiohead"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar-1", Name: "Radiohead"})
 	})
 
 	It("returns the album name", func() {

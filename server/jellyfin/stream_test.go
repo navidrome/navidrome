@@ -49,7 +49,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("getPlaybackInfo", func() {
 		It("returns a media source for an accessible track", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
@@ -68,7 +68,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			)
 			w := httptest.NewRecorder()
@@ -109,7 +109,7 @@ var _ = Describe("Stream", func() {
 		}
 
 		It("advertises a Lyric stream for plugin/sidecar-sourced lyrics not embedded in the file", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			)
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
@@ -120,7 +120,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("advertises no Lyric stream when the pipeline finds nothing", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			)
 
@@ -128,7 +128,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("advertises no Lyric stream when the lyrics endpoint would 404 (main lyric has no lines)", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			)
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
@@ -139,7 +139,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("doesn't duplicate the Lyric stream when lyrics are already embedded", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},
 			)
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
@@ -152,7 +152,7 @@ var _ = Describe("Stream", func() {
 		It("still returns 200 with a valid MediaSource and no Lyric stream when the lyrics pipeline errors", func() {
 			// Own ID: an erroring loader isn't cached, but a shared ID could still pick up
 			// another test's cached (non-error) result and mask this assertion.
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s-err"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			)
 			api.lyrics = &fakeLyricsService{err: errors.New("boom")}
@@ -182,7 +182,7 @@ var _ = Describe("Stream", func() {
 				Eventually(doneCh).Should(BeClosed())
 			})
 
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Slow Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			)
 			api.lyrics = &fakeLyricsService{
@@ -202,7 +202,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("recovers panics in detached lyrics lookup and returns 200 without Lyric stream", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s-panic"), Title: "Panic Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			)
 			api.lyrics = &fakeLyricsService{panicVal: "lyrics plugin crash"}
@@ -222,7 +222,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamAudio", func() {
 		It("invokes the transcode decider and streamer for an accessible track", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			)
 			streamer.content = "audio-bytes"
@@ -238,7 +238,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			)
 			w := httptest.NewRecorder()
@@ -263,7 +263,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("converts the bps audioBitRate param to kbps", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
@@ -275,7 +275,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("uses the audioCodec param as target format when no container is given", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
@@ -287,7 +287,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 500 and logs when the streamer fails", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			)
 			streamer.err = errors.New("boom")
@@ -302,7 +302,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("HEAD requests", func() {
 		head := func(query string) *httptest.ResponseRecorder {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			)
 			streamer.content = "audio-bytes"
@@ -332,7 +332,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamUniversal", func() {
 		universal := func(query string) {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
@@ -379,7 +379,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamHls", func() {
 		BeforeEach(func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "dsf", Duration: 100.5, LibraryID: 1},
 			)
 		})
@@ -434,7 +434,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "dsf", LibraryID: 2},
 			)
 			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
@@ -448,7 +448,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamFile", func() {
 		It("invokes the decider with a raw/direct-play request and the streamer for an accessible track", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			)
 			streamer.content = "audio-bytes"
@@ -465,7 +465,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			)
 			w := httptest.NewRecorder()

@@ -96,9 +96,9 @@ var _ = Describe("loadArtistFolder", func() {
 	})
 
 	It("returns the error when the folder lookup fails", func() {
-		ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-			return &folderOverlay{DataStore: ds, folder: &failingFolderRepo{FolderRepository: ds.Folder(), err: errors.New("fake error")}}
-		})
+		ds = persistencetest.Stub(ds, persistencetest.Repos{Folder: func(r model.FolderRepository) model.FolderRepository {
+			return &failingFolderRepo{FolderRepository: r, err: errors.New("fake error")}
+		}})
 
 		folder, upd, err := loadArtistFolder(ctx, ds, albums, []string{
 			filepath.FromSlash("/music/artist/album1"),
@@ -110,13 +110,6 @@ var _ = Describe("loadArtistFolder", func() {
 		Expect(upd).To(BeZero())
 	})
 })
-
-type folderOverlay struct {
-	model.DataStore
-	folder model.FolderRepository
-}
-
-func (o *folderOverlay) Folder() model.FolderRepository { return o.folder }
 
 type failingFolderRepo struct {
 	model.FolderRepository

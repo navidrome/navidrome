@@ -84,9 +84,9 @@ var _ = Describe("User Service", func() {
 		})
 
 		It("returns error when repository fails", func() {
-			failing := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return &failingUserDeleteDS{DataStore: ds}
-			})
+			failing := persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+				return &failingUserDeleteRepo{UserRepository: r}
+			}})
 			repo := core.NewUser(failing, pluginManager).Repository().(rest.Persistable[model.User])
 			err := repo.Delete(ctx, "user-123")
 			Expect(err).To(HaveOccurred())
@@ -95,12 +95,6 @@ var _ = Describe("User Service", func() {
 		})
 	})
 })
-
-type failingUserDeleteDS struct{ model.DataStore }
-
-func (d *failingUserDeleteDS) User() model.UserRepository {
-	return &failingUserDeleteRepo{UserRepository: d.DataStore.User()}
-}
 
 type failingUserDeleteRepo struct{ model.UserRepository }
 

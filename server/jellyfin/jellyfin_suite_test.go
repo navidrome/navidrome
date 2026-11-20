@@ -46,30 +46,12 @@ func setTokenEpoch(userID string, epoch int) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-type failingUsers struct {
-	model.DataStore
-	err error
-}
-
-func (f failingUsers) User() model.UserRepository {
-	return failingUserRepo{UserRepository: f.DataStore.User(), err: f.err}
-}
-
 type failingUserRepo struct {
 	model.UserRepository
 	err error
 }
 
 func (f failingUserRepo) Get(context.Context, string) (*model.User, error) { return nil, f.err }
-
-type failingProperties struct {
-	model.DataStore
-	err error
-}
-
-func (f failingProperties) Property() model.PropertyRepository {
-	return failingPropertyRepo{PropertyRepository: f.DataStore.Property(), err: f.err}
-}
 
 type failingPropertyRepo struct {
 	model.PropertyRepository
@@ -87,58 +69,29 @@ func putUser(ctx context.Context, ds model.DataStore, u model.User) model.User {
 	return *stored
 }
 
-// putAlbums stores albums, in library 1 unless they name another, sorting by name as the scanner would.
-func putAlbums(ctx context.Context, ds model.DataStore, albums ...model.Album) {
-	GinkgoHelper()
-	for _, al := range albums {
-		if al.LibraryID == 0 {
-			al.LibraryID = model.DefaultLibraryID
-		}
-		if al.OrderAlbumName == "" {
-			al.OrderAlbumName = strings.ToLower(al.Name)
-		}
-		Expect(ds.Album().Put(ctx, &al)).To(Succeed())
-	}
-}
-
-// putSongs stores songs, in library 1 unless they name another, each at a path derived from its ID.
-func putSongs(ctx context.Context, ds model.DataStore, songs ...model.MediaFile) {
-	GinkgoHelper()
-	for _, mf := range songs {
-		if mf.LibraryID == 0 {
-			mf.LibraryID = model.DefaultLibraryID
-		}
-		if mf.Path == "" {
-			mf.Path = mf.ID + ".mp3"
-		}
-		Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
-	}
-}
-
 // putArtists stores artists in library 1.
 func putArtists(ctx context.Context, ds model.DataStore, artists ...model.Artist) {
 	GinkgoHelper()
 	putArtistsIn(ctx, ds, model.DefaultLibraryID, artists...)
 }
 
-// putArtistsIn stores artists linked to libID, without which no query returns them, credited as
-// artist and album artist so the role-filtered listings include them.
+// putArtistsIn stores artists in libID, credited as artist and album artist so the role-filtered
+// listings include them.
 func putArtistsIn(ctx context.Context, ds model.DataStore, libID int, artists ...model.Artist) {
 	GinkgoHelper()
-	ids := make([]any, len(artists))
+	ids := make([]string, len(artists))
 	inTx(ds, func(tx model.DataStore) {
 		for i, ar := range artists {
 			if ar.OrderArtistName == "" {
 				ar.OrderArtistName = strings.ToLower(ar.Name)
 			}
-			Expect(tx.Artist().Put(ctx, &ar)).To(Succeed())
-			Expect(tx.Library().AddArtist(ctx, libID, ar.ID)).To(Succeed())
+			persistencetest.PutArtists(ctx, tx, libID, ar)
 			ids[i] = ar.ID
 		}
 	})
-	_, err := db.Db().Exec(`UPDATE library_artist SET stats = '{"artist":{"m":1},"albumartist":{"m":1}}'
-		WHERE library_id = ? AND artist_id IN (?`+strings.Repeat(",?", len(ids)-1)+`)`, append([]any{libID}, ids...)...)
-	Expect(err).ToNot(HaveOccurred())
+	persistencetest.SetArtistStats(ctx, libID, map[model.Role]model.ArtistStats{
+		model.RoleArtist: {SongCount: 1}, model.RoleAlbumArtist: {SongCount: 1},
+	}, ids...)
 }
 
 // inTx runs seed in one transaction, which makes seeding thousands of rows fast.

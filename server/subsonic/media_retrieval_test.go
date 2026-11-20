@@ -269,7 +269,7 @@ func putRickAstleySong(ctx context.Context, ds model.DataStore, path, lyrics str
 	GinkgoHelper()
 	artist := model.Artist{ID: "ar-rick", Name: "Rick Astley"}
 	Expect(ds.Artist().Put(ctx, &artist)).To(Succeed())
-	putTracks(ctx, ds, model.MediaFile{
+	persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{
 		ID:           "1",
 		Path:         path,
 		Artist:       "Rick Astley",

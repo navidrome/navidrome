@@ -216,13 +216,10 @@ type noopMetricsRecorder struct{}
 func (noopMetricsRecorder) RecordPluginRequest(context.Context, string, string, bool, int64) {}
 
 // failingUsers makes the user lookups host services run fail with err.
-type failingUsers struct {
-	model.DataStore
-	err error
-}
-
-func (d failingUsers) User() model.UserRepository {
-	return failingUserRepo{UserRepository: d.DataStore.User(), err: d.err}
+func failingUsers(ds model.DataStore, err error) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+		return failingUserRepo{UserRepository: r, err: err}
+	}})
 }
 
 type failingUserRepo struct {

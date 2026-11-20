@@ -53,23 +53,14 @@ var _ = Describe("GET /server", func() {
 	})
 
 	It("returns a 500 problem when the user count fails", func() {
-		ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-			return &countErrorDS{DataStore: ds, err: errors.New("db down")}
-		})
+		ds = persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+			return &countErrorUserRepo{UserRepository: r, err: errors.New("db down")}
+		}})
 		w, _ := get()
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInternal))
 	})
 })
-
-type countErrorDS struct {
-	model.DataStore
-	err error
-}
-
-func (d *countErrorDS) User() model.UserRepository {
-	return &countErrorUserRepo{UserRepository: d.DataStore.User(), err: d.err}
-}
 
 type countErrorUserRepo struct {
 	model.UserRepository

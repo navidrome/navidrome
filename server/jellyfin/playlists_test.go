@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -153,7 +154,7 @@ func putPlaylist(ctx context.Context, ds model.DataStore, id string, songIDs ...
 func putSongsByID(ctx context.Context, ds model.DataStore, ids ...string) {
 	GinkgoHelper()
 	for i, id := range ids {
-		putSongs(ctx, ds, model.MediaFile{ID: id, Title: fmt.Sprintf("Song %d", i+1)})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: id, Title: fmt.Sprintf("Song %d", i+1)})
 	}
 }
 
@@ -343,8 +344,8 @@ var _ = Describe("Playlists", func() {
 		})
 
 		It("expands an album id into its songs, filtered by album", func() {
-			putAlbums(ctx, ds, model.Album{ID: testID("al1"), Name: "One"}, model.Album{ID: testID("al2"), Name: "Two"})
-			putSongs(ctx, ds,
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("al1"), Name: "One"}, model.Album{ID: testID("al2"), Name: "Two"})
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), AlbumID: testID("al1"), TrackNumber: 1},
 				model.MediaFile{ID: testID("s2"), AlbumID: testID("al1"), TrackNumber: 2},
 				model.MediaFile{ID: testID("s3"), AlbumID: testID("al2"), TrackNumber: 1},
@@ -355,7 +356,7 @@ var _ = Describe("Playlists", func() {
 
 		It("expands an artist id into its songs", func() {
 			putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "One"}, model.Artist{ID: testID("ar2"), Name: "Two"})
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: testID("s1"), TrackNumber: 1, Participants: credits(model.RoleArtist, testID("ar1"))},
 				model.MediaFile{ID: testID("s2"), TrackNumber: 2, Participants: credits(model.RoleAlbumArtist, testID("ar1"))},
 				model.MediaFile{ID: testID("s3"), TrackNumber: 3, Participants: credits(model.RoleArtist, testID("ar2"))},
@@ -386,7 +387,7 @@ var _ = Describe("Playlists", func() {
 			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
 			putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "Huge"})
 			for i := range 6 {
-				putSongs(ctx, ds, model.MediaFile{ID: testID(fmt.Sprintf("big-%d", i)), Participants: credits(model.RoleArtist, testID("ar1"))})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID(fmt.Sprintf("big-%d", i)), Participants: credits(model.RoleArtist, testID("ar1"))})
 			}
 		}
 		create := func(body any) *httptest.ResponseRecorder {

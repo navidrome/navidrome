@@ -35,7 +35,7 @@ var _ = Describe("Bookmarks", func() {
 		ds = persistence.New(db.Db())
 		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Name: "Private", Path: "/private"})).To(Succeed())
 		putUsers(ctx, ds, model.User{ID: "u1", UserName: "u1"})
-		putTracks(ctx, ds, model.MediaFile{ID: "visible"}, model.MediaFile{ID: "hidden", LibraryID: 2})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "visible"}, model.MediaFile{ID: "hidden", LibraryID: 2})
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
@@ -63,7 +63,9 @@ var _ = Describe("Bookmarks", func() {
 	Context("when some queued tracks fail to load", func() {
 		BeforeEach(func() {
 			Expect(ds.PlayQueue().Store(ctx, &model.PlayQueue{UserID: "u1", Items: model.MediaFiles{{ID: "visible"}}})).To(Succeed())
-			router = New(persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return incompletePlayQueue{ds} }),
+			router = New(persistencetest.Stub(ds, persistencetest.Repos{PlayQueue: func(r model.PlayQueueRepository) model.PlayQueueRepository {
+				return incompletePlayQueueRepo{r}
+			}}),
 				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		})
 
@@ -82,12 +84,6 @@ var _ = Describe("Bookmarks", func() {
 		})
 	})
 })
-
-type incompletePlayQueue struct{ model.DataStore }
-
-func (d incompletePlayQueue) PlayQueue() model.PlayQueueRepository {
-	return incompletePlayQueueRepo{d.DataStore.PlayQueue()}
-}
 
 type incompletePlayQueueRepo struct{ model.PlayQueueRepository }
 

@@ -39,13 +39,13 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	withFailingArtists := func(err error) {
-		failing := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return failingArtistDS{ds, err} })
+		failing := failingArtists(ds, err)
 		p = NewProvider(failing, ag, matcher.New(failing), &fakeBroker{})
 	}
 
 	It("returns top songs for a known artist", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"},
 			model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "mbid-song-2"},
 		)
@@ -64,8 +64,8 @@ var _ = Describe("Provider - TopSongs", func() {
 
 	Context("artist id and/or name", func() {
 		BeforeEach(func() {
-			putArtists(ctx, ds, artist1)
-			putTracks(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
 			agentSongs := []agents.Song{{Name: "Song One", MBID: "mbid-song-1"}}
 			ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
 		})
@@ -106,8 +106,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("backfills name and MBID onto an unnamed primary credit (the queried artist) and matches", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", Participants: credited(artist1)})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", Participants: credited(artist1)})
 
 		// The blank first credit IS the queried artist, so enrichment fills both name and MBID and
 		// the song matches the queried artist's track via the backfilled identity.
@@ -125,8 +125,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	It("does not stamp the queried MBID onto an already-named different first credit", func() {
 		// The first credit is a different artist (Two) without an MBID. Stamping One's MBID onto it
 		// would resolve it to One, matching One's same-titled track.
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds, model.MediaFile{ID: "one-track", Title: "Collab Song", ArtistID: "artist-1", Participants: credited(artist1)})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "one-track", Title: "Collab Song", ArtistID: "artist-1", Participants: credited(artist1)})
 
 		agentSongs := []agents.Song{
 			{Name: "Collab Song", Artists: []agents.Artist{{Name: "Artist Two"}}},
@@ -148,7 +148,7 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("returns error when the agent returns an error", func() {
-		putArtists(ctx, ds, artist1)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
 		agentErr := errors.New("agent error")
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 5).Return(nil, agentErr).Once()
 
@@ -160,7 +160,7 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("returns ErrNotFound when the agent returns ErrNotFound", func() {
-		putArtists(ctx, ds, artist1)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 5).Return(nil, agents.ErrNotFound).Once()
 
 		songs, err := p.TopSongs(ctx, "Artist One", "", 5)
@@ -172,7 +172,7 @@ var _ = Describe("Provider - TopSongs", func() {
 
 	// This endpoint answered with an empty list before retry-later existed; it must keep doing so.
 	It("returns an empty list, not a client error, when the agents are throttled", func() {
-		putArtists(ctx, ds, artist1)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 5).
 			Return(nil, agents.ErrRetryLater).Once()
 
@@ -185,8 +185,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("returns fewer songs if count is less than available top songs", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
 		agentSongs := []agents.Song{{Name: "Song One", MBID: "mbid-song-1"}}
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 1).Return(agentSongs, nil).Once()
 
@@ -198,8 +198,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("returns fewer songs if fewer matching tracks are found", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
 		agentSongs := []agents.Song{
 			{Name: "Song One", MBID: "mbid-song-1"},
 			{Name: "Song Two", MBID: "mbid-song-2"},
@@ -214,7 +214,7 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("returns error when context is canceled during agent call", func() {
-		putArtists(ctx, ds, artist1)
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
 		canceledCtx, cancel := context.WithCancel(ctx)
 		ag.On("GetArtistTopSongs", canceledCtx, "artist-1", "Artist One", "mbid-artist-1", 5).
 			Run(func(mock.Arguments) { cancel() }).
@@ -228,8 +228,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("falls back to title matching when MbzRecordingID is missing", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "song-1", Title: "Song One", Artist: "Artist One", ArtistID: "artist-1", Participants: credited(artist1)},
 			model.MediaFile{ID: "song-2", Title: "Song Two", Artist: "Artist One", ArtistID: "artist-1", Participants: credited(artist1)},
 		)
@@ -247,8 +247,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("combines MBID and title matching when some songs have missing MbzRecordingID", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"},
 			model.MediaFile{ID: "song-2", Title: "Song Two", Artist: "Artist One", ArtistID: "artist-1", Participants: credited(artist1)},
 		)
@@ -266,8 +266,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("only returns requested count when provider returns additional items", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"},
 			model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzRecordingID: "mbid-song-2"},
 		)
@@ -285,8 +285,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("matches songs by ID first when agent provides IDs", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds,
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds,
 			model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1"},
 			model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1"},
 		)
@@ -304,8 +304,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	})
 
 	It("falls back to MBID when ID is not found", func() {
-		putArtists(ctx, ds, artist1)
-		putTracks(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artist1)
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"})
 		agentSongs := []agents.Song{
 			{ID: "non-existent-id", Name: "Song One", MBID: "mbid-song-1"},
 		}

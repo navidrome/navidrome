@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -67,7 +68,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			AlbumArtist: "Test Artist",
 			MbzAlbumID:  "mbid-album",
 		}
-		putAlbums(ctx, ds, *originalAlbum)
+		persistencetest.PutAlbums(ctx, ds, *originalAlbum)
 
 		expectedInfo := &agents.AlbumInfo{
 			URL:         "http://example.com/album",
@@ -110,7 +111,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			LargeImageUrl:         "http://cached.com/large.jpg",
 			ExternalInfoUpdatedAt: new(now.Add(-conf.Server().DevAlbumInfoTimeToLive / 2)),
 		}
-		putAlbums(ctx, ds, *originalAlbum)
+		persistencetest.PutAlbums(ctx, ds, *originalAlbum)
 
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-cached")
 
@@ -133,7 +134,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			LargeImageUrl:         "http://expired.com/large.jpg",
 			ExternalInfoUpdatedAt: new(expiredTime),
 		}
-		putAlbums(ctx, ds, *originalAlbum)
+		persistencetest.PutAlbums(ctx, ds, *originalAlbum)
 
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-expired")
 
@@ -151,7 +152,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			AlbumArtist: "Agent Error Artist",
 			MbzAlbumID:  "mbid-agent-error",
 		}
-		putAlbums(ctx, ds, *originalAlbum)
+		persistencetest.PutAlbums(ctx, ds, *originalAlbum)
 
 		expectedErr := errors.New("agent communication failed")
 		ag.On("GetAlbumInfo", ctx, "Agent Error Album", "Agent Error Artist", "mbid-agent-error").Return(nil, expectedErr)
@@ -170,7 +171,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			AlbumArtist: "Agent NotFound Artist",
 			MbzAlbumID:  "mbid-agent-notfound",
 		}
-		putAlbums(ctx, ds, *originalAlbum)
+		persistencetest.PutAlbums(ctx, ds, *originalAlbum)
 
 		ag.On("GetAlbumInfo", ctx, "Agent NotFound Album", "Agent NotFound Artist", "mbid-agent-notfound").Return(nil, agents.ErrNotFound)
 
@@ -191,7 +192,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 			AlbumArtist: "Throttled Artist",
 			MbzAlbumID:  "mbid-throttled",
 		}
-		putAlbums(ctx, ds, *originalAlbum)
+		persistencetest.PutAlbums(ctx, ds, *originalAlbum)
 
 		ag.On("GetAlbumInfo", ctx, "Throttled Album", "Throttled Artist", "mbid-throttled").
 			Return(nil, agents.ErrRetryLater)

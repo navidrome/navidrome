@@ -75,7 +75,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 
 	It("repopulates an artist even when its info is fresh", func() {
 		fresh := time.Now()
-		putArtists(ctx, ds, model.Artist{
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{
 			ID: "ar-1", Name: "Test Artist", Biography: "stale", ExternalInfoUpdatedAt: &fresh,
 		})
 		expectArtistAgents()
@@ -89,7 +89,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 
 	It("repopulates an album even when its info is fresh", func() {
 		fresh := time.Now()
-		putAlbums(ctx, ds, model.Album{
+		persistencetest.PutAlbums(ctx, ds, model.Album{
 			ID: "al-1", Name: "Test Album", AlbumArtist: "Test Artist",
 			Description: "stale", ExternalInfoUpdatedAt: &fresh,
 		})
@@ -111,7 +111,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 	})
 
 	It("broadcasts a RefreshResource naming the artist", func() {
-		putArtists(ctx, ds, model.Artist{ID: "ar-1", Name: "Test Artist"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar-1", Name: "Test Artist"})
 		expectArtistAgents()
 
 		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(Succeed())
@@ -125,7 +125,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 	})
 
 	It("broadcasts a RefreshResource naming the album", func() {
-		putAlbums(ctx, ds, model.Album{ID: "al-1", Name: "Test Album", AlbumArtist: "Test Artist"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al-1", Name: "Test Album", AlbumArtist: "Test Artist"})
 		expectAlbumAgents()
 
 		Expect(p.RefreshInfo(ctx, model.KindAlbumArtwork, "al-1")).To(Succeed())
@@ -137,9 +137,9 @@ var _ = Describe("Provider - RefreshInfo", func() {
 	})
 
 	It("does not broadcast when the artist cannot be loaded", func() {
-		putArtists(ctx, ds, model.Artist{ID: "ar-1", Name: "Test Artist"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar-1", Name: "Test Artist"})
 		expectArtistAgents()
-		failing := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return failingArtistDS{ds, errDBDown} })
+		failing := failingArtists(ds, errDBDown)
 		p = external.NewProvider(failing, ag, matcher.New(failing), broker)
 
 		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(MatchError(errDBDown))

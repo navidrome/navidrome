@@ -44,8 +44,8 @@ var _ = Describe("phasePlaylists", func() {
 		GinkgoHelper()
 		Expect(ds.User().Delete(request.WithUser(ctx, model.User{IsAdmin: true}), "123")).To(Succeed())
 	}
-	withStub := func(wrap func(model.DataStore) model.DataStore) {
-		phase = createPhasePlaylists(ctx, state, persistencetest.Overlay(ds, wrap), pls)
+	withStub := func(repos persistencetest.Repos) {
+		phase = createPhasePlaylists(ctx, state, persistencetest.Stub(ds, repos), pls)
 	}
 
 	BeforeEach(func() {
@@ -89,9 +89,9 @@ var _ = Describe("phasePlaylists", func() {
 
 		It("returns an error if there is an error loading folders", func() {
 			putPlaylistFolders("path/to/folder1")
-			withStub(func(ds model.DataStore) model.DataStore {
-				return &failingFolderDS{DataStore: ds, err: errors.New("error loading folders")}
-			})
+			withStub(persistencetest.Repos{Folder: func(r model.FolderRepository) model.FolderRepository {
+				return &failingFolderRepo{FolderRepository: r, err: errors.New("error loading folders")}
+			}})
 
 			called := false
 			err := phase.produce(func(folder *model.Folder) { called = true })
@@ -116,9 +116,9 @@ var _ = Describe("phasePlaylists", func() {
 		})
 
 		It("returns an error (not a silent defer) on a datastore failure resolving the admin", func() {
-			withStub(func(ds model.DataStore) model.DataStore {
-				return &failingAdminDS{DataStore: ds, err: errors.New("db is locked")}
-			})
+			withStub(persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+				return &failingAdminRepo{UserRepository: r, err: errors.New("db is locked")}
+			}})
 
 			err := phase.produce(func(folder *model.Folder) {})
 
@@ -130,9 +130,9 @@ var _ = Describe("phasePlaylists", func() {
 
 		It("returns an error when the pending flag cannot be persisted", func() {
 			removeAdmin() // no admin -> defer path
-			withStub(func(ds model.DataStore) model.DataStore {
-				return &failingPropertyDS{DataStore: ds, err: errors.New("property table unavailable")}
-			})
+			withStub(persistencetest.Repos{Property: func(r model.PropertyRepository) model.PropertyRepository {
+				return &failingPropertyRepo{PropertyRepository: r, err: errors.New("property table unavailable")}
+			}})
 
 			err := phase.produce(func(folder *model.Folder) {})
 
@@ -259,15 +259,6 @@ func (p *mockPlaylists) ImportFromFolder(ctx context.Context, folder *model.Fold
 	return args.Get(0).(*model.Playlist), args.Error(1)
 }
 
-type failingFolderDS struct {
-	model.DataStore
-	err error
-}
-
-func (d *failingFolderDS) Folder() model.FolderRepository {
-	return &failingFolderRepo{FolderRepository: d.DataStore.Folder(), err: d.err}
-}
-
 // failingFolderRepo's cursor fails on its first row.
 type failingFolderRepo struct {
 	model.FolderRepository
@@ -278,15 +269,6 @@ func (f *failingFolderRepo) GetTouchedWithPlaylists(context.Context) (model.Fold
 	return func(yield func(model.Folder, error) bool) { yield(model.Folder{}, f.err) }, nil
 }
 
-type failingAdminDS struct {
-	model.DataStore
-	err error
-}
-
-func (d *failingAdminDS) User() model.UserRepository {
-	return &failingAdminRepo{UserRepository: d.DataStore.User(), err: d.err}
-}
-
 type failingAdminRepo struct {
 	model.UserRepository
 	err error
@@ -294,15 +276,6 @@ type failingAdminRepo struct {
 
 func (r *failingAdminRepo) FindFirstAdmin(context.Context) (*model.User, error) {
 	return nil, r.err
-}
-
-type failingPropertyDS struct {
-	model.DataStore
-	err error
-}
-
-func (d *failingPropertyDS) Property() model.PropertyRepository {
-	return &failingPropertyRepo{PropertyRepository: d.DataStore.Property(), err: d.err}
 }
 
 type failingPropertyRepo struct {

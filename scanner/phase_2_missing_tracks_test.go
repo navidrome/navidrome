@@ -35,8 +35,8 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(ds.MediaFile().Put(ctx, mf)).To(Succeed())
 		}
 	}
-	withStub := func(wrap func(model.DataStore) model.DataStore) {
-		phase = createPhaseMissingTracks(ctx, state, persistencetest.Overlay(ds, wrap))
+	withStub := func(repos persistencetest.Repos) {
+		phase = createPhaseMissingTracks(ctx, state, persistencetest.Stub(ds, repos))
 	}
 	albumStarred := func(albumID string) bool {
 		GinkgoHelper()
@@ -388,9 +388,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				matched: []model.MediaFile{matchedTrack},
 			}
 
-			withStub(func(ds model.DataStore) model.DataStore {
-				return &failingMediaFileDS{DataStore: ds, err: errors.New("db error")}
-			})
+			withStub(failingMediaFiles(errors.New("db error")))
 
 			_, err := phase.processMissingTracks(in)
 			Expect(err).To(HaveOccurred())
@@ -838,9 +836,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			})
 
 			It("should handle errors gracefully", func() {
-				withStub(func(ds model.DataStore) model.DataStore {
-					return &failingMediaFileDS{DataStore: ds, err: errors.New("db error")}
-				})
+				withStub(failingMediaFiles(errors.New("db error")))
 
 				missingTrack := model.MediaFile{
 					ID:                "missing7",
@@ -874,7 +870,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 		BeforeEach(func() {
 			spy = &albumSpy{reassigned: map[string]string{}, copied: map[string]string{}}
-			withStub(func(ds model.DataStore) model.DataStore { return &albumSpyDS{DataStore: ds, spy: spy} })
+			withStub(spy.repos())
 		})
 
 		It("should preserve the missing track's created_at when moving within a library", func() {
@@ -988,7 +984,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 		BeforeEach(func() {
 			spy = &albumSpy{reassigned: map[string]string{}, copied: map[string]string{}}
-			withStub(func(ds model.DataStore) model.DataStore { return &albumSpyDS{DataStore: ds, spy: spy} })
+			withStub(spy.repos())
 
 			oldAlbumID = "old-album-id"
 			newAlbumID = "new-album-id"
@@ -1100,14 +1096,11 @@ func (d *probeTxDS) WithTxRetry(ctx context.Context, block func(context.Context,
 	}, label...)
 }
 
-// failingMediaFileDS fails media file deletes and cross-library match lookups.
-type failingMediaFileDS struct {
-	model.DataStore
-	err error
-}
-
-func (d *failingMediaFileDS) MediaFile() model.MediaFileRepository {
-	return &failingMediaFileRepo{MediaFileRepository: d.DataStore.MediaFile(), err: d.err}
+// failingMediaFiles fails media file deletes and cross-library match lookups.
+func failingMediaFiles(err error) persistencetest.Repos {
+	return persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+		return &failingMediaFileRepo{MediaFileRepository: r, err: err}
+	}}
 }
 
 type failingMediaFileRepo struct {
@@ -1134,13 +1127,10 @@ type albumSpy struct {
 	err        error
 }
 
-type albumSpyDS struct {
-	model.DataStore
-	spy *albumSpy
-}
-
-func (d *albumSpyDS) Album() model.AlbumRepository {
-	return &albumSpyRepo{AlbumRepository: d.DataStore.Album(), spy: d.spy}
+func (s *albumSpy) repos() persistencetest.Repos {
+	return persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+		return &albumSpyRepo{AlbumRepository: r, spy: s}
+	}}
 }
 
 type albumSpyRepo struct {

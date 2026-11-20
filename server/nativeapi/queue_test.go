@@ -60,15 +60,6 @@ func (q faultyPlayQueue) Clear(ctx context.Context, userID string) error {
 	return q.PlayQueueRepository.Clear(ctx, userID)
 }
 
-type faultyQueueStore struct {
-	model.DataStore
-	faults *queueFaults
-}
-
-func (s faultyQueueStore) PlayQueue() model.PlayQueueRepository {
-	return faultyPlayQueue{s.DataStore.PlayQueue(), s.faults}
-}
-
 var _ = Describe("Queue Endpoints", func() {
 	var (
 		ctx    context.Context
@@ -99,9 +90,9 @@ var _ = Describe("Queue Endpoints", func() {
 		ctx = GinkgoT().Context()
 		realDS = persistence.New(db.Db())
 		faults = &queueFaults{}
-		ds = persistencetest.Overlay(realDS, func(ds model.DataStore) model.DataStore {
-			return faultyQueueStore{ds, faults}
-		})
+		ds = persistencetest.Stub(realDS, persistencetest.Repos{PlayQueue: func(r model.PlayQueueRepository) model.PlayQueueRepository {
+			return faultyPlayQueue{r, faults}
+		}})
 		user = model.User{ID: "u1", UserName: "user"}
 		putUsers(ctx, realDS, &user)
 		for _, id := range []string{"s1", "s2", "s3", "s4", "track1", "track2", "track3"} {

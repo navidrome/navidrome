@@ -108,9 +108,7 @@ var _ = Describe("UsersService", func() {
 
 		Context("when datastore returns error", func() {
 			BeforeEach(func() {
-				failing := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-					return failingUsers{DataStore: ds, err: errors.New("db is locked")}
-				})
+				failing := failingUsers(ds, errors.New("db is locked"))
 				service = newUsersService(failing, newUserAccess(nil, true))
 			})
 
@@ -170,9 +168,7 @@ var _ = Describe("UsersService", func() {
 
 		Context("when datastore returns error", func() {
 			BeforeEach(func() {
-				failing := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-					return failingUsers{DataStore: ds, err: errors.New("db is locked")}
-				})
+				failing := failingUsers(ds, errors.New("db is locked"))
 				service = newUsersService(failing, newUserAccess(nil, true))
 			})
 

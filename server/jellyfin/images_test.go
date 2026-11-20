@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
@@ -74,7 +75,7 @@ var _ = Describe("Images", func() {
 	DescribeTable("derives the requested size from the Jellyfin size params",
 		func(query string, wantSize int) {
 			ds := persistence.New(db.Db())
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 			fa := &fakeArtwork{}
 			api := &Router{ds: ds, artwork: fa}
 
@@ -103,7 +104,7 @@ var _ = Describe("Images", func() {
 
 	It("streams album artwork", func() {
 		ds := persistence.New(db.Db())
-		putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -143,7 +144,7 @@ var _ = Describe("Images", func() {
 
 	It("sniffs the Content-Type instead of hardcoding it", func() {
 		ds := persistence.New(db.Db())
-		putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 
 		png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, make([]byte, 512)...)
 		fa := &fakeArtwork{data: png}
@@ -175,7 +176,7 @@ var _ = Describe("Images", func() {
 	// silently falls back to the placeholder.
 	It("resolves artwork under an elevated admin context", func() {
 		ds := persistence.New(db.Db())
-		putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -191,7 +192,7 @@ var _ = Describe("Images", func() {
 	It("serves immutable when the tag param asserts the current hash", func() {
 		const hash = "0123456789abcdef"
 		ds := persistence.New(db.Db())
-		putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -209,7 +210,7 @@ var _ = Describe("Images", func() {
 	It("revalidates via no-cache when no tag is provided", func() {
 		const hash = "0123456789abcdef"
 		ds := persistence.New(db.Db())
-		putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 

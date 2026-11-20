@@ -20,18 +20,9 @@ type userErrors struct {
 }
 
 func withUserErrors(ds model.DataStore, errs userErrors) model.DataStore {
-	return persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-		return &userErrorsDS{DataStore: ds, errs: errs}
-	})
-}
-
-type userErrorsDS struct {
-	model.DataStore
-	errs userErrors
-}
-
-func (d *userErrorsDS) User() model.UserRepository {
-	return &userErrorsRepo{UserRepository: d.DataStore.User(), errs: d.errs}
+	return persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+		return &userErrorsRepo{UserRepository: r, errs: errs}
+	}})
 }
 
 type userErrorsRepo struct {

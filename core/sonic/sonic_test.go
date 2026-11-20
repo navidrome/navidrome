@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -92,7 +93,7 @@ var _ = Describe("Sonic", func() {
 		})
 
 		It("returns matched results from plugin", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "song-1", Title: "Test Song", Artist: "Test Artist"},
 				model.MediaFile{ID: "song-2", Title: "Similar Song", Artist: "Test Artist"},
 			)
@@ -124,7 +125,7 @@ var _ = Describe("Sonic", func() {
 		})
 
 		It("returns error when plugin call fails", func() {
-			putSongs(ctx, ds,
+			persistencetest.PutMediaFiles(ctx, ds,
 				model.MediaFile{ID: "song-1", Title: "Start", Artist: "Artist"},
 				model.MediaFile{ID: "song-2", Title: "End", Artist: "Artist"},
 			)
@@ -140,12 +141,3 @@ var _ = Describe("Sonic", func() {
 		})
 	})
 })
-
-func putSongs(ctx context.Context, ds model.DataStore, songs ...model.MediaFile) {
-	GinkgoHelper()
-	for i := range songs {
-		songs[i].LibraryID = model.DefaultLibraryID
-		songs[i].Path = songs[i].ID + ".mp3"
-		Expect(ds.MediaFile().Put(ctx, &songs[i])).To(Succeed())
-	}
-}

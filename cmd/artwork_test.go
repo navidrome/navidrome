@@ -62,8 +62,7 @@ var _ = Describe("resolveArtworkTargets", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
-		Expect(ds.Artist().Put(ctx, &model.Artist{ID: "artist1", Name: "artist1"})).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, "artist1")).To(Succeed())
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "artist1", Name: "artist1"})
 	})
 
 	It("accepts the explicit <kind> <id> leader shared by every id", func() {
@@ -1215,9 +1214,9 @@ var _ = Describe("cancelArtwork", func() {
 	})
 
 	It("reports a queue read failure instead of reporting nothing to cancel", func() {
-		ds = persistencetest.Overlay(ds, func(inner model.DataStore) model.DataStore {
-			return failingQueueDS{DataStore: inner, err: errors.New("read failed")}
-		})
+		ds = persistencetest.Stub(ds, persistencetest.Repos{ArtworkQueue: func(r model.ArtworkQueueRepository) model.ArtworkQueueRepository {
+			return failingQueueRepo{ArtworkQueueRepository: r, err: errors.New("read failed")}
+		}})
 		Expect(cancelArtwork(ctx, ds, nil, nil, false, accept, &out)).To(MatchError(ContainSubstring("read failed")))
 	})
 })
@@ -1229,13 +1228,4 @@ type failingQueueRepo struct {
 
 func (r failingQueueRepo) CountQueued(context.Context, []model.Kind, []int) ([]model.ArtworkQueueStat, error) {
 	return nil, r.err
-}
-
-type failingQueueDS struct {
-	model.DataStore
-	err error
-}
-
-func (d failingQueueDS) ArtworkQueue() model.ArtworkQueueRepository {
-	return failingQueueRepo{ArtworkQueueRepository: d.DataStore.ArtworkQueue(), err: d.err}
 }

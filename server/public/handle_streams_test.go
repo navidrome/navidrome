@@ -139,7 +139,7 @@ var _ = Describe("handleStream", func() {
 	shareOwnedBy := func(owner model.User, mf model.MediaFile) {
 		GinkgoHelper()
 		Expect(ds.User().Put(ctx, &owner)).To(Succeed())
-		putMediaFiles(ctx, ds, mf)
+		persistencetest.PutMediaFiles(ctx, ds, mf)
 		putShare(ctx, ds, model.Share{ID: "share123", UserID: owner.ID, ResourceType: "media_file", ResourceIDs: mf.ID})
 	}
 
@@ -172,9 +172,9 @@ var _ = Describe("handleStream", func() {
 		restricted := model.MediaFile{ID: "mf-restricted", Title: "Other Lib Track", LibraryID: 2}
 		shareOwnedBy(model.User{ID: "owner1", UserName: "owner1"}, restricted)
 		// Loading the share already drops tracks the owner cannot see; put it back to reach the handler's own check.
-		pub.ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-			return &extraShareTracksDS{DataStore: ds, extra: model.MediaFiles{restricted}}
-		})
+		pub.ds = persistencetest.Stub(ds, persistencetest.Repos{Share: func(r model.ShareRepository) model.ShareRepository {
+			return &extraShareTracksRepo{ShareRepository: r, extra: model.MediaFiles{restricted}}
+		}})
 
 		claims := auth.Claims{ID: "mf-restricted", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
@@ -186,7 +186,7 @@ var _ = Describe("handleStream", func() {
 
 	It("returns 404 when the track is not a member of the share", func() {
 		shareOwnedBy(model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}, model.MediaFile{ID: "mf-shared"})
-		putMediaFiles(ctx, ds, model.MediaFile{ID: "mf-other"})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf-other"})
 
 		claims := auth.Claims{ID: "mf-other", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
@@ -273,15 +273,6 @@ var _ = Describe("handleStream", func() {
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 	})
 })
-
-type extraShareTracksDS struct {
-	model.DataStore
-	extra model.MediaFiles
-}
-
-func (d *extraShareTracksDS) Share() model.ShareRepository {
-	return &extraShareTracksRepo{ShareRepository: d.DataStore.Share(), extra: d.extra}
-}
 
 type extraShareTracksRepo struct {
 	model.ShareRepository

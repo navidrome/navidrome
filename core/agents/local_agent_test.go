@@ -6,6 +6,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -123,13 +124,10 @@ func (r getRandomSpyRepo) GetRandom(ctx context.Context, options ...model.QueryO
 // putSongs stores the songs in library 1, along with the tags they carry.
 func putSongs(ctx context.Context, ds model.DataStore, songs ...model.MediaFile) {
 	GinkgoHelper()
-	for i := range songs {
-		mf := songs[i]
-		mf.LibraryID = model.DefaultLibraryID
-		mf.Path = mf.ID + ".mp3"
+	for _, mf := range songs {
 		if tags := mf.Tags.FlattenAll(); len(tags) > 0 {
 			Expect(ds.Tag().Add(ctx, model.DefaultLibraryID, tags...)).To(Succeed())
 		}
-		Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
 	}
+	persistencetest.PutMediaFiles(ctx, ds, songs...)
 }

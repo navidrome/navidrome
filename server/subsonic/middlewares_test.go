@@ -476,7 +476,7 @@ var _ = Describe("Middlewares", func() {
 
 			It("does not count server errors", func() {
 				store := &failingAuthStore{}
-				cp = authenticate(persistencetest.Overlay(ds, store.wrap))(next)
+				cp = authenticate(store.stub(ds))(next)
 				store.userErr = errors.New("db down")
 				failTimes(5, "u=admin", "p=wordpass")
 				store.userErr = nil
@@ -491,7 +491,7 @@ var _ = Describe("Middlewares", func() {
 				key := "nds_0123456789abcdefghijkl"
 				Expect(ds.Player().SetAPIKey(request.WithUser(ctx, *usr), "player-1", key)).To(Succeed())
 				store := &failingAuthStore{}
-				cp = authenticate(persistencetest.Overlay(ds, store.wrap))(next)
+				cp = authenticate(store.stub(ds))(next)
 
 				store.playerErr = errors.New("db down")
 				failTimes(5, "u=admin", "p="+key)
@@ -959,21 +959,13 @@ type failingAuthStore struct {
 	userErr, playerErr error
 }
 
-func (f *failingAuthStore) wrap(ds model.DataStore) model.DataStore {
-	return failingAuthDataStore{DataStore: ds, f: f}
-}
-
-type failingAuthDataStore struct {
-	model.DataStore
-	f *failingAuthStore
-}
-
-func (d failingAuthDataStore) User() model.UserRepository {
-	return failingAuthUserRepo{UserRepository: d.DataStore.User(), f: d.f}
-}
-
-func (d failingAuthDataStore) Player() model.PlayerRepository {
-	return failingAuthPlayerRepo{PlayerRepository: d.DataStore.Player(), f: d.f}
+func (f *failingAuthStore) stub(ds model.DataStore) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{
+		User: func(r model.UserRepository) model.UserRepository { return failingAuthUserRepo{UserRepository: r, f: f} },
+		Player: func(r model.PlayerRepository) model.PlayerRepository {
+			return failingAuthPlayerRepo{PlayerRepository: r, f: f}
+		},
+	})
 }
 
 type failingAuthUserRepo struct {

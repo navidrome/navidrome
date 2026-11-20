@@ -50,13 +50,6 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(ds.Folder().Put(ctx, f)).To(Succeed())
 		return f.ID
 	}
-	putAlbums := func(albums ...model.Album) {
-		GinkgoHelper()
-		for _, al := range albums {
-			al.LibraryID = model.DefaultLibraryID
-			Expect(ds.Album().Put(ctx, &al)).To(Succeed())
-		}
-	}
 	putRadio := func(rd model.Radio) {
 		GinkgoHelper()
 		Expect(ds.Radio().Put(ctx, &rd)).To(Succeed())
@@ -119,7 +112,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 	seedFolderAlbum := func(albumID string) {
 		GinkgoHelper()
-		putAlbums(model.Album{ID: albumID, Name: "Album", FolderIDs: []string{putFolder(albumFolderPath, "cover.jpg")}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: albumID, Name: "Album", FolderIDs: []string{putFolder(albumFolderPath, "cover.jpg")}})
 	}
 
 	It("acquires and serves a cover whose format has no registered decoder (#5950)", func() {
@@ -129,7 +122,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 		persistencetest.SetLibraries(ctx, ds, libDir)
-		putAlbums(model.Album{ID: "al1", Name: "Album", FolderIDs: []string{putFolder("an-album", "cover.jxl")}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{putFolder("an-album", "cover.jxl")}})
 
 		bump("al", "al1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
@@ -158,8 +151,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 	It("acquires an artist's uploaded image and serves it", func() {
 		name := writeUpload(consts.EntityArtist, "artist-e2e.png", artistPngFixture)
-		Expect(ds.Artist().Put(ctx, &model.Artist{ID: "ar1", Name: "Artist", UploadedImage: name})).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, "ar1")).To(Succeed())
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist", UploadedImage: name})
 		bump("ar", "ar1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindArtistArtwork, "ar1"))
 
@@ -276,7 +268,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 	It("deduplicates byte-identical art across entities onto one image row", func() {
 		fid := putFolder(albumFolderPath, "cover.jpg")
-		putAlbums(
+		persistencetest.PutAlbums(ctx, ds,
 			model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}},
 			model.Album{ID: "al2", Name: "Same Cover", FolderIDs: []string{fid}},
 		)
@@ -324,7 +316,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 	})
 
 	It("records an absent state for an entity with no art and reports it unavailable", func() {
-		putAlbums(model.Album{ID: "alx", Name: "Artless"})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alx", Name: "Artless"})
 		bump("al", "alx")
 		runWorkerUntil(ctx, worker, itemAbsent(model.KindAlbumArtwork, "alx"))
 

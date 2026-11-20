@@ -78,7 +78,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("resolves embedded art from the track file", func() {
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: true})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: true})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf1"})
 			Expect(err).ToNot(HaveOccurred())
@@ -91,7 +91,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("resolves absent when the track has no cover art", func() {
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf2"})
 			Expect(err).ToNot(HaveOccurred())
@@ -101,7 +101,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("resolves absent when media file cover art is disabled", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
-			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf3", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: true})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf3", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: true})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf3"})
 			Expect(err).ToNot(HaveOccurred())
@@ -122,7 +122,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("resolves folder art from the library FS", func() {
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 			Expect(err).ToNot(HaveOccurred())
@@ -135,7 +135,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("falls back to embedded art when no folder image matches", func() {
-			putAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{"f1"}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{"f1"}})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 			Expect(err).ToNot(HaveOccurred())
@@ -148,7 +148,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("sets extErr when the external source errors without being not-found", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			putAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
@@ -159,7 +159,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("does not set extErr when the external source reports not-found", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			putAlbums(ctx, ds, model.Album{ID: "al4", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al4", Name: "Album"})
 			// no image agents enabled -> the external step is a definitive not-found
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
@@ -171,7 +171,7 @@ var _ = Describe("resolveItem", func() {
 		It("carries extErr onto a fallback folder hit after a transient external failure", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "al6", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al6", Name: "Album", FolderIDs: []string{fid}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"})
@@ -185,7 +185,7 @@ var _ = Describe("resolveItem", func() {
 		It("does not carry extErr onto a fallback folder hit after a definitive external not-found", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds, model.Album{ID: "al7", Name: "Album", FolderIDs: []string{fid}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al7", Name: "Album", FolderIDs: []string{fid}})
 			// no image agents enabled -> the external step is a definitive not-found
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"})
@@ -198,7 +198,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			putAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("boom")})
 			var gatedNames []string
 			gate := func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
@@ -221,7 +221,7 @@ var _ = Describe("resolveItem", func() {
 			imgPath := filepath.Join(tmpDir, "artwork", "artist", "ar1_test.jpg")
 			Expect(os.WriteFile(imgPath, []byte("uploaded artist image"), 0600)).To(Succeed())
 
-			putArtists(ctx, ds, model.Artist{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"})
 			Expect(err).ToNot(HaveOccurred())
@@ -247,7 +247,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("sets extErr when the external source errors without being not-found", func() {
 			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
-			putArtists(ctx, ds, model.Artist{ID: "ar3", Name: "Artist"})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar3", Name: "Artist"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"})
@@ -258,7 +258,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("does not set extErr when the external source reports not-found", func() {
 			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
-			putArtists(ctx, ds, model.Artist{ID: "ar4", Name: "Artist"})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar4", Name: "Artist"})
 			// no image agents enabled -> the external step is a definitive not-found
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"})
@@ -269,7 +269,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
 			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
-			putArtists(ctx, ds, model.Artist{ID: "ar5", Name: "Artist"})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar5", Name: "Artist"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("boom")})
 			var gatedNames []string
 			gate := func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
@@ -319,14 +319,14 @@ var _ = Describe("resolveItem", func() {
 		artless := func(ids ...string) {
 			GinkgoHelper()
 			for _, id := range ids {
-				putAlbums(ctx, ds, model.Album{ID: id, Name: id})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: id, Name: id})
 			}
 		}
 
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg" })
 			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
-			putAlbums(ctx, ds,
+			persistencetest.PutAlbums(ctx, ds,
 				model.Album{ID: "t1", Name: "T1", FolderIDs: []string{fid}},
 				model.Album{ID: "t2", Name: "T2", FolderIDs: []string{fid}},
 				model.Album{ID: "t3", Name: "T3", FolderIDs: []string{fid}},
@@ -518,7 +518,7 @@ var _ = Describe("resolveItem", func() {
 		// A local resolver holds no agents: reaching the external branch would panic, not degrade.
 		It("skips the external step instead of dereferencing absent agents", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			putAlbums(ctx, ds, model.Album{ID: "alx", Name: "Album"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alx", Name: "Album"})
 
 			res, err := newLocalResolver(ds, ffm).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})
 			Expect(err).ToNot(HaveOccurred())
@@ -583,7 +583,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(os.MkdirAll(filepath.Join(libRoot, "bomb"), 0755)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(libRoot, "bomb", "cover.jpg"), pngHeaderWithDims(50000, 50000), 0600)).To(Succeed())
 			useLibrary(ctx, ds, libRoot)
-			putAlbums(ctx, ds, model.Album{ID: "t1", Name: "T1", FolderIDs: []string{putFolder(ctx, ds, "bomb", "cover.jpg")}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "t1", Name: "T1", FolderIDs: []string{putFolder(ctx, ds, "bomb", "cover.jpg")}})
 
 			putPlaylist(ctx, ds, model.Playlist{ID: "plbomb", Name: "Playlist"}, "t1")
 
@@ -604,9 +604,9 @@ var _ = Describe("resolveItem", func() {
 
 		It("returns an error when the playlist tracks cannot be loaded", func() {
 			putPlaylist(ctx, ds, model.Playlist{ID: "pl4", Name: "Playlist"})
-			noTracks := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return &playlistOverlay{DataStore: ds}
-			})
+			noTracks := persistencetest.Stub(ds, persistencetest.Repos{Playlist: func(r model.PlaylistRepository) model.PlaylistRepository {
+				return &noTracksPlaylistRepo{PlaylistRepository: r}
+			}})
 
 			res, err := newResolver(noTracks, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl4"})
 			Expect(err).To(HaveOccurred())
@@ -614,12 +614,6 @@ var _ = Describe("resolveItem", func() {
 		})
 	})
 })
-
-type playlistOverlay struct{ model.DataStore }
-
-func (o *playlistOverlay) Playlist() model.PlaylistRepository {
-	return &noTracksPlaylistRepo{PlaylistRepository: o.DataStore.Playlist()}
-}
 
 // noTracksPlaylistRepo stands in for a playlist whose track repository cannot be built.
 type noTracksPlaylistRepo struct{ model.PlaylistRepository }

@@ -331,9 +331,9 @@ var _ = Describe("Matcher", func() {
 
 		Context("title phase DB errors", func() {
 			BeforeEach(func() {
-				ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-					return failingTitleFetch{ds}
-				})
+				ds = persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+					return failingTitleFetchRepo{r}
+				}})
 				m = matcher.New(ds)
 			})
 
@@ -1164,12 +1164,6 @@ var _ = Describe("Matcher", func() {
 
 var errTitleFetch = errors.New("db down")
 
-type failingTitleFetch struct{ model.DataStore }
-
-func (f failingTitleFetch) MediaFile() model.MediaFileRepository {
-	return failingTitleFetchRepo{f.DataStore.MediaFile()}
-}
-
 type failingTitleFetchRepo struct{ model.MediaFileRepository }
 
 func (r failingTitleFetchRepo) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -1198,18 +1192,13 @@ func isTitleFetch(opt model.QueryOptions) bool {
 // Starred and Rating are saved as the logged user's annotations.
 func putTracks(ctx context.Context, ds model.DataStore, tracks model.MediaFiles) {
 	GinkgoHelper()
-	for i := range tracks {
-		t := tracks[i]
+	for _, t := range tracks {
 		for _, list := range t.Participants {
 			for _, p := range list {
-				artist := p.Artist
-				Expect(ds.Artist().Put(ctx, &artist)).To(Succeed())
-				Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, artist.ID)).To(Succeed())
+				persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, p.Artist)
 			}
 		}
-		t.LibraryID = model.DefaultLibraryID
-		t.Path = t.ID + ".mp3"
-		Expect(ds.MediaFile().Put(ctx, &t)).To(Succeed())
+		persistencetest.PutMediaFiles(ctx, ds, t)
 		if t.Starred {
 			Expect(ds.MediaFile().SetStar(ctx, true, t.ID)).To(Succeed())
 		}

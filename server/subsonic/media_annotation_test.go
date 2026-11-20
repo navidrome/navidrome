@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -96,7 +97,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		Context("submission=false", func() {
 			var req *http.Request
 			BeforeEach(func() {
-				putTracks(ctx, ds, model.MediaFile{ID: "12"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "12"})
 				ctx = request.WithPlayer(ctx, model.Player{ID: "player-1"})
 				req = newGetRequest("id=12", "submission=false")
 				req = req.WithContext(ctx)

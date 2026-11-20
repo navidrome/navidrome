@@ -47,12 +47,6 @@ func (failingAlbumGet) Get(context.Context, string) (*model.Album, error) {
 	return nil, errors.New("db unavailable")
 }
 
-type failingAlbums struct{ model.DataStore }
-
-func (f failingAlbums) Album() model.AlbumRepository {
-	return failingAlbumGet{f.DataStore.Album()}
-}
-
 var _ = Describe("Metadata API", func() {
 	var ctx context.Context
 	var ds model.DataStore
@@ -78,8 +72,7 @@ var _ = Describe("Metadata API", func() {
 
 		adminCtx := request.WithUser(ctx, adminUser)
 		Expect(ds.Album().Put(ctx, &model.Album{ID: "al-1", Name: "Kid A", LibraryID: model.DefaultLibraryID})).To(Succeed())
-		Expect(ds.Artist().Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
-		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, "ar-1")).To(Succeed())
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar-1", Name: "Radiohead"})
 		Expect(ds.Playlist().Put(adminCtx, &model.Playlist{ID: "pl-1", Name: "My Playlist", OwnerID: adminUser.ID})).To(Succeed())
 
 		var err error
@@ -172,8 +165,8 @@ var _ = Describe("Metadata API", func() {
 		})
 
 		It("returns 500 when the lookup fails for a reason other than not-found", func() {
-			router = newRouter(persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
-				return failingAlbums{ds}
+			router = newRouter(persistencetest.Stub(ds, persistencetest.Repos{
+				Album: func(r model.AlbumRepository) model.AlbumRepository { return failingAlbumGet{r} },
 			}))
 
 			req := createAuthenticatedRequest("POST", "/metadata/al/al-1/refresh", nil, adminToken)
