@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing/fstest"
@@ -78,19 +77,8 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-	Expect(err).ToNot(HaveOccurred())
-	data, err := os.ReadFile(h.FilePath)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(h.SnapshotPath, data, 0o600)).To(Succeed()) //nolint:gosec // path derives from TempDir
+	Expect(persistencetest.Snapshot(h.SnapshotPath)).To(Succeed())
 	return h
-}
-
-// ResettableTables lists the tables a per-spec reset may write.
-func ResettableTables() []string {
-	tables, err := persistencetest.Tables()
-	Expect(err).ToNot(HaveOccurred())
-	return tables
 }
 
 // TruncateDB empties every resettable table, leaving the migrated schema in place — for suites

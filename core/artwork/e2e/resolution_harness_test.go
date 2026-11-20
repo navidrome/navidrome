@@ -30,6 +30,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
@@ -74,7 +75,9 @@ var _ = BeforeSuite(func() {
 	db.Db().SetMaxOpenConns(1)
 	db.Init(request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", IsAdmin: true}))
 
-	userTables = harness.ResettableTables()
+	var err error
+	userTables, err = persistencetest.Tables()
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {

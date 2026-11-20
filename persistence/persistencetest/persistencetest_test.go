@@ -133,8 +133,6 @@ func BenchmarkReset(b *testing.B) {
 			}
 		}
 		b.StartTimer()
-		if err := persistencetest.RestoreFrom(persistencetest.BaselinePath()); err != nil {
-			b.Fatal(err)
-		}
+		persistencetest.Reset()
 	}
 }
