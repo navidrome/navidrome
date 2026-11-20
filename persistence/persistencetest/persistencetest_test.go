@@ -74,6 +74,17 @@ var _ = Describe("Reset", func() {
 		Expect(ds.Album().Put(ctx, newAlbum("al-2", "Zyxwvu"))).To(Succeed())
 		Expect(ds.Album().Search(ctx, "Zyxwvu")).To(HaveLen(1))
 	})
+
+	It("forgets library paths cached before the reset", func() {
+		baseline, err := ds.Library().GetPath(ctx, model.DefaultLibraryID)
+		Expect(err).ToNot(HaveOccurred())
+		persistencetest.SetLibraries(ctx, ds, "/somewhere/else")
+		Expect(ds.Library().GetPath(ctx, model.DefaultLibraryID)).To(Equal("/somewhere/else"))
+
+		persistencetest.Reset()
+
+		Expect(ds.Library().GetPath(ctx, model.DefaultLibraryID)).To(Equal(baseline))
+	})
 })
 
 var _ = Describe("ResetBeforeEachSpec", func() {
