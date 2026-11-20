@@ -195,6 +195,7 @@ type subsonicOptions struct {
 	ArtistParticipations  bool
 	DefaultReportRealPath bool
 	EnableAverageRating   bool
+	EnableGetNowPlaying   bool
 	LegacyClients         string
 	MinimalClients        string
 }
@@ -1069,6 +1070,7 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.artistparticipations", false)
 	viper.SetDefault("subsonic.defaultreportrealpath", false)
 	viper.SetDefault("subsonic.enableaveragerating", true)
+	viper.SetDefault("subsonic.enablegetnowplaying", true)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
 	viper.SetDefault("subsonic.minimalclients", "SubMusic")
 	viper.SetDefault("transcoding.maxconcurrent", 0)
