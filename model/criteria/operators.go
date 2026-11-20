@@ -184,6 +184,8 @@ func extractPlaylistField(inputRule any, field string) (values []string) {
 		for _, rules := range rule {
 			values = append(values, extractPlaylistField(rules, field)...)
 		}
+	case Group:
+		values = append(values, extractPlaylistField(rule.Expression, field)...)
 	case InPlaylist, NotInPlaylist:
 		if value, ok := rule.(Expression).fields()[field].(string); ok && value != "" {
 			values = append(values, value)

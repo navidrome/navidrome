@@ -94,6 +94,49 @@ func BenchmarkSmartPlaylistNegatedRole(b *testing.B) {
 	})
 }
 
+// BenchmarkSmartPlaylistGroupLimits compares a flat query with a union of five
+// independently limited groups over the same pattern set.
+func BenchmarkSmartPlaylistGroupLimits(b *testing.B) {
+	b.Cleanup(conf.SnapshotConfig())
+	tmpDir := b.TempDir()
+	conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "bench-smartpl-groups.db") })
+	cleanup := db.Init(b.Context())
+	defer cleanup()
+	log.SetLevel(log.LevelFatal)
+
+	conn := dbx.NewFromDB(db.Db(), db.Dialect)
+	ctx := log.NewContext(b.Context())
+	user := model.User{ID: "bench-user", UserName: "bench", Name: "Bench User", IsAdmin: true}
+	ctx = request.WithUser(ctx, user)
+
+	setupBenchData(b, ctx, conn, user)
+	criteria.AddRoles([]string{"artist"})
+
+	flatPatterns := make(criteria.Any, benchNumPatterns)
+	for i := range flatPatterns {
+		flatPatterns[i] = criteria.Contains{"artist": fmt.Sprintf("Artist %04d", i%benchNumArtists)}
+	}
+	flat := criteria.Criteria{Expression: flatPatterns, Sort: "title", Limit: 500}
+
+	const groupCount = 5
+	groups := make(criteria.Any, groupCount)
+	for g := range groupCount {
+		patterns := make(criteria.Any, benchNumPatterns/groupCount)
+		for i := range patterns {
+			patterns[i] = criteria.Contains{"artist": fmt.Sprintf("Artist %04d", (g*(benchNumPatterns/groupCount)+i)%benchNumArtists)}
+		}
+		groups[g] = criteria.Group{Expression: patterns, Sort: "title", Limit: 100}
+	}
+	expr := criteria.Criteria{Expression: groups, Sort: "title"}
+
+	b.Run("Flat", func(b *testing.B) {
+		benchmarkCriteriaPipeline(b, ctx, flat)
+	})
+	b.Run("FiveLimitedGroups", func(b *testing.B) {
+		benchmarkCriteriaPipelineOptions(b, ctx, expr, withGroupLimits(true))
+	})
+}
+
 // benchmarkUnmergedNegatedJSONTree builds the old-style query with N separate negated
 // json_tree EXISTS subqueries ANDed together (the pre-optimization baseline).
 func benchmarkUnmergedNegatedJSONTree(b *testing.B, ctx context.Context) {
@@ -118,8 +161,13 @@ func benchmarkUnmergedNegatedJSONTree(b *testing.B, ctx context.Context) {
 // newSmartPlaylistCriteria → Where() → ToSql(), then executes the resulting query.
 func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.Criteria) {
 	b.Helper()
+	benchmarkCriteriaPipelineOptions(b, ctx, expr)
+}
 
-	cSQL := newSmartPlaylistCriteria(expr)
+func benchmarkCriteriaPipelineOptions(b *testing.B, ctx context.Context, expr criteria.Criteria, opts ...func(*smartPlaylistCriteria)) {
+	b.Helper()
+
+	cSQL := newSmartPlaylistCriteria(expr, opts...)
 
 	// Build the full query matching buildSmartPlaylistQuery + addCriteria
 	sq := squirrel.Select("media_file.id").From("media_file")

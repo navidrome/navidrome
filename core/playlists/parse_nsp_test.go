@@ -149,6 +149,28 @@ var _ = Describe("parseNSP", func() {
 		Expect(pls.Rules.Limit).To(Equal(0))
 	})
 
+	It("parses per-group limit metadata from NSP", func() {
+		nsp := `{
+			"any": [
+				{"all": [{"is": {"genre": "Rock"}}], "sort": "-rating", "limit": 20},
+				{"all": [{"is": {"genre": "Jazz"}}], "sort": "title", "limitPercent": 10, "offset": 2}
+			],
+			"sort": "title"
+		}`
+		pls := &model.Playlist{}
+		err := s.parseNSP(ctx, pls, strings.NewReader(nsp))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(pls.Rules).ToNot(BeNil())
+
+		groups := pls.Rules.Expression.(criteria.Any)
+		rock := groups[0].(criteria.Group)
+		Expect(rock.Sort).To(Equal("-rating"))
+		Expect(rock.Limit).To(Equal(20))
+		jazz := groups[1].(criteria.Group)
+		Expect(jazz.LimitPercent).To(Equal(10))
+		Expect(jazz.Offset).To(Equal(2))
+	})
+
 	It("parses criteria with multiple rules", func() {
 		nsp := `{
 			"all": [

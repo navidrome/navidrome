@@ -270,6 +270,122 @@ var _ = Describe("Smart Playlists", func() {
 		})
 	})
 
+	Describe("Per-group limits", func() {
+		It("applies a fixed limit per group", func() {
+			results := evaluateRuleOrdered(`{
+				"any":[
+					{"all":[{"is":{"genre":"Blues"}}],"sort":"title","limit":1},
+					{"all":[{"is":{"genre":"Jazz"}}],"sort":"title","limit":1}
+				],
+				"sort":"title"
+			}`)
+			Expect(results).To(Equal([]string{"All Along the Watchtower", "So What"}))
+		})
+
+		It("deduplicates tracks matched by multiple limited groups", func() {
+			results := evaluateRuleOrdered(`{
+				"any":[
+					{"all":[{"contains":{"title":"the"}}],"limit":10},
+					{"all":[{"is":{"genre":"Blues"}}],"limit":10}
+				],
+				"sort":"title"
+			}`)
+			Expect(results).To(Equal([]string{
+				"All Along the Watchtower", "Black Dog", "Come Together", "We Are the Champions",
+			}))
+		})
+
+		It("applies the top-level limit after group selection", func() {
+			results := evaluateRuleOrdered(`{
+				"any":[
+					{"all":[{"is":{"genre":"Blues"}}],"sort":"title","limit":2},
+					{"all":[{"is":{"genre":"Jazz"}}],"sort":"title","limit":1}
+				],
+				"sort":"title",
+				"limit":1
+			}`)
+			Expect(results).To(Equal([]string{"All Along the Watchtower"}))
+		})
+
+		It("resolves percentage limits per group", func() {
+			results := evaluateRuleOrdered(`{
+				"any":[
+					{"all":[{"is":{"genre":"Blues"}}],"sort":"title","limitPercent":34},
+					{"all":[{"is":{"genre":"Jazz"}}],"sort":"title","limitPercent":100}
+				],
+				"sort":"title"
+			}`)
+			Expect(results).To(Equal([]string{"All Along the Watchtower", "So What"}))
+		})
+
+		It("treats a zero-match percentage group as empty", func() {
+			results := evaluateRule(`{
+				"all":[
+					{"all":[{"is":{"genre":"Polka"}}],"sort":"title","limitPercent":50}
+				]
+			}`)
+			Expect(results).To(BeEmpty())
+		})
+
+		It("resolves the top-level percentage after group selection", func() {
+			results := evaluateRuleOrdered(`{
+				"any":[
+					{"all":[{"is":{"genre":"Blues"}}],"sort":"title","limit":2},
+					{"all":[{"is":{"genre":"Jazz"}}],"sort":"title","limit":1}
+				],
+				"sort":"title",
+				"limitPercent":34
+			}`)
+			Expect(results).To(Equal([]string{"All Along the Watchtower"}))
+		})
+
+		It("resolves nested group percentages bottom-up", func() {
+			results := evaluateRuleOrdered(`{
+				"all":[
+					{"any":[
+						{"all":[{"is":{"genre":"Blues"}}],"sort":"title","limitPercent":34},
+						{"all":[{"is":{"genre":"Jazz"}}],"sort":"title","limitPercent":100}
+					],"sort":"title","limitPercent":50}
+				],
+				"sort":"title"
+			}`)
+			Expect(results).To(Equal([]string{"All Along the Watchtower"}))
+		})
+
+		It("applies offsets per group", func() {
+			results := evaluateRuleOrdered(`{
+				"all":[
+					{"all":[{"is":{"genre":"Blues"}}],"sort":"title","limit":1,"offset":1}
+				],
+				"sort":"title"
+			}`)
+			Expect(results).To(Equal([]string{"Black Dog"}))
+		})
+
+		It("inherits the top-level sort when a group has no sort", func() {
+			results := evaluateRuleOrdered(`{
+				"all":[
+					{"all":[{"is":{"genre":"Blues"}}],"limit":1}
+				],
+				"sort":"year",
+				"order":"desc"
+			}`)
+			Expect(results).To(Equal([]string{"Black Dog"}))
+		})
+
+		It("refreshes a child smart playlist used inside a limited group", func() {
+			childID := createPublicSmartPlaylist(adminUser, `{"all":[{"is":{"genre":"Blues"}}]}`)
+			results := evaluateRuleOrdered(`{
+				"any":[
+					{"all":[{"inPlaylist":{"id":"` + childID + `"}}],"sort":"title","limit":1},
+					{"all":[{"is":{"genre":"Jazz"}}],"sort":"title","limit":1}
+				],
+				"sort":"title"
+			}`)
+			Expect(results).To(Equal([]string{"All Along the Watchtower", "So What"}))
+		})
+	})
+
 	Describe("Combined real-world patterns", func() {
 		It("matches genre filter with exclusion and year range", func() {
 			results := evaluateRuleOrdered(`{

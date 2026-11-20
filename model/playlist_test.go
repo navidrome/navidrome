@@ -178,6 +178,26 @@ var _ = Describe("Playlist", func() {
 			Expect(normalized).To(Equal(rules))
 		})
 
+		It("normalizes playlist paths inside groups and preserves metadata", func() {
+			pls := model.Playlist{
+				Path: absPath("test", "my-playlist.nsp"),
+				Rules: &criteria.Criteria{Expression: criteria.All{
+					criteria.Group{
+						Expression: criteria.Any{criteria.InPlaylist{"path": "child.nsp"}},
+						Sort:       "-rating",
+						Limit:      5,
+					},
+				}},
+			}
+			Expect(normalize(pls)).To(BeEquivalentTo(criteria.All{
+				criteria.Group{
+					Expression: criteria.Any{criteria.InPlaylist{"path": absPath("test", "child.nsp")}},
+					Sort:       "-rating",
+					Limit:      5,
+				},
+			}))
+		})
+
 		It("does not mutate the original playlist rules", func() {
 			original := criteria.All{criteria.InPlaylist{"path": "child.nsp"}}
 			pls := model.Playlist{Path: absPath("test", "my-playlist.nsp"), Rules: &criteria.Criteria{Expression: original}}

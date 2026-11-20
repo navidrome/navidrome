@@ -26,25 +26,33 @@ type Criteria struct {
 	RefreshDelay time.Duration // 0 = use conf.Server().SmartPlaylistRefreshDelay
 }
 
-// EffectiveLimit resolves the effective limit for a query. If a fixed Limit is
-// set it takes precedence. Otherwise, if LimitPercent is set, the limit is
-// computed as a percentage of totalCount (minimum 1 when totalCount > 0).
-// Returns 0 when no limit applies.
-func (c Criteria) EffectiveLimit(totalCount int64) int {
-	if c.Limit > 0 {
-		return c.Limit
+func effectiveLimit(limit, limitPercent int, totalCount int64) int {
+	if limit > 0 {
+		return limit
 	}
-	if c.LimitPercent > 0 && c.LimitPercent <= 100 {
+	if limitPercent > 0 && limitPercent <= 100 {
 		if totalCount <= 0 {
 			return 0
 		}
-		result := int(totalCount) * c.LimitPercent / 100
+		result := int(totalCount) * limitPercent / 100
 		if result < 1 {
 			return 1
 		}
 		return result
 	}
 	return 0
+}
+
+func isPercentageLimit(limit, limitPercent int) bool {
+	return limit == 0 && limitPercent > 0 && limitPercent <= 100
+}
+
+// EffectiveLimit resolves the effective limit for a query. If a fixed Limit is
+// set it takes precedence. Otherwise, if LimitPercent is set, the limit is
+// computed as a percentage of totalCount (minimum 1 when totalCount > 0).
+// Returns 0 when no limit applies.
+func (c Criteria) EffectiveLimit(totalCount int64) int {
+	return effectiveLimit(c.Limit, c.LimitPercent, totalCount)
 }
 
 // ResolveLimit converts a percentage-based limit into an absolute Limit using
@@ -60,7 +68,28 @@ func (c *Criteria) ResolveLimit(totalCount int64) {
 // IsPercentageLimit returns true when the criteria uses a valid percentage-based
 // limit (i.e. LimitPercent is in [1, 100] and no fixed Limit overrides it).
 func (c Criteria) IsPercentageLimit() bool {
-	return c.Limit == 0 && c.LimitPercent > 0 && c.LimitPercent <= 100
+	return isPercentageLimit(c.Limit, c.LimitPercent)
+}
+
+// HasNestedSelectionFields reports whether any group in the rule tree carries
+// selection options that only make sense when materializing a playlist.
+func (c Criteria) HasNestedSelectionFields() bool {
+	return hasSelectionFields(c.Expression)
+}
+
+func hasSelectionFields(expr Expression) bool {
+	switch e := expr.(type) {
+	case All:
+		return slices.ContainsFunc(e, hasSelectionFields)
+	case Any:
+		return slices.ContainsFunc(e, hasSelectionFields)
+	case Group:
+		if e.Limit != 0 || e.LimitPercent != 0 || e.Offset != 0 {
+			return true
+		}
+		return hasSelectionFields(e.Expression)
+	}
+	return false
 }
 
 func (c Criteria) ChildPlaylistIds() []string {
@@ -106,6 +135,33 @@ func (c Criteria) MarshalJSON() ([]byte, error) {
 		aux.Any = rules
 	case All:
 		aux.All = rules
+	case Group:
+		switch inner := rules.Expression.(type) {
+		case Any:
+			aux.Any = inner
+		case All:
+			aux.All = inner
+		default:
+			return nil, fmt.Errorf("invalid group expression type %T", rules.Expression)
+		}
+		if len(aux.All) == 0 && len(aux.Any) == 0 {
+			return nil, errors.New("invalid criteria: top-level rule group cannot be empty")
+		}
+		if aux.Sort == "" {
+			aux.Sort = rules.Sort
+		}
+		if aux.Order == "" {
+			aux.Order = rules.Order
+		}
+		if aux.Limit == 0 {
+			aux.Limit = rules.Limit
+		}
+		if aux.LimitPercent == 0 {
+			aux.LimitPercent = rules.LimitPercent
+		}
+		if aux.Offset == 0 {
+			aux.Offset = rules.Offset
+		}
 	default:
 		aux.All = All{rules}
 	}

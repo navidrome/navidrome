@@ -1420,5 +1420,13 @@ var _ = Describe("MediaRepository", func() {
 			_, err := mr.MatchesCriteria(ctx, songDayInALife.ID, c)
 			Expect(err).To(HaveOccurred())
 		})
+		It("rejects group limits because they cannot apply to a single track", func() {
+			c := criteria.Criteria{Expression: criteria.All{criteria.Group{
+				Expression: criteria.All{criteria.Contains{"title": "Day"}},
+				Limit:      1,
+			}}}
+			_, err := mr.MatchesCriteria(ctx, songDayInALife.ID, c)
+			Expect(err).To(MatchError(ContainSubstring("selection options")))
+		})
 	})
 })

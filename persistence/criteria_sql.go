@@ -39,7 +39,9 @@ type smartPlaylistField struct {
 
 type smartPlaylistCriteria struct {
 	criteria.Criteria
-	owner model.User
+	owner            model.User
+	libraryFilter    func(squirrel.SelectBuilder) squirrel.SelectBuilder
+	allowGroupLimits bool
 }
 
 func newSmartPlaylistCriteria(c criteria.Criteria, opts ...func(*smartPlaylistCriteria)) smartPlaylistCriteria {
@@ -53,6 +55,18 @@ func newSmartPlaylistCriteria(c criteria.Criteria, opts ...func(*smartPlaylistCr
 func withSmartPlaylistOwner(owner model.User) func(*smartPlaylistCriteria) {
 	return func(c *smartPlaylistCriteria) {
 		c.owner = owner
+	}
+}
+
+func withLibraryFilter(filter func(squirrel.SelectBuilder) squirrel.SelectBuilder) func(*smartPlaylistCriteria) {
+	return func(c *smartPlaylistCriteria) {
+		c.libraryFilter = filter
+	}
+}
+
+func withGroupLimits(allow bool) func(*smartPlaylistCriteria) {
+	return func(c *smartPlaylistCriteria) {
+		c.allowGroupLimits = allow
 	}
 }
 
@@ -159,6 +173,8 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 			or = append(or, cond)
 		}
 		return mergeJsonConds(or), nil
+	case criteria.Group:
+		return c.groupSQL(e)
 	case criteria.Is:
 		return comparisonExpr(e, cmpEq)
 	case criteria.IsNot:
@@ -196,6 +212,65 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 	default:
 		return nil, fmt.Errorf("unknown criteria expression type %T", expr)
 	}
+}
+
+func (c smartPlaylistCriteria) groupSQL(g criteria.Group) (squirrel.Sqlizer, error) {
+	if g.Limit <= 0 && g.LimitPercent <= 0 {
+		return c.exprSQL(g.Expression)
+	}
+	if !c.allowGroupLimits {
+		return nil, errors.New("rule group limits are not supported in this context")
+	}
+	if g.Limit <= 0 {
+		return nil, errors.New("rule group percentage limit was not resolved")
+	}
+
+	sq := squirrel.Select("media_file.id").From("media_file")
+	sq = c.applyJoins(sq, c.groupJoins(g), c.owner.ID)
+	if c.libraryFilter != nil {
+		sq = c.libraryFilter(sq)
+	}
+	cond, err := c.exprSQL(g.Expression)
+	if err != nil {
+		return nil, err
+	}
+	sq = sq.Where(cond).OrderBy(c.groupOrderBy(g)).
+		Limit(uint64(g.Limit)).Offset(uint64(g.Offset))
+
+	subSQL, args, err := sq.PlaceholderFormat(squirrel.Question).ToSql()
+	if err != nil {
+		return nil, err
+	}
+	return squirrel.Expr("media_file.id IN ("+subSQL+")", args...), nil
+}
+
+func (c smartPlaylistCriteria) groupCountQuery(g criteria.Group) (squirrel.SelectBuilder, error) {
+	sq := squirrel.Select("count(*) as count").From("media_file")
+	sq = c.applyJoins(sq, c.joinsForExpression(g.Expression), c.owner.ID)
+	if c.libraryFilter != nil {
+		sq = c.libraryFilter(sq)
+	}
+	cond, err := c.exprSQL(g.Expression)
+	if err != nil {
+		return sq, err
+	}
+	return sq.Where(cond), nil
+}
+
+func (c smartPlaylistCriteria) groupJoins(g criteria.Group) smartPlaylistJoinType {
+	joins := c.joinsForExpression(g.Expression)
+	for _, sortField := range g.OrderByFields(c.Criteria) {
+		joins |= fieldJoinType(sortField.Field)
+	}
+	return joins
+}
+
+func (c smartPlaylistCriteria) groupOrderBy(g criteria.Group) string {
+	order := c.orderByFields(g.OrderByFields(c.Criteria))
+	if order != "" {
+		order += ", "
+	}
+	return order + "media_file.id asc"
 }
 
 func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
@@ -804,14 +879,41 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 }
 
 func (c smartPlaylistCriteria) expressionJoins() smartPlaylistJoinType {
+	return c.joinsForExpression(c.Expression)
+}
+
+// joinsForExpression collects the joins needed by an expression, treating a
+// limited Group as a scope boundary: its fields are joined inside its subquery.
+// Unlimited groups compile inline, so their fields belong to the current scope.
+func (c smartPlaylistCriteria) joinsForExpression(expr criteria.Expression) smartPlaylistJoinType {
 	var joins smartPlaylistJoinType
-	_ = criteria.Walk(c.Expression, func(expr criteria.Expression) error {
-		for field := range criteria.Fields(expr) {
-			joins |= fieldJoinType(field)
-		}
-		return nil
-	})
+	collectJoins(expr, &joins)
 	return joins
+}
+
+func collectJoins(expr criteria.Expression, joins *smartPlaylistJoinType) {
+	if expr == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case criteria.All:
+		for _, child := range e {
+			collectJoins(child, joins)
+		}
+	case criteria.Any:
+		for _, child := range e {
+			collectJoins(child, joins)
+		}
+	case criteria.Group:
+		if e.Limit > 0 || e.LimitPercent > 0 {
+			return
+		}
+		collectJoins(e.Expression, joins)
+	default:
+		for field := range criteria.Fields(expr) {
+			*joins |= fieldJoinType(field)
+		}
+	}
 }
 
 func (c smartPlaylistCriteria) requiredJoins() smartPlaylistJoinType {
@@ -858,7 +960,10 @@ func (c smartPlaylistCriteria) applyJoins(sq squirrel.SelectBuilder, joins smart
 }
 
 func (c smartPlaylistCriteria) orderBy() string {
-	sortFields := c.OrderByFields()
+	return c.orderByFields(c.OrderByFields())
+}
+
+func (c smartPlaylistCriteria) orderByFields(sortFields []criteria.SortField) string {
 	parts := make([]string, 0, len(sortFields))
 	for _, sf := range sortFields {
 		mapped, ok := sortExpr(sf.Field)

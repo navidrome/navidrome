@@ -8,6 +8,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/text/unicode/norm"
 )
@@ -46,18 +47,30 @@ func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *
 		return false
 	}
 
-	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(), withSmartPlaylistOwner(*usr))
+	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(),
+		withSmartPlaylistOwner(*usr),
+		withLibraryFilter(func(sq SelectBuilder) SelectBuilder {
+			return r.applyLibraryFilter(ctx, sq, "media_file")
+		}),
+		withGroupLimits(true),
+	)
 
 	if !r.refreshChildPlaylists(ctx, pls, rulesSQL, visited) {
 		return false
 	}
+
+	resolved, err := r.resolveGroupLimits(ctx, pls, rulesSQL, rulesSQL.Expression)
+	if err != nil {
+		return false
+	}
+	rulesSQL.Expression = resolved
 
 	if err := r.resolvePercentageLimit(ctx, pls, &rulesSQL, usr.ID); err != nil {
 		return false
 	}
 
 	sq := r.buildSmartPlaylistQuery(ctx, pls, rulesSQL, usr.ID)
-	sq, err := r.addCriteria(sq, rulesSQL)
+	sq, err = r.addCriteria(sq, rulesSQL)
 	if err != nil {
 		log.Error(ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
 		return false
@@ -175,6 +188,60 @@ func (r *playlistRepository) resolvePercentageLimit(ctx context.Context, pls *mo
 	rulesSQL.ResolveLimit(res.Count)
 	log.Debug(ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rulesSQL.LimitPercent, "totalMatching", res.Count, "resolvedLimit", rulesSQL.Limit)
 	return nil
+}
+
+// resolveGroupLimits resolves percentage-based group limits bottom-up, so a
+// parent group counts its matching set after nested group restrictions.
+func (r *playlistRepository) resolveGroupLimits(ctx context.Context, pls *model.Playlist, rulesSQL smartPlaylistCriteria, expr criteria.Expression) (criteria.Expression, error) {
+	switch e := expr.(type) {
+	case criteria.All:
+		resolved := make(criteria.All, len(e))
+		for i, child := range e {
+			groupExpr, err := r.resolveGroupLimits(ctx, pls, rulesSQL, child)
+			if err != nil {
+				return nil, err
+			}
+			resolved[i] = groupExpr
+		}
+		return resolved, nil
+	case criteria.Any:
+		resolved := make(criteria.Any, len(e))
+		for i, child := range e {
+			groupExpr, err := r.resolveGroupLimits(ctx, pls, rulesSQL, child)
+			if err != nil {
+				return nil, err
+			}
+			resolved[i] = groupExpr
+		}
+		return resolved, nil
+	case criteria.Group:
+		inner, err := r.resolveGroupLimits(ctx, pls, rulesSQL, e.Expression)
+		if err != nil {
+			return nil, err
+		}
+		e.Expression = inner
+		if !e.IsPercentageLimit() {
+			return e, nil
+		}
+
+		countSq, err := rulesSQL.groupCountQuery(e)
+		if err != nil {
+			log.Error(ctx, "Error building group percentage count query", "playlist", pls.Name, "id", pls.ID, err)
+			return nil, err
+		}
+		var res struct{ Count int64 }
+		if err = r.queryOne(ctx, countSq, &res); err != nil {
+			log.Error(ctx, "Error counting matching tracks for group percentage limit", "playlist", pls.Name, "id", pls.ID, err)
+			return nil, err
+		}
+		percent := e.LimitPercent
+		e.Limit = e.EffectiveLimit(res.Count)
+		e.LimitPercent = 0
+		log.Debug(ctx, "Resolved group percentage limit", "playlist", pls.Name, "percent", percent, "totalMatching", res.Count, "resolvedLimit", e.Limit)
+		return e, nil
+	default:
+		return expr, nil
+	}
 }
 
 // buildSmartPlaylistQuery constructs the SQL query to select media files matching the smart playlist criteria,

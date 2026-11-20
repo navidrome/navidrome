@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -584,6 +585,9 @@ var mediaFileSearchConfig = searchConfig{
 }
 
 func (r *mediaFileRepository) MatchesCriteria(ctx context.Context, id string, c criteria.Criteria) (bool, error) {
+	if c.Limit > 0 || c.LimitPercent > 0 || c.Offset > 0 || c.HasNestedSelectionFields() {
+		return false, errors.New("criteria selection options are not supported for track matching")
+	}
 	usr := loggedUser(ctx)
 	rulesSQL := newSmartPlaylistCriteria(c, withSmartPlaylistOwner(*usr))
 	cond, err := rulesSQL.where()

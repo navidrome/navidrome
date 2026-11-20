@@ -2,10 +2,106 @@ package criteria
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/navidrome/navidrome/log"
 )
+
+var groupMetadataKeys = map[string]struct{}{
+	"limit":        {},
+	"limitpercent": {},
+	"offset":       {},
+	"sort":         {},
+	"order":        {},
+}
+
+func hasGroupMetadata(e map[string]json.RawMessage) bool {
+	for k := range e {
+		if _, ok := groupMetadataKeys[strings.ToLower(k)]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func unmarshalGroup(e map[string]json.RawMessage) (Expression, error) {
+	var conjName string
+	var conjRaw json.RawMessage
+	var sortValue, orderValue string
+	limit, limitPercent, offset := 0, 0, 0
+	seen := make(map[string]struct{}, len(e))
+
+	for k, v := range e {
+		key := strings.ToLower(k)
+		if _, ok := seen[key]; ok {
+			return nil, fmt.Errorf("duplicate key '%s' in rule group", key)
+		}
+		seen[key] = struct{}{}
+
+		switch key {
+		case "all", "any":
+			if conjName != "" {
+				return nil, errors.New("invalid rule group: 'all' and 'any' cannot both be used")
+			}
+			conjName, conjRaw = key, v
+		case "sort":
+			if err := json.Unmarshal(v, &sortValue); err != nil {
+				return nil, fmt.Errorf("invalid 'sort' in rule group: %w", err)
+			}
+		case "order":
+			if err := json.Unmarshal(v, &orderValue); err != nil {
+				return nil, fmt.Errorf("invalid 'order' in rule group: %w", err)
+			}
+		case "limit":
+			if err := json.Unmarshal(v, &limit); err != nil {
+				return nil, fmt.Errorf("invalid 'limit' in rule group: %w", err)
+			}
+		case "limitpercent":
+			if err := json.Unmarshal(v, &limitPercent); err != nil {
+				return nil, fmt.Errorf("invalid 'limitPercent' in rule group: %w", err)
+			}
+		case "offset":
+			if err := json.Unmarshal(v, &offset); err != nil {
+				return nil, fmt.Errorf("invalid 'offset' in rule group: %w", err)
+			}
+		default:
+			return nil, fmt.Errorf("invalid key '%s' in rule group", key)
+		}
+	}
+
+	if conjName == "" {
+		return nil, errors.New("invalid rule group: missing key 'all' or 'any'")
+	}
+	if limit < 0 {
+		return nil, fmt.Errorf("invalid rule group 'limit': %d", limit)
+	}
+	if offset < 0 {
+		return nil, fmt.Errorf("invalid rule group 'offset': %d", offset)
+	}
+	if limitPercent < 0 {
+		log.Warn("rule group limitPercent value out of range, clamping to 0", "value", limitPercent)
+		limitPercent = 0
+	} else if limitPercent > 100 {
+		log.Warn("rule group limitPercent value out of range, clamping to 100", "value", limitPercent)
+		limitPercent = 100
+	}
+
+	expr := unmarshalConjunction(conjName, conjRaw)
+	if expr == nil {
+		return nil, fmt.Errorf("invalid '%s' in rule group", conjName)
+	}
+	return Group{
+		Expression:   expr,
+		Sort:         sortValue,
+		Order:        orderValue,
+		Limit:        limit,
+		LimitPercent: limitPercent,
+		Offset:       offset,
+	}, nil
+}
 
 type unmarshalConjunctionType []Expression
 
@@ -17,6 +113,14 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 
 	var es unmarshalConjunctionType
 	for _, e := range raw {
+		if hasGroupMetadata(e) {
+			expr, err := unmarshalGroup(e)
+			if err != nil {
+				return err
+			}
+			es = append(es, expr)
+			continue
+		}
 		for k, v := range e {
 			k = strings.ToLower(k)
 			expr := unmarshalExpression(k, v)

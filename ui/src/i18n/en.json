@@ -172,7 +172,7 @@
       },
       "validation": {
         "librariesRequired": "At least one library must be selected for non-admin users",
-        "invalidScrobbleFilter": "Must be valid smart playlist rules. Limit, offset and refresh delay are not supported."
+        "invalidScrobbleFilter": "Must be valid smart playlist rules. Limits, offset and refresh delay are not supported, including inside rule groups."
       },
       "message": {
         "listenBrainzToken": "Enter your ListenBrainz user token.",

@@ -705,6 +705,9 @@ var _ = Describe("UserRepository", func() {
 				`{"all":[{"lt":{"rating":4}}],"limitPercent":10}`,
 				`{"all":[{"lt":{"rating":4}}],"offset":5}`,
 				`{"all":[{"lt":{"rating":4}}],"refreshDelay":"1h"}`,
+				`{"all":[{"all":[{"lt":{"rating":4}}],"limit":1}]}`,
+				`{"all":[{"all":[{"lt":{"rating":4}}],"limitPercent":10}]}`,
+				`{"all":[{"all":[{"lt":{"rating":4}}],"offset":1}]}`,
 			} {
 				u := &model.User{ScrobbleFilter: f}
 				Expect(validateScrobbleFilter(u)).ToNot(Succeed(), f)
@@ -712,6 +715,10 @@ var _ = Describe("UserRepository", func() {
 		})
 		It("accepts a sort, which cannot change a single-track match", func() {
 			u := &model.User{ScrobbleFilter: `{"all":[{"lt":{"rating":4}}],"sort":"title"}`}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+		})
+		It("accepts group sort/order, which cannot change a single-track match", func() {
+			u := &model.User{ScrobbleFilter: `{"all":[{"all":[{"lt":{"rating":4}}],"sort":"title","order":"desc"}]}`}
 			Expect(validateScrobbleFilter(u)).To(Succeed())
 		})
 		It("rejects unknown fields", func() {

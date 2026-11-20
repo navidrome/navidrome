@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"slices"
 
 	"github.com/Masterminds/squirrel"
@@ -489,6 +491,22 @@ var _ = Describe("PlaylistRepository", func() {
 
 	// Exists is ctx-sensitive through userFilter, so callers that only want "does it still exist"
 	// -- the public image route serving a share -- must elevate, or a private playlist looks gone.
+	Describe("dbPlaylist PostScan", func() {
+		It("loads a legacy nested object with both all and any", func() {
+			p := dbPlaylist{Rules: sql.NullString{
+				String: `{"all":[{"all":[{"is":{"loved":true}}],"any":[{"is":{"genre":"Rock"}}]}]}`,
+				Valid:  true,
+			}}
+			Expect(p.PostScan()).To(Succeed())
+			Expect(p.Playlist.Rules).ToNot(BeNil())
+
+			top := p.Playlist.Rules.Expression.(criteria.All)
+			Expect(top).To(HaveLen(2))
+			Expect([]string{fmt.Sprintf("%T", top[0]), fmt.Sprintf("%T", top[1])}).
+				To(ConsistOf("criteria.All", "criteria.Any"))
+		})
+	})
+
 	Describe("Exists visibility", func() {
 		It("hides a private playlist from an unauthenticated context", func() {
 			// "userid" is the fixture user; playlist.owner_id has a FK to user(id).

@@ -798,5 +798,84 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			By("verifying SongCount matches visible tracks")
 			Expect(pls.SongCount).To(Equal(len(pls.Tracks)), "SongCount should match the number of visible tracks")
 		})
+
+		It("does not let inaccessible tracks consume a group limit quota", func() {
+			db := GetDBXBuilder()
+			ctx := log.NewContext(GinkgoT().Context())
+
+			restrictedUser := model.User{ID: restrictedUserID, UserName: restrictedUserID, IsAdmin: false}
+			ctx = request.WithUser(ctx, restrictedUser)
+			restrictedRepo := NewPlaylistRepository(db)
+
+			// Sort descending so the inaccessible track would win the group's single slot
+			// if the library filter were applied only outside the group subquery.
+			rules := &criteria.Criteria{
+				Expression: criteria.All{criteria.Group{
+					Expression: criteria.All{criteria.Contains{"title": "Song in Lib"}},
+					Sort:       "title",
+					Order:      "desc",
+					Limit:      1,
+				}},
+			}
+			newPls := model.Playlist{Name: "Limited Group", OwnerID: restrictedUserID, Rules: rules}
+			Expect(restrictedRepo.Put(ctx, &newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
+			pls, err := restrictedRepo.GetWithTracks(ctx, newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundLib1Song, foundLib2Song bool
+			for _, track := range pls.Tracks {
+				switch track.MediaFileID {
+				case "lib1-song":
+					foundLib1Song = true
+				case "lib2-song":
+					foundLib2Song = true
+				}
+			}
+			Expect(foundLib1Song).To(BeTrue(), "the accessible track should fill the group quota")
+			Expect(foundLib2Song).To(BeFalse(), "the inaccessible track should not consume the group quota")
+		})
+
+		It("excludes inaccessible tracks from group percentage counts", func() {
+			db := GetDBXBuilder()
+			ctx := log.NewContext(GinkgoT().Context())
+
+			restrictedUser := model.User{ID: restrictedUserID, UserName: restrictedUserID, IsAdmin: false}
+			ctx = request.WithUser(ctx, restrictedUser)
+			restrictedRepo := NewPlaylistRepository(db)
+
+			// Both songs match, but only lib1-song is visible. 50% of the visible set is
+			// one track; 50% of the unfiltered set would also round to one track but pick
+			// lib2-song first because the sort is descending.
+			rules := &criteria.Criteria{
+				Expression: criteria.All{criteria.Group{
+					Expression:   criteria.All{criteria.Contains{"title": "Song in Lib"}},
+					Sort:         "title",
+					Order:        "desc",
+					LimitPercent: 50,
+				}},
+			}
+			newPls := model.Playlist{Name: "Percentage Group", OwnerID: restrictedUserID, Rules: rules}
+			Expect(restrictedRepo.Put(ctx, &newPls)).To(Succeed())
+			testPlaylistID = newPls.ID
+
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
+			pls, err := restrictedRepo.GetWithTracks(ctx, newPls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			var foundLib1Song, foundLib2Song bool
+			for _, track := range pls.Tracks {
+				switch track.MediaFileID {
+				case "lib1-song":
+					foundLib1Song = true
+				case "lib2-song":
+					foundLib2Song = true
+				}
+			}
+			Expect(foundLib1Song).To(BeTrue(), "the accessible track should be counted and selected")
+			Expect(foundLib2Song).To(BeFalse(), "the inaccessible track should not affect the percentage count")
+		})
 	})
 })

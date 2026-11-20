@@ -12,14 +12,17 @@ type SortField struct {
 }
 
 func (c Criteria) OrderByFields() []SortField {
-	sortValue := c.Sort
+	return parseSortFields(c.Sort, c.Order)
+}
+
+func parseSortFields(sortValue, orderValue string) []SortField {
 	if sortValue == "" {
 		sortValue = "title"
 	}
 
-	order := strings.ToLower(strings.TrimSpace(c.Order))
+	order := strings.ToLower(strings.TrimSpace(orderValue))
 	if order != "" && order != "asc" && order != "desc" {
-		log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", c.Order)
+		log.Error("Invalid value in 'order' field. Valid values: 'asc', 'desc'", "order", orderValue)
 		order = ""
 	}
 

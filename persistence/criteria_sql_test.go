@@ -644,4 +644,96 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			Expect(joins.has(smartPlaylistJoinAlbum)).To(BeFalse())
 		})
 	})
+
+	Describe("group limits", func() {
+		It("builds a limited group as a subquery", func() {
+			c := criteria.Criteria{Expression: criteria.Group{
+				Expression: criteria.All{criteria.Is{"title": "x"}},
+				Sort:       "title",
+				Limit:      2,
+				Offset:     1,
+			}}
+			cSQL := newSmartPlaylistCriteria(c,
+				withSmartPlaylistOwner(model.User{ID: "owner-id"}),
+				withGroupLimits(true),
+			)
+
+			sqlizer, err := cSQL.where()
+			Expect(err).ToNot(HaveOccurred())
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(ContainSubstring("media_file.id IN (SELECT media_file.id FROM media_file"))
+			Expect(sql).To(ContainSubstring("ORDER BY media_file.title asc, media_file.id asc LIMIT 2 OFFSET 1"))
+			Expect(args).To(HaveExactElements("owner-id", "x"))
+		})
+
+		It("rejects limited groups when group limits are disabled", func() {
+			c := criteria.Criteria{Expression: criteria.Group{
+				Expression: criteria.All{criteria.Is{"title": "x"}},
+				Limit:      2,
+			}}
+			_, err := newSmartPlaylistCriteria(c).where()
+			Expect(err).To(MatchError(ContainSubstring("group limits")))
+		})
+
+		It("rejects an unresolved percentage group", func() {
+			c := criteria.Criteria{Expression: criteria.Group{
+				Expression:   criteria.All{criteria.Is{"title": "x"}},
+				LimitPercent: 50,
+			}}
+			_, err := newSmartPlaylistCriteria(c, withGroupLimits(true)).where()
+			Expect(err).To(MatchError(ContainSubstring("percentage limit was not resolved")))
+		})
+
+		It("rejects a percentage group when group limits are disabled", func() {
+			c := criteria.Criteria{Expression: criteria.Group{
+				Expression:   criteria.All{criteria.Is{"title": "x"}},
+				LimitPercent: 50,
+			}}
+			_, err := newSmartPlaylistCriteria(c).where()
+			Expect(err).To(MatchError(ContainSubstring("group limits")))
+		})
+
+		It("compiles unlimited groups inline", func() {
+			c := criteria.Criteria{Expression: criteria.Group{
+				Expression: criteria.All{criteria.Gt{"albumRating": 3}},
+			}}
+			cSQL := newSmartPlaylistCriteria(c, withGroupLimits(true))
+
+			sqlizer, err := cSQL.where()
+			Expect(err).ToNot(HaveOccurred())
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("(album_annotation.rating > ?)"))
+			Expect(cSQL.expressionJoins().has(smartPlaylistJoinAlbumAnnotation)).To(BeTrue())
+		})
+
+		It("keeps limited-group joins out of the outer scope", func() {
+			g := criteria.Group{
+				Expression: criteria.All{criteria.Gt{"albumRating": 3}},
+				Sort:       "-artistRating",
+				Limit:      1,
+			}
+			cSQL := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.All{g}})
+
+			Expect(cSQL.expressionJoins()).To(Equal(smartPlaylistJoinNone))
+			Expect(cSQL.groupJoins(g).has(smartPlaylistJoinAlbumAnnotation)).To(BeTrue())
+			Expect(cSQL.groupJoins(g).has(smartPlaylistJoinArtistAnnotation)).To(BeTrue())
+		})
+
+		It("does not inherit a parent order flip for an explicitly sorted group", func() {
+			c := criteria.Criteria{
+				Expression: criteria.Group{Expression: criteria.All{}, Sort: "-rating", Limit: 1},
+				Sort:       "title",
+				Order:      "desc",
+			}
+			cSQL := newSmartPlaylistCriteria(c, withSmartPlaylistOwner(model.User{ID: "owner-id"}), withGroupLimits(true))
+
+			sqlizer, err := cSQL.where()
+			Expect(err).ToNot(HaveOccurred())
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(ContainSubstring("ORDER BY COALESCE(annotation.rating, 0) desc, media_file.id asc"))
+		})
+	})
 })

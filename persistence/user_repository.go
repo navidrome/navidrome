@@ -355,7 +355,7 @@ func validateScrobbleFilter(u *model.User) error {
 	}
 	// A filter is a per-track test, so a result-set size means nothing here. Reject it
 	// rather than silently ignoring part of a rule copied from a smart playlist.
-	if c.Limit > 0 || c.LimitPercent > 0 || c.Offset > 0 || c.RefreshDelay > 0 {
+	if c.Limit > 0 || c.LimitPercent > 0 || c.Offset > 0 || c.RefreshDelay > 0 || c.HasNestedSelectionFields() {
 		return invalidScrobbleFilter()
 	}
 	// Building the WHERE clause is what validates field names and operators

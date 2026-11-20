@@ -168,6 +168,9 @@ func normalizePlaylistPaths(inputRule criteria.Expression, referencingPlaylistPa
 			allCriteria[i] = normalizePlaylistPaths(rules, referencingPlaylistPath)
 		}
 		return allCriteria
+	case criteria.Group:
+		rule.Expression = normalizePlaylistPaths(rule.Expression, referencingPlaylistPath)
+		return rule
 	case criteria.InPlaylist:
 		return criteria.InPlaylist(normalizeChildPathRule(rule, referencingPlaylistPath))
 	case criteria.NotInPlaylist:

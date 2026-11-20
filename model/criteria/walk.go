@@ -24,6 +24,8 @@ func Walk(expr Expression, visit Visitor) error {
 				return err
 			}
 		}
+	case Group:
+		return Walk(e.Expression, visit)
 	case Is, IsNot, Gt, Lt, Before, After, Contains, NotContains, StartsWith, EndsWith, InTheRange, InTheLast, NotInTheLast, InPlaylist, NotInPlaylist, IsMissing, IsPresent:
 		return nil
 	default:
