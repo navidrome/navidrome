@@ -511,7 +511,18 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 		})
 
-		It("should import as two distinct albums", func() {
+		It("should import as one album with the default album PID", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			albums, err := ds.Album().GetAll(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).To(HaveLen(1))
+		})
+
+		It("should import as two distinct albums when the album PID has releasedate", func() {
+			conf.Update(func(c *conf.Options) {
+				c.PID.Album = "musicbrainz_albumid|albumartistid,album,albumversion,releasedate"
+			})
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Sort: "release_date"})
