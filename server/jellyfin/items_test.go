@@ -41,6 +41,8 @@ type queryRecorder struct {
 type recordedQuery struct {
 	Options     model.QueryOptions
 	SearchQuery string
+	GetAlls     int
+	Gets        int
 }
 
 func newQueryRecorder() *queryRecorder {
@@ -93,7 +95,13 @@ type recordingSongs struct {
 
 func (r recordingSongs) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
 	r.rec.record(options)
+	r.rec.GetAlls++
 	return r.MediaFileRepository.GetAll(ctx, options...)
+}
+
+func (r recordingSongs) Get(ctx context.Context, id string) (*model.MediaFile, error) {
+	r.rec.Gets++
+	return r.MediaFileRepository.Get(ctx, id)
 }
 
 func (r recordingSongs) GetCursorWithArtwork(ctx context.Context, options ...model.QueryOptions) (model.MediaFileCursor, error) {
@@ -736,6 +744,8 @@ var _ = Describe("Items", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("media_file.id IN"))
 				Expect(args).To(ConsistOf(testID("s1"), testID("s2")))
+				Expect(rec.songs.GetAlls).To(Equal(1))
+				Expect(rec.songs.Gets).To(BeZero())
 			})
 
 			It("omits an id in a library the user can't access, without erroring the whole batch", func() {
@@ -852,15 +862,15 @@ var _ = Describe("Items", func() {
 			})
 
 			It("does not let ParentId=<inaccessible library id> scope results to that library", func() {
-				// The library GUID decodes to "99", so an artist with that id shows the artist-parent fallback.
-				putArtistsIn(ctx, ds, 1, model.Artist{ID: "99", Name: "Ninety-Nine"})
-				byArtist := credits(model.RoleAlbumArtist, "99")
+				// The library GUID decodes to "3", so an artist with that id shows the artist-parent fallback.
+				putArtistsIn(ctx, ds, 1, model.Artist{ID: "3", Name: "Three"})
+				byArtist := credits(model.RoleAlbumArtist, "3")
 				persistencetest.PutAlbums(ctx, ds,
 					model.Album{ID: testID("a1"), Name: "One", LibraryID: 1, Participants: byArtist},
 					model.Album{ID: testID("a2"), Name: "Two", LibraryID: 1},
 					model.Album{ID: testID("a3"), Name: "Three", LibraryID: 3, Participants: byArtist},
 				)
-				code, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(99)+"&IncludeItemTypes=MusicAlbum", ctxUserWithLibraries(model.Libraries{{ID: 1}}))
+				code, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(3)+"&IncludeItemTypes=MusicAlbum", ctxUserWithLibraries(model.Libraries{{ID: 1}}))
 				Expect(code).To(Equal(http.StatusOK))
 				Expect(itemNames(res)).To(ConsistOf("One"))
 			})

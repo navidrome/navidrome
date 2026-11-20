@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -43,7 +44,11 @@ func PutMediaFiles(ctx context.Context, ds model.DataStore, mfs ...model.MediaFi
 	stored := make(model.MediaFiles, len(mfs))
 	for i, mf := range mfs {
 		mf.LibraryID = cmp.Or(mf.LibraryID, model.DefaultLibraryID)
-		mf.Path = cmp.Or(mf.Path, mf.ID+".mp3")
+		if mf.Path == "" {
+			// Put matches an ID-less file by path, so files with neither would overwrite each other.
+			mf.ID = cmp.Or(mf.ID, id.NewRandom())
+			mf.Path = mf.ID + ".mp3"
+		}
 		gomega.Expect(ds.MediaFile().Put(ctx, &mf)).To(gomega.Succeed())
 		stored[i] = mf
 	}

@@ -70,10 +70,13 @@ var _ = Describe("Browsing", func() {
 			Expect(res.Items[0].Type).To(Equal("MusicArtist"))
 		})
 
-		It("handles /Artists/AlbumArtists the same way", func() {
+		It("lists only album artists on /Artists/AlbumArtists", func() {
 			putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "A"})
-			res := get(api.getArtists, "/Artists/AlbumArtists", ctxUser(model.Libraries{{ID: 1}}))
-			Expect(res.Items).To(HaveLen(1))
+			performer := model.Artist{ID: testID("ar2"), Name: "Performer", OrderArtistName: "performer"}
+			persistencetest.PutArtists(ctx, ds, 1, performer)
+			persistencetest.SetArtistStats(ctx, 1, map[model.Role]model.ArtistStats{model.RoleArtist: {SongCount: 1}}, performer.ID)
+			res := get(api.getAlbumArtists, "/Artists/AlbumArtists", ctxUser(model.Libraries{{ID: 1}}))
+			Expect(itemNames(res)).To(ConsistOf("A"))
 		})
 
 		Context("with one artist in each library", func() {
@@ -94,7 +97,7 @@ var _ = Describe("Browsing", func() {
 			})
 
 			It("does not let ParentId=<inaccessible library id> narrow the scope", func() {
-				res := get(api.getArtists, "/Artists?ParentId="+dto.EncodeLibraryID(99), ctxUser(model.Libraries{{ID: 1}}))
+				res := get(api.getArtists, "/Artists?ParentId="+dto.EncodeLibraryID(3), ctxUser(model.Libraries{{ID: 1}}))
 				Expect(itemNames(res)).To(ConsistOf("One"))
 			})
 
