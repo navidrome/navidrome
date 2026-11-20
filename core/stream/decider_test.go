@@ -1014,7 +1014,7 @@ var _ = Describe("Decider", func() {
 			})
 		})
 
-		Context("MP3 max sample rate", func() {
+		Context("Encoder-accepted sample rates", func() {
 			It("caps sample rate at 48000 for MP3", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1500, Channels: 2, SampleRate: 96000, BitDepth: new(24)})
 				ci := &ClientInfo{
@@ -1058,9 +1058,7 @@ var _ = Describe("Decider", func() {
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(44100))
 				Expect(decision.TargetSampleRate).To(Equal(44100))
 			})
-		})
 
-		Context("AAC max sample rate", func() {
 			It("caps sample rate at 96000 for AAC", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 352800, BitDepth: new(8)})
 				ci := &ClientInfo{
