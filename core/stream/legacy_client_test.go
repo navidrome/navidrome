@@ -5,8 +5,10 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -149,10 +151,7 @@ var _ = Describe("ResolveRequest", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds := &tests.MockDataStore{
-			MockedProperty:    &tests.MockedPropertyRepo{},
-			MockedTranscoding: &tests.MockTranscodingRepo{},
-		}
+		ds := persistence.New(db.Db())
 		ff := tests.NewMockFFmpeg("")
 		auth.Init(ds)
 		svc = NewTranscodeDecider(ds, ff)
@@ -281,8 +280,8 @@ var _ = Describe("ResolveRequest", func() {
 			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
 
 			Expect(req.Format).To(Equal("mp3"))
-			// With no cap, lossless→lossy uses format default bitrate (160 for mp3 from mock)
-			Expect(req.BitRate).To(Equal(160))
+			// With no cap, lossless→lossy uses the mp3 default bitrate stored in the DB
+			Expect(req.BitRate).To(Equal(192))
 		})
 
 		It("serves a lossy source raw when the override targets a lossless format", func() {
@@ -455,10 +454,7 @@ var _ = Describe("ResolveClientRequest", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds := &tests.MockDataStore{
-			MockedProperty:    &tests.MockedPropertyRepo{},
-			MockedTranscoding: &tests.MockTranscodingRepo{},
-		}
+		ds := persistence.New(db.Db())
 		auth.Init(ds)
 		svc = NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))
 	})

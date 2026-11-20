@@ -8,11 +8,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
@@ -27,35 +27,60 @@ var _ = Describe("Archiver", func() {
 		arch core.Archiver
 		ms   *mockMediaStreamer
 		dc   *fakeDecider
-		ds   *mockDataStore
+		ds   model.DataStore
 		sh   *mockShare
 		ca   *mockCoverArt
 	)
 
+	putTracks := func(mfs ...model.MediaFile) []string {
+		GinkgoHelper()
+		ids := make([]string, 0, len(mfs))
+		for _, mf := range mfs {
+			mf.LibraryID = model.DefaultLibraryID
+			Expect(ds.MediaFile().Put(ctx, &mf)).To(Succeed())
+			ids = append(ids, mf.ID)
+		}
+		return ids
+	}
+
+	byArtist := func(id string, mfs ...model.MediaFile) []model.MediaFile {
+		for i := range mfs {
+			mfs[i].Participants = model.Participants{model.RoleAlbumArtist: {{ID: id, Name: "Artist " + id}}}
+		}
+		return mfs
+	}
+
+	putPlaylist := func(id, name string, tracks ...model.MediaFile) {
+		GinkgoHelper()
+		ids := putTracks(tracks...)
+		Expect(ds.Playlist().Put(ctx, &model.Playlist{ID: id, Name: name, OwnerID: "user-1"})).To(Succeed())
+		_, err := ds.Playlist().Tracks(ctx, id, false).Add(ctx, ids)
+		Expect(err).ToNot(HaveOccurred())
+	}
+
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		user := model.User{ID: "user-1", UserName: "user-1"}
+		Expect(ds.User().Put(ctx, &user)).To(Succeed())
+		ctx = request.WithUser(ctx, user)
+		for _, id := range []string{"1", "2"} {
+			Expect(ds.Artist().Put(ctx, &model.Artist{ID: id, Name: "Artist " + id})).To(Succeed())
+		}
 		ms = &mockMediaStreamer{}
 		dc = &fakeDecider{}
 		sh = &mockShare{}
-		ds = &mockDataStore{}
 		ca = &mockCoverArt{images: map[string][]byte{}}
 		arch = core.NewArchiver(ms, dc, ds, sh, ca)
 	})
 
 	Context("ZipAlbum", func() {
 		It("zips an album correctly", func() {
-			mfs := model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1},
-				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1},
-			}
-
-			mfRepo := &mockMediaFileRepository{}
-			mfRepo.On("GetAll", []model.QueryOptions{{
-				Filters: squirrel.Eq{"album_id": "1"},
-				Sort:    "album",
-			}}).Return(mfs, nil)
-
-			ds.On("MediaFile").Return(mfRepo)
+			putTracks(
+				model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1, TrackNumber: 2},
+				model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1, TrackNumber: 1},
+				model.MediaFile{Path: "other/01 - other.mp3", Suffix: "mp3", AlbumID: "2", Album: "Other", DiscNumber: 1},
+			)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(3)
 
 			out := new(bytes.Buffer)
@@ -71,15 +96,13 @@ var _ = Describe("Archiver", func() {
 		})
 
 		It("streams the request resolved by the transcode decider and names the entry after its format", func() {
-			mfRepo := &mockMediaFileRepository{}
-			mfRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{Path: "test_data/01 - track1.flac", Suffix: "flac", AlbumID: "1"}}, nil)
-			ds.On("MediaFile").Return(mfRepo)
+			putTracks(model.MediaFile{Path: "test_data/01 - track1.flac", Suffix: "flac", AlbumID: "1"})
 			resolved := stream.Request{Format: "opus", BitRate: 128, SampleRate: 48000, Channels: 2}
 			dc.resolved = &resolved
 			ms.On("NewStream", mock.Anything, mock.Anything, resolved).Return(io.NopCloser(strings.NewReader("test")), nil).Once()
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipAlbum(GinkgoT().Context(), "1", "mp3", 128, out)).To(Succeed())
+			Expect(arch.ZipAlbum(ctx, "1", "mp3", 128, out)).To(Succeed())
 			ms.AssertExpectations(GinkgoT())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
@@ -90,21 +113,14 @@ var _ = Describe("Archiver", func() {
 
 	Context("ZipArtist", func() {
 		It("zips an artist's albums correctly", func() {
-			mfs := model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumArtistID: "1", AlbumID: "1", Album: "Album 1", DiscNumber: 1},
-				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumArtistID: "1", AlbumID: "1", Album: "Album 1", DiscNumber: 1},
-			}
-
-			mfRepo := &mockMediaFileRepository{}
-			mfRepo.On("GetAll", []model.QueryOptions{{
-				Filters: squirrel.And{
-					persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
-					squirrel.Eq{"missing": false},
-				},
-				Sort: "album",
-			}}).Return(mfs, nil)
-
-			ds.On("MediaFile").Return(mfRepo)
+			putTracks(byArtist("1",
+				model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, TrackNumber: 1},
+				model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, TrackNumber: 2},
+				model.MediaFile{Path: "test_data/03 - missing.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, TrackNumber: 3, Missing: true},
+			)...)
+			putTracks(byArtist("2",
+				model.MediaFile{Path: "other/01 - other.mp3", Suffix: "mp3", AlbumID: "2", Album: "Other", DiscNumber: 1},
+			)...)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
@@ -123,9 +139,7 @@ var _ = Describe("Archiver", func() {
 
 			// zipArtistEntries zips the given tracks as artist "1" and returns the entry names in zip order.
 			zipArtistEntries := func(mfs model.MediaFiles) []string {
-				mfRepo := &mockMediaFileRepository{}
-				mfRepo.On("GetAll", mock.Anything).Return(mfs, nil)
-				ds.On("MediaFile", mock.Anything).Return(mfRepo)
+				putTracks(byArtist("1", mfs...)...)
 				ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
 
 				out := new(bytes.Buffer)
@@ -141,10 +155,10 @@ var _ = Describe("Archiver", func() {
 
 			It("keeps the albums in query order", func() {
 				names := zipArtistEntries(model.MediaFiles{
-					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Album C"},
-					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A"},
-					{Path: "a/02.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A"},
-					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Album B"},
+					{Path: "c/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Album C", OrderAlbumName: "1"},
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A", OrderAlbumName: "2", TrackNumber: 1},
+					{Path: "a/02.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A", OrderAlbumName: "2", TrackNumber: 2},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Album B", OrderAlbumName: "3"},
 				})
 				Expect(names).To(Equal([]string{"Album C/01.mp3", "Album A/01.mp3", "Album A/02.mp3", "Album B/01.mp3"}))
 			})
@@ -253,17 +267,10 @@ var _ = Describe("Archiver", func() {
 
 	Context("when the transcode limiter rejects a file", func() {
 		It("aborts the archive instead of continuing with empty entries", func() {
-			mfs := model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album", DiscNumber: 1},
-				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album", DiscNumber: 1},
-			}
-
-			mfRepo := &mockMediaFileRepository{}
-			mfRepo.On("GetAll", []model.QueryOptions{{
-				Filters: squirrel.Eq{"album_id": "1"},
-				Sort:    "album",
-			}}).Return(mfs, nil)
-			ds.On("MediaFile").Return(mfRepo)
+			putTracks(
+				model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album", DiscNumber: 1, TrackNumber: 1},
+				model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album", DiscNumber: 1, TrackNumber: 2},
+			)
 
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).
 				Return(nil, stream.ErrTooManyTranscodes).Once()
@@ -314,17 +321,14 @@ var _ = Describe("Archiver", func() {
 
 	Context("ZipPlaylist", func() {
 		It("names the entries and the M3U lines after the resolved format", func() {
-			pls := &model.Playlist{ID: "1", Name: "Test Playlist", Tracks: []model.PlaylistTrack{
-				{Path: "test_data/01 - track1.flac", Suffix: "flac", Artist: "Artist 1", Title: "track1"},
-			}}
-			plRepo := &mockPlaylistRepository{}
-			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
-			ds.On("Playlist").Return(plRepo)
+			putPlaylist("1", "Test Playlist",
+				model.MediaFile{Path: "test_data/01 - track1.flac", Suffix: "flac", Artist: "Artist 1", Title: "track1"},
+			)
 			dc.resolved = &stream.Request{Format: "opus", BitRate: 128}
 			ms.On("NewStream", mock.Anything, mock.Anything, *dc.resolved).Return(io.NopCloser(strings.NewReader("test")), nil)
 
 			out := new(bytes.Buffer)
-			Expect(arch.ZipPlaylist(GinkgoT().Context(), "1", "mp3", 128, out)).To(Succeed())
+			Expect(arch.ZipPlaylist(ctx, "1", "mp3", 128, out)).To(Succeed())
 
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
 			Expect(err).ToNot(HaveOccurred())
@@ -338,20 +342,10 @@ var _ = Describe("Archiver", func() {
 		})
 
 		It("zips a playlist correctly", func() {
-			tracks := []model.PlaylistTrack{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "AC/DC", Title: "track1"},
-				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "Artist 2", Title: "track2"},
-			}
-
-			pls := &model.Playlist{
-				ID:     "1",
-				Name:   "Test Playlist",
-				Tracks: tracks,
-			}
-
-			plRepo := &mockPlaylistRepository{}
-			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
-			ds.On("Playlist").Return(plRepo)
+			putPlaylist("1", "Test Playlist",
+				model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "AC/DC", Title: "track1"},
+				model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "Artist 2", Title: "track2"},
+			)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
@@ -384,18 +378,15 @@ var _ = Describe("Archiver", func() {
 			pngData  = []byte("\x89PNG\x0d\x0a\x1a\x0a fake png")
 		)
 
-		mockAlbumTracks := func(filter squirrel.Sqlizer, mfs model.MediaFiles) {
-			mfRepo := &mockMediaFileRepository{}
-			mfRepo.On("GetAll", []model.QueryOptions{{Filters: filter, Sort: "album"}}).Return(mfs, nil)
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+		putAlbumTracks := func(mfs ...model.MediaFile) {
+			GinkgoHelper()
+			putTracks(mfs...)
 			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
 		}
 
 		It("adds the album cover to the album folder", func() {
 			ca.images["al-1"] = jpegData
-			mockAlbumTracks(squirrel.Eq{"album_id": "1"}, model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1},
-			})
+			putAlbumTracks(model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1})
 
 			out := new(bytes.Buffer)
 			Expect(arch.ZipAlbum(ctx, "1", "mp3", 128, out)).To(Succeed())
@@ -410,13 +401,10 @@ var _ = Describe("Archiver", func() {
 			ca.images["ar-1"] = pngData
 			ca.images["al-1"] = jpegData
 			ca.images["al-2"] = jpegData
-			mockAlbumTracks(squirrel.And{
-				persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
-				squirrel.Eq{"missing": false},
-			}, model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1},
-				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "2", Album: "Album 2", DiscNumber: 1},
-			})
+			putAlbumTracks(byArtist("1",
+				model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1},
+				model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "2", Album: "Album 2", DiscNumber: 1},
+			)...)
 
 			out := new(bytes.Buffer)
 			Expect(arch.ZipArtist(ctx, "1", "mp3", 128, out)).To(Succeed())
@@ -431,13 +419,10 @@ var _ = Describe("Archiver", func() {
 		It("puts each same-named album's cover in that album's own folder", func() {
 			ca.images["al-1"] = jpegData
 			ca.images["al-2"] = pngData
-			mockAlbumTracks(squirrel.And{
-				persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
-				squirrel.Eq{"missing": false},
-			}, model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001, DiscNumber: 1},
-				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005, DiscNumber: 1},
-			})
+			putAlbumTracks(byArtist("1",
+				model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001, DiscNumber: 1},
+				model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005, DiscNumber: 1},
+			)...)
 
 			out := new(bytes.Buffer)
 			Expect(arch.ZipArtist(ctx, "1", "mp3", 128, out)).To(Succeed())
@@ -449,15 +434,9 @@ var _ = Describe("Archiver", func() {
 
 		It("adds the playlist cover to the root", func() {
 			ca.images["pl-1"] = jpegData
-			plRepo := &mockPlaylistRepository{}
-			plRepo.On("GetWithTracks", "1", true, false).Return(&model.Playlist{
-				ID:   "1",
-				Name: "Test Playlist",
-				Tracks: []model.PlaylistTrack{
-					{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Artist: "Artist 1", Title: "track1"},
-				},
-			}, nil)
-			ds.On("Playlist", mock.Anything).Return(plRepo)
+			putPlaylist("1", "Test Playlist",
+				model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Artist: "Artist 1", Title: "track1"},
+			)
 			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
 
 			out := new(bytes.Buffer)
@@ -495,9 +474,7 @@ var _ = Describe("Archiver", func() {
 
 		It("still builds the archive when the cover cannot be read", func() {
 			ca.err = errors.New("boom")
-			mockAlbumTracks(squirrel.Eq{"album_id": "1"}, model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album", DiscNumber: 1},
-			})
+			putAlbumTracks(model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album", DiscNumber: 1})
 
 			out := new(bytes.Buffer)
 			Expect(arch.ZipAlbum(ctx, "1", "mp3", 128, out)).To(Succeed())
@@ -549,54 +526,6 @@ func (m *mockCoverArt) Get(ctx context.Context, artID model.ArtworkID, size int,
 		return nil, artwork.ErrUnavailable
 	}
 	return &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader(data))}, nil
-}
-
-type mockDataStore struct {
-	mock.Mock
-	model.DataStore
-}
-
-func (m *mockDataStore) MediaFile() model.MediaFileRepository {
-	args := m.Called()
-	return args.Get(0).(model.MediaFileRepository)
-}
-
-func (m *mockDataStore) Playlist() model.PlaylistRepository {
-	args := m.Called()
-	return args.Get(0).(model.PlaylistRepository)
-}
-
-func (m *mockDataStore) Library() model.LibraryRepository {
-	return &mockLibraryRepository{}
-}
-
-type mockLibraryRepository struct {
-	mock.Mock
-	model.LibraryRepository
-}
-
-func (m *mockLibraryRepository) GetPath(_ context.Context, id int) (string, error) {
-	return "/music", nil
-}
-
-type mockMediaFileRepository struct {
-	mock.Mock
-	model.MediaFileRepository
-}
-
-func (m *mockMediaFileRepository) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
-	args := m.Called(options)
-	return args.Get(0).(model.MediaFiles), args.Error(1)
-}
-
-type mockPlaylistRepository struct {
-	mock.Mock
-	model.PlaylistRepository
-}
-
-func (m *mockPlaylistRepository) GetWithTracks(_ context.Context, id string, refreshSmartPlaylists, includeMissing bool) (*model.Playlist, error) {
-	args := m.Called(id, refreshSmartPlaylists, includeMissing)
-	return args.Get(0).(*model.Playlist), args.Error(1)
 }
 
 type mockMediaStreamer struct {

@@ -10,8 +10,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -54,14 +56,14 @@ var _ = Describe("parseArtworkKind", func() {
 })
 
 var _ = Describe("resolveArtworkTargets", func() {
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		artists := tests.CreateMockArtistRepo()
-		artists.SetData(model.Artists{{ID: "artist1"}})
-		ds = &tests.MockDataStore{MockedArtist: artists}
+		ds = persistence.New(db.Db())
+		Expect(ds.Artist().Put(ctx, &model.Artist{ID: "artist1", Name: "artist1"})).To(Succeed())
+		Expect(ds.Library().AddArtist(ctx, model.DefaultLibraryID, "artist1")).To(Succeed())
 	})
 
 	It("accepts the explicit <kind> <id> leader shared by every id", func() {
@@ -493,8 +495,8 @@ var _ = Describe("explain/reprocess source round trip", func() {
 	}
 
 	It("names the absent state as reprocess --source accepts it", func() {
-		ds := &tests.MockDataStore{}
-		art := ds.Artwork().(*tests.MockArtworkRepo)
+		ds := persistence.New(db.Db())
+		art := ds.Artwork()
 		Expect(art.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: model.KindArtistArtwork.Prefix(),
 			ItemID: "ar-1", ImageType: model.ImageTypePrimary})).To(Succeed())
 
@@ -565,9 +567,9 @@ var _ = Describe("confirmUnlessYes", func() {
 })
 
 var _ = Describe("reprocessArtwork", func() {
-	var ds *tests.MockDataStore
-	var art *tests.MockArtworkRepo
-	var queue *tests.MockArtworkQueueRepo
+	var ds model.DataStore
+	var art model.ArtworkRepository
+	var queue model.ArtworkQueueRepository
 	var out strings.Builder
 	var imageAgents artwork.ImageAgentCount
 	var ctx context.Context
@@ -588,9 +590,9 @@ var _ = Describe("reprocessArtwork", func() {
 			c.EnableM3UExternalAlbumArt = false
 		})
 		imageAgents = artwork.ImageAgentCount{Artist: 1, Album: 1}
-		ds = &tests.MockDataStore{}
-		art = ds.Artwork().(*tests.MockArtworkRepo)
-		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
+		ds = persistence.New(db.Db())
+		art = ds.Artwork()
+		queue = ds.ArtworkQueue()
 		out.Reset()
 		put(model.KindArtistArtwork, "ar-1", "external:deezer")
 		put(model.KindArtistArtwork, "ar-2", "")
@@ -816,16 +818,16 @@ var _ = Describe("artwork status command", func() {
 })
 
 var _ = Describe("collectStatus", func() {
-	var ds *tests.MockDataStore
-	var art *tests.MockArtworkRepo
-	var queue *tests.MockArtworkQueueRepo
+	var ds model.DataStore
+	var art model.ArtworkRepository
+	var queue model.ArtworkQueueRepository
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
-		art = ds.Artwork().(*tests.MockArtworkRepo)
-		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
+		ds = persistence.New(db.Db())
+		art = ds.Artwork()
+		queue = ds.ArtworkQueue()
 		put := func(kind model.Kind, id, source, hash string, attempted time.Time) {
 			Expect(art.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: kind.Prefix(), ItemID: id,
 				ImageType: model.ImageTypePrimary, Source: source, Hash: hash, AttemptedAt: attempted})).To(Succeed())
@@ -971,19 +973,20 @@ var _ = Describe("formatStatus", func() {
 })
 
 var _ = Describe("refreshItems", func() {
-	var ds *tests.MockDataStore
-	var queue *tests.MockArtworkQueueRepo
-	var art *tests.MockArtworkRepo
+	var ds model.DataStore
+	var queue model.ArtworkQueueRepository
+	var art model.ArtworkRepository
 	var out strings.Builder
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		albums := tests.CreateMockAlbumRepo()
-		albums.SetData(model.Albums{{ID: "al-1"}, {ID: "al-3"}})
-		ds = &tests.MockDataStore{MockedAlbum: albums}
-		art = ds.Artwork().(*tests.MockArtworkRepo)
-		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
+		ds = persistence.New(db.Db())
+		for _, id := range []string{"al-1", "al-3"} {
+			Expect(ds.Album().Put(ctx, &model.Album{ID: id, Name: id, LibraryID: model.DefaultLibraryID})).To(Succeed())
+		}
+		art = ds.Artwork()
+		queue = ds.ArtworkQueue()
 		out.Reset()
 	})
 
@@ -1147,8 +1150,8 @@ var _ = Describe("artwork cancel selection", func() {
 })
 
 var _ = Describe("cancelArtwork", func() {
-	var ds *tests.MockDataStore
-	var queue *tests.MockArtworkQueueRepo
+	var ds model.DataStore
+	var queue model.ArtworkQueueRepository
 	var out strings.Builder
 	var ctx context.Context
 	accept := func(io.Writer, int64, int64) bool { return true }
@@ -1156,8 +1159,8 @@ var _ = Describe("cancelArtwork", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
-		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
+		ds = persistence.New(db.Db())
+		queue = ds.ArtworkQueue()
 		out.Reset()
 		Expect(queue.Enqueue(ctx,
 			model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-1", ImageType: model.ImageTypePrimary,
@@ -1212,7 +1215,27 @@ var _ = Describe("cancelArtwork", func() {
 	})
 
 	It("reports a queue read failure instead of reporting nothing to cancel", func() {
-		queue.Err = errors.New("read failed")
+		ds = persistencetest.Overlay(ds, func(inner model.DataStore) model.DataStore {
+			return failingQueueDS{DataStore: inner, err: errors.New("read failed")}
+		})
 		Expect(cancelArtwork(ctx, ds, nil, nil, false, accept, &out)).To(MatchError(ContainSubstring("read failed")))
 	})
 })
+
+type failingQueueRepo struct {
+	model.ArtworkQueueRepository
+	err error
+}
+
+func (r failingQueueRepo) CountQueued(context.Context, []model.Kind, []int) ([]model.ArtworkQueueStat, error) {
+	return nil, r.err
+}
+
+type failingQueueDS struct {
+	model.DataStore
+	err error
+}
+
+func (d failingQueueDS) ArtworkQueue() model.ArtworkQueueRepository {
+	return failingQueueRepo{ArtworkQueueRepository: d.DataStore.ArtworkQueue(), err: d.err}
+}
