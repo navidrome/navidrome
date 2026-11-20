@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -25,13 +26,14 @@ type PlaybackServer interface {
 type playbackServer struct {
 	ctx             *context.Context
 	datastore       model.DataStore
+	playTracker     scrobbler.PlayTracker
 	playbackDevices []playbackDevice
 }
 
 // GetInstance returns the playback-server singleton
-func GetInstance(ds model.DataStore) PlaybackServer {
+func GetInstance(ds model.DataStore, playTracker scrobbler.PlayTracker) PlaybackServer {
 	return singleton.GetInstance(func() *playbackServer {
-		return &playbackServer{datastore: ds}
+		return &playbackServer{datastore: ds, playTracker: playTracker}
 	})
 }
 
@@ -63,7 +65,7 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 	if defaultDevice == "" {
 		// if there are no devices given and no default device, we create a synthetic device named "auto"
 		if len(devices) == 0 {
-			pbDevices[0] = *NewPlaybackDevice(ctx, ps, "auto", "auto")
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, "auto", "auto", ps.playTracker)
 		}
 
 		// if there is but only one entry and no default given, just use that.
@@ -71,7 +73,7 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 			if len(devices[0]) != 2 {
 				return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
 			}
-			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1])
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1], ps.playTracker)
 		}
 
 		if len(devices) > 1 {
@@ -87,7 +89,7 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 			return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
 		}
 
-		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1])
+		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1], ps.playTracker)
 
 		if audioDevice[0] == defaultDevice {
 			pbDevices[idx].Default = true
