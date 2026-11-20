@@ -190,7 +190,7 @@ func (m *mockSimilarArtistAgent) AgentName() string {
 func (m *mockSimilarArtistAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
 	args := m.Called(ctx, id, artistName, mbid, count)
 	if args.Get(0) != nil {
-		return args.Get(0).([]agents.Song), args.Error(1)
+		return limitSongs(args.Get(0).([]agents.Song), count), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -213,9 +213,12 @@ type mockAgents struct {
 		agents.AlbumInfoRetriever
 		agents.AlbumImageRetriever
 	}
-	bioAgent  agents.ArtistBiographyRetriever
-	mbidAgent agents.ArtistMBIDRetriever
-	urlAgent  agents.ArtistURLRetriever
+	bioAgent        agents.ArtistBiographyRetriever
+	mbidAgent       agents.ArtistMBIDRetriever
+	urlAgent        agents.ArtistURLRetriever
+	localTrackSongs []agents.Song
+	localTrackErr   error
+	localTrackCalls []int
 	agents.Interface
 }
 
@@ -240,7 +243,7 @@ func (m *mockAgents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 	}
 	args := m.Called(ctx, id, artistName, mbid, count)
 	if args.Get(0) != nil {
-		return args.Get(0).([]agents.Song), args.Error(1)
+		return limitSongs(args.Get(0).([]agents.Song), count), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -308,6 +311,25 @@ func (m *mockAgents) GetSimilarSongsByTrack(ctx context.Context, id, name, artis
 		return args.Get(0).([]agents.Song), args.Error(1)
 	}
 	return nil, args.Error(1)
+}
+
+func (m *mockAgents) GetSimilarSongsByTrackFromExternalAgents(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
+	return m.GetSimilarSongsByTrack(ctx, id, name, artist, mbid, count)
+}
+
+func (m *mockAgents) GetSimilarSongsByTrackFromLocalAgent(_ context.Context, _, _, _, _ string, count int) ([]agents.Song, error) {
+	m.localTrackCalls = append(m.localTrackCalls, count)
+	return limitSongs(m.localTrackSongs, count), m.localTrackErr
+}
+
+func limitSongs(songs []agents.Song, count int) []agents.Song {
+	if count <= 0 {
+		return nil
+	}
+	if len(songs) > count {
+		return songs[:count]
+	}
+	return songs
 }
 
 func (m *mockAgents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
