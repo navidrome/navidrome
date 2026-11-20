@@ -44,4 +44,37 @@ var _ = Describe("userAccess", func() {
 		Entry("a user in the list", []string{"user-1", "user-2"}, false, "user-1", true),
 		Entry("not a user outside the list", []string{"user-1", "user-2"}, false, "user-3", false),
 	)
+
+	DescribeTable("configured",
+		func(ids []string, all bool, want bool) {
+			Expect(newUserAccess(ids, all).configured()).To(Equal(want))
+		},
+		Entry("when allUsers is set", nil, true, true),
+		Entry("when the list has a user", []string{"user-1"}, false, true),
+		Entry("not when the list is nil", nil, false, false),
+		Entry("not when the list is empty", []string{}, false, false),
+	)
+})
+
+var _ = Describe("libraryAccess", func() {
+	DescribeTable("contains",
+		func(ids []int, all bool, libID int, want bool) {
+			Expect(newLibraryAccess(ids, all).contains(libID)).To(Equal(want))
+		},
+		Entry("any library when allLibraries is set", nil, true, 42, true),
+		Entry("nothing when the list is nil", nil, false, 1, false),
+		Entry("nothing when the list is empty", []int{}, false, 1, false),
+		Entry("a library in the list", []int{1, 3}, false, 3, true),
+		Entry("not a library outside the list", []int{1, 3}, false, 2, false),
+	)
+
+	DescribeTable("configured",
+		func(ids []int, all bool, want bool) {
+			Expect(newLibraryAccess(ids, all).configured()).To(Equal(want))
+		},
+		Entry("when allLibraries is set", nil, true, true),
+		Entry("when the list has a library", []int{1}, false, true),
+		Entry("not when the list is nil", nil, false, false),
+		Entry("not when the list is empty", []int{}, false, false),
+	)
 })
