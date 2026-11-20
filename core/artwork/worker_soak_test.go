@@ -34,26 +34,16 @@ var _ = Describe("Worker soak", func() {
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 
-		libRepo := &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		folderRepo := &fakeFolderRepo{result: []model.Folder{{
-			Path:       "tests/fixtures/artist/an-album",
-			ImageFiles: []string{"cover.jpg"},
-		}}}
+		ds := newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
+		fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
 		ffm := tests.NewMockFFmpeg("")
-		ag := agents.GetAgents(&tests.MockDataStore{}, nil)
-		artRepo := tests.CreateMockArtworkRepo()
-		albumRepo := tests.CreateMockAlbumRepo()
-		albumRepo.SetData(model.Albums{
-			{ID: "al-folder", Name: "Folder Album", FolderIDs: []string{"f1"}},
-			{ID: "al-embed", Name: "Embedded Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
-		})
-		ds := &tests.MockDataStore{
-			MockedFolder:  folderRepo,
-			MockedLibrary: libRepo,
-			MockedArtwork: artRepo,
-			MockedAlbum:   albumRepo,
-		}
+		ag := agents.GetAgents(ds, nil)
+		artRepo := ds.Artwork()
+		putAlbums(ctx, ds,
+			model.Album{ID: "al-folder", Name: "Folder Album", FolderIDs: []string{fid}},
+			model.Album{ID: "al-embed", Name: "Embedded Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3"},
+		)
 		store := NewImageStore(GinkgoT().TempDir())
 		proc := &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })

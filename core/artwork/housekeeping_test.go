@@ -7,7 +7,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -27,10 +26,8 @@ var _ = Describe("RefreshableKinds", func() {
 
 var _ = Describe("Housekeeping", func() {
 	var (
-		ctx       context.Context
-		ds        *tests.MockDataStore
-		queueRepo *tests.MockArtworkQueueRepo
-		propRepo  *tests.MockedPropertyRepo
+		ctx context.Context
+		ds  model.DataStore
 	)
 
 	BeforeEach(func() {
@@ -42,9 +39,7 @@ var _ = Describe("Housekeeping", func() {
 			c.EnableExternalServices = true
 		})
 
-		queueRepo = tests.CreateMockArtworkQueueRepo()
-		propRepo = &tests.MockedPropertyRepo{}
-		ds = &tests.MockDataStore{MockedArtworkQueue: queueRepo, MockedProperty: propRepo}
+		ds = newTestDS(ctx)
 	})
 
 	Describe("Fingerprint", func() {
@@ -99,65 +94,60 @@ var _ = Describe("Housekeeping", func() {
 		It("records the current fingerprint when none was ever stored", func() {
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
+			Expect(ds.Property().Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
 		})
 
 		It("leaves a stale fingerprint stored, so the warning survives a restart", func() {
-			Expect(propRepo.Put(ctx, consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
+			Expect(ds.Property().Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
 		})
 	})
 
 	Describe("EnqueueMissingAll", func() {
-		var artRepo *tests.MockArtworkRepo
-
 		BeforeEach(func() {
-			artRepo = tests.CreateMockArtworkRepo()
-			ds.MockedArtwork = artRepo
-			queueRepo.ItemArtworkSource = artRepo
-			queueRepo.ExistingIDs = map[string]map[string]bool{
-				"al": {"al1": true, "al2": true},
-				"ar": {"ar1": true},
-				"pl": {"pl1": true},
-				"ra": {"ra1": true},
-			}
+			putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album 1"}, model.Album{ID: "al2", Name: "Album 2"})
+			putArtists(ctx, ds, model.Artist{ID: "ar1", Name: "Artist"})
+			putPlaylist(ctx, ds, model.Playlist{ID: "pl1", Name: "Playlist"})
+			putRadio(ctx, ds, model.Radio{ID: "ra1", Name: "Radio"})
 		})
 
 		It("enqueues only entities that have no item_artwork row, across all kinds", func() {
-			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "somehash"}
-			artRepo.ItemData["ar-absent"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: ""}
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "somehash"})).To(Succeed())
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: ""})).To(Succeed())
 
 			err := enqueueMissingAll(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
 
-			for _, it := range queueRepo.Data {
-				Expect(it.Priority).To(Equal(model.ArtworkPriorityRecheck))
+			stats, err := ds.ArtworkQueue().CountQueued(ctx, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stats).ToNot(BeEmpty())
+			for _, st := range stats {
+				Expect(st.Priority).To(Equal(model.ArtworkPriorityRecheck))
 			}
-			Expect(findQueued(queueRepo, "al", "al2")).ToNot(BeNil())
-			Expect(findQueued(queueRepo, "pl", "pl1")).ToNot(BeNil())
-			Expect(findQueued(queueRepo, "ra", "ra1")).ToNot(BeNil())
-			Expect(findQueued(queueRepo, "al", "al1")).To(BeNil())
-			Expect(findQueued(queueRepo, "ar", "ar1")).To(BeNil())
+			Expect(queued(ctx, ds, "al", "al2")).ToNot(BeNil())
+			Expect(queued(ctx, ds, "pl", "pl1")).ToNot(BeNil())
+			Expect(queued(ctx, ds, "ra", "ra1")).ToNot(BeNil())
+			Expect(queued(ctx, ds, "al", "al1")).To(BeNil())
+			Expect(queued(ctx, ds, "ar", "ar1")).To(BeNil())
 		})
 	})
 })
 
 var _ = Describe("ItemName", func() {
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		albumRepo := tests.CreateMockAlbumRepo()
-		albumRepo.SetData(model.Albums{
-			{ID: "al-1", Name: "Kid A"},
-			{ID: "al-2", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}},
-		})
-		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
-		Expect(ds.Artist().(*tests.MockArtistRepo).Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		ds = newTestDS(ctx)
+		putAlbums(ctx, ds,
+			model.Album{ID: "al-1", Name: "Kid A"},
+			model.Album{ID: "al-2", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}},
+		)
+		putArtists(ctx, ds, model.Artist{ID: "ar-1", Name: "Radiohead"})
 	})
 
 	It("returns the album name", func() {

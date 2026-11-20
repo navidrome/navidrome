@@ -3,28 +3,31 @@ package artwork
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("loadLibraryView", Ordered, func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 
 	BeforeAll(func() {
+		persistencetest.Reset()
+		DeferCleanup(conf.SnapshotConfig())
 		storagetest.Register("fake", &storagetest.FakeFS{})
 	})
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{MockedLibrary: &tests.MockLibraryRepo{}}
+		ds = newTestDS(ctx)
 	})
 
 	It("returns a view for a library backed by registered storage", func() {
-		Expect(ds.Library().Put(ctx, &model.Library{ID: 1, Path: "fake:///music"})).To(Succeed())
+		persistencetest.SetLibraries(ctx, ds, "fake:///music")
 
 		lib, err := loadLibraryView(ctx, ds, 1)
 		Expect(err).ToNot(HaveOccurred())
@@ -45,7 +48,7 @@ var _ = Describe("loadLibraryView", Ordered, func() {
 	})
 
 	It("returns an error when the library path uses an unregistered scheme", func() {
-		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Path: "unsupported:///music"})).To(Succeed())
+		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Name: "Unsupported", Path: "unsupported:///music"})).To(Succeed())
 		_, err := loadLibraryView(ctx, ds, 2)
 		Expect(err).To(HaveOccurred())
 	})

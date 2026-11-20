@@ -50,7 +50,7 @@ const (
 
 var (
 	rctx    context.Context
-	rds     *tests.MockDataStore
+	rds     model.DataStore
 	rstore  *artwork.ImageStore
 	rsvc    artwork.Artwork
 	rworker *artwork.Worker
@@ -99,7 +99,7 @@ func setupResolutionHarness() {
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
 	harness.TruncateDB(userTables)
 
-	rds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	rds = persistence.New(db.Db())
 
 	adminUser := model.User{ID: "admin-1", UserName: "admin", Name: "Admin", IsAdmin: true, NewPassword: "password"}
 	Expect(rds.User().Put(rctx, &adminUser)).To(Succeed())

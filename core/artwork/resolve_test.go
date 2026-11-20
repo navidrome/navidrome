@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,30 +45,24 @@ var _ = Describe("IsArtistImageFile", func() {
 
 var _ = Describe("resolveItem", func() {
 	var (
-		ctx        context.Context
-		ds         *tests.MockDataStore
-		folderRepo *fakeFolderRepo
-		libRepo    *tests.MockLibraryRepo
-		ffm        *tests.MockFFmpeg
-		ag         *agents.Agents
-		repoRoot   string
+		ctx      context.Context
+		ds       model.DataStore
+		ffm      *tests.MockFFmpeg
+		ag       *agents.Agents
+		repoRoot string
 	)
 
 	BeforeEach(func() {
-		ctx = GinkgoT().Context()
+		// The worker resolves as an admin, which is what lets it see private playlists.
+		ctx = asAdmin(GinkgoT().Context())
 		var err error
 		repoRoot, err = os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 
-		folderRepo = &fakeFolderRepo{}
-		libRepo = &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
 		ffm = tests.NewMockFFmpeg("")
-		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
-		ds = &tests.MockDataStore{
-			MockedFolder:  folderRepo,
-			MockedLibrary: libRepo,
-		}
+		ag = agents.GetAgents(ds, nil)
 	})
 
 	Describe("kind dispatch", func() {
@@ -80,13 +75,10 @@ var _ = Describe("resolveItem", func() {
 	Describe("media file", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
-			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 		})
 
 		It("resolves embedded art from the track file", func() {
-			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: "mf1", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
-			})
+			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: true})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf1"})
 			Expect(err).ToNot(HaveOccurred())
@@ -99,9 +91,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("resolves absent when the track has no cover art", func() {
-			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: "mf2", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: false},
-			})
+			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf2"})
 			Expect(err).ToNot(HaveOccurred())
@@ -111,9 +101,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("resolves absent when media file cover art is disabled", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
-			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: "mf3", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
-			})
+			putMediaFiles(ctx, ds, model.MediaFile{ID: "mf3", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: true})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf3"})
 			Expect(err).ToNot(HaveOccurred())
@@ -130,17 +118,11 @@ var _ = Describe("resolveItem", func() {
 	Describe("album", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
-			ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		})
 
 		It("resolves folder art from the library FS", func() {
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}},
-			})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			putAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 			Expect(err).ToNot(HaveOccurred())
@@ -153,10 +135,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("falls back to embedded art when no folder image matches", func() {
-			folderRepo.result = nil
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
-			})
+			putAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{"f1"}})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 			Expect(err).ToNot(HaveOccurred())
@@ -169,9 +148,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("sets extErr when the external source errors without being not-found", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al3", Name: "Album"},
-			})
+			putAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
@@ -182,9 +159,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("does not set extErr when the external source reports not-found", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al4", Name: "Album"},
-			})
+			putAlbums(ctx, ds, model.Album{ID: "al4", Name: "Album"})
 			// no image agents enabled -> the external step is a definitive not-found
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
@@ -195,13 +170,8 @@ var _ = Describe("resolveItem", func() {
 
 		It("carries extErr onto a fallback folder hit after a transient external failure", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al6", Name: "Album", FolderIDs: []string{"f1"}},
-			})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			putAlbums(ctx, ds, model.Album{ID: "al6", Name: "Album", FolderIDs: []string{fid}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"})
@@ -214,13 +184,8 @@ var _ = Describe("resolveItem", func() {
 
 		It("does not carry extErr onto a fallback folder hit after a definitive external not-found", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al7", Name: "Album", FolderIDs: []string{"f1"}},
-			})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			putAlbums(ctx, ds, model.Album{ID: "al7", Name: "Album", FolderIDs: []string{fid}})
 			// no image agents enabled -> the external step is a definitive not-found
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"})
@@ -233,9 +198,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al5", Name: "Album"},
-			})
+			putAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("boom")})
 			var gatedNames []string
 			gate := func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
@@ -258,9 +221,7 @@ var _ = Describe("resolveItem", func() {
 			imgPath := filepath.Join(tmpDir, "artwork", "artist", "ar1_test.jpg")
 			Expect(os.WriteFile(imgPath, []byte("uploaded artist image"), 0600)).To(Succeed())
 
-			artistRepo := tests.CreateMockArtistRepo()
-			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"}})
-			ds.MockedArtist = artistRepo
+			putArtists(ctx, ds, model.Artist{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"})
 			Expect(err).ToNot(HaveOccurred())
@@ -272,18 +233,9 @@ var _ = Describe("resolveItem", func() {
 
 		It("falls through to the ArtistArtPriority chain when there is no upload", func() {
 			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "album/artist.*" })
-			folderRepo.result = []model.Folder{{
-				LibraryPath: testFileLibPath(repoRoot),
-				Path:        "tests/fixtures/artist/an-album",
-				ImageFiles:  []string{"artist.png"},
-			}}
-			artistRepo := tests.CreateMockArtistRepo()
-			artistRepo.SetData(model.Artists{{ID: "ar2", Name: "Artist"}})
-			ds.MockedArtist = artistRepo
-			ds.MockedAlbum = tests.CreateMockAlbumRepo()
-			ds.MockedAlbum.(*tests.MockAlbumRepo).All = model.Albums{
-				{ID: "al9", Name: "Album", LibraryID: 0, FolderIDs: []string{"f1"}},
-			}
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "artist.png")
+			putArtistAlbums(ctx, ds, model.Artist{ID: "ar2", Name: "Artist"},
+				model.Album{ID: "al9", Name: "Album", FolderIDs: []string{fid}})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar2"})
 			Expect(err).ToNot(HaveOccurred())
@@ -295,9 +247,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("sets extErr when the external source errors without being not-found", func() {
 			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
-			artistRepo := tests.CreateMockArtistRepo()
-			artistRepo.SetData(model.Artists{{ID: "ar3", Name: "Artist"}})
-			ds.MockedArtist = artistRepo
+			putArtists(ctx, ds, model.Artist{ID: "ar3", Name: "Artist"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"})
@@ -308,9 +258,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("does not set extErr when the external source reports not-found", func() {
 			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
-			artistRepo := tests.CreateMockArtistRepo()
-			artistRepo.SetData(model.Artists{{ID: "ar4", Name: "Artist"}})
-			ds.MockedArtist = artistRepo
+			putArtists(ctx, ds, model.Artist{ID: "ar4", Name: "Artist"})
 			// no image agents enabled -> the external step is a definitive not-found
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"})
@@ -321,9 +269,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
 			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
-			artistRepo := tests.CreateMockArtistRepo()
-			artistRepo.SetData(model.Artists{{ID: "ar5", Name: "Artist"}})
-			ds.MockedArtist = artistRepo
+			putArtists(ctx, ds, model.Artist{ID: "ar5", Name: "Artist"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("boom")})
 			var gatedNames []string
 			gate := func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
@@ -343,9 +289,7 @@ var _ = Describe("resolveItem", func() {
 			tmpDir := GinkgoT().TempDir()
 			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
-			radioRepo := tests.CreateMockedRadioRepo()
-			radioRepo.Data = map[string]*model.Radio{"ra1": {ID: "ra1", Name: "Radio"}}
-			ds.MockedRadio = radioRepo
+			putRadio(ctx, ds, model.Radio{ID: "ra1", Name: "Radio"})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra1"})
 			Expect(err).ToNot(HaveOccurred())
@@ -359,9 +303,7 @@ var _ = Describe("resolveItem", func() {
 			imgPath := filepath.Join(tmpDir, "artwork", "radio", "ra2_test.jpg")
 			Expect(os.WriteFile(imgPath, []byte("uploaded radio image"), 0600)).To(Succeed())
 
-			radioRepo := tests.CreateMockedRadioRepo()
-			radioRepo.Data = map[string]*model.Radio{"ra2": {ID: "ra2", Name: "Radio", UploadedImage: "ra2_test.jpg"}}
-			ds.MockedRadio = radioRepo
+			putRadio(ctx, ds, model.Radio{ID: "ra2", Name: "Radio", UploadedImage: "ra2_test.jpg"})
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra2"})
 			Expect(err).ToNot(HaveOccurred())
@@ -373,27 +315,28 @@ var _ = Describe("resolveItem", func() {
 	})
 
 	Describe("playlist", func() {
+		// artless re-stores the albums with no folder, so they yield no grid tile.
+		artless := func(ids ...string) {
+			GinkgoHelper()
+			for _, id := range ids {
+				putAlbums(ctx, ds, model.Album{ID: id, Name: id})
+			}
+		}
+
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg" })
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum = tests.CreateMockAlbumRepo()
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "t1", Name: "T1", FolderIDs: []string{"f1"}},
-				{ID: "t2", Name: "T2", FolderIDs: []string{"f1"}},
-				{ID: "t3", Name: "T3", FolderIDs: []string{"f1"}},
-				{ID: "t4", Name: "T4", FolderIDs: []string{"f1"}},
-			})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			putAlbums(ctx, ds,
+				model.Album{ID: "t1", Name: "T1", FolderIDs: []string{fid}},
+				model.Album{ID: "t2", Name: "T2", FolderIDs: []string{fid}},
+				model.Album{ID: "t3", Name: "T3", FolderIDs: []string{fid}},
+				model.Album{ID: "t4", Name: "T4", FolderIDs: []string{fid}},
+			)
 		})
 
 		DescribeTable("yields a generated grid from up to 4 album tiles",
 			func(albumIDs []string, expectedSize int) {
-				plRepo := tests.CreateMockPlaylistRepo()
-				plRepo.SetData(model.Playlists{{ID: "pl1", Name: "Playlist"}})
-				plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: albumIDs}
-				ds.MockedPlaylist = plRepo
+				putPlaylist(ctx, ds, model.Playlist{ID: "pl1", Name: "Playlist"}, albumIDs...)
 
 				res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl1"})
 				Expect(err).ToNot(HaveOccurred())
@@ -421,11 +364,8 @@ var _ = Describe("resolveItem", func() {
 				c.EnableM3UExternalAlbumArt = false
 				c.CoverArtPriority = "external"
 			})
-			folderRepo.result = nil
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "plgrid", Name: "Playlist"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
-			ds.MockedPlaylist = plRepo
+			artless("t1", "t2")
+			putPlaylist(ctx, ds, model.Playlist{ID: "plgrid", Name: "Playlist"}, "t1", "t2")
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("boom")})
 			var gatedNames []string
 			gate := func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
@@ -445,10 +385,7 @@ var _ = Describe("resolveItem", func() {
 			imgPath := filepath.Join(tmpDir, "artwork", "playlist", "plu_test.jpg")
 			Expect(os.WriteFile(imgPath, []byte("uploaded playlist image"), 0600)).To(Succeed())
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "plu", Name: "Playlist", UploadedImage: "plu_test.jpg"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "plu", Name: "Playlist", UploadedImage: "plu_test.jpg"}, "t1", "t2")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plu"})
 			Expect(err).ToNot(HaveOccurred())
@@ -463,10 +400,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(os.WriteFile(filepath.Join(plDir, "list.m3u"), []byte("#EXTM3U"), 0600)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(plDir, "list.jpg"), []byte("sidecar image"), 0600)).To(Succeed())
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pls", Name: "Playlist", Path: filepath.Join(plDir, "list.m3u")}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "pls", Name: "Playlist", Path: filepath.Join(plDir, "list.m3u")}, "t1", "t2")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pls"})
 			Expect(err).ToNot(HaveOccurred())
@@ -481,10 +415,7 @@ var _ = Describe("resolveItem", func() {
 			imgPath := filepath.Join(dir, "cover.png")
 			Expect(os.WriteFile(imgPath, []byte("local external image"), 0600)).To(Succeed())
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pll", Name: "Playlist", ExternalImageURL: imgPath}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "pll", Name: "Playlist", ExternalImageURL: imgPath}, "t1")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pll"})
 			Expect(err).ToNot(HaveOccurred())
@@ -496,15 +427,12 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("never opens a local ExternalImageURL that is not an image file", func() {
-			folderRepo.result = nil // no grid tiles, so only the local file could produce a reader
+			artless("t1") // no grid tiles, so only the local file could produce a reader
 			dir := GinkgoT().TempDir()
 			secretPath := filepath.Join(dir, "config.ini")
 			Expect(os.WriteFile(secretPath, []byte("password=secret"), 0600)).To(Succeed())
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "plni", Name: "Playlist", ExternalImageURL: secretPath}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "plni", Name: "Playlist", ExternalImageURL: secretPath}, "t1")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plni"})
 			Expect(err).ToNot(HaveOccurred())
@@ -514,12 +442,9 @@ var _ = Describe("resolveItem", func() {
 
 		It("routes ExternalImageURL through extGate and sets extError on transient failure", func() {
 			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
-			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
+			artless("t1") // no grid tiles, so the external failure is what surfaces
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "ple", Name: "Playlist", ExternalImageURL: "http://example.com/cover.jpg"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "ple", Name: "Playlist", ExternalImageURL: "http://example.com/cover.jpg"}, "t1")
 
 			var gatedNames []string
 			gate := func(name string, _ func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
@@ -536,12 +461,9 @@ var _ = Describe("resolveItem", func() {
 
 		It("records the m3u failure in the trace even when album sampling adds its own steps", func() {
 			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
-			folderRepo.result = nil // the sampled album yields no tile, so the m3u failure is what forced the retry
+			artless("t1") // the sampled album yields no tile, so the m3u failure is what forced the retry
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "plm3u", Name: "Playlist", ExternalImageURL: "http://example.com/cover.jpg"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "plm3u", Name: "Playlist", ExternalImageURL: "http://example.com/cover.jpg"}, "t1")
 
 			gate := func(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
 				return nil, "", errors.New("network down")
@@ -566,12 +488,9 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("treats a missing local ExternalImageURL as a definitive miss, not extError", func() {
-			folderRepo.result = nil // no grid tiles, so the local-file miss is what surfaces
+			artless("t1") // no grid tiles, so the local-file miss is what surfaces
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "plm", Name: "Playlist", ExternalImageURL: "/nonexistent/path/cover.jpg"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "plm", Name: "Playlist", ExternalImageURL: "/nonexistent/path/cover.jpg"}, "t1")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm"})
 			Expect(err).ToNot(HaveOccurred())
@@ -586,10 +505,7 @@ var _ = Describe("resolveItem", func() {
 			}))
 			defer srv.Close()
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl404", Name: "Playlist", ExternalImageURL: srv.URL}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "pl404", Name: "Playlist", ExternalImageURL: srv.URL}, "t1")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl404"})
 			Expect(err).ToNot(HaveOccurred())
@@ -602,8 +518,7 @@ var _ = Describe("resolveItem", func() {
 		// A local resolver holds no agents: reaching the external branch would panic, not degrade.
 		It("skips the external step instead of dereferencing absent agents", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
-			ds.MockedAlbum = tests.CreateMockAlbumRepo()
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album"}})
+			putAlbums(ctx, ds, model.Album{ID: "alx", Name: "Album"})
 
 			res, err := newLocalResolver(ds, ffm).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})
 			Expect(err).ToNot(HaveOccurred())
@@ -621,10 +536,7 @@ var _ = Describe("resolveItem", func() {
 			}))
 			defer srv.Close()
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pllocal", Name: "Playlist", ExternalImageURL: srv.URL}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "pllocal", Name: "Playlist", ExternalImageURL: srv.URL}, "t1")
 			item := model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pllocal"}
 
 			res, err := newLocalResolver(ds, ffm).resolve(ctx, item)
@@ -642,16 +554,13 @@ var _ = Describe("resolveItem", func() {
 
 		It("treats an ExternalImageURL 500 as a transient failure and sets extError", func() {
 			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
-			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
+			artless("t1") // no grid tiles, so the external failure is what surfaces
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			}))
 			defer srv.Close()
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl500", Name: "Playlist", ExternalImageURL: srv.URL}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "pl500", Name: "Playlist", ExternalImageURL: srv.URL}, "t1")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl500"})
 			Expect(err).ToNot(HaveOccurred())
@@ -660,14 +569,8 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("yields an empty resolution when no album has art", func() {
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "empty1", Name: "Empty"},
-			})
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl2", Name: "Playlist"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"empty1"}}
-			ds.MockedPlaylist = plRepo
-			folderRepo.result = nil
+			artless("empty1")
+			putPlaylist(ctx, ds, model.Playlist{ID: "pl2", Name: "Playlist"}, "empty1")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl2"})
 			Expect(err).ToNot(HaveOccurred())
@@ -679,13 +582,10 @@ var _ = Describe("resolveItem", func() {
 			libRoot := GinkgoT().TempDir()
 			Expect(os.MkdirAll(filepath.Join(libRoot, "bomb"), 0755)).To(Succeed())
 			Expect(os.WriteFile(filepath.Join(libRoot, "bomb", "cover.jpg"), pngHeaderWithDims(50000, 50000), 0600)).To(Succeed())
-			libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
-			folderRepo.result = []model.Folder{{Path: "bomb", ImageFiles: []string{"cover.jpg"}}}
+			useLibrary(ctx, ds, libRoot)
+			putAlbums(ctx, ds, model.Album{ID: "t1", Name: "T1", FolderIDs: []string{putFolder(ctx, ds, "bomb", "cover.jpg")}})
 
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "plbomb", Name: "Playlist"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "plbomb", Name: "Playlist"}, "t1")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plbomb"})
 			Expect(err).ToNot(HaveOccurred())
@@ -694,11 +594,8 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("does not resolve as absent when every sampled album fails to resolve", func() {
-			// The album ids are absent from MockAlbumRepo, so every tile fails non-externally.
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl3", Name: "Playlist"}})
-			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"missing1", "missing2"}}
-			ds.MockedPlaylist = plRepo
+			// The tracks point at albums that are not stored, so every tile fails non-externally.
+			putPlaylist(ctx, ds, model.Playlist{ID: "pl3", Name: "Playlist"}, "missing1", "missing2")
 
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl3"})
 			Expect(err).To(HaveOccurred())
@@ -706,16 +603,30 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("returns an error when the playlist tracks cannot be loaded", func() {
-			plRepo := tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl4", Name: "Playlist"}})
-			ds.MockedPlaylist = plRepo
+			putPlaylist(ctx, ds, model.Playlist{ID: "pl4", Name: "Playlist"})
+			noTracks := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
+				return &playlistOverlay{DataStore: ds}
+			})
 
-			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl4"})
+			res, err := newResolver(noTracks, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl4"})
 			Expect(err).To(HaveOccurred())
 			Expect(res).To(Equal(resolution{}))
 		})
 	})
 })
+
+type playlistOverlay struct{ model.DataStore }
+
+func (o *playlistOverlay) Playlist() model.PlaylistRepository {
+	return &noTracksPlaylistRepo{PlaylistRepository: o.DataStore.Playlist()}
+}
+
+// noTracksPlaylistRepo stands in for a playlist whose track repository cannot be built.
+type noTracksPlaylistRepo struct{ model.PlaylistRepository }
+
+func (noTracksPlaylistRepo) Tracks(context.Context, string, bool) model.PlaylistTrackRepository {
+	return nil
+}
 
 // decodeTile runs before the processor's own guards, so it must enforce the caps itself.
 var _ = Describe("decodeTile", func() {
