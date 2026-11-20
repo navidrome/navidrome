@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -284,13 +283,13 @@ var _ = Describe("UserRepository", func() {
 	})
 
 	Describe("validateUsernameUnique", func() {
-		var repo *tests.MockedUserRepo
 		var existingUser *model.User
 		BeforeEach(func() {
-			existingUser = &model.User{ID: "1", UserName: "johndoe"}
-			repo = tests.CreateMockUserRepo()
-			err := repo.Put(ctx, existingUser)
-			Expect(err).ToNot(HaveOccurred())
+			existingUser = &model.User{ID: "unique-check-user", UserName: "unique_check_johndoe"}
+			Expect(repo.Put(ctx, existingUser)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(repo.(*userRepository).Delete(request.WithUser(ctx, adminUser), existingUser.ID)).To(Succeed())
+			})
 		})
 		It("allows unique usernames", func() {
 			var newUser = &model.User{ID: "2", UserName: "unique_username"}
@@ -298,7 +297,7 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("returns ValidationError if username already exists", func() {
-			var newUser = &model.User{ID: "2", UserName: "johndoe"}
+			var newUser = &model.User{ID: "2", UserName: "unique_check_johndoe"}
 			err := validateUsernameUnique(ctx, repo, newUser)
 			var verr *rest.ValidationError
 			isValidationError := errors.As(err, &verr)
@@ -307,10 +306,10 @@ var _ = Describe("UserRepository", func() {
 			Expect(verr.Errors).To(HaveKeyWithValue("userName", "ra.validation.unique"))
 		})
 		It("returns generic error if repository call fails", func() {
-			repo.Error = errors.New("fake error")
+			failing := &findByUsernameErrorRepo{UserRepository: repo, err: errors.New("fake error")}
 
 			var newUser = &model.User{ID: "2", UserName: "newuser"}
-			err := validateUsernameUnique(ctx, repo, newUser)
+			err := validateUsernameUnique(ctx, failing, newUser)
 			Expect(err).To(MatchError("fake error"))
 		})
 	})
@@ -883,3 +882,12 @@ var _ = Describe("UserRepository", func() {
 		})
 	})
 })
+
+type findByUsernameErrorRepo struct {
+	model.UserRepository
+	err error
+}
+
+func (r *findByUsernameErrorRepo) FindByUsername(context.Context, string) (*model.User, error) {
+	return nil, r.err
+}

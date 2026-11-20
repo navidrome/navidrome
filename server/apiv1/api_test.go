@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -13,7 +14,7 @@ var _ = Describe("Router", func() {
 	var router *Router
 
 	BeforeEach(func() {
-		router = New(&tests.MockDataStore{})
+		router = New(persistence.New(db.Db()))
 	})
 
 	It("returns a 404 problem for unknown paths", func() {

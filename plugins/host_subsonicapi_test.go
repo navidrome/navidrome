@@ -12,18 +12,15 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	var (
-		manager   *Manager
-		tmpDir    string
-		router    *fakeSubsonicRouter
-		userRepo  *tests.MockedUserRepo
-		dataStore *tests.MockDataStore
+		manager *Manager
+		tmpDir  string
+		router  *fakeSubsonicRouter
 	)
 
 	BeforeAll(func() {
@@ -47,31 +44,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			c.Plugins.AutoReload = false
 		})
 
-		// Setup mock router and data store
-		router = &fakeSubsonicRouter{}
-		userRepo = tests.CreateMockUserRepo()
-		dataStore = &tests.MockDataStore{MockedUser: userRepo}
-
-		// Add test users
-		_ = userRepo.Put(GinkgoT().Context(), &model.User{
-			ID:       "user1",
-			UserName: "testuser",
-			IsAdmin:  false,
-		})
-		_ = userRepo.Put(GinkgoT().Context(), &model.User{
-			ID:       "admin1",
-			UserName: "adminuser",
-			IsAdmin:  true,
-		})
-
-		// Create and configure manager
-		manager = &Manager{
-			plugins: make(map[string]*plugin),
-			ds:      dataStore,
-		}
-		manager.SetSubsonicRouter(router)
-
-		// Pre-enable the plugin in the mock repo so it loads on startup
+		// Pre-enable the plugin in the DB so it loads on startup
 		// Compute SHA256 of the plugin file to match what syncPlugins will compute
 		pluginPath := filepath.Join(tmpDir, "test-subsonicapi-plugin"+PackageExtension)
 		wasmData, err := os.ReadFile(pluginPath)
@@ -79,16 +52,25 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		hash := sha256.Sum256(wasmData)
 		hashHex := hex.EncodeToString(hash[:])
 
-		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
-		mockPluginRepo.Permitted = true
-		enabledPlugin := model.Plugin{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:       "test-subsonicapi-plugin",
 			Path:     pluginPath,
 			SHA256:   hashHex,
 			Enabled:  true,
 			AllUsers: true, // Allow all users for test plugin
+		})
+		putUsers(dataStore,
+			model.User{ID: "user1", UserName: "testuser", IsAdmin: false},
+			model.User{ID: "admin1", UserName: "adminuser", IsAdmin: true},
+		)
+
+		// Create and configure manager
+		router = &fakeSubsonicRouter{}
+		manager = &Manager{
+			plugins: make(map[string]*plugin),
+			ds:      dataStore,
 		}
-		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
+		manager.SetSubsonicRouter(router)
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())
@@ -238,31 +220,18 @@ var _ = Describe("SubsonicAPIService", func() {
 	var (
 		ctx       context.Context
 		router    *fakeSubsonicRouter
-		userRepo  *tests.MockedUserRepo
-		dataStore *tests.MockDataStore
+		dataStore model.DataStore
 	)
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		router = &fakeSubsonicRouter{}
-		userRepo = tests.CreateMockUserRepo()
-		dataStore = &tests.MockDataStore{MockedUser: userRepo}
-
-		_ = userRepo.Put(ctx, &model.User{
-			ID:       "user1",
-			UserName: "testuser",
-			IsAdmin:  false,
-		})
-		_ = userRepo.Put(ctx, &model.User{
-			ID:       "admin1",
-			UserName: "adminuser",
-			IsAdmin:  true,
-		})
-		_ = userRepo.Put(ctx, &model.User{
-			ID:       "user2",
-			UserName: "alloweduser",
-			IsAdmin:  false,
-		})
+		dataStore = newTestDataStore()
+		putUsers(dataStore,
+			model.User{ID: "user1", UserName: "testuser", IsAdmin: false},
+			model.User{ID: "admin1", UserName: "adminuser", IsAdmin: true},
+			model.User{ID: "user2", UserName: "alloweduser", IsAdmin: false},
+		)
 	})
 
 	Describe("Permission Enforcement", func() {

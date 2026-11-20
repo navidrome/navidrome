@@ -16,9 +16,12 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,10 +40,13 @@ var _ = Describe("MediaStreamer", func() {
 			c.CacheFolder = conf.NewDir(cacheDir)
 			c.TranscodingCacheSize = "100MB"
 		})
-		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
-		})
+		ds = persistence.New(db.Db())
+		cwd, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		persistencetest.SetLibraries(ctx, ds, cwd)
+		Expect(ds.MediaFile().Put(ctx, &model.MediaFile{
+			ID: "123", LibraryID: model.DefaultLibraryID, Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0,
+		})).To(Succeed())
 		testCache := stream.NewTranscodingCache()
 		Eventually(func() bool { return testCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)

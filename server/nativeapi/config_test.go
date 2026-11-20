@@ -10,10 +10,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -30,9 +30,9 @@ var _ = Describe("Config API", func() {
 			c.EnableSharing = false
 			c.DevUIShowConfig = true
 		}) // Enable config endpoint for tests
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
+		nativeRouter := newTestRouter(ds, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -51,9 +51,7 @@ var _ = Describe("Config API", func() {
 			NewPassword: "userpass",
 		}
 
-		// Store in mock datastore
-		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
-		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
+		putUsers(ctx, ds, &adminUser, &regularUser)
 	})
 
 	Describe("GET /api/config", func() {

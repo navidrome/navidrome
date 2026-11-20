@@ -9,10 +9,14 @@ import (
 	"net/http/httptest"
 	"sync"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -142,11 +146,11 @@ var _ = Describe("System", func() {
 
 	Context("serverID with a real DataStore", func() {
 		var ctx context.Context
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 
 		BeforeEach(func() {
 			ctx = GinkgoT().Context()
-			ds = &tests.MockDataStore{}
+			ds = persistence.New(db.Db())
 		})
 
 		It("persists the generated id so it can be read back by another Router sharing the same DataStore", func() {
@@ -179,13 +183,13 @@ var _ = Describe("System", func() {
 		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
 			Expect(ds.Property().Put(ctx, consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
 
-			r := &Router{ds: ds}
-			props := ds.Property().(*tests.MockedPropertyRepo)
-			props.Error = errors.New("database is locked")
+			r := &Router{ds: persistencetest.Stub(ds, persistencetest.Repos{Property: func(r model.PropertyRepository) model.PropertyRepository {
+				return failingPropertyRepo{PropertyRepository: r, err: errors.New("database is locked")}
+			}})}
 			degraded := r.serverID(ctx)
 			Expect(degraded).ToNot(BeEmpty())
 			Expect(degraded).ToNot(Equal("6ba7b8109dad11d180b400c04fd430c8")) // temporary value, not the (unreadable) stored one
-			props.Error = nil
+			r.ds = ds
 
 			// Once the DB recovers, the stored id is intact and served again.
 			Expect(r.serverID(ctx)).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))

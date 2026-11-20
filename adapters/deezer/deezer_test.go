@@ -12,7 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -28,7 +28,7 @@ var _ = Describe("deezerAgent", func() {
 	Describe("deezerConstructor", func() {
 		It("uses configured languages", func() {
 			conf.Update(func(c *conf.Options) { c.Deezer.Languages = []string{"pt", "en"} })
-			agent := deezerConstructor(&tests.MockDataStore{}).(*deezerAgent)
+			agent := deezerConstructor(struct{ model.DataStore }{}).(*deezerAgent)
 			Expect(agent.languages).To(Equal([]string{"pt", "en"}))
 		})
 	})
@@ -40,8 +40,7 @@ var _ = Describe("deezerAgent", func() {
 		BeforeEach(func() {
 			httpClient = &fakeHttpClient{}
 			agent = &deezerAgent{
-				dataStore: &tests.MockDataStore{},
-				client:    newClient(httpClient),
+				client: newClient(httpClient),
 			}
 		})
 
@@ -116,8 +115,7 @@ var _ = Describe("deezerAgent", func() {
 		BeforeEach(func() {
 			httpClient = &fakeHttpClient{}
 			agent = &deezerAgent{
-				dataStore: &tests.MockDataStore{},
-				client:    newClient(httpClient),
+				client: newClient(httpClient),
 			}
 		})
 
@@ -179,7 +177,6 @@ var _ = Describe("deezerAgent", func() {
 		setupAgent := func(languages []string) {
 			conf.Update(func(c *conf.Options) { c.Deezer.Languages = languages })
 			agent = &deezerAgent{
-				dataStore: &tests.MockDataStore{},
 				client:    newClient(httpClient),
 				languages: languages,
 			}

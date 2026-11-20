@@ -16,13 +16,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -62,12 +65,17 @@ func newImageRequest(itemId string) (*httptest.ResponseRecorder, *http.Request) 
 }
 
 var _ = Describe("Images", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	// Real Jellyfin fits the image inside either bound, so a client that sends only MaxHeight must
 	// still get a resized image rather than the full-size original.
 	DescribeTable("derives the requested size from the Jellyfin size params",
 		func(query string, wantSize int) {
-			ds := &tests.MockDataStore{}
-			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			ds := persistence.New(db.Db())
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 			fa := &fakeArtwork{}
 			api := &Router{ds: ds, artwork: fa}
 
@@ -95,8 +103,8 @@ var _ = Describe("Images", func() {
 	)
 
 	It("streams album artwork", func() {
-		ds := &tests.MockDataStore{}
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds := persistence.New(db.Db())
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -110,9 +118,8 @@ var _ = Describe("Images", func() {
 
 	// A malformed itemId now 404s via itemIDParam instead of falling through to a placeholder image.
 	It("404s a malformed itemId instead of serving a placeholder", func() {
-		ds := &tests.MockDataStore{}
 		fa := &fakeArtwork{}
-		api := &Router{ds: ds, artwork: fa}
+		api := &Router{ds: struct{ model.DataStore }{}, artwork: fa}
 
 		w, r := newImageRequest("not-a-valid-id")
 		api.getItemImage(w, r)
@@ -123,7 +130,7 @@ var _ = Describe("Images", func() {
 
 	// resolveArtworkID probes the entity tables, so a deleted item yields no artwork id at all.
 	It("asks for no artwork once the item is deleted, rather than its lingering state", func() {
-		ds := &tests.MockDataStore{} // no albums/artists/tracks/playlists at all
+		ds := persistence.New(db.Db())
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -136,8 +143,8 @@ var _ = Describe("Images", func() {
 	})
 
 	It("sniffs the Content-Type instead of hardcoding it", func() {
-		ds := &tests.MockDataStore{}
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds := persistence.New(db.Db())
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 
 		png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, make([]byte, 512)...)
 		fa := &fakeArtwork{data: png}
@@ -151,8 +158,9 @@ var _ = Describe("Images", func() {
 	})
 
 	It("resolves a playlist's cover regardless of visibility, even for an anonymous caller", func() {
-		ds := &tests.MockDataStore{}
-		ds.Playlist().(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")}})
+		ds := persistence.New(db.Db())
+		putUser(ctx, ds, model.User{ID: testID("someone"), UserName: "someone"})
+		Expect(ds.Playlist().Put(ctx, &model.Playlist{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")})).To(Succeed())
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -167,8 +175,8 @@ var _ = Describe("Images", func() {
 	// elevated context; otherwise a private playlist's cover fails its visibility filter and
 	// silently falls back to the placeholder.
 	It("resolves artwork under an elevated admin context", func() {
-		ds := &tests.MockDataStore{}
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds := persistence.New(db.Db())
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -183,8 +191,8 @@ var _ = Describe("Images", func() {
 
 	It("serves immutable when the tag param asserts the current hash", func() {
 		const hash = "0123456789abcdef"
-		ds := &tests.MockDataStore{}
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds := persistence.New(db.Db())
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -201,8 +209,8 @@ var _ = Describe("Images", func() {
 
 	It("revalidates via no-cache when no tag is provided", func() {
 		const hash = "0123456789abcdef"
-		ds := &tests.MockDataStore{}
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds := persistence.New(db.Db())
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 

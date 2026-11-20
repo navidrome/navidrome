@@ -8,14 +8,16 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 type flakyGetArtworkRepo struct {
-	*tests.MockArtworkRepo
+	model.ArtworkRepository
 }
 
 func (f *flakyGetArtworkRepo) GetMimeByHash(context.Context) (map[string]string, error) {
@@ -24,32 +26,29 @@ func (f *flakyGetArtworkRepo) GetMimeByHash(context.Context) (map[string]string,
 
 var _ = Describe("Prune", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var store *ImageStore
-	var awRepo *tests.MockArtworkRepo
+	var awRepo model.ArtworkRepository
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
-		awRepo = ds.Artwork().(*tests.MockArtworkRepo)
+		ds = newTestDS(ctx)
+		awRepo = ds.Artwork()
 		store = NewImageStore(GinkgoT().TempDir())
 	})
 
-	// PutImage refreshes created_at like the SQL repo, so fixtures are aged directly.
+	// PutImage refreshes created_at, so fixtures are aged directly.
 	ageArtwork := func(h string, t time.Time) {
-		a := awRepo.Data[h]
-		a.CreatedAt = t
-		awRepo.Data[h] = a
+		GinkgoHelper()
+		_, err := db.Db().Exec("UPDATE artwork SET created_at = ? WHERE hash = ?", t, h)
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	It("purges dangling item_artwork state for gone entities, summed across kinds", func() {
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "live-artist", Name: "Live"})
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "gone-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "live-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
-		awRepo.ExistingIDs = map[string]map[string]bool{
-			"al": {},
-			"ar": {"live-artist": true},
-		}
 
 		Expect(prune(ctx, ds, store)).To(Succeed())
 
@@ -62,18 +61,16 @@ var _ = Describe("Prune", func() {
 	})
 
 	It("purges dangling artwork_queue rows for gone entities", func() {
-		queueRepo := tests.CreateMockArtworkQueueRepo()
-		Expect(queueRepo.Enqueue(ctx,
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "live-album", Name: "Live"})
+		Expect(ds.ArtworkQueue().Enqueue(ctx,
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary},
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "live-album", ImageType: model.ImageTypePrimary},
 		)).To(Succeed())
-		queueRepo.ExistingIDs = map[string]map[string]bool{"al": {"live-album": true}}
-		ds.MockedArtworkQueue = queueRepo
 
 		Expect(prune(ctx, ds, store)).To(Succeed())
 
-		Expect(findQueued(queueRepo, "al", "gone-album")).To(BeNil())
-		Expect(findQueued(queueRepo, "al", "live-album")).ToNot(BeNil())
+		Expect(queued(ctx, ds, "al", "gone-album")).To(BeNil())
+		Expect(queued(ctx, ds, "al", "live-album")).ToNot(BeNil())
 	})
 
 	It("deletes orphan rows and their store files, keeps referenced ones", func() {
@@ -107,6 +104,7 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "a1", Name: "Album"})
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
@@ -226,7 +224,9 @@ var _ = Describe("Prune", func() {
 	})
 
 	It("never sweeps files on a transient DB error", func() {
-		ds.MockedArtwork = &flakyGetArtworkRepo{MockArtworkRepo: tests.CreateMockArtworkRepo()}
+		ds = persistencetest.Stub(ds, persistencetest.Repos{Artwork: func(r model.ArtworkRepository) model.ArtworkRepository {
+			return &flakyGetArtworkRepo{ArtworkRepository: r}
+		}})
 
 		data := []byte("live-bytes")
 		h, _ := hashImage(bytes.NewReader(data))

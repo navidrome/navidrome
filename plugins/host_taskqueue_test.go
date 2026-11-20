@@ -19,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -847,16 +846,12 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			c.DataFolder = conf.NewDir(tmpDir)
 		})
 
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-taskqueue",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+		})
 
 		// Create and start manager
 		manager = &Manager{

@@ -8,9 +8,12 @@ import (
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,9 +35,36 @@ var _ = Describe("Browsing", func() {
 	var ctx context.Context
 	var ds model.DataStore
 
+	// putArtistPerLibrary stores album artist ar-N in each library N, all granted to user-id.
+	putArtistPerLibrary := func() {
+		GinkgoHelper()
+		putUsers(ctx, ds, model.User{ID: "user-id", UserName: "user-id"})
+		for _, id := range persistencetest.SetLibraries(ctx, ds, "/music/library1", "/music/library2", "/music/library3") {
+			putAlbumArtists(ctx, ds, id, model.Artist{ID: fmt.Sprintf("ar-%d", id), Name: fmt.Sprintf("Test Artist %d", id)})
+		}
+	}
+	indexedArtistIDs := func(indexes []responses.Index) []string {
+		var ids []string
+		for _, idx := range indexes {
+			for _, a := range idx.Artists {
+				ids = append(ids, a.Id)
+			}
+		}
+		return ids
+	}
+	indexedArtistID3IDs := func(indexes []responses.IndexID3) []string {
+		var ids []string
+		for _, idx := range indexes {
+			for _, a := range idx.Artists {
+				ids = append(ids, a.Id)
+			}
+		}
+		return ids
+	}
+
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
 		api = &Router{ds: ds}
 	})
@@ -64,6 +94,7 @@ var _ = Describe("Browsing", func() {
 
 	Describe("GetIndexes", func() {
 		It("should validate user access to the specified musicFolderId", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to library 1 only
 			ctx = contextWithUser(ctx, "user-id", 1)
 
@@ -80,22 +111,9 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("should default to first accessible library when no musicFolderId specified", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to libraries 2 and 3
 			ctx = contextWithUser(ctx, "user-id", 2, 3)
-
-			// Setup minimal mock library data for working tests
-			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
-			mockLibRepo.SetData(model.Libraries{
-				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
-				{ID: 3, Name: "Test Library 3", Path: "/music/library3"},
-			})
-
-			// Setup mock artist data
-			mockArtistRepo := ds.Artist().(*tests.MockArtistRepo)
-			mockArtistRepo.SetData(model.Artists{
-				{ID: "1", Name: "Test Artist 1"},
-				{ID: "2", Name: "Test Artist 2"},
-			})
 
 			// Create request without musicFolderId
 			r := httptest.NewRequest(http.MethodGet, "/rest/getIndexes", nil)
@@ -108,11 +126,13 @@ var _ = Describe("Browsing", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response).ToNot(BeNil())
 			Expect(response.Indexes).ToNot(BeNil())
+			Expect(indexedArtistIDs(response.Indexes.Index)).To(ConsistOf("ar-2", "ar-3"))
 		})
 	})
 
 	Describe("GetArtists", func() {
 		It("should validate user access to the specified musicFolderId", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to library 1 only
 			ctx = contextWithUser(ctx, "user-id", 1)
 
@@ -129,22 +149,9 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("should default to first accessible library when no musicFolderId specified", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to libraries 1 and 2
 			ctx = contextWithUser(ctx, "user-id", 1, 2)
-
-			// Setup minimal mock library data for working tests
-			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
-			mockLibRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Test Library 1", Path: "/music/library1"},
-				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
-			})
-
-			// Setup mock artist data
-			mockArtistRepo := ds.Artist().(*tests.MockArtistRepo)
-			mockArtistRepo.SetData(model.Artists{
-				{ID: "1", Name: "Test Artist 1"},
-				{ID: "2", Name: "Test Artist 2"},
-			})
 
 			// Create request without musicFolderId
 			r := httptest.NewRequest(http.MethodGet, "/rest/getArtists", nil)
@@ -157,6 +164,7 @@ var _ = Describe("Browsing", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response).ToNot(BeNil())
 			Expect(response.Artist).ToNot(BeNil())
+			Expect(indexedArtistID3IDs(response.Artist.Index)).To(ConsistOf("ar-1", "ar-2"))
 		})
 	})
 

@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -23,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
@@ -47,12 +47,11 @@ var track = storagetest.Track
 
 var (
 	ctx context.Context
-	ds  *tests.MockDataStore
+	ds  model.DataStore
 	lib model.Library
 
-	dbFilePath     string
-	snapshotPath   string
-	snapshotTables []string
+	dbFilePath   string
+	snapshotPath string
 
 	adminUser = model.User{
 		ID:       "sp-test-user-1",
@@ -252,7 +251,7 @@ var _ = BeforeSuite(func() {
 
 	db.Init(ctx)
 
-	initDS := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	initDS := persistence.New(db.Db())
 
 	userWithPass := adminUser
 	userWithPass.NewPassword = "password"
@@ -283,7 +282,7 @@ var _ = BeforeSuite(func() {
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds = persistence.New(db.Db())
 
 	comeTogetherID := findMediaFileByTitle("Come Together")
 	Expect(ds.MediaFile().SetStar(ctx, true, comeTogetherID)).To(Succeed())
@@ -295,21 +294,7 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(ds.MediaFile().IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
-	rows, err := db.Db().Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		Expect(rows.Scan(&name)).To(Succeed())
-		snapshotTables = append(snapshotTables, name)
-	}
-	Expect(rows.Err()).To(Succeed())
-
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-	Expect(err).ToNot(HaveOccurred())
-	data, err := os.ReadFile(dbFilePath)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
+	Expect(persistencetest.Snapshot(snapshotPath)).To(Succeed())
 })
 
 var _ = AfterSuite(func() {
@@ -317,29 +302,7 @@ var _ = AfterSuite(func() {
 })
 
 func restoreDB() {
-	sqlDB := db.Db()
-
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
-
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("DETACH DATABASE snapshot") }()
-
-	_, err = sqlDB.Exec("BEGIN TRANSACTION")
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("ROLLBACK") }()
-
-	for _, table := range snapshotTables {
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	_, err = sqlDB.Exec("COMMIT")
-	Expect(err).ToNot(HaveOccurred())
+	Expect(persistencetest.RestoreFrom(snapshotPath)).To(Succeed())
 }
 
 func setupTestDB() {
@@ -352,5 +315,5 @@ func setupTestDB() {
 	})
 
 	restoreDB()
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds = persistence.New(db.Db())
 }
