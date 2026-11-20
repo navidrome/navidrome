@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/onsi/ginkgo/v2"
 )
@@ -131,5 +132,6 @@ func RestoreFrom(path string) (err error) {
 		return err
 	}
 	exec("COMMIT")
+	persistence.ClearLibraryPathCache()
 	return err
 }
