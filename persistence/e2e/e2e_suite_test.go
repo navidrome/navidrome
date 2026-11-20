@@ -47,7 +47,7 @@ var track = storagetest.Track
 
 var (
 	ctx context.Context
-	ds  *tests.MockDataStore
+	ds  model.DataStore
 	lib model.Library
 
 	dbFilePath     string
@@ -252,7 +252,7 @@ var _ = BeforeSuite(func() {
 
 	db.Init(ctx)
 
-	initDS := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	initDS := persistence.New(db.Db())
 
 	userWithPass := adminUser
 	userWithPass.NewPassword = "password"
@@ -283,7 +283,7 @@ var _ = BeforeSuite(func() {
 	_, err = s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds = persistence.New(db.Db())
 
 	comeTogetherID := findMediaFileByTitle("Come Together")
 	Expect(ds.MediaFile().SetStar(ctx, true, comeTogetherID)).To(Succeed())
@@ -352,5 +352,5 @@ func setupTestDB() {
 	})
 
 	restoreDB()
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds = persistence.New(db.Db())
 }

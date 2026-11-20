@@ -1,28 +1,29 @@
 package public
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("handleM3U", func() {
-	var ds *tests.MockDataStore
-	var shareRepo *tests.MockShareRepo
+	var ctx context.Context
+	var ds model.DataStore
 	var pub *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
-		ds = &tests.MockDataStore{}
-		shareRepo = &tests.MockShareRepo{}
-		ds.MockedShare = shareRepo
+		ds = persistence.New(db.Db())
 		pub = &Router{ds: ds, share: core.NewShare(ds)}
 	})
 
@@ -34,9 +35,8 @@ var _ = Describe("handleM3U", func() {
 	}
 
 	It("sets the M3U content type", func() {
-		share := &model.Share{ID: "abc123", Tracks: model.MediaFiles{{ID: "t1", Title: "Track 1"}}}
-		shareRepo.ID = share.ID
-		shareRepo.Entity = share
+		putMediaFiles(ctx, ds, model.MediaFile{ID: "t1", Title: "Track 1"})
+		putShare(ctx, ds, model.Share{ID: "abc123", ResourceType: "media_file", ResourceIDs: "t1"})
 
 		w := makeRequest("abc123")
 
@@ -47,8 +47,7 @@ var _ = Describe("handleM3U", func() {
 	})
 
 	It("returns 404 when the share does not exist", func() {
-		shareRepo.ID = "other"
-		shareRepo.Entity = &model.Share{ID: "other"}
+		putShare(ctx, ds, model.Share{ID: "other"})
 
 		Expect(makeRequest("missing").Code).To(Equal(http.StatusNotFound))
 	})

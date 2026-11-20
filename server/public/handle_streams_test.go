@@ -12,7 +12,10 @@ import (
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -114,17 +117,14 @@ var _ = Describe("encodeMediafileShare", func() {
 
 var _ = Describe("handleStream", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
-	var shareRepo *tests.MockShareRepo
+	var ds model.DataStore
 	var streamer *mockStreamer
 	var pub *Router
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
-		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		shareRepo = &tests.MockShareRepo{}
-		ds.MockedShare = shareRepo
+		ds = persistence.New(db.Db())
 		streamer = &mockStreamer{}
 		pub = &Router{ds: ds, streamer: streamer, decider: stream.NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))}
 	})
@@ -137,14 +137,10 @@ var _ = Describe("handleStream", func() {
 	}
 
 	shareOwnedBy := func(owner model.User, mf model.MediaFile) {
-		shareRepo.ID = "share123"
-		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID, Tracks: model.MediaFiles{mf}}
-		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(ctx, &owner)).To(Succeed())
-		ds.MockedUser = userRepo
-		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{mf})
-		ds.MockedMediaFile = mfRepo
+		GinkgoHelper()
+		Expect(ds.User().Put(ctx, &owner)).To(Succeed())
+		putMediaFiles(ctx, ds, mf)
+		putShare(ctx, ds, model.Share{ID: "share123", UserID: owner.ID, ResourceType: "media_file", ResourceIDs: mf.ID})
 	}
 
 	It("passes all validation and reaches the streamer for a valid token", func() {
@@ -172,10 +168,13 @@ var _ = Describe("handleStream", func() {
 	})
 
 	It("returns 404 when the track is outside the share owner's libraries", func() {
-		shareOwnedBy(
-			model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}},
-			model.MediaFile{ID: "mf-restricted", Title: "Other Lib Track", LibraryID: 2},
-		)
+		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Name: "Library 2", Path: "/music2"})).To(Succeed())
+		restricted := model.MediaFile{ID: "mf-restricted", Title: "Other Lib Track", LibraryID: 2}
+		shareOwnedBy(model.User{ID: "owner1", UserName: "owner1"}, restricted)
+		// Loading the share already drops tracks the owner cannot see; put it back to reach the handler's own check.
+		pub.ds = persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
+			return &extraShareTracksDS{DataStore: ds, extra: model.MediaFiles{restricted}}
+		})
 
 		claims := auth.Claims{ID: "mf-restricted", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
@@ -186,15 +185,8 @@ var _ = Describe("handleStream", func() {
 	})
 
 	It("returns 404 when the track is not a member of the share", func() {
-		owner := model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}
-		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(ctx, &owner)).To(Succeed())
-		ds.MockedUser = userRepo
-		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{{ID: "mf-shared"}, {ID: "mf-other"}})
-		ds.MockedMediaFile = mfRepo
-		shareRepo.ID = "share123"
-		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID, Tracks: model.MediaFiles{{ID: "mf-shared"}}}
+		shareOwnedBy(model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}, model.MediaFile{ID: "mf-shared"})
+		putMediaFiles(ctx, ds, model.MediaFile{ID: "mf-other"})
 
 		claims := auth.Claims{ID: "mf-other", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
@@ -206,7 +198,7 @@ var _ = Describe("handleStream", func() {
 
 	It("streams a track inside the share owner's libraries", func() {
 		shareOwnedBy(
-			model.User{ID: "owner1", UserName: "owner1", Libraries: model.Libraries{{ID: 1}}},
+			model.User{ID: "owner1", UserName: "owner1"},
 			model.MediaFile{ID: "mf-ok", Title: "OK", LibraryID: 1},
 		)
 
@@ -243,7 +235,7 @@ var _ = Describe("handleStream", func() {
 	})
 
 	It("returns 404 when share has been deleted", func() {
-		shareRepo.ID = "other-share"
+		putShare(ctx, ds, model.Share{ID: "other-share"})
 		claims := auth.Claims{ID: "mf-123", ShareID: "deleted-share"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
 		w := makeRequest(token)
@@ -251,8 +243,7 @@ var _ = Describe("handleStream", func() {
 	})
 
 	It("returns 410 when share has been set to expired", func() {
-		shareRepo.ID = "share123"
-		shareRepo.Entity = &model.Share{ID: "share123", ExpiresAt: new(time.Now().Add(-time.Hour))}
+		putShare(ctx, ds, model.Share{ID: "share123", ExpiresAt: new(time.Now().Add(-time.Hour))})
 
 		claims := auth.Claims{ID: "mf-123", ShareID: "share123"}
 		token, _ := auth.CreatePublicToken(claims)
@@ -261,7 +252,8 @@ var _ = Describe("handleStream", func() {
 	})
 
 	It("returns 500 when share lookup fails", func() {
-		shareRepo.Error = errors.New("db error")
+		ds = withShareGetError(ds, errors.New("db error"))
+		pub.ds = ds
 		claims := auth.Claims{ID: "mf-123", ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
 		w := makeRequest(token)
@@ -281,3 +273,25 @@ var _ = Describe("handleStream", func() {
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 	})
 })
+
+type extraShareTracksDS struct {
+	model.DataStore
+	extra model.MediaFiles
+}
+
+func (d *extraShareTracksDS) Share() model.ShareRepository {
+	return &extraShareTracksRepo{ShareRepository: d.DataStore.Share(), extra: d.extra}
+}
+
+type extraShareTracksRepo struct {
+	model.ShareRepository
+	extra model.MediaFiles
+}
+
+func (r *extraShareTracksRepo) Get(ctx context.Context, id string) (*model.Share, error) {
+	s, err := r.ShareRepository.Get(ctx, id)
+	if err == nil {
+		s.Tracks = append(s.Tracks, r.extra...)
+	}
+	return s, err
+}
