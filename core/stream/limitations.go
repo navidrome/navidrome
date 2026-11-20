@@ -104,7 +104,7 @@ func applyLimitation(sourceBitrate int, lim *Limitation, ts *Details) adjustResu
 		}
 		return applyIntLimitation(lim.Comparison, lim.Values, current, func(v int) { ts.Bitrate = v })
 	case LimitationAudioSamplerate:
-		return applyIntLimitation(lim.Comparison, lim.Values, ts.SampleRate, func(v int) { ts.SampleRate = v })
+		return applySampleRateLimitation(lim, ts)
 	case LimitationAudioBitdepth:
 		if ts.BitDepth > 0 {
 			return applyIntLimitation(lim.Comparison, lim.Values, ts.BitDepth, func(v int) { ts.BitDepth = v })
@@ -113,6 +113,33 @@ func applyLimitation(sourceBitrate int, lim *Limitation, ts *Details) adjustResu
 		// TODO: implement when audio profile data is available
 	}
 	return adjustNone
+}
+
+// applySampleRateLimitation applies a sample rate limitation and keeps the
+// result to a rate the target encoder accepts. Equals values the encoder
+// rejects are ignored, and a lowered rate moves down to the next accepted one.
+// If no accepted rate satisfies the limitation, the profile cannot fit.
+func applySampleRateLimitation(lim *Limitation, ts *Details) adjustResult {
+	values := lim.Values
+	if lim.Comparison == ComparisonEquals && len(values) > 0 {
+		values = slices.DeleteFunc(slices.Clone(values), func(v string) bool {
+			rate, ok := parseInt(v)
+			return ok && !codecAcceptsSampleRate(ts.Codec, rate)
+		})
+		if len(values) == 0 {
+			return adjustCannotFit
+		}
+	}
+	result := applyIntLimitation(lim.Comparison, values, ts.SampleRate, func(v int) { ts.SampleRate = v })
+	if result != adjustAdjusted {
+		return result
+	}
+	rate, ok := codecSampleRateAtOrBelow(ts.Codec, ts.SampleRate)
+	if !ok {
+		return adjustCannotFit
+	}
+	ts.SampleRate = rate
+	return adjustAdjusted
 }
 
 // applyIntLimitation applies a limitation comparison to a value.

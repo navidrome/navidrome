@@ -1059,6 +1059,38 @@ var _ = Describe("Decider", func() {
 				Expect(decision.TargetSampleRate).To(Equal(44100))
 			})
 
+			DescribeTable("keeps client sample rate limits within the rates LAME accepts",
+				func(comparison string, values []string, expectedRate int) {
+					mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 800, Channels: 2, SampleRate: 32728, BitDepth: new(16)})
+					ci := &ClientInfo{
+						MaxTranscodingAudioBitrate: 192,
+						TranscodingProfiles: []Profile{
+							{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+						},
+						CodecProfiles: []CodecProfile{{
+							Type: CodecProfileTypeAudio,
+							Name: "mp3",
+							Limitations: []Limitation{
+								{Name: LimitationAudioSamplerate, Comparison: comparison, Values: values},
+							},
+						}},
+					}
+					decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					if expectedRate == 0 {
+						Expect(decision.CanTranscode).To(BeFalse())
+						return
+					}
+					Expect(decision.CanTranscode).To(BeTrue())
+					Expect(decision.TargetSampleRate).To(Equal(expectedRate))
+				},
+				Entry("Equals skips a value LAME rejects", ComparisonEquals, []string{"32000", "40000"}, 32000),
+				Entry("LessThanEqual moves a bound LAME rejects down", ComparisonLessThanEqual, []string{"40000"}, 32000),
+				Entry("Equals with only rejected values drops the profile", ComparisonEquals, []string{"40000"}, 0),
+				Entry("LessThanEqual below every LAME rate drops the profile", ComparisonLessThanEqual, []string{"7000"}, 0),
+				Entry("a supported bound is kept", ComparisonLessThanEqual, []string{"32000"}, 32000),
+			)
+
 			It("caps sample rate at 96000 for AAC", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 352800, BitDepth: new(8)})
 				ci := &ClientInfo{

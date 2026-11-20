@@ -1,6 +1,9 @@
 package stream
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // normalizeProbeCodec maps ffprobe codec_name values to the simplified internal
 // codec names used throughout Navidrome (matching inferCodecFromSuffix output).
@@ -107,6 +110,29 @@ func codecSampleRate(codec string, sampleRate int) int {
 		}
 	}
 	return rates[len(rates)-1]
+}
+
+// codecAcceptsSampleRate reports whether the codec's encoder accepts sampleRate.
+// Codecs with no fixed set accept any rate.
+func codecAcceptsSampleRate(codec string, sampleRate int) bool {
+	rates := codecSampleRates[strings.ToLower(codec)]
+	return len(rates) == 0 || slices.Contains(rates, sampleRate)
+}
+
+// codecSampleRateAtOrBelow returns the highest rate the codec's encoder accepts
+// that is not above sampleRate, and false if there is none. Codecs with no
+// fixed set return sampleRate unchanged.
+func codecSampleRateAtOrBelow(codec string, sampleRate int) (int, bool) {
+	rates := codecSampleRates[strings.ToLower(codec)]
+	if len(rates) == 0 {
+		return sampleRate, true
+	}
+	for _, r := range slices.Backward(rates) {
+		if r <= sampleRate {
+			return r, true
+		}
+	}
+	return 0, false
 }
 
 // codecMaxChannels returns the hard maximum number of audio channels a codec
