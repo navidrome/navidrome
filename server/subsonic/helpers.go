@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -102,6 +103,23 @@ func coverArtOrEmpty(id model.ArtworkID, absent bool) string {
 		return ""
 	}
 	return id.String()
+}
+
+// lastFmURLOrEmpty returns the URL only when it points to a Last.fm music page,
+// as other agents may store an unrelated site in ExternalUrl.
+func lastFmURLOrEmpty(externalURL string) string {
+	u, err := url.Parse(externalURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	if host != "last.fm" && !strings.HasSuffix(host, ".last.fm") {
+		return ""
+	}
+	if !strings.HasPrefix(u.Path, "/music/") {
+		return ""
+	}
+	return externalURL
 }
 
 func toArtist(r *http.Request, a model.Artist) responses.Artist {
