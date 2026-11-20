@@ -935,10 +935,23 @@ func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (ite
 	return materialized(result(paginate(items, opts.Offset, opts.Max), len(items), opts.Offset)), nil
 }
 
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+func escapeLike(s string) string {
+	return likeEscaper.Replace(s)
+}
+
 // listPlaylists lists playlists visible to the current user. Visibility (public or owned) is
 // enforced by playlistRepository, not scopeIDs.
 func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
-	if preds := q.filters.predicates(); len(preds) > 0 {
+	var preds []squirrel.Sqlizer
+	if q.search != "" {
+		preds = append(preds, squirrel.Expr("playlist.name LIKE ? ESCAPE '\\'", "%"+escapeLike(q.search)+"%"))
+	}
+	if p := q.filters.predicates(); len(p) > 0 {
+		preds = append(preds, p...)
+	}
+	if len(preds) > 0 {
 		opts.Filters = squirrel.And(preds)
 	}
 	repo := api.ds.Playlist()
