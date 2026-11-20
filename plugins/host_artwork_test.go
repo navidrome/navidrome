@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -26,7 +25,6 @@ var _ = Describe("ArtworkService", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		var err error
 		tmpDir, err = os.MkdirTemp("", "artwork-test-*")
 		Expect(err).ToNot(HaveOccurred())

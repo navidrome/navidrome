@@ -12,7 +12,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -245,7 +244,6 @@ var _ = Describe("ConfigService Integration", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		manager, callTestConfig = setupTestConfigPlugin(`{"api_key":"test_secret","max_retries":"5","timeout":"30"}`)
 	})
 
@@ -322,7 +320,6 @@ var _ = Describe("Complex Config Values Integration", Ordered, func() {
 	var callTestConfig func(context.Context, testConfigInput) (*testConfigOutput, error)
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		// Config with arrays and objects - these should be properly serialized as JSON strings
 		_, callTestConfig = setupTestConfigPlugin(`{"api_key":"secret123","users":[{"username":"admin","token":"tok1"},{"username":"user2","token":"tok2"}],"settings":{"enabled":true,"count":5}}`)
 	})

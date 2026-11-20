@@ -338,7 +338,6 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		var err error
 		tmpDir, err = os.MkdirTemp("", "matcher-integration-test-*")
 		Expect(err).ToNot(HaveOccurred())

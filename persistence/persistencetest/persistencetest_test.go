@@ -96,19 +96,19 @@ var _ = Describe("ResetBeforeEachSpec", func() {
 		})
 	}
 
-	Describe("in an Ordered container", Ordered, func() {
-		BeforeAll(func() {
-			persistencetest.Reset()
-		})
+	// Without the reset before each container, whichever container runs second would see the other's row.
+	for _, name := range []string{"first", "second"} {
+		Describe("in the "+name+" Ordered container", Ordered, func() {
+			It("starts from the baseline", func() {
+				Expect(countProperties("ordered-")).To(BeZero())
+				Expect(persistence.New(db.Db()).Property().Put(GinkgoT().Context(), "ordered-"+name, "v")).To(Succeed())
+			})
 
-		It("writes a row", func() {
-			Expect(persistence.New(db.Db()).Property().Put(GinkgoT().Context(), "ordered-key", "v")).To(Succeed())
+			It("still sees the row from the previous spec", func() {
+				Expect(countProperties("ordered-")).To(Equal(1))
+			})
 		})
-
-		It("still sees the row from the previous spec", func() {
-			Expect(countProperties("ordered-")).To(Equal(1))
-		})
-	})
+	}
 })
 
 func BenchmarkReset(b *testing.B) {

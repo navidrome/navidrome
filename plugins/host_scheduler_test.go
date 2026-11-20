@@ -12,7 +12,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scheduler"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -29,7 +28,6 @@ var _ = Describe("SchedulerService", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		var err error
 		tmpDir, err = os.MkdirTemp("", "scheduler-test-*")
 		Expect(err).ToNot(HaveOccurred())

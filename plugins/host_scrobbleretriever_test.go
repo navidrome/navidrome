@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/plugins/host"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,7 +43,6 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 	}
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		ctx := GinkgoT().Context()
 
 		var err error

@@ -18,7 +18,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/plugins/host"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -821,7 +820,6 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 	var tmpDir string
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		var err error
 		tmpDir, err = os.MkdirTemp("", "taskqueue-integration-test-*")
 		Expect(err).ToNot(HaveOccurred())

@@ -10,7 +10,6 @@ import (
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -67,7 +66,6 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		var err error
 		tmpDir, err = os.MkdirTemp("", "storage-test-*")
 		Expect(err).ToNot(HaveOccurred())

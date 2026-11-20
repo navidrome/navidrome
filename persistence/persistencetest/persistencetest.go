@@ -51,14 +51,10 @@ func Reset() {
 	}
 }
 
-// ResetBeforeEachSpec registers a top-level BeforeEach that calls Reset. Specs in Ordered
-// containers share state on purpose, so they are skipped; their BeforeAll should call Reset.
+// ResetBeforeEachSpec registers a top-level BeforeEach that calls Reset before every spec, and
+// once before each Ordered container, whose specs share state on purpose.
 func ResetBeforeEachSpec() bool {
-	return ginkgo.BeforeEach(func() {
-		if !ginkgo.CurrentSpecReport().IsInOrderedContainer {
-			Reset()
-		}
-	})
+	return ginkgo.BeforeEach(ginkgo.OncePerOrdered, Reset)
 }
 
 // Tables lists the tables a restore rewrites. FTS shadow tables are excluded: their content

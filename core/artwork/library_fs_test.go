@@ -16,7 +16,6 @@ var _ = Describe("loadLibraryView", Ordered, func() {
 	var ds model.DataStore
 
 	BeforeAll(func() {
-		persistencetest.Reset()
 		DeferCleanup(conf.SnapshotConfig())
 		storagetest.Register("fake", &storagetest.FakeFS{})
 	})
