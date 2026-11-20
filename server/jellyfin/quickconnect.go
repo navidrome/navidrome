@@ -27,7 +27,8 @@ func (api *Router) quickConnectEnabled(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, conf.Server().Jellyfin.QuickConnect)
 }
 
-// Initiate is unauthenticated and its fields are kept for minutes, so their size must be bounded.
+// maxQuickConnectField bounds the field size: Initiate is unauthenticated and its fields are kept for
+// minutes.
 const maxQuickConnectField = 512
 
 func (api *Router) quickConnectInitiate(w http.ResponseWriter, r *http.Request) {

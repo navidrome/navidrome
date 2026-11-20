@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -158,6 +159,19 @@ var _ = Describe("Plugin API", func() {
 			})
 
 			Describe("PUT /api/plugin/{id}", func() {
+				It("rejects a body over the size limit with 413 without updating", func() {
+					body := strings.NewReader(`{"enabled":true,"pad":"` + strings.Repeat("x", maxPluginUpdateBody) + `"}`)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
+					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
+					req.Header.Set("Content-Type", "application/json")
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+					Expect(mockManager.EnablePluginCalls).To(BeEmpty())
+				})
+
 				It("updates plugin enabled state", func() {
 					// Configure mock to update the repo when EnablePlugin is called
 					mockManager.EnablePluginFn = func(ctx context.Context, id string) error {

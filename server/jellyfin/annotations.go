@@ -1,15 +1,14 @@
 package jellyfin
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
@@ -167,8 +166,12 @@ func (api *Router) removeRating(w http.ResponseWriter, r *http.Request) {
 // updateUserItemData writes Rating, Likes and IsFavorite; omitted or null fields are left untouched.
 // Play state is ignored because it only changes through playback reporting.
 func (api *Router) updateUserItemData(w http.ResponseWriter, r *http.Request) {
-	body, ok := decodeUserDataBody(w, r)
-	if !ok {
+	var body *dto.UpdateUserItemDataDto
+	if !server.DecodeJSONBody(w, r, maxUserDataBody, &body) {
+		return
+	}
+	if body == nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 	change := userDataChange{favorite: body.IsFavorite}
@@ -188,17 +191,3 @@ func (api *Router) updateUserItemData(w http.ResponseWriter, r *http.Request) {
 }
 
 const maxUserDataBody = 64 << 10
-
-// decodeUserDataBody accepts exactly one JSON object; Decode alone would ignore anything after it.
-func decodeUserDataBody(w http.ResponseWriter, r *http.Request) (*dto.UpdateUserItemDataDto, bool) {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxUserDataBody))
-	var body *dto.UpdateUserItemDataDto
-	err := dec.Decode(&body)
-	if err == nil && body != nil {
-		if _, err = dec.Token(); errors.Is(err, io.EOF) {
-			return body, true
-		}
-	}
-	http.Error(w, "Bad Request", http.StatusBadRequest)
-	return nil, false
-}

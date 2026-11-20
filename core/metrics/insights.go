@@ -103,7 +103,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		return
 	}
 	body := bytes.NewReader(data)
-	req, err := http.NewRequestWithContext(ctx, "POST", consts.InsightsEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, consts.InsightsEndpoint, body)
 	if err != nil {
 		log.Trace(ctx, "Could not create Insights request", err)
 		return

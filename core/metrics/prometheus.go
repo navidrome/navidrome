@@ -117,7 +117,7 @@ type prometheusMetrics struct {
 	pluginRequestDuration *prometheus.SummaryVec
 }
 
-// Prometheus' metrics requires initialization. But not more than once
+// getPrometheusMetrics initializes Prometheus' metrics, which must not happen more than once
 var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 	quartilesToEstimate := map[float64]float64{0.5: 0.05, 0.75: 0.025, 0.9: 0.01, 0.99: 0.001}
 

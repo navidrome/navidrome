@@ -60,7 +60,7 @@ var _ = Describe("auth_router", func() {
 	stubGetSessionOK := func(sessionKey string) {
 		httpClient.Res = http.Response{
 			Body:       io.NopCloser(bytes.NewBufferString(`{"session":{"name":"Navidrome","key":"` + sessionKey + `","subscriber":0}}`)),
-			StatusCode: 200,
+			StatusCode: http.StatusOK,
 		}
 	}
 

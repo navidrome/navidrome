@@ -54,7 +54,7 @@ func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]A
 	params.Add("q", name)
 	params.Add("order", "RANKING")
 	params.Add("limit", strconv.Itoa(limit))
-	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/search/artist", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiBaseURL+"/search/artist", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (c *client) makeRequest(req *http.Request, response any) error {
 	if err := parseBodyError(data); err != nil {
 		return err
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("deezer http status: (%d)", resp.StatusCode)
 	}
 
@@ -113,7 +113,7 @@ func parseBodyError(data []byte) error {
 }
 
 func (c *client) getRelatedArtists(ctx context.Context, artistID int) ([]Artist, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/artist/%d/related", apiBaseURL, artistID), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/artist/%d/related", apiBaseURL, artistID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (c *client) getRelatedArtists(ctx context.Context, artistID int) ([]Artist,
 func (c *client) getTopTracks(ctx context.Context, artistID int, limit int) ([]Track, error) {
 	params := url.Values{}
 	params.Add("limit", strconv.Itoa(limit))
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/artist/%d/top", apiBaseURL, artistID), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/artist/%d/top", apiBaseURL, artistID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (c *client) getArtistBio(ctx context.Context, artistID int, lang string) (s
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", pipeAPIURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pipeAPIURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -190,7 +190,7 @@ func (c *client) getArtistBio(ctx context.Context, artistID int, lang string) (s
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("deezer: failed to fetch biography: %s", resp.Status)
 	}
 

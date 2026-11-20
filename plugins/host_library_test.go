@@ -32,7 +32,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 
 	Describe("GetLibrary", func() {
 		It("should return library metadata without filesystem permission", func() {
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, nil, true).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, newLibraryAccess(nil, true)).(*libraryServiceImpl)
 
 			lib := &model.Library{
 				ID:            1,
@@ -63,7 +63,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		})
 
 		It("should return library metadata with filesystem permission", func() {
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: true}, nil, true).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: true}, newLibraryAccess(nil, true)).(*libraryServiceImpl)
 
 			lib := &model.Library{
 				ID:            2,
@@ -88,7 +88,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		})
 
 		It("should return error for non-existent library", func() {
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test")}, nil, true).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test")}, newLibraryAccess(nil, true)).(*libraryServiceImpl)
 
 			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(model.Libraries{})
@@ -101,7 +101,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 
 	Describe("GetAllLibraries", func() {
 		It("should return all libraries without filesystem permission", func() {
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, nil, true).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, newLibraryAccess(nil, true)).(*libraryServiceImpl)
 
 			libs := model.Libraries{
 				{ID: 1, Name: "Rock", Path: "/music/rock", TotalSongs: 100},
@@ -123,7 +123,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		})
 
 		It("should return all libraries with filesystem permission", func() {
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: true}, nil, true).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: true}, newLibraryAccess(nil, true)).(*libraryServiceImpl)
 
 			libs := model.Libraries{
 				{ID: 1, Name: "Rock", Path: "/music/rock", TotalSongs: 100},
@@ -145,7 +145,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 
 	Describe("Library Access Filtering", func() {
 		It("should only return libraries in the allowed list", func() { // Only allow library ID 2
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, []int{2}, false).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, newLibraryAccess([]int{2}, false)).(*libraryServiceImpl)
 
 			libs := model.Libraries{
 				{ID: 1, Name: "Rock", Path: "/music/rock", TotalSongs: 100},
@@ -164,7 +164,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		})
 
 		It("should return error when getting a library not in the allowed list", func() { // Only allow library ID 2
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, []int{2}, false).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, newLibraryAccess([]int{2}, false)).(*libraryServiceImpl)
 
 			libs := model.Libraries{
 				{ID: 1, Name: "Rock", Path: "/music/rock", TotalSongs: 100},
@@ -181,7 +181,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		})
 
 		It("should allow access to a library in the allowed list", func() { // Only allow library ID 2
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, []int{2}, false).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, newLibraryAccess([]int{2}, false)).(*libraryServiceImpl)
 
 			libs := model.Libraries{
 				{ID: 1, Name: "Rock", Path: "/music/rock", TotalSongs: 100},
@@ -198,7 +198,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		})
 
 		It("should return empty list when no libraries are allowed and allLibraries is false", func() { // No libraries allowed
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, []int{}, false).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, newLibraryAccess([]int{}, false)).(*libraryServiceImpl)
 
 			libs := model.Libraries{
 				{ID: 1, Name: "Rock", Path: "/music/rock", TotalSongs: 100},
@@ -214,7 +214,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		})
 
 		It("should return all libraries when allLibraries is true regardless of allowed list", func() { // allLibraries=true should ignore the allowed list
-			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, []int{1}, true).(*libraryServiceImpl)
+			service = newLibraryService(ds, &LibraryPermission{Reason: new("test"), Filesystem: false}, newLibraryAccess([]int{1}, true)).(*libraryServiceImpl)
 
 			libs := model.Libraries{
 				{ID: 1, Name: "Rock", Path: "/music/rock", TotalSongs: 100},

@@ -91,6 +91,13 @@ var _ = Describe("Quick Connect endpoints", func() {
 			Expect(authorize(`{"code":"000000"}`).Code).To(Equal(http.StatusNotFound))
 		})
 
+		It("rejects a body over the size limit with 413 without approving", func() {
+			w := authorize(`{"code":"` + pending.Code + `","pad":"` + strings.Repeat("x", maxSmallJSONBody) + `"}`)
+			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+			got, _ := qc.Status(pending.Secret)
+			Expect(got.Authorized()).To(BeFalse())
+		})
+
 		It("returns 409 for a code that is already approved", func() {
 			_, _ = qc.Authorize(pending.Code, "someone")
 			Expect(authorize(`{"code":"` + pending.Code + `"}`).Code).To(Equal(http.StatusConflict))

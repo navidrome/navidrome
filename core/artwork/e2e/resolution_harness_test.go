@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"image"
@@ -117,7 +118,7 @@ func setupResolutionHarness() {
 	// size=0 requests stream originals, so this reader is never called (serving_test covers resizing).
 	imgCache := cache.NewFileCache("ArtworkResolutionE2E", "100MB", "images", 0,
 		func(context.Context, cache.Item) (io.Reader, error) {
-			return nil, fmt.Errorf("resize not exercised in e2e")
+			return nil, errors.New("resize not exercised in e2e")
 		})
 	Eventually(func() bool { return imgCache.Available(rctx) }, 10*time.Second).Should(BeTrue())
 

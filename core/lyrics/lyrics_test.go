@@ -3,7 +3,7 @@ package lyrics_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -357,7 +357,7 @@ var _ = Describe("Lyrics", func() {
 
 		It("should handle plugin error gracefully", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "test-lyrics-plugin,embedded" })
-			mockLoader.err = fmt.Errorf("plugin error")
+			mockLoader.err = errors.New("plugin error")
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).ToNot(HaveOccurred())
@@ -397,7 +397,7 @@ var _ = Describe("Lyrics", func() {
 		})
 
 		It("caches a plugin error as a miss, since some plugins report no lyrics as an error", func() {
-			mockLoader.err = fmt.Errorf("no lyrics found from any provider")
+			mockLoader.err = errors.New("no lyrics found from any provider")
 			for range 2 {
 				list, err := svc.GetLyrics(ctx, &mf)
 				Expect(err).ToNot(HaveOccurred())

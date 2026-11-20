@@ -10,9 +10,10 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 )
 
-// User-library association endpoints (admin only)
+// addUserLibraryRoute adds the user-library association endpoints (admin only)
 func (api *Router) addUserLibraryRoute(r chi.Router) {
 	r.Route("/user/{id}/library", func(r chi.Router) {
 		r.Use(parseUserIDMiddleware)
@@ -23,7 +24,7 @@ func (api *Router) addUserLibraryRoute(r chi.Router) {
 
 type userIDKey struct{}
 
-// Middleware to parse user ID from URL
+// parseUserIDMiddleware parses the user ID from the URL
 func parseUserIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := chi.URLParam(r, "id")
@@ -67,9 +68,7 @@ func setUserLibraries(service core.Library) http.HandlerFunc {
 		var request struct {
 			LibraryIDs []int `json:"libraryIds"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			log.Error(r.Context(), "Error decoding request", err)
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		if !server.DecodeJSONBody(w, r, maxSmallJSONBody, &request) {
 			return
 		}
 

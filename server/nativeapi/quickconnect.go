@@ -41,13 +41,15 @@ func lookupQuickConnect(qc quickconnect.QuickConnect) http.HandlerFunc {
 	}
 }
 
+// maxSmallJSONBody bounds request bodies that carry a few short fields.
+const maxSmallJSONBody = 64 << 10
+
 func authorizeQuickConnect(qc quickconnect.QuickConnect) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Code string `json:"code"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "Bad Request", http.StatusBadRequest)
+		if !server.DecodeJSONBody(w, r, maxSmallJSONBody, &body) {
 			return
 		}
 		ctx := r.Context()

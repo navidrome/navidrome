@@ -66,7 +66,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 		It("returns bad request when the token is invalid", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token invalid.", "valid": false}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			req = httptest.NewRequestWithContext(ctx, http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "invalid-tok-1"}`))
@@ -77,7 +77,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 		It("returns true and the username when the token is valid", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token valid.", "user_name": "ListenBrainzUser", "valid": true}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			req = httptest.NewRequestWithContext(ctx, http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
@@ -92,7 +92,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 		It("saves the session key when the token is valid", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token valid.", "user_name": "ListenBrainzUser", "valid": true}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
 			req = httptest.NewRequestWithContext(ctx, http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))

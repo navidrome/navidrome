@@ -151,6 +151,7 @@ func (m *MockPluginRepo) CountAll(_ context.Context, qo ...model.QueryOptions) (
 }
 
 // REST repository methods
+
 func (m *MockPluginRepo) Count(_ context.Context, _ ...rest.QueryOptions) (int64, error) {
 	if !m.Permitted {
 		return 0, rest.ErrPermissionDenied

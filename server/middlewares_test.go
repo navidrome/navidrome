@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -433,6 +434,28 @@ var _ = Describe("middlewares", func() {
 				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
 			})
 		})
+		Context("when the request is an internal call (e.g. from a plugin)", func() {
+			BeforeEach(func() {
+				req = req.WithContext(request.WithInternalAuth(req.Context(), "johndoe"))
+			})
+
+			It("calls the next handler", func() {
+				called := false
+				middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					called = true
+				})).ServeHTTP(nil, req)
+				Expect(called).To(BeTrue())
+			})
+
+			It("does not update the last access time", func() {
+				time.Sleep(3 * time.Millisecond)
+
+				callMiddleware(req)
+
+				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+			})
+		})
 	})
 	Describe("realIPMiddleware", func() {
 		var resolved, remoteAddr string
@@ -529,5 +552,51 @@ var _ = Describe("middlewares", func() {
 				Expect(attempt("10.0.0.1:4", "X-Forwarded-For", "203.0.113.2")).To(Equal(http.StatusOK))
 			})
 		})
+	})
+})
+
+var _ = Describe("DecodeJSONBody", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	type payload struct {
+		Name string `json:"name"`
+	}
+	decode := func(body string, limit int64) (*httptest.ResponseRecorder, payload, bool) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/", strings.NewReader(body))
+		var v payload
+		ok := DecodeJSONBody(w, r, limit, &v)
+		return w, v, ok
+	}
+
+	It("decodes one JSON value, allowing trailing whitespace", func() {
+		_, v, ok := decode("{\"name\":\"Mix\"}\r\n\t ", 1024)
+		Expect(ok).To(BeTrue())
+		Expect(v.Name).To(Equal("Mix"))
+	})
+
+	DescribeTable("answers 400 with the reason for a body that is not exactly one JSON value",
+		func(body, reason string) {
+			w, _, ok := decode(body, 1024)
+			Expect(ok).To(BeFalse())
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(Equal(reason + "\n"))
+		},
+		Entry("empty body", "", "Request body must not be empty"),
+		Entry("truncated JSON", `{"name":`, "Request body contains badly-formed JSON"),
+		Entry("a syntax error", `{"name":"Mix",}`, "Request body contains badly-formed JSON (at position 15)"),
+		Entry("a wrong field type", `{"name":1}`, `Request body contains an invalid value for the "name" field (at position 9)`),
+		Entry("trailing garbage", `{"name":"Mix"} x`, "Request body must only contain a single JSON value"),
+		Entry("a second JSON value", `{"name":"Mix"}{"name":"Other"}`, "Request body must only contain a single JSON value"),
+	)
+
+	It("answers 413 with the limit for a body over it", func() {
+		w, _, ok := decode(`{"name":"`+strings.Repeat("x", 64)+`"}`, 32)
+		Expect(ok).To(BeFalse())
+		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+		Expect(w.Body.String()).To(Equal("Request body must not be larger than 32 bytes\n"))
 	})
 })

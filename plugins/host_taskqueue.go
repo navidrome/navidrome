@@ -199,7 +199,7 @@ func (s *taskQueueServiceImpl) clampConcurrency(ctx context.Context, name string
 
 func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, config host.QueueConfig) error {
 	if len(name) == 0 {
-		return fmt.Errorf("queue name cannot be empty")
+		return errors.New("queue name cannot be empty")
 	}
 	if len(name) > maxQueueNameLength {
 		return fmt.Errorf("queue name exceeds maximum length of %d bytes", maxQueueNameLength)

@@ -209,7 +209,7 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	field, value, info, ok := singleField(values)
 	if !ok {
 		if len(values) != 1 {
-			return nil, fmt.Errorf("invalid field in criteria: isMissing/isPresent requires exactly one field")
+			return nil, errors.New("invalid field in criteria: isMissing/isPresent requires exactly one field")
 		}
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
@@ -378,7 +378,7 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 	return squirrel.Expr("media_file.id IN ("+subSQL+")", subArgs...), nil
 }
 
-// Filesystems disagree on the Unicode form of a name, so match the path in NFC and NFD.
+// pathVariants returns the path in NFC and NFD, because filesystems disagree on the Unicode form of a name.
 func pathVariants(path string) []string {
 	variants := []string{path}
 	if alt := norm.NFC.String(path); alt != path {

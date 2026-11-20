@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -500,13 +501,13 @@ var _ = Describe("Artwork hydration", func() {
 			Entry("by recently added", model.QueryOptions{Sort: "recently_added", Order: "desc"},
 				func(a model.Album) string { return fmt.Sprint(a.CreatedAt) }),
 			Entry("by year", model.QueryOptions{Sort: "max_year"},
-				func(a model.Album) string { return fmt.Sprint(a.MaxYear) }),
+				func(a model.Album) string { return strconv.Itoa(a.MaxYear) }),
 			Entry("by play count", model.QueryOptions{Sort: "play_count", Order: "desc"},
-				func(a model.Album) string { return fmt.Sprint(a.PlayCount) }),
+				func(a model.Album) string { return strconv.FormatInt(a.PlayCount, 10) }),
 			Entry("by last played", model.QueryOptions{Sort: "play_date", Order: "desc"},
 				func(a model.Album) string { return fmt.Sprint(a.PlayDate) }),
 			Entry("by rating", model.QueryOptions{Sort: "rating", Order: "desc"},
-				func(a model.Album) string { return fmt.Sprint(a.Rating) }),
+				func(a model.Album) string { return strconv.Itoa(a.Rating) }),
 			Entry("starred only", model.QueryOptions{Sort: "starred_at", Order: "desc",
 				Filters: squirrel.Eq{"starred": true}},
 				func(a model.Album) string { return fmt.Sprint(a.StarredAt) }),
@@ -528,11 +529,11 @@ var _ = Describe("Artwork hydration", func() {
 			Entry("by name", model.QueryOptions{Sort: "name"},
 				func(a model.Artist) string { return a.OrderArtistName }),
 			Entry("by album count", model.QueryOptions{Sort: "album_count", Order: "desc"},
-				func(a model.Artist) string { return fmt.Sprint(a.AlbumCount) }),
+				func(a model.Artist) string { return strconv.Itoa(a.AlbumCount) }),
 			Entry("by song count", model.QueryOptions{Sort: "song_count", Order: "desc"},
-				func(a model.Artist) string { return fmt.Sprint(a.SongCount) }),
+				func(a model.Artist) string { return strconv.Itoa(a.SongCount) }),
 			Entry("by play count", model.QueryOptions{Sort: "play_count", Order: "desc"},
-				func(a model.Artist) string { return fmt.Sprint(a.PlayCount) }),
+				func(a model.Artist) string { return strconv.FormatInt(a.PlayCount, 10) }),
 			Entry("starred only", model.QueryOptions{Sort: "starred_at", Order: "desc",
 				Filters: squirrel.Eq{"starred": true}},
 				func(a model.Artist) string { return fmt.Sprint(a.StarredAt) }),

@@ -321,6 +321,16 @@ var _ = Describe("Library API", func() {
 			})
 
 			Describe("PUT /api/user/{id}/library", func() {
+				It("rejects a body over the size limit with 413", func() {
+					body := `{"libraryIds":[1],"pad":"` + strings.Repeat("x", maxSmallJSONBody) + `"}`
+					req := createAuthenticatedRequest("PUT", fmt.Sprintf("/user/%s/library", regularUser.ID), bytes.NewBufferString(body), adminToken)
+					w := httptest.NewRecorder()
+
+					router.ServeHTTP(w, req)
+
+					Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+				})
+
 				It("sets user's libraries", func() {
 					request := map[string][]int{
 						"libraryIds": {1, 2},

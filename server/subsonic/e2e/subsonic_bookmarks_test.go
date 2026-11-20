@@ -1,8 +1,6 @@
 package e2e
 
 import (
-	"fmt"
-
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -140,7 +138,7 @@ var _ = Describe("Bookmark and PlayQueue Endpoints", Ordered, func() {
 				"id", trackIDs[0],
 				"id", trackIDs[1],
 				"id", trackIDs[2],
-				"currentIndex", fmt.Sprintf("%d", 0),
+				"currentIndex", "0",
 				"position", "9999",
 			)
 

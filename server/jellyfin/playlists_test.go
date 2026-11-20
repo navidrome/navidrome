@@ -1,16 +1,21 @@
 package jellyfin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -350,6 +355,142 @@ var _ = Describe("Playlists", func() {
 			createWith(testID("pl9"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s3"), testID("s4")}))
 		})
+	})
+
+	Describe("request limits", func() {
+		var ds *tests.MockDataStore
+		song := dto.EncodeID(testID("s1"))
+		artist := dto.EncodeID(testID("ar1"))
+
+		BeforeEach(func() {
+			ds = &tests.MockDataStore{}
+			api = &Router{ds: ds, playlists: fp}
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}})
+		})
+
+		repeat := func(id string, n int) []string { return slices.Repeat([]string{id}, n) }
+		// An artist whose expansion alone is just over a per-request track limit of 5.
+		withHugeArtist := func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
+			songs := make(model.MediaFiles, 6)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: testID(fmt.Sprintf("big-%d", i))}
+			}
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
+		}
+		create := func(body any) *httptest.ResponseRecorder {
+			b, err := json.Marshal(body)
+			Expect(err).ToNot(HaveOccurred())
+			w := httptest.NewRecorder()
+			invoke(api.createPlaylist, w, httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists", bytes.NewReader(b)))
+			return w
+		}
+		update := func(body any) *httptest.ResponseRecorder {
+			b, err := json.Marshal(body)
+			Expect(err).ToNot(HaveOccurred())
+			w := httptest.NewRecorder()
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1")), bytes.NewReader(b))
+			invoke(api.updatePlaylist, w, withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1"))))
+			return w
+		}
+		addItems := func(ids []string) *httptest.ResponseRecorder {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+strings.Join(ids, ","), nil)
+			invoke(api.addToPlaylist, w, withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1"))))
+			return w
+		}
+
+		DescribeTable("creates a playlist naming up to DevMaxPlaylistTracksPerRequest ids",
+			func(limit, sent int) {
+				if limit >= 0 {
+					conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = limit })
+				}
+				w := create(map[string]any{"Name": "Mix", "Ids": repeat(song, sent)})
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(fp.createdIds).To(HaveLen(sent))
+			},
+			Entry("exactly the limit", 5, 5),
+			Entry("any number when the limit is 0", 0, 6),
+			Entry("the default limit, in a body larger than 1 MiB", -1, 50_000),
+			Entry("a raised limit, in a body larger than 2 MiB", 100_000, 100_000),
+		)
+
+		It("expands without a track limit when DevMaxPlaylistTracksPerRequest is 0", func() {
+			withHugeArtist()
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 0 })
+			w := create(map[string]any{"Name": "Mix", "Ids": []string{artist}})
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(fp.createdIds).To(HaveLen(6))
+		})
+
+		It("asks a playlist container for at most one track past the limit", func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			tracks := make(model.PlaylistTracks, 6)
+			for i := range tracks {
+				tracks[i] = model.PlaylistTrack{ID: strconv.Itoa(i + 1), MediaFileID: testID(fmt.Sprintf("pl-%d", i))}
+			}
+			fp.getPls = &model.Playlist{ID: testID("pl9"), Tracks: tracks}
+
+			w := create(map[string]any{"Name": "Mix", "Ids": []string{dto.EncodeID(testID("pl9"))}})
+
+			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+			Expect(fp.tracksRepo).ToNot(BeNil())
+			Expect(fp.tracksRepo.Options.Max).To(Equal(6))
+		})
+
+		It("rejects a create body with data after the JSON object with 400", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix"} {"Name":"Other"}`))
+			invoke(api.createPlaylist, w, r)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			Expect(fp.createdName).To(BeEmpty())
+		})
+
+		tooManyIDs := func() []string {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			return repeat(song, 6)
+		}
+		expandsTooFar := func() []string {
+			withHugeArtist()
+			return []string{artist}
+		}
+		withIDs := func(ids func() []string) func() any {
+			return func() any { return map[string]any{"Name": "Mix", "Ids": ids()} }
+		}
+		bodyTooBig := func() any { return map[string]any{"Name": strings.Repeat("x", int(maxPlaylistBody()))} }
+
+		DescribeTable("create and update reject oversized requests with 413 without writing",
+			func(send func(any) *httptest.ResponseRecorder, body func() any) {
+				w := send(body())
+				Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+				Expect(fp.createdIds).To(BeNil())
+				Expect(fp.updatePlaylistID).To(BeEmpty())
+			},
+			Entry("create, more ids than DevMaxPlaylistTracksPerRequest", create, withIDs(tooManyIDs)),
+			Entry("create, ids that expand past DevMaxPlaylistTracksPerRequest", create, withIDs(expandsTooFar)),
+			Entry("create, a body over the size limit", create, bodyTooBig),
+			Entry("update, more ids than DevMaxPlaylistTracksPerRequest", update, withIDs(tooManyIDs)),
+			Entry("update, ids that expand past DevMaxPlaylistTracksPerRequest", update, withIDs(expandsTooFar)),
+			Entry("update, a body over the size limit", update, bodyTooBig),
+		)
+
+		It("adds items naming up to DevMaxPlaylistTracksPerRequest ids", func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			w := addItems(repeat(song, 5))
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(fp.addIds).To(HaveLen(5))
+		})
+
+		DescribeTable("adding items rejects oversized requests with 413 without adding",
+			func(ids func() []string) {
+				w := addItems(ids())
+				Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+				Expect(fp.addPlaylistID).To(BeEmpty())
+			},
+			Entry("more ids than DevMaxPlaylistTracksPerRequest", tooManyIDs),
+			Entry("ids that expand past DevMaxPlaylistTracksPerRequest", expandsTooFar),
+		)
 	})
 
 	Describe("getPlaylist", func() {
