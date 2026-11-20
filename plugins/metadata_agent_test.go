@@ -72,11 +72,11 @@ var _ = Describe("MetadataAgent username", func() {
 			}
 			Expect(newMetadataAgent(p).username(ctx)).To(Equal(want))
 		},
-		Entry("all users allowed", &plugin{manifest: withUsers, allUsers: true}, alice, "alice"),
-		Entry("user in allowed list", &plugin{manifest: withUsers, allowedUserIDs: []string{"user-1"}}, alice, "alice"),
-		Entry("user not in allowed list", &plugin{manifest: withUsers, allowedUserIDs: []string{"user-2"}}, alice, ""),
-		Entry("no users permission", &plugin{manifest: withoutUsers, allUsers: true}, alice, ""),
-		Entry("no user in context", &plugin{manifest: withUsers, allUsers: true}, nil, ""),
+		Entry("all users allowed", &plugin{manifest: withUsers, users: newUserAccess(nil, true)}, alice, "alice"),
+		Entry("user in allowed list", &plugin{manifest: withUsers, users: newUserAccess([]string{"user-1"}, false)}, alice, "alice"),
+		Entry("user not in allowed list", &plugin{manifest: withUsers, users: newUserAccess([]string{"user-2"}, false)}, alice, ""),
+		Entry("no users permission", &plugin{manifest: withoutUsers, users: newUserAccess(nil, true)}, alice, ""),
+		Entry("no user in context", &plugin{manifest: withUsers, users: newUserAccess(nil, true)}, nil, ""),
 	)
 })
 
