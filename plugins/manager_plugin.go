@@ -63,6 +63,10 @@ func (p *plugin) hasLibraryFilesystemAccess(libID int) bool {
 	return p.manifest.HasLibraryFilesystemPermission() && p.libraries.contains(libID)
 }
 
+func (p *plugin) hasUserAccess(userID string) bool {
+	return p.manifest.HasUsersPermission() && p.users.allows(userID)
+}
+
 // libraryAccess captures the set of libraries a plugin is permitted to see,
 // precomputed at load time for O(1) lookup.
 type libraryAccess struct {
