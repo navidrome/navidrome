@@ -258,6 +258,11 @@ components:
                     type: integer
                     format: int32
                     description: Count is the maximum number of similar songs to return.
+                username:
+                    type: string
+                    description: |-
+                        Username is the user who requested similar songs. Empty when there is no user, or the plugin
+                        lacks the users permission or access to that user.
             required:
                 - id
                 - name
@@ -279,6 +284,11 @@ components:
                     type: integer
                     format: int32
                     description: Count is the maximum number of similar songs to return.
+                username:
+                    type: string
+                    description: |-
+                        Username is the user who requested similar songs. Empty when there is no user, or the plugin
+                        lacks the users permission or access to that user.
             required:
                 - id
                 - name
@@ -302,6 +312,11 @@ components:
                     type: integer
                     format: int32
                     description: Count is the maximum number of similar songs to return.
+                username:
+                    type: string
+                    description: |-
+                        Username is the user who requested similar songs. Empty when there is no user, or the plugin
+                        lacks the users permission or access to that user.
             required:
                 - id
                 - name
