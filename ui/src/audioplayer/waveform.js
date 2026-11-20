@@ -1,6 +1,6 @@
 import subsonic from '../subsonic'
 
-// Number of peaks requested from the server. Bars are resampled from these to fit the bar width.
+// Number of levels requested from the server. Bars are resampled from these to fit the bar width.
 export const WAVEFORM_SAMPLES = 500
 
 const BAR_WIDTH = 2
@@ -10,7 +10,7 @@ const MAX_CACHED = 50
 
 const cache = new Map()
 
-// loadWaveform fetches the peaks of a song, keeping the most recently used ones in memory so
+// loadWaveform fetches the loudness envelope of a song as linear amplitudes (0-1), keeping the most recently used ones in memory so
 // replaying or skipping back does not refetch them. Aborting signal cancels the request, which
 // also stops the server from decoding a song that is no longer playing.
 export const loadWaveform = (id, signal) => {
@@ -23,11 +23,12 @@ export const loadWaveform = (id, signal) => {
   const promise = subsonic
     .getWaveform(id, WAVEFORM_SAMPLES, { signal })
     .then((resp) => {
-      const peaks = resp.json['subsonic-response']?.waveform?.peaks
-      if (!peaks?.length) {
+      // The server sends RMS levels in dBFS (-120 to 0), converted here to linear amplitude.
+      const levels = resp.json['subsonic-response']?.waveform?.levels
+      if (!levels?.length) {
         throw new Error('No waveform available')
       }
-      return peaks
+      return levels.map((db) => 10 ** (db / 20))
     })
   const evict = () => {
     if (cache.get(id) === promise) {
@@ -49,7 +50,7 @@ export const loadWaveform = (id, signal) => {
 
 export const clearWaveformCache = () => cache.clear()
 
-// resample returns count values. The server sends RMS values, so each output is the quadratic
+// resample returns count values. The values are RMS amplitudes, so each output is the quadratic
 // mean of the values it covers. When count is larger than the number of peaks, peaks are repeated.
 export const resample = (peaks, count) => {
   const out = new Array(count)
@@ -84,7 +85,7 @@ export const drawWaveform = (
   const step = BAR_WIDTH + BAR_GAP
   const count = Math.max(1, Math.floor((width + BAR_GAP) / step))
   const bars = resample(peaks, count)
-  const loudest = Math.max(1, ...peaks)
+  const loudest = Math.max(...peaks) || 1
   const playedX = progress * width
   const mid = height / 2
 

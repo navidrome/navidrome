@@ -24,17 +24,23 @@ func (api *Router) GetWaveform(r *http.Request) (*responses.Subsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	samples := p.IntOr("samples", waveform.DefaultSamples)
-	if samples <= 0 {
-		return nil, newError(responses.ErrorGeneric, "samples must be a positive number")
+	// Without samples, all stored levels are returned.
+	samples := 0
+	if p.StringOr("samples", "") != "" {
+		samples, err = p.Int("samples")
+		if err != nil {
+			return nil, err
+		}
+		if samples <= 0 {
+			return nil, newError(responses.ErrorGeneric, "samples must be a positive number")
+		}
 	}
-	samples = min(samples, waveform.MaxSamples)
 
 	mf, err := api.ds.MediaFile().Get(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
-	peaks, err := api.waveform.Get(r.Context(), mf, samples)
+	levels, err := api.waveform.Get(r.Context(), mf)
 	if errors.Is(err, context.Canceled) {
 		return nil, err
 	}
@@ -44,14 +50,20 @@ func (api *Router) GetWaveform(r *http.Request) (*responses.Subsonic, error) {
 		return nil, newError(responses.ErrorGeneric, "could not generate waveform")
 	}
 
+	out := waveform.Downsample(levels, samples)
+	interval := float64(waveform.IntervalMs)
+	if len(out) > 0 {
+		interval = float64(waveform.IntervalMs*len(levels)) / float64(len(out))
+	}
 	wf := &responses.Waveform{
 		ID:       mf.ID,
 		Duration: mf.Duration,
-		Samples:  int32(len(peaks)),
-		Peaks:    make([]int32, len(peaks)),
+		Interval: interval,
+		Samples:  int32(len(out)),
+		Levels:   make([]float64, len(out)),
 	}
-	for i, v := range peaks {
-		wf.Peaks[i] = int32(v)
+	for i, v := range out {
+		wf.Levels[i] = float64(v) / 100
 	}
 	response := newResponse()
 	response.Waveform = wf

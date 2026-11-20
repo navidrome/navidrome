@@ -11,8 +11,8 @@ vi.mock('../subsonic', () => ({
   default: { getWaveform: vi.fn() },
 }))
 
-const waveformResponse = (peaks) => ({
-  json: { 'subsonic-response': { status: 'ok', waveform: { peaks } } },
+const waveformResponse = (levels) => ({
+  json: { 'subsonic-response': { status: 'ok', waveform: { levels } } },
 })
 
 describe('resample', () => {
@@ -80,9 +80,9 @@ describe('loadWaveform', () => {
     vi.clearAllMocks()
   })
 
-  it('fetches the peaks of a song', async () => {
-    subsonic.getWaveform.mockResolvedValue(waveformResponse([1, 2, 3]))
-    await expect(loadWaveform('song-1')).resolves.toEqual([1, 2, 3])
+  it('fetches the levels of a song as linear amplitudes', async () => {
+    subsonic.getWaveform.mockResolvedValue(waveformResponse([0, -20, -40]))
+    await expect(loadWaveform('song-1')).resolves.toEqual([1, 0.1, 0.01])
     expect(subsonic.getWaveform).toHaveBeenCalledWith(
       'song-1',
       WAVEFORM_SAMPLES,
@@ -91,7 +91,7 @@ describe('loadWaveform', () => {
   })
 
   it('passes the abort signal to the request', async () => {
-    subsonic.getWaveform.mockResolvedValue(waveformResponse([1]))
+    subsonic.getWaveform.mockResolvedValue(waveformResponse([0]))
     const controller = new AbortController()
     await loadWaveform('song-1', controller.signal)
     expect(subsonic.getWaveform).toHaveBeenCalledWith(
@@ -107,13 +107,13 @@ describe('loadWaveform', () => {
     loadWaveform('song-1', controller.signal).catch(() => {})
     controller.abort()
 
-    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([4]))
-    await expect(loadWaveform('song-1')).resolves.toEqual([4])
+    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([-20]))
+    await expect(loadWaveform('song-1')).resolves.toEqual([0.1])
     expect(subsonic.getWaveform).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps fetched peaks when a later abort fires', async () => {
-    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([1]))
+  it('keeps fetched levels when a later abort fires', async () => {
+    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([0]))
     const controller = new AbortController()
     await loadWaveform('song-1', controller.signal)
     controller.abort()
@@ -128,13 +128,13 @@ describe('loadWaveform', () => {
     )
     await expect(loadWaveform('song-1')).rejects.toThrow()
 
-    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([4]))
-    await expect(loadWaveform('song-1')).resolves.toEqual([4])
+    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([-20]))
+    await expect(loadWaveform('song-1')).resolves.toEqual([0.1])
     expect(subsonic.getWaveform).toHaveBeenCalledTimes(2)
   })
 
-  it('reuses previously fetched peaks', async () => {
-    subsonic.getWaveform.mockResolvedValue(waveformResponse([1, 2, 3]))
+  it('reuses previously fetched levels', async () => {
+    subsonic.getWaveform.mockResolvedValue(waveformResponse([0, -20, -40]))
     await loadWaveform('song-1')
     await loadWaveform('song-1')
     expect(subsonic.getWaveform).toHaveBeenCalledTimes(1)
@@ -146,7 +146,7 @@ describe('loadWaveform', () => {
     })
     await expect(loadWaveform('song-1')).rejects.toThrow()
 
-    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([4]))
-    await expect(loadWaveform('song-1')).resolves.toEqual([4])
+    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([-20]))
+    await expect(loadWaveform('song-1')).resolves.toEqual([0.1])
   })
 })

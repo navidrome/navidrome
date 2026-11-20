@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"runtime"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -24,38 +25,32 @@ import (
 const (
 	// formatVersion is the first byte of every cached entry. Bump it whenever the
 	// algorithm or the encoding changes, so stale entries are recomputed.
-	formatVersion = 2
+	formatVersion = 3
 
-	// MaxSamples is the resolution waveforms are computed and stored at. Requests for
-	// fewer samples are downsampled from it.
-	MaxSamples = 2000
+	// IntervalMs is the length of audio, in milliseconds, covered by each stored level.
+	IntervalMs = 100
 
-	// DefaultSamples is used when the client does not ask for a specific resolution.
-	DefaultSamples = 500
+	// Silence is the lowest level, in hundredths of dBFS (-120 dBFS). Quieter windows,
+	// including digital silence, are clamped to it.
+	Silence = -12000
 
-	// sampleRate is the rate tracks are decoded at. It only has to resolve the amplitude
+	// sampleRate is the rate tracks are decoded at. It only has to resolve the loudness
 	// envelope, not the audio itself.
 	sampleRate = 8000
 
-	// windowSize is the number of PCM samples (10ms) folded into each intermediate energy value.
-	windowSize = sampleRate / 100
-
-	// maxWindows bounds the energy values kept while decoding. When it is reached, neighbouring
-	// windows are merged in pairs and later windows cover twice as many samples, so memory stays
-	// around 64KB whatever the track length, with at least 4x MaxSamples windows left to envelope.
-	maxWindows = 8 * MaxSamples
+	// windowSize is the number of PCM samples in each IntervalMs window.
+	windowSize = sampleRate * IntervalMs / 1000
 )
 
 // ErrDisabled is returned when the waveform feature is turned off in the configuration.
 var ErrDisabled = errors.New("waveform generation is disabled")
 
-// Waveform computes the amplitude envelope of media files.
+// Waveform computes the loudness envelope of media files.
 type Waveform interface {
-	// Get returns the loudness envelope of mf, downsampled to the given number of samples. Each
-	// value is the RMS amplitude of its time slice on a linear 0-255 scale, relative to the
-	// loudest slice of the track (255). RMS is used instead of the peak amplitude because mastered
-	// music reaches full scale almost everywhere, which makes a peak envelope flat.
-	Get(ctx context.Context, mf *model.MediaFile, samples int) ([]uint8, error)
+	// Get returns the RMS level of each IntervalMs window of mf, in playback order, in hundredths
+	// of dBFS, from Silence to 0. RMS is used instead of the peak amplitude because mastered music
+	// reaches full scale almost everywhere, which makes a peak envelope flat.
+	Get(ctx context.Context, mf *model.MediaFile) ([]int16, error)
 }
 
 type waveform struct {
@@ -105,7 +100,7 @@ func (j *waveformJob) Key() string {
 	return fmt.Sprintf("%s.%d.v%d", j.mf.ID, j.mf.UpdatedAt.UnixMilli(), formatVersion)
 }
 
-func (w *waveform) Get(ctx context.Context, mf *model.MediaFile, samples int) ([]uint8, error) {
+func (w *waveform) Get(ctx context.Context, mf *model.MediaFile) ([]int16, error) {
 	if !conf.Server().EnableWaveform {
 		return nil, ErrDisabled
 	}
@@ -118,11 +113,7 @@ func (w *waveform) Get(ctx context.Context, mf *model.MediaFile, samples int) ([
 	if err != nil {
 		return nil, err
 	}
-	peaks, err := decode(data)
-	if err != nil {
-		return nil, err
-	}
-	return Downsample(peaks, samples), nil
+	return decode(data)
 }
 
 func (w *waveform) generate(ctx context.Context, mf *model.MediaFile) (io.Reader, error) {
@@ -140,22 +131,19 @@ func (w *waveform) generate(ctx context.Context, mf *model.MediaFile) (io.Reader
 	}
 	defer pcm.Close()
 
-	windows, err := windowEnergy(pcm, maxWindows)
+	levels, err := windowLevels(pcm, int(mf.Duration*1000/IntervalMs)+1)
 	if err != nil {
 		return nil, fmt.Errorf("decoding audio: %w", err)
 	}
-	peaks := envelope(windows, MaxSamples)
-	log.Debug(ctx, "Generated waveform", "id", mf.ID, "path", mf.Path, "samples", len(peaks), "elapsed", time.Since(start))
-	return bytes.NewReader(encode(peaks)), nil
+	log.Debug(ctx, "Generated waveform", "id", mf.ID, "path", mf.Path, "levels", len(levels), "elapsed", time.Since(start))
+	return bytes.NewReader(encode(levels)), nil
 }
 
-// windowEnergy reads mono s16le PCM and returns the mean square amplitude (0-1) of each window.
-// Windows start at windowSize samples. Whenever limit (an even number) of them are stored, they
-// are merged in pairs and the window size doubles, so at most limit values are ever kept.
-func windowEnergy(r io.Reader, limit int) ([]float32, error) {
+// windowLevels reads mono s16le PCM and returns the RMS level of each windowSize window, in
+// hundredths of dBFS. The last window can be shorter. sizeHint preallocates the result.
+func windowLevels(r io.Reader, sizeHint int) ([]int16, error) {
 	br := bufio.NewReaderSize(r, 64*1024)
-	energies := make([]float32, 0, limit)
-	size := windowSize
+	levels := make([]int16, 0, max(sizeHint, 0))
 	var buf [2]byte
 	var sum float64
 	n := 0
@@ -169,84 +157,59 @@ func windowEnergy(r io.Reader, limit int) ([]float32, error) {
 		v := float64(int16(binary.LittleEndian.Uint16(buf[:]))) / 32768
 		sum += v * v
 		n++
-		if n == size {
-			energies = append(energies, float32(sum/float64(n)))
+		if n == windowSize {
+			levels = append(levels, level(sum/float64(n)))
 			sum, n = 0, 0
-			if len(energies) == limit {
-				energies = mergePairs(energies)
-				size *= 2
-			}
 		}
 	}
 	if n > 0 {
-		energies = append(energies, float32(sum/float64(n)))
+		levels = append(levels, level(sum/float64(n)))
 	}
-	return energies, nil
+	return levels, nil
 }
 
-// mergePairs averages neighbouring values in place and returns the first half of energies.
-// Both values of a pair cover the same number of samples, so the average stays their mean square.
-func mergePairs(energies []float32) []float32 {
-	half := len(energies) / 2
-	for i := range half {
-		energies[i] = (energies[2*i] + energies[2*i+1]) / 2
+// level converts a mean square amplitude (0-1) to hundredths of dBFS, clamped to [Silence, 0].
+func level(meanSquare float64) int16 {
+	if meanSquare <= 0 {
+		return Silence
 	}
-	return energies[:half]
+	db := math.Round(10 * math.Log10(meanSquare) * 100)
+	return int16(min(max(db, Silence), 0))
 }
 
-// envelope groups window energies into at most samples slices and returns the RMS amplitude of
-// each, scaled so the loudest slice is 255. A silent track is all zeros.
-func envelope(energies []float32, samples int) []uint8 {
-	n := len(energies)
-	samples = min(samples, n)
-	rms := make([]float64, samples)
-	var loudest float64
-	for i := range samples {
-		from, to := i*n/samples, (i+1)*n/samples
-		var sum float64
-		for _, e := range energies[from:to] {
-			sum += float64(e)
-		}
-		rms[i] = math.Sqrt(sum / float64(to-from))
-		loudest = max(loudest, rms[i])
-	}
-	out := make([]uint8, samples)
-	if loudest == 0 {
-		return out
-	}
-	for i, v := range rms {
-		out[i] = uint8(math.Round(v / loudest * 255))
-	}
-	return out
-}
-
-// Downsample reduces values to the given number of samples. Each output is the quadratic mean of
-// the values it covers, so it stays the RMS of the longer slice. It never upsamples: when
-// samples >= len(values), values is returned as is.
-func Downsample(values []uint8, samples int) []uint8 {
-	n := len(values)
+// Downsample reduces levels to exactly samples values. Value i is the highest of levels
+// [i*n/samples, (i+1)*n/samples), so short loud parts stay visible. It never upsamples: when
+// samples <= 0 or samples >= len(levels), levels is returned as is.
+func Downsample(levels []int16, samples int) []int16 {
+	n := len(levels)
 	if samples <= 0 || samples >= n {
-		return values
+		return levels
 	}
-	out := make([]uint8, samples)
+	out := make([]int16, samples)
 	for i := range samples {
 		from, to := i*n/samples, (i+1)*n/samples
-		var sum float64
-		for _, v := range values[from:to] {
-			sum += float64(v) * float64(v)
-		}
-		out[i] = uint8(math.Round(math.Sqrt(sum / float64(to-from))))
+		out[i] = slices.Max(levels[from:to])
 	}
 	return out
 }
 
-func encode(peaks []uint8) []byte {
-	return append([]byte{formatVersion}, peaks...)
+// encode stores levels as the format version followed by little-endian int16 values.
+func encode(levels []int16) []byte {
+	out := make([]byte, 1, 1+2*len(levels))
+	out[0] = formatVersion
+	for _, v := range levels {
+		out = binary.LittleEndian.AppendUint16(out, uint16(v))
+	}
+	return out
 }
 
-func decode(data []byte) ([]uint8, error) {
-	if len(data) == 0 || data[0] != formatVersion {
+func decode(data []byte) ([]int16, error) {
+	if len(data) == 0 || data[0] != formatVersion || len(data)%2 != 1 {
 		return nil, errors.New("invalid cached waveform")
 	}
-	return data[1:], nil
+	levels := make([]int16, (len(data)-1)/2)
+	for i := range levels {
+		levels[i] = int16(binary.LittleEndian.Uint16(data[1+2*i:]))
+	}
+	return levels, nil
 }
