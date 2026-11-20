@@ -2,6 +2,7 @@ package persistencetest_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
@@ -103,7 +104,24 @@ func BenchmarkReset(b *testing.B) {
 	tests.Init(b, false)
 	b.Cleanup(conf.SnapshotConfig())
 	persistencetest.Init(b)
+	ctx := request.WithUser(b.Context(), model.User{ID: "admin", UserName: "admin", IsAdmin: true})
+	ds := persistence.New(db.Db())
 	for b.Loop() {
+		// A typical spec leaves a user, an album and a few songs behind.
+		b.StopTimer()
+		if err := ds.User().Put(ctx, &model.User{ID: "u1", UserName: "u1"}); err != nil {
+			b.Fatal(err)
+		}
+		if err := ds.Album().Put(ctx, newAlbum("al-1", "Album")); err != nil {
+			b.Fatal(err)
+		}
+		for i := range 5 {
+			mf := &model.MediaFile{ID: fmt.Sprintf("mf-%d", i), Path: fmt.Sprintf("%d.mp3", i), LibraryID: model.DefaultLibraryID, AlbumID: "al-1"}
+			if err := ds.MediaFile().Put(ctx, mf); err != nil {
+				b.Fatal(err)
+			}
+		}
+		b.StartTimer()
 		if err := persistencetest.RestoreFrom(persistencetest.BaselinePath()); err != nil {
 			b.Fatal(err)
 		}
