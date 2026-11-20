@@ -613,15 +613,6 @@ var _ = Describe("Items", func() {
 			Expect(rec.albums.SearchQuery).To(BeEmpty())
 		})
 
-		It("reports a multi-type search total past the page, so clients keep paging", func() {
-			manySongs(defaultSearchLimit * 2)
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
-			code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&Limit=10", ctxUser())
-			Expect(code).To(Equal(http.StatusOK))
-			Expect(res.Items).To(HaveLen(10))
-			Expect(res.TotalRecordCount).To(BeNumerically(">", 10))
-		})
-
 		DescribeTable("bounds the multi-type search window however large StartIndex is",
 			func(startIndex int) {
 				putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
@@ -635,43 +626,60 @@ var _ = Describe("Items", func() {
 			Entry("near the int limit", math.MaxInt),
 		)
 
-		It("stops a multi-type search at the ceiling rather than serving another type's rows", func() {
-			// Bounding the per-type window is what keeps StartIndex from driving it without limit, and
-			// past that window the merged order is no longer the true one.
-			manySongs(maxSearchLimit + 1)
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
-			code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", maxSearchLimit), ctxUser())
-			Expect(code).To(Equal(http.StatusOK))
-			Expect(res.Items).To(BeEmpty())
-			Expect(res.TotalRecordCount).To(Equal(maxSearchLimit))
+		// The specs in each container only read, so they share one seeding of n songs and an album.
+		withSongsAndAnAlbum := func(n int, specs func(songs func() []string)) {
+			Describe(fmt.Sprintf("with %d matching songs and an album", n), Ordered, func() {
+				var songs []string
+				BeforeAll(func() {
+					ctx = GinkgoT().Context()
+					ds = persistence.New(db.Db())
+					songs = manySongs(n)
+					putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
+				})
+				specs(func() []string { return songs })
+			})
+		}
+
+		withSongsAndAnAlbum(maxSearchLimit+1, func(songs func() []string) {
+			It("stops a multi-type search at the ceiling rather than serving another type's rows", func() {
+				// Bounding the per-type window is what keeps StartIndex from driving it without limit, and
+				// past that window the merged order is no longer the true one.
+				code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", maxSearchLimit), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(BeEmpty())
+				Expect(res.TotalRecordCount).To(Equal(maxSearchLimit))
+			})
+
+			It("serves the last page below the ceiling in full", func() {
+				code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=10", maxSearchLimit-1), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				// Clipped to the window; the interleaved album takes one slot, shifting this song in by one.
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs()[maxSearchLimit-2])))
+			})
 		})
 
-		It("serves the last page below the ceiling in full", func() {
-			songs := manySongs(maxSearchLimit + 1)
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
-			code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=10", maxSearchLimit-1), ctxUser())
-			Expect(code).To(Equal(http.StatusOK))
-			// Clipped to the window; the interleaved album takes one slot, shifting this song in by one.
-			Expect(res.Items).To(HaveLen(1))
-			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[maxSearchLimit-2])))
-		})
+		withSongsAndAnAlbum(defaultSearchLimit*2, func(songs func() []string) {
+			It("bounds an unbounded multi-type search to the default in total, not per type", func() {
+				code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(defaultSearchLimit))
+			})
 
-		It("bounds an unbounded multi-type search to the default in total, not per type", func() {
-			manySongs(defaultSearchLimit * 2)
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
-			code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song", ctxUser())
-			Expect(code).To(Equal(http.StatusOK))
-			Expect(res.Items).To(HaveLen(defaultSearchLimit))
-		})
+			It("pages an unbounded multi-type search past the default without dropping matches", func() {
+				code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d", defaultSearchLimit+50), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).ToNot(BeEmpty())
+				// The interleaved album takes one slot ahead of it, shifting this song in by one.
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs()[defaultSearchLimit+49])))
+			})
 
-		It("pages an unbounded multi-type search past the default without dropping matches", func() {
-			songs := manySongs(defaultSearchLimit * 2)
-			putAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
-			code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d", defaultSearchLimit+50), ctxUser())
-			Expect(code).To(Equal(http.StatusOK))
-			Expect(res.Items).ToNot(BeEmpty())
-			// The interleaved album takes one slot ahead of it, shifting this song in by one.
-			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs[defaultSearchLimit+49])))
+			It("reports a multi-type search total past the page, so clients keep paging", func() {
+				code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&Limit=10", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(10))
+				Expect(res.TotalRecordCount).To(BeNumerically(">", 10))
+			})
 		})
 
 		It("reports a search total beyond the fetched page instead of the page length", func() {
