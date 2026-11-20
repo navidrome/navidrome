@@ -15,7 +15,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -323,6 +323,7 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 	)
 
 	BeforeAll(func() {
+		persistencetest.Reset()
 		var err error
 		tmpDir, err = os.MkdirTemp("", "cache-test-*")
 		Expect(err).ToNot(HaveOccurred())
@@ -347,16 +348,12 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 			c.Plugins.AutoReload = false
 		})
 
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-cache-plugin",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+		})
 
 		// Create and start manager
 		manager = &Manager{

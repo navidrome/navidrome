@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/events"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,6 +18,8 @@ var _ = Describe("Manager", Ordered, func() {
 
 	BeforeAll(func() {
 		ctx = GinkgoT().Context()
+		persistencetest.Reset()
+		newTestDataStore(testManagerPlugins...)
 	})
 
 	Describe("Plugin Loading", func() {

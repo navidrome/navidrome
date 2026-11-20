@@ -9,7 +9,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -36,17 +35,15 @@ var _ = Describe("loadPluginWithConfig", func() {
 			c.DataFolder = conf.NewDir(dataDir)
 		})
 
-		repo := tests.CreateMockPluginRepo()
-		repo.Permitted = true
-		repo.SetData(model.Plugins{{
+		ds := newTestDataStore(model.Plugin{
 			ID:      "test-taskqueue",
 			Path:    dest,
 			SHA256:  hex.EncodeToString(hash[:]),
 			Enabled: false,
-		}})
+		})
 		manager = &Manager{
 			plugins:        make(map[string]*plugin),
-			ds:             &tests.MockDataStore{MockedPlugin: repo},
+			ds:             ds,
 			metrics:        noopMetricsRecorder{},
 			subsonicRouter: http.NotFoundHandler(),
 		}

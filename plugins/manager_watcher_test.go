@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +22,8 @@ var _ = Describe("Plugin Watcher", func() {
 		)
 
 		BeforeAll(func() {
-			ctx = GinkgoT().Context()
+			persistencetest.Reset()
+			ctx = adminContext(GinkgoT().Context())
 
 			// Create manager for watcher lifecycle tests (no plugin preloaded - tests copy plugin as needed)
 			manager, tmpDir = createTestManager(nil)
@@ -132,14 +133,9 @@ var _ = Describe("Plugin Watcher", func() {
 
 				conf.Update(func(c *conf.Options) { c.Plugins.AutoReload = true })
 
-				// Set up a mock DataStore for the auto-reload manager
-				mockPluginRepo := tests.CreateMockPluginRepo()
-				mockPluginRepo.Permitted = true
-				dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
-
 				autoReloadManager := &Manager{
 					plugins:        make(map[string]*plugin),
-					ds:             dataStore,
+					ds:             newTestDataStore(),
 					subsonicRouter: http.NotFoundHandler(),
 				}
 				err := autoReloadManager.Start(ctx)
