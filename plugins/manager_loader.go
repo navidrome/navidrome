@@ -20,13 +20,12 @@ import (
 
 // serviceContext provides dependencies needed by host service factories.
 type serviceContext struct {
-	pluginName       string
-	manager          *Manager
-	permissions      *Permissions
-	config           map[string]string
-	users            userAccess
-	allowedLibraries []int // Library IDs this plugin can access
-	allLibraries     bool  // If true, plugin can access all libraries
+	pluginName  string
+	manager     *Manager
+	permissions *Permissions
+	config      map[string]string
+	users       userAccess
+	libraries   libraryAccess
 }
 
 // baseCtx returns the manager's lifecycle context, for host services that
@@ -105,7 +104,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Library != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Library
-			service := newLibraryService(ctx.manager.ds, perm, ctx.allowedLibraries, ctx.allLibraries)
+			service := newLibraryService(ctx.manager.ds, perm, ctx.libraries)
 			return host.RegisterLibraryHostFunctions(service), nil, nil
 		},
 	},
@@ -137,7 +136,7 @@ var hostServices = []hostServiceEntry{
 			service := newMatcherService(
 				ctx.manager.ds, hasFilesystemPerm,
 				ctx.users,
-				newLibraryAccess(ctx.allowedLibraries, ctx.allLibraries),
+				ctx.libraries,
 			)
 			return host.RegisterMatcherHostFunctions(service), nil, nil
 		},
@@ -332,6 +331,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("parsing plugin libraries: %w", err)
 		}
 	}
+	libAccess := newLibraryAccess(allowedLibraries, p.AllLibraries)
 
 	// Open the .ndp package to get manifest and wasm bytes
 	pkg, err := openPackage(p.Path)
@@ -352,7 +352,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			if err != nil {
 				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 			}
-			mounts = buildMounts(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
+			mounts = buildMounts(ctx, libraries, libAccess, p.AllowWriteAccess)
 		}
 
 		if pkg.Manifest.HasStoragePermission() {
@@ -382,13 +382,12 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}()
 
 	svcCtx := &serviceContext{
-		pluginName:       p.ID,
-		manager:          m,
-		permissions:      pkg.Manifest.Permissions,
-		config:           pluginConfig,
-		users:            users,
-		allowedLibraries: allowedLibraries,
-		allLibraries:     p.AllLibraries,
+		pluginName:  p.ID,
+		manager:     m,
+		permissions: pkg.Manifest.Permissions,
+		config:      pluginConfig,
+		users:       users,
+		libraries:   libAccess,
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
@@ -443,7 +442,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		closers:      closers,
 		metrics:      m.metrics,
 		users:        users,
-		libraries:    newLibraryAccess(allowedLibraries, p.AllLibraries),
+		libraries:    libAccess,
 		fsConfig:     fsConfig,
 		lyricsSem:    make(chan struct{}, maxConcurrentLyricsCalls),
 	}

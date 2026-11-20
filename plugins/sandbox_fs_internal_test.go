@@ -27,7 +27,7 @@ var _ = Describe("buildMounts", func() {
 	})
 
 	It("mounts all libraries read-only by default", func() {
-		Expect(buildMounts(ctx, libraries, nil, true, false)).To(Equal([]mount{
+		Expect(buildMounts(ctx, libraries, newLibraryAccess(nil, true), false)).To(Equal([]mount{
 			{hostPath: "/music/library1", guestPath: "/libraries/1", readOnly: true},
 			{hostPath: "/music/library2", guestPath: "/libraries/2", readOnly: true},
 			{hostPath: "/music/library3", guestPath: "/libraries/3", readOnly: true},
@@ -35,21 +35,21 @@ var _ = Describe("buildMounts", func() {
 	})
 
 	It("mounts only the selected libraries", func() {
-		Expect(buildMounts(ctx, libraries, []int{1, 3}, false, false)).To(Equal([]mount{
+		Expect(buildMounts(ctx, libraries, newLibraryAccess([]int{1, 3}, false), false)).To(Equal([]mount{
 			{hostPath: "/music/library1", guestPath: "/libraries/1", readOnly: true},
 			{hostPath: "/music/library3", guestPath: "/libraries/3", readOnly: true},
 		}))
 	})
 
 	It("mounts writable when write access is granted", func() {
-		Expect(buildMounts(ctx, libraries, []int{2}, false, true)).To(Equal([]mount{
+		Expect(buildMounts(ctx, libraries, newLibraryAccess([]int{2}, false), true)).To(Equal([]mount{
 			{hostPath: "/music/library2", guestPath: "/libraries/2", readOnly: false},
 		}))
 	})
 
 	DescribeTable("mounts nothing",
 		func(libs model.Libraries, allowedIDs []int, allLibraries bool) {
-			Expect(buildMounts(ctx, libs, allowedIDs, allLibraries, false)).To(BeEmpty())
+			Expect(buildMounts(ctx, libs, newLibraryAccess(allowedIDs, allLibraries), false)).To(BeEmpty())
 		},
 		Entry("when no library matches", libraries, []int{99}, false),
 		Entry("when there are no libraries", model.Libraries(nil), []int{1}, false),
