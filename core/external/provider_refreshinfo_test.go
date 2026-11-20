@@ -9,9 +9,11 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/matcher"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -37,13 +39,11 @@ func (f *fakeBroker) sent() []events.Event {
 
 var _ = Describe("Provider - RefreshInfo", func() {
 	var (
-		ctx            context.Context
-		p              external.Provider
-		ds             *tests.MockDataStore
-		ag             *mockAgents
-		broker         *fakeBroker
-		mockArtistRepo *tests.MockArtistRepo
-		mockAlbumRepo  *tests.MockAlbumRepo
+		ctx    context.Context
+		p      external.Provider
+		ds     model.DataStore
+		ag     *mockAgents
+		broker *fakeBroker
 	)
 
 	expectArtistAgents := func() {
@@ -67,39 +67,37 @@ var _ = Describe("Provider - RefreshInfo", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = new(tests.MockDataStore)
+		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
 		broker = &fakeBroker{}
 		p = external.NewProvider(ds, ag, matcher.New(ds), broker)
-		mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
-		mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
 	})
 
 	It("repopulates an artist even when its info is fresh", func() {
 		fresh := time.Now()
-		mockArtistRepo.SetData(model.Artists{{
+		putArtists(ctx, ds, model.Artist{
 			ID: "ar-1", Name: "Test Artist", Biography: "stale", ExternalInfoUpdatedAt: &fresh,
-		}})
+		})
 		expectArtistAgents()
 
 		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(Succeed())
 
-		saved, err := mockArtistRepo.Get(ctx, "ar-1")
+		saved, err := ds.Artist().Get(ctx, "ar-1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(saved.Biography).To(Equal("Fresh Bio"))
 	})
 
 	It("repopulates an album even when its info is fresh", func() {
 		fresh := time.Now()
-		mockAlbumRepo.SetData(model.Albums{{
+		putAlbums(ctx, ds, model.Album{
 			ID: "al-1", Name: "Test Album", AlbumArtist: "Test Artist",
 			Description: "stale", ExternalInfoUpdatedAt: &fresh,
-		}})
+		})
 		expectAlbumAgents()
 
 		Expect(p.RefreshInfo(ctx, model.KindAlbumArtwork, "al-1")).To(Succeed())
 
-		saved, err := mockAlbumRepo.Get(ctx, "al-1")
+		saved, err := ds.Album().Get(ctx, "al-1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(saved.Description).To(Equal("Fresh Notes"))
 	})
@@ -113,7 +111,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 	})
 
 	It("broadcasts a RefreshResource naming the artist", func() {
-		mockArtistRepo.SetData(model.Artists{{ID: "ar-1", Name: "Test Artist"}})
+		putArtists(ctx, ds, model.Artist{ID: "ar-1", Name: "Test Artist"})
 		expectArtistAgents()
 
 		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(Succeed())
@@ -127,7 +125,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 	})
 
 	It("broadcasts a RefreshResource naming the album", func() {
-		mockAlbumRepo.SetData(model.Albums{{ID: "al-1", Name: "Test Album", AlbumArtist: "Test Artist"}})
+		putAlbums(ctx, ds, model.Album{ID: "al-1", Name: "Test Album", AlbumArtist: "Test Artist"})
 		expectAlbumAgents()
 
 		Expect(p.RefreshInfo(ctx, model.KindAlbumArtwork, "al-1")).To(Succeed())
@@ -139,11 +137,12 @@ var _ = Describe("Provider - RefreshInfo", func() {
 	})
 
 	It("does not broadcast when the artist cannot be loaded", func() {
-		mockArtistRepo.SetData(model.Artists{{ID: "ar-1", Name: "Test Artist"}})
+		putArtists(ctx, ds, model.Artist{ID: "ar-1", Name: "Test Artist"})
 		expectArtistAgents()
-		mockArtistRepo.SetError(true)
+		failing := persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore { return failingArtistDS{ds, errDBDown} })
+		p = external.NewProvider(failing, ag, matcher.New(failing), broker)
 
-		_ = p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")
+		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(MatchError(errDBDown))
 
 		Expect(broker.sent()).To(BeEmpty())
 	})
