@@ -11,10 +11,12 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +24,7 @@ import (
 var _ = Describe("Stream", func() {
 	var ctx context.Context
 	var api *Router
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var streamer *fakeMediaStreamer
 	var decider *fakeTranscodeDecider
 
@@ -33,7 +35,10 @@ var _ = Describe("Stream", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
+		putUser(ctx, ds, model.User{ID: testID("u1"), UserName: "alice"})
+		persistencetest.SetLibraries(ctx, ds, "/music1", "/music2")
+		Expect(ds.User().SetUserLibraries(ctx, testID("u1"), []int{1})).To(Succeed())
 		streamer = &fakeMediaStreamer{}
 		decider = &fakeTranscodeDecider{}
 		api = &Router{
@@ -44,9 +49,9 @@ var _ = Describe("Stream", func() {
 
 	Describe("getPlaybackInfo", func() {
 		It("returns a media source for an accessible track", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -63,9 +68,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
+			)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -104,9 +109,9 @@ var _ = Describe("Stream", func() {
 		}
 
 		It("advertises a Lyric stream for plugin/sidecar-sourced lyrics not embedded in the file", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
 				testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
 			}}
@@ -115,17 +120,17 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("advertises no Lyric stream when the pipeline finds nothing", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
 
 			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
 		})
 
 		It("advertises no Lyric stream when the lyrics endpoint would 404 (main lyric has no lines)", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
 				testID("s1"): {{Kind: "main", Lang: "eng"}},
 			}}
@@ -134,9 +139,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("doesn't duplicate the Lyric stream when lyrics are already embedded", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},
+			)
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
 				testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
 			}}
@@ -147,9 +152,9 @@ var _ = Describe("Stream", func() {
 		It("still returns 200 with a valid MediaSource and no Lyric stream when the lyrics pipeline errors", func() {
 			// Own ID: an erroring loader isn't cached, but a shared ID could still pick up
 			// another test's cached (non-error) result and mask this assertion.
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s-err"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s-err"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
 			api.lyrics = &fakeLyricsService{err: errors.New("boom")}
 
 			w := httptest.NewRecorder()
@@ -177,9 +182,9 @@ var _ = Describe("Stream", func() {
 				Eventually(doneCh).Should(BeClosed())
 			})
 
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Slow Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Slow Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
 			api.lyrics = &fakeLyricsService{
 				lyrics: map[string]model.LyricList{
 					testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "delayed"}}}},
@@ -197,9 +202,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("recovers panics in detached lyrics lookup and returns 200 without Lyric stream", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s-panic"), Title: "Panic Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s-panic"), Title: "Panic Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
 			api.lyrics = &fakeLyricsService{panicVal: "lyrics plugin crash"}
 
 			w := httptest.NewRecorder()
@@ -217,9 +222,9 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamAudio", func() {
 		It("invokes the transcode decider and streamer for an accessible track", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
 			streamer.content = "audio-bytes"
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
@@ -233,9 +238,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
+			)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -258,9 +263,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("converts the bps audioBitRate param to kbps", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiobitrate=320000", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -270,9 +275,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("uses the audioCodec param as target format when no container is given", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiocodec=aac", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -282,9 +287,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 500 and logs when the streamer fails", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
 			streamer.err = errors.New("boom")
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
@@ -297,9 +302,9 @@ var _ = Describe("Stream", func() {
 
 	Describe("HEAD requests", func() {
 		head := func(query string) *httptest.ResponseRecorder {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			)
 			streamer.content = "audio-bytes"
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodHead, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?"+query, nil).WithContext(ctxUser())
@@ -327,9 +332,9 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamUniversal", func() {
 		universal := func(query string) {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
+			)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/universal?"+query, nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
@@ -374,9 +379,9 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamHls", func() {
 		BeforeEach(func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "dsf", Duration: 100.5, LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "dsf", Duration: 100.5, LibraryID: 1},
+			)
 		})
 
 		hls := func(query string, ctx context.Context) *httptest.ResponseRecorder {
@@ -429,23 +434,23 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "dsf", LibraryID: 2},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "dsf", LibraryID: 2},
+			)
 			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
 		})
 
 		It("returns 404 when the id doesn't match any media file", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{})
+			Expect(ds.MediaFile().Delete(ctx, testID("s1"))).To(Succeed())
 			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
 	Describe("streamFile", func() {
 		It("invokes the decider with a raw/direct-play request and the streamer for an accessible track", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
 			streamer.content = "audio-bytes"
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser())
@@ -460,9 +465,9 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
-			})
+			putSongs(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
+			)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
