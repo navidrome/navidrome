@@ -1091,6 +1091,28 @@ var _ = Describe("Decider", func() {
 				Entry("a supported bound is kept", ComparisonLessThanEqual, []string{"32000"}, 32000),
 			)
 
+			It("drops the profile when a later limit lowers the rate below an earlier one", func() {
+				// <= 40000 lowers 44100 to 40000, then to 32000 for LAME, which breaks >= 33000
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 192,
+					TranscodingProfiles: []Profile{
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+					CodecProfiles: []CodecProfile{{
+						Type: CodecProfileTypeAudio,
+						Name: "mp3",
+						Limitations: []Limitation{
+							{Name: LimitationAudioSamplerate, Comparison: ComparisonGreaterThanEqual, Values: []string{"33000"}},
+							{Name: LimitationAudioSamplerate, Comparison: ComparisonLessThanEqual, Values: []string{"40000"}},
+						},
+					}},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeFalse())
+			})
+
 			It("caps sample rate at 96000 for AAC", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 352800, BitDepth: new(8)})
 				ci := &ClientInfo{

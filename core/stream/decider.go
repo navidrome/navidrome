@@ -418,6 +418,19 @@ func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrat
 			}
 		}
 	}
+	// A later limitation can lower a value below a bound an earlier one
+	// accepted, so check the final values against every limitation once more.
+	for codecProfile := range audioCodecProfiles(clientInfo, targetCodec) {
+		for _, lim := range codecProfile.Limitations {
+			check := *ts
+			if applyLimitation(sourceBitrate, &lim, &check) != adjustNone {
+				log.Trace(ctx, "Skipping transcoding profile: codec limitations conflict",
+					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name,
+					"comparison", lim.Comparison, "values", lim.Values)
+				return false
+			}
+		}
+	}
 	return true
 }
 
