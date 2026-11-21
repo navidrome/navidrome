@@ -7,7 +7,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -33,7 +32,6 @@ var _ = Describe("Playlist", func() {
 			}
 		})
 		It("generates the correct M3U format", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
 			expected := `#EXTM3U
 #PLAYLIST:Mellow sunset
 #EXTINF:378,Morcheeba feat. Kurt Wagner - What New York Couples Fight About
@@ -45,7 +43,7 @@ var _ = Describe("Playlist", func() {
 #EXTINF:164,Legião Urbana - On the Way Home
 /music/library/Legião Urbana/Música p_ acampamentos/02-05 On the Way Home.mp3
 `
-			Expect(pls.ToM3U8()).To(Equal(expected))
+			Expect(pls.ToM3U8()).To(Equal(filepath.FromSlash(expected)))
 		})
 	})
 
