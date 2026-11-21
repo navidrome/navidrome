@@ -1,7 +1,7 @@
 name: Review attestation label
 on:
   pull_request_target:
-    types: [opened, edited, reopened]
+    types: [opened, edited, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
             const issue = { ...context.repo, issue_number: context.payload.pull_request.number };
             // Re-read the PR so a queued run never acts on a stale event payload.
             const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: issue.issue_number });
-            if (nonAgentBots.includes(pr.user.login)) return;
+            if (pr.draft || nonAgentBots.includes(pr.user.login)) return;
 
             const body = (pr.body ?? '')
               .replace(/<!--[\s\S]*?-->/g, '')
