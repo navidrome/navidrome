@@ -32,6 +32,21 @@ const useStyle = makeStyles(
           display: 'none',
         },
       },
+      '@media screen and (max-width:1020px)': {
+        '& .music-player-panel .panel-content': {
+          padding: '0 12px',
+        },
+        '& .music-player-panel .panel-content .player-content': {
+          paddingLeft: '8px',
+        },
+        '& .music-player-panel .panel-content .player-content > .group': {
+          margin: '0 5px',
+        },
+        '& .music-player-panel .panel-content .player-content .play-sounds .sounds-icon':
+          {
+            marginRight: 0,
+          },
+      },
       '@media (prefers-reduced-motion)': {
         '& .music-player-panel .panel-content div.img-rotate': {
           animation: 'none',

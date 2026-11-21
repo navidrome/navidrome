@@ -725,6 +725,14 @@
       "orderLoop": "Repeat",
       "singleLoop": "Repeat One",
       "shufflePlay": "Shuffle"
+    },
+    "cast": {
+      "castToDevice": "Cast to Chromecast",
+      "connecting": "Connecting to Chromecast…",
+      "connected": "Chromecast connected",
+      "castingTo": "Chromecast · %{device}",
+      "stopCasting": "Stop casting",
+      "stopCastingDevice": "Stop casting to %{device}"
     }
   },
   "about": {

@@ -33,6 +33,7 @@ const (
 	AudienceJellyfin = "jellyfin"
 	AudienceSubsonic = "subsonic"
 	AudienceNative   = "native"
+	AudienceCast     = "cast"
 )
 
 // Init creates the JWTAuth objects from the secrets stored in the DB.

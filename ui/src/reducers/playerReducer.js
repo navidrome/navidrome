@@ -12,6 +12,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_SET_MODE,
   PLAYER_REFRESH_QUEUE,
+  PLAYER_CAST_CURRENT,
 } from '../actions'
 import config from '../config'
 
@@ -100,6 +101,8 @@ const mapToAudioLists = (item) => {
 
 const reduceClearQueue = (state) => ({
   ...initialState,
+  queue: [],
+  current: {},
   mode: state.mode,
   clear: true,
 })
@@ -130,7 +133,7 @@ const reduceSetTrack = (state, { data }) => {
 }
 
 const reduceAddTracks = (state, { data }) => {
-  const queue = state.queue
+  const queue = [...state.queue]
   Object.keys(data).forEach((id) => {
     queue.push(mapToAudioLists(data[id]))
   })
@@ -205,6 +208,15 @@ const reduceCurrent = (state, { data }) => {
   }
 }
 
+const reduceCastCurrent = (state, { data }) => ({
+  ...state,
+  current: data,
+  playIndex: undefined,
+  clear: false,
+  savedPlayIndex: state.queue.findIndex((item) => item.uuid === data.uuid),
+  volume: data.volume,
+})
+
 const reduceMode = (state, { data: { mode } }) => {
   return {
     ...state,
@@ -231,6 +243,8 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceSyncQueue(previousState, payload)
     case PLAYER_CURRENT:
       return reduceCurrent(previousState, payload)
+    case PLAYER_CAST_CURRENT:
+      return reduceCastCurrent(previousState, payload)
     case PLAYER_SET_MODE:
       return reduceMode(previousState, payload)
     case PLAYER_REFRESH_QUEUE: {

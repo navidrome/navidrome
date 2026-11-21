@@ -9,6 +9,7 @@ import { LoveButton, useToggleLove } from '../common'
 import { openSaveQueueDialog } from '../actions'
 import { keyMap } from '../hotkeys'
 import { makeStyles } from '@material-ui/core/styles'
+import { CastButton, useCast } from './cast'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -61,6 +62,7 @@ const PlayerToolbar = ({ id, isRadio }) => {
   const [toggleLove, toggling] = useToggleLove('song', data)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const classes = useStyles()
+  const { castAvailable } = useCast()
 
   const handlers = {
     TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
@@ -99,16 +101,28 @@ const PlayerToolbar = ({ id, isRadio }) => {
     />
   )
 
+  const castButton = castAvailable ? (
+    <CastButton
+      size={isDesktop ? 'small' : undefined}
+      className={buttonClass}
+      iconClassName={!isDesktop ? classes.mobileIcon : undefined}
+    />
+  ) : null
+
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {isDesktop ? (
         <li className={`${listItemClass} item`}>
+          {castButton}
           {saveQueueButton}
           {loveButton}
         </li>
       ) : (
         <>
+          {castButton && (
+            <li className={`${listItemClass} item`}>{castButton}</li>
+          )}
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
         </>

@@ -9,6 +9,7 @@ export const PLAYER_SET_VOLUME = 'PLAYER_SET_VOLUME'
 export const PLAYER_SET_MODE = 'PLAYER_SET_MODE'
 export const TRANSCODING_SET_PROFILE = 'TRANSCODING_SET_PROFILE'
 export const PLAYER_REFRESH_QUEUE = 'PLAYER_REFRESH_QUEUE'
+export const PLAYER_CAST_CURRENT = 'PLAYER_CAST_CURRENT'
 
 export const setTrack = (data) => ({
   type: PLAYER_SET_TRACK,
@@ -92,6 +93,13 @@ export const clearQueue = () => ({
 
 export const currentPlaying = (audioInfo) => ({
   type: PLAYER_CURRENT,
+  data: audioInfo,
+})
+
+// Track reported by a Cast receiver that kept playing while this page was
+// closed: it wins over the selection restored from storage on page load.
+export const castCurrentPlaying = (audioInfo) => ({
+  type: PLAYER_CAST_CURRENT,
   data: audioInfo,
 })
 

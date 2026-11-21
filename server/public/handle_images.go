@@ -74,14 +74,13 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeArtworkID(tokenString string) (model.ArtworkID, error) {
-	token, err := auth.PublicTokenAuth.Decode(tokenString)
+	c, err := auth.ValidatePublic(tokenString)
 	if err != nil {
 		return model.ArtworkID{}, err
 	}
-	if token == nil {
-		return model.ArtworkID{}, errors.New("unauthorized")
+	if len(c.Audience) > 0 {
+		return model.ArtworkID{}, auth.ErrWrongAudience
 	}
-	c := auth.ClaimsFromToken(token)
 	if c.ID == "" {
 		return model.ArtworkID{}, errors.New("required claim \"id\" not found")
 	}
