@@ -8,11 +8,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -20,13 +22,12 @@ import (
 var _ = Describe("authenticate middleware", func() {
 	var ctx context.Context
 	var api *Router
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		ur := ds.User().(*tests.MockedUserRepo)
-		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		Expect(ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
@@ -102,9 +103,9 @@ var _ = Describe("authenticate middleware", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			ur := ds.User().(*tests.MockedUserRepo)
 			usr = &model.User{ID: testID("u2"), UserName: "bob", NewPassword: "secret", TokenEpoch: 3}
-			Expect(ur.Put(ctx, usr)).To(Succeed())
+			Expect(ds.User().Put(ctx, usr)).To(Succeed())
+			setTokenEpoch(usr.ID, 3)
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {
@@ -127,7 +128,7 @@ var _ = Describe("authenticate middleware", func() {
 		It("rejects a token whose epoch is stale", func() {
 			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
 			Expect(err).ToNot(HaveOccurred())
-			usr.TokenEpoch = 4
+			setTokenEpoch(usr.ID, 4)
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
 		})
 
@@ -151,7 +152,7 @@ var _ = Describe("withPlayer middleware", func() {
 
 	BeforeEach(func() {
 		players = &fakePlayers{}
-		api = &Router{ds: &tests.MockDataStore{}, players: players}
+		api = &Router{ds: struct{ model.DataStore }{}, players: players}
 	})
 
 	callWith := func() (model.Player, model.Transcoding, bool) {

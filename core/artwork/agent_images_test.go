@@ -13,8 +13,9 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/str"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -65,7 +66,7 @@ func imageAgents(fakes ...*fakeImageAgent) *agents.Agents {
 		names = append(names, fake.name)
 	}
 	conf.Update(func(c *conf.Options) { c.Agents = strings.Join(names, ",") })
-	return agents.GetAgents(&tests.MockDataStore{}, nil)
+	return agents.GetAgents(persistence.New(db.Db()), nil)
 }
 
 var _ = Describe("agent images", func() {

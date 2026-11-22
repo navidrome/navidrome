@@ -30,10 +30,7 @@ var _ = Describe("helpers", func() {
 	Describe("fakePath", func() {
 		var mf model.MediaFile
 		BeforeEach(func() {
-			mf.AlbumArtist = "Brock Berrigan"
-			mf.Album = "Point Pleasant"
-			mf.Title = "Split Decision"
-			mf.Suffix = "flac"
+			mf = model.MediaFile{AlbumArtist: "Brock Berrigan", Album: "Point Pleasant", Title: "Split Decision", Suffix: "flac"}
 		})
 		When("TrackNumber is not available", func() {
 			It("does not add any number to the filename", func() {

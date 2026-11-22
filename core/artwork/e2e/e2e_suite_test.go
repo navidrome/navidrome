@@ -65,23 +65,6 @@ func runWorkerUntil(ctx context.Context, worker *artwork.Worker, until func() bo
 	Eventually(done, 2*time.Second).Should(Receive(BeNil()))
 }
 
-type fakeFolderRepo struct {
-	model.FolderRepository
-	result []model.Folder
-}
-
-func (f *fakeFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
-	return f.result, nil
-}
-
-func (f *fakeFolderRepo) HasAudioOutsideFolders(context.Context, model.Folder, []string) (bool, error) {
-	return false, nil
-}
-
-func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
-	return nil, model.ErrNotFound
-}
-
 func writeUpload(entityType, name, srcFixture string) string {
 	GinkgoHelper()
 	dst := model.UploadedImagePath(entityType, name)

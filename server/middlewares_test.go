@@ -15,9 +15,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -365,7 +366,7 @@ var _ = Describe("middlewares", func() {
 			middleware     func(next http.Handler) http.Handler
 			req            *http.Request
 			ctx            context.Context
-			ds             *tests.MockDataStore
+			ds             model.DataStore
 			id             string
 			lastAccessTime time.Time
 		)
@@ -377,8 +378,8 @@ var _ = Describe("middlewares", func() {
 		BeforeEach(func() {
 			ctx = GinkgoT().Context()
 			id = uuid.NewString()
-			ds = &tests.MockDataStore{}
-			lastAccessTime = time.Now()
+			ds = persistence.New(db.Db())
+			lastAccessTime = time.Now().Add(-time.Hour)
 			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
 				To(Succeed())
 
@@ -401,14 +402,14 @@ var _ = Describe("middlewares", func() {
 
 				callMiddleware(req)
 
-				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				user, _ := ds.User().FindByUsername(ctx, "johndoe")
 				Expect(*user.LastAccessAt).To(BeTemporally(">", lastAccessTime, time.Second))
 			})
 
 			It("skip fast successive requests", func() {
 				// First request
 				callMiddleware(req)
-				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				user, _ := ds.User().FindByUsername(ctx, "johndoe")
 				lastAccessTime = *user.LastAccessAt // Store the last access time
 
 				// Second request
@@ -416,8 +417,8 @@ var _ = Describe("middlewares", func() {
 				callMiddleware(req)
 
 				// The second request should not have changed the last access time
-				user, _ = ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(user.LastAccessAt).To(Equal(&lastAccessTime))
+				user, _ = ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*user.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 		Context("when the request has no user", func() {
@@ -425,8 +426,8 @@ var _ = Describe("middlewares", func() {
 				req = req.WithContext(ctx)
 				callMiddleware(req)
 
-				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+				usr, _ := ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*usr.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 		Context("when the request is an internal call (e.g. from a plugin)", func() {
@@ -447,8 +448,8 @@ var _ = Describe("middlewares", func() {
 
 				callMiddleware(req)
 
-				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+				usr, _ := ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*usr.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 	})

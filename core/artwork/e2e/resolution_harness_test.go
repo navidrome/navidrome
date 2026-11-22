@@ -30,6 +30,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
@@ -50,7 +51,7 @@ const (
 
 var (
 	rctx    context.Context
-	rds     *tests.MockDataStore
+	rds     model.DataStore
 	rstore  *artwork.ImageStore
 	rsvc    artwork.Artwork
 	rworker *artwork.Worker
@@ -74,7 +75,9 @@ var _ = BeforeSuite(func() {
 	db.Db().SetMaxOpenConns(1)
 	db.Init(request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", IsAdmin: true}))
 
-	userTables = harness.ResettableTables()
+	var err error
+	userTables, err = persistencetest.Tables()
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -99,7 +102,7 @@ func setupResolutionHarness() {
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
 	harness.TruncateDB(userTables)
 
-	rds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	rds = persistence.New(db.Db())
 
 	adminUser := model.User{ID: "admin-1", UserName: "admin", Name: "Admin", IsAdmin: true, NewPassword: "password"}
 	Expect(rds.User().Put(rctx, &adminUser)).To(Succeed())

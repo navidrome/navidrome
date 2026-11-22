@@ -3,6 +3,7 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"errors"
 	"image"
 	"io"
 	"os"
@@ -11,7 +12,9 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
@@ -22,13 +25,8 @@ import (
 var _ = Describe("Artwork", func() {
 	var (
 		ctx        context.Context
-		ds         *tests.MockDataStore
-		artRepo    *tests.MockArtworkRepo
-		queueRepo  *tests.MockArtworkQueueRepo
-		albumRepo  *tests.MockAlbumRepo
-		mfRepo     *tests.MockMediaFileRepo
-		folderRepo *fakeFolderRepo
-		libRepo    *tests.MockLibraryRepo
+		ds         model.DataStore
+		artRepo    model.ArtworkRepository
 		ffm        *tests.MockFFmpeg
 		store      *ImageStore
 		imgCache   cache.FileCache
@@ -38,7 +36,18 @@ var _ = Describe("Artwork", func() {
 		seedEntity func(kind, id string)
 	)
 
-	primaryKey := func(kind, id string) string { return kind + "|" + id + "|" + model.ImageTypePrimary }
+	queuedPriority := func(kind, id string) int {
+		GinkgoHelper()
+		it := queued(ctx, ds, kind, id)
+		Expect(it).ToNot(BeNil(), "%s-%s must be queued", kind, id)
+		return it.Priority
+	}
+
+	setImagesUpdatedAt := func(folderID string, t time.Time) {
+		GinkgoHelper()
+		_, err := db.Db().Exec("UPDATE folder SET images_updated_at = ? WHERE id = ?", t, folderID)
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	seedFoundStore := func(kind, id string, imgBytes []byte) string {
 		hash, err := hashImage(bytes.NewReader(imgBytes))
@@ -50,14 +59,19 @@ var _ = Describe("Artwork", func() {
 		return hash
 	}
 
-	// Without its owning entity, a state row is not served at all.
+	// Without its owning entity, a state row is not served at all. An entity a spec already
+	// stored is kept as is.
 	seedEntity = func(kind, id string) {
 		GinkgoHelper()
 		switch kind {
 		case "al":
-			Expect(albumRepo.Put(ctx, &model.Album{ID: id, Name: "Album"})).To(Succeed())
+			if _, err := ds.Album().Get(ctx, id); errors.Is(err, model.ErrNotFound) {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: id, Name: "Album"})
+			}
 		case "mf":
-			Expect(mfRepo.Put(ctx, &model.MediaFile{ID: id})).To(Succeed())
+			if _, err := ds.MediaFile().Get(ctx, id); errors.Is(err, model.ErrNotFound) {
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: id, Path: id + ".mp3"})
+			}
 		}
 	}
 
@@ -85,21 +99,9 @@ var _ = Describe("Artwork", func() {
 			c.CacheFolder = conf.NewDir(GinkgoT().TempDir())
 		})
 
-		artRepo = tests.CreateMockArtworkRepo()
-		queueRepo = tests.CreateMockArtworkQueueRepo()
-		albumRepo = tests.CreateMockAlbumRepo()
-		mfRepo = tests.CreateMockMediaFileRepo()
-		folderRepo = &fakeFolderRepo{}
-		libRepo = &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		ds = &tests.MockDataStore{
-			MockedArtwork:      artRepo,
-			MockedArtworkQueue: queueRepo,
-			MockedAlbum:        albumRepo,
-			MockedMediaFile:    mfRepo,
-			MockedFolder:       folderRepo,
-			MockedLibrary:      libRepo,
-		}
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
+		artRepo = ds.Artwork()
 		ffm = tests.NewMockFFmpeg("")
 		store = NewImageStore(GinkgoT().TempDir())
 		imgCache = cache.NewFileCache("ServingTest", "100MB", "images", 0,
@@ -172,7 +174,7 @@ var _ = Describe("Artwork", func() {
 
 			_, err := svc.Get(ctx, tests.MustParseArtworkID("al-alni"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data[primaryKey("al", "alni")].Priority).To(Equal(model.ArtworkPriorityScan))
+			Expect(queuedPriority("al", "alni")).To(Equal(model.ArtworkPriorityScan))
 		})
 
 		It("refuses a non-image file-backed row even when a resized copy is already cached", func() {
@@ -203,7 +205,7 @@ var _ = Describe("Artwork", func() {
 
 			_, err = svc.Get(ctx, tests.MustParseArtworkID("al-alnic"), 100, false)
 			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data[primaryKey("al", "alnic")].Priority).To(Equal(model.ArtworkPriorityScan))
+			Expect(queuedPriority("al", "alnic")).To(Equal(model.ArtworkPriorityScan))
 		})
 
 		It("treats a full-size mtime mismatch as dangling: unavailable, re-enqueued at Scan, state untouched", func() {
@@ -219,7 +221,7 @@ var _ = Describe("Artwork", func() {
 
 			_, err := svc.Get(ctx, tests.MustParseArtworkID("al-al3"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data[primaryKey("al", "al3")].Priority).To(Equal(model.ArtworkPriorityScan))
+			Expect(queuedPriority("al", "al3")).To(Equal(model.ArtworkPriorityScan))
 			ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(Equal("bbbbbbbbbbbbbbbb"))
@@ -238,16 +240,17 @@ var _ = Describe("Artwork", func() {
 
 			_, err := svc.Get(ctx, tests.MustParseArtworkID("al-al3b"), 100, false)
 			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data[primaryKey("al", "al3b")].Priority).To(Equal(model.ArtworkPriorityScan))
+			Expect(queuedPriority("al", "al3b")).To(Equal(model.ArtworkPriorityScan))
 		})
 
 		// State rows outlive a deleted entity until the next prune.
 		It("refuses to serve a found row whose entity is gone", func() {
 			hash := seedFoundStore("al", "alzz", coverBytes)
 			Expect(hash).ToNot(BeEmpty())
-			albumRepo.SetData(model.Albums{}) // the album is deleted; its artwork row survives
+			_, err := db.Db().Exec("DELETE FROM album WHERE id = ?", "alzz") // its artwork row survives
+			Expect(err).ToNot(HaveOccurred())
 
-			_, err := svc.Get(ctx, tests.MustParseArtworkID("al-alzz"), 0, false)
+			_, err = svc.Get(ctx, tests.MustParseArtworkID("al-alzz"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 		})
 
@@ -258,31 +261,30 @@ var _ = Describe("Artwork", func() {
 
 			_, err := svc.Get(ctx, tests.MustParseArtworkID("al-al4"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data).To(BeEmpty())
+			Expect(queueCount(ctx, ds)).To(BeZero())
 		})
 	})
 
 	Describe("provisional read-through", func() {
 		It("serves local folder art, enqueues a Bump, and writes no state row", func() {
-			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
-			albumRepo.SetData(model.Albums{{ID: "al5", Name: "Album", FolderIDs: []string{"f1"}}})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al5", Name: "Album", FolderIDs: []string{fid}})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("al-al5"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
 
-			Expect(queueRepo.Data[primaryKey("al", "al5")].Priority).To(Equal(model.ArtworkPriorityBump))
+			Expect(queuedPriority("al", "al5")).To(Equal(model.ArtworkPriorityBump))
 			_, err = artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
 		It("returns ErrUnavailable and enqueues a Bump when nothing local resolves", func() {
-			folderRepo.result = nil
-			albumRepo.SetData(model.Albums{{ID: "al6", Name: "Album"}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al6", Name: "Album"})
 
 			_, err := svc.Get(ctx, tests.MustParseArtworkID("al-al6"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data[primaryKey("al", "al6")].Priority).To(Equal(model.ArtworkPriorityBump))
+			Expect(queuedPriority("al", "al6")).To(Equal(model.ArtworkPriorityBump))
 			_, err = artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
@@ -301,7 +303,7 @@ var _ = Describe("Artwork", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			seedFoundStore("mf", "mf7", []byte("stale embedded track art"))
 			seedFoundStore("al", "albz", coverBytes)
-			mfRepo.SetData(model.MediaFiles{{ID: "mf7", AlbumID: "albz"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf7", AlbumID: "albz", Path: "mf7.mp3"})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf7"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -311,47 +313,44 @@ var _ = Describe("Artwork", func() {
 		It("delegates to the album when the track's state is absent", func() {
 			seedFoundStore("al", "albm", coverBytes)
 			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "mf", ItemID: "mf2"})).To(Succeed())
-			mfRepo.SetData(model.MediaFiles{{ID: "mf2", AlbumID: "albm"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", AlbumID: "albm", Path: "mf2.mp3"})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf2"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
-			_, mfEnq := queueRepo.Data[primaryKey("mf", "mf2")]
-			Expect(mfEnq).To(BeFalse())
+			Expect(queued(ctx, ds, "mf", "mf2")).To(BeNil())
 		})
 
 		It("delegates to the album (no enqueue) when the track is not embedded-eligible", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			seedFoundStore("al", "albn", coverBytes)
-			mfRepo.SetData(model.MediaFiles{{ID: "mf3", AlbumID: "albn", HasCoverArt: false}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf3", AlbumID: "albn", Path: "mf3.mp3", HasCoverArt: false})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf3"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
-			_, mfEnq := queueRepo.Data[primaryKey("mf", "mf3")]
-			Expect(mfEnq).To(BeFalse())
+			Expect(queued(ctx, ds, "mf", "mf3")).To(BeNil())
 		})
 
 		It("extracts embedded art provisionally and enqueues the track when eligible", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
-			mfRepo.SetData(model.MediaFiles{{
-				ID: "mf4", AlbumID: "albo", HasCoverArt: true,
-				Path: "tests/fixtures/artist/an-album/test.mp3", LibraryID: 0,
-			}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{
+				ID: "mf4", AlbumID: "albo", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3",
+			})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf4"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).ToNot(BeEmpty())
-			Expect(queueRepo.Data[primaryKey("mf", "mf4")].Priority).To(Equal(model.ArtworkPriorityBump))
+			Expect(queuedPriority("mf", "mf4")).To(Equal(model.ArtworkPriorityBump))
 			_, err = artRepo.GetItemArtwork(ctx, model.KindMediaFileArtwork, "mf4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
 		It("delegates a multi-disc track to its disc art, not straight to the album", func() {
-			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
-			albumRepo.SetData(model.Albums{{ID: "aldd", Name: "Album", FolderIDs: []string{"f1"}, Discs: model.Discs{1: "One", 2: "Two"}}})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldd", Name: "Album", FolderIDs: []string{fid}, Discs: model.Discs{1: "One", 2: "Two"}})
 			seedFoundStore("al", "aldd", []byte("album-art-distinct")) // album's own found art differs
-			mfRepo.SetData(model.MediaFiles{{ID: "mf5", AlbumID: "aldd", DiscNumber: 1, HasCoverArt: false}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf5", AlbumID: "aldd", DiscNumber: 1, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf5"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -362,11 +361,10 @@ var _ = Describe("Artwork", func() {
 		It("falls back to the album when an eligible track's embedded art will not extract", func() {
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			// HasCoverArt is set, but the file is not audio, so nothing extracts.
-			mfRepo.SetData(model.MediaFiles{{
-				ID: "mfbad", AlbumID: "albad", LibraryID: 0, HasCoverArt: true,
-				Path: "tests/fixtures/artist/an-album/front.png",
-			}})
-			albumRepo.SetData(model.Albums{{ID: "albad", Name: "Album"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{
+				ID: "mfbad", AlbumID: "albad", HasCoverArt: true, Path: fixtureAlbumDir + "/front.png",
+			})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "albad", Name: "Album"})
 			seedFoundStore("al", "albad", coverBytes)
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mfbad"), 0, false)
@@ -376,10 +374,10 @@ var _ = Describe("Artwork", func() {
 
 		It("routes a single-disc track through disc resolution too", func() {
 			// DiscArtPriority applies to single-disc albums too, over the album's own found art.
-			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
-			albumRepo.SetData(model.Albums{{ID: "alsd", Name: "Album", FolderIDs: []string{"f1"}, Discs: model.Discs{1: ""}}})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alsd", Name: "Album", FolderIDs: []string{fid}, Discs: model.Discs{1: ""}})
 			seedFoundStore("al", "alsd", []byte("album-art-distinct"))
-			mfRepo.SetData(model.MediaFiles{{ID: "mf6", AlbumID: "alsd", DiscNumber: 1, HasCoverArt: false}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf6", AlbumID: "alsd", DiscNumber: 1, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: false})
 
 			img, err := svc.Get(ctx, tests.MustParseArtworkID("mf-mf6"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -389,8 +387,8 @@ var _ = Describe("Artwork", func() {
 
 	Describe("disc", func() {
 		It("serves a local disc-folder image", func() {
-			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
-			albumRepo.SetData(model.Albums{{ID: "aldc", Name: "Album", FolderIDs: []string{"f1"}}})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc", Name: "Album", FolderIDs: []string{fid}})
 
 			img, err := svc.Get(ctx, model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc", 1), nil), 0, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -400,8 +398,8 @@ var _ = Describe("Artwork", func() {
 		// The resize cache keys on id + album mtime, not on the bytes, so dropping the source
 		// between the two requests is what shows a warm hit never touches the filesystem.
 		It("serves a sized disc image from cache without re-reading the source", func() {
-			folderRepo.result = []model.Folder{{Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"}}}
-			albumRepo.SetData(model.Albums{{ID: "aldc3", Name: "Album", FolderIDs: []string{"f1"}}})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc3", Name: "Album", FolderIDs: []string{fid}})
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc3", 1), nil)
 
 			first, err := svc.Get(ctx, discID, 64, false)
@@ -409,7 +407,9 @@ var _ = Describe("Artwork", func() {
 			warmed := readAll(first)
 			Expect(warmed).ToNot(BeEmpty())
 
-			folderRepo.result = nil
+			// Unlisting the images leaves the cache key alone, so only a cache hit can still serve.
+			_, err = db.Db().Exec("UPDATE folder SET image_files = '[]' WHERE id = ?", fid)
+			Expect(err).ToNot(HaveOccurred())
 
 			second, err := svc.Get(ctx, discID, 64, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -418,11 +418,9 @@ var _ = Describe("Artwork", func() {
 
 		// A disc image can change without the album row changing, so the key folds in ImagesUpdatedAt.
 		It("invalidates the cached image when the folder's images change", func() {
-			folderRepo.result = []model.Folder{{
-				Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"},
-				ImagesUpdatedAt: time.Now().Add(-time.Hour),
-			}}
-			albumRepo.SetData(model.Albums{{ID: "aldc4", Name: "Album", FolderIDs: []string{"f1"}}})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			setImagesUpdatedAt(fid, time.Now().Add(-time.Hour))
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc4", Name: "Album", FolderIDs: []string{fid}})
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc4", 1), nil)
 
 			first, err := svc.Get(ctx, discID, 64, false)
@@ -430,7 +428,7 @@ var _ = Describe("Artwork", func() {
 			firstKey := first.ETag
 			readAll(first)
 
-			folderRepo.result[0].ImagesUpdatedAt = time.Now()
+			setImagesUpdatedAt(fid, time.Now())
 			second, err := svc.Get(ctx, discID, 64, false)
 			Expect(err).ToNot(HaveOccurred())
 			readAll(second)
@@ -439,11 +437,9 @@ var _ = Describe("Artwork", func() {
 
 		// Disc art has no content hash, so without an explicit validator every ETag would be empty.
 		It("gives a full-size disc image a validator that tracks the source", func() {
-			folderRepo.result = []model.Folder{{
-				Path: "tests/fixtures/artist/an-album", ImageFiles: []string{"cover.jpg"},
-				ImagesUpdatedAt: time.Now().Add(-time.Hour),
-			}}
-			albumRepo.SetData(model.Albums{{ID: "aldc5", Name: "Album", FolderIDs: []string{"f1"}}})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			setImagesUpdatedAt(fid, time.Now().Add(-time.Hour))
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc5", Name: "Album", FolderIDs: []string{fid}})
 			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc5", 1), nil)
 
 			first, err := svc.Get(ctx, discID, 0, false)
@@ -451,7 +447,7 @@ var _ = Describe("Artwork", func() {
 			readAll(first)
 			Expect(first.ETag).ToNot(BeEmpty())
 
-			folderRepo.result[0].ImagesUpdatedAt = time.Now()
+			setImagesUpdatedAt(fid, time.Now())
 			second, err := svc.Get(ctx, discID, 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			readAll(second)
@@ -459,8 +455,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("falls back to album art when no disc image matches", func() {
-			folderRepo.result = nil
-			albumRepo.SetData(model.Albums{{ID: "aldc2", Name: "Album"}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "aldc2", Name: "Album"})
 			seedFoundStore("al", "aldc2", coverBytes)
 
 			img, err := svc.Get(ctx, model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc2", 1), nil), 0, false)
@@ -471,7 +466,7 @@ var _ = Describe("Artwork", func() {
 
 	Describe("GetOrPlaceholder", func() {
 		It("accepts a raw entity id and serves its cover art", func() {
-			albumRepo.SetData(model.Albums{{ID: "rawal", Name: "Album"}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "rawal", Name: "Album"})
 			seedFoundStore("al", "rawal", coverBytes)
 
 			img, err := svc.GetOrPlaceholder(ctx, "rawal", 0, false)
@@ -526,17 +521,14 @@ func fileMtime(path string) int64 {
 
 var _ = Describe("EntityExists", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		albumRepo := tests.CreateMockAlbumRepo()
-		albumRepo.SetData(model.Albums{{ID: "al1"}})
-		artistRepo := tests.CreateMockArtistRepo()
-		artistRepo.SetData(model.Artists{{ID: "ar1"}})
-		radioRepo := tests.CreateMockedRadioRepo()
-		Expect(radioRepo.Put(ctx, &model.Radio{ID: "ra1", Name: "R"})).To(Succeed())
-		ds = &tests.MockDataStore{MockedAlbum: albumRepo, MockedArtist: artistRepo, MockedRadio: radioRepo}
+		ds = newTestDS(ctx)
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album"})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist"})
+		putRadio(ctx, ds, model.Radio{ID: "ra1", Name: "R"})
 	})
 
 	DescribeTable("reports whether the owning entity is still there",

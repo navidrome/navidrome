@@ -10,7 +10,6 @@ import (
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -71,21 +70,6 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "storage-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		// Setup mock router and data store
-		router := &fakeSubsonicRouter{}
-		userRepo := tests.CreateMockUserRepo()
-		dataStore := &tests.MockDataStore{MockedUser: userRepo}
-
-		// Create and configure manager
-		manager = &Manager{
-			plugins: make(map[string]*plugin),
-			ds:      dataStore,
-		}
-		manager.SetSubsonicRouter(router)
-
-		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
-		mockPluginRepo.Permitted = true
-
 		// Setup config
 		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) {
@@ -108,7 +92,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			err = os.WriteFile(destPath, data, 0600)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Pre-enable the plugin in the mock repo so it loads on startup
+			// Pre-enable the plugin in the DB so it loads on startup
 			// Compute SHA256 of the plugin file to match what syncPlugins will compute
 			pluginPath := filepath.Join(tmpDir, path)
 			wasmData, err := os.ReadFile(pluginPath)
@@ -125,7 +109,12 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			})
 		}
 
-		mockPluginRepo.SetData(plugins)
+		// Create and configure manager
+		manager = &Manager{
+			plugins: make(map[string]*plugin),
+			ds:      newTestDataStore(plugins...),
+		}
+		manager.SetSubsonicRouter(&fakeSubsonicRouter{})
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())

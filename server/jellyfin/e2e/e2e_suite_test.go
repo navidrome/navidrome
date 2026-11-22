@@ -89,7 +89,7 @@ var (
 // Shared test state
 var (
 	ctx               context.Context
-	ds                *tests.MockDataStore
+	ds                model.DataStore
 	router            http.Handler
 	streamerSpy       *harness.SpyStreamer
 	artworkSpy        *spyArtwork
@@ -330,7 +330,7 @@ func setupTestDB() {
 
 	goldenDB.Restore()
 
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds = persistence.New(db.Db())
 	auth.Init(ds)
 
 	streamerSpy = &harness.SpyStreamer{}

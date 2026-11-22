@@ -11,12 +11,9 @@ import (
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -31,7 +28,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 	var (
 		manager   *Manager
 		tmpDir    string
-		dataStore *tests.MockDataStore
+		dataStore model.DataStore
 	)
 
 	p := func(val int64) *int64 {
@@ -52,13 +49,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "scrobble-retriever-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL") })
-
-		db.Init(ctx)
-		DeferCleanup(func() {
-			Expect(tests.ClearDB(ctx)).To(Succeed())
-		})
-		dataStore = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+		dataStore = newTestDataStore()
 
 		// Copy test plugin to temp dir
 		srcPath := filepath.Join(testdataDir, "test-scrobble-retriever"+PackageExtension)
@@ -116,7 +107,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		router := &fakeSubsonicRouter{}
 		manager.SetSubsonicRouter(router)
 
-		// Pre-enable the plugin in the mock repo so it loads on startup
+		// Pre-enable the plugin in the DB so it loads on startup
 		// Compute SHA256 of the plugin file to match what syncPlugins will compute
 		pluginPath := filepath.Join(tmpDir, "test-scrobble-retriever"+PackageExtension)
 		wasmData, err := os.ReadFile(pluginPath)
@@ -124,18 +115,13 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		hash := sha256.Sum256(wasmData)
 		hashHex := hex.EncodeToString(hash[:])
 
-		dataStore.MockedPlugin = tests.CreateMockPluginRepo()
-
-		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
-		mockPluginRepo.Permitted = true
-		enabledPlugin := model.Plugin{
+		newTestDataStore(model.Plugin{
 			ID:      "test-scrobble-retriever",
 			Path:    pluginPath,
 			SHA256:  hashHex,
 			Enabled: true,
 			Users:   `["user1","admin1"]`,
-		}
-		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
+		})
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())

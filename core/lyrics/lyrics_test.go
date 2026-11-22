@@ -4,12 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
@@ -179,18 +184,11 @@ var _ = Describe("Lyrics", func() {
 		embeddedJSON, err := json.Marshal(embeddedLyrics)
 		Expect(err).ToNot(HaveOccurred())
 
-		repo := &tests.MockMediaFileRepo{}
-		repo.SetData(model.MediaFiles{
-			{
-				Lyrics: string(embeddedJSON),
-				Path:   "tests/fixtures/01 Invisible (RED) Edit Version.mp3",
-			},
-			{
-				Lyrics: "[]",
-				Path:   "tests/fixtures/test.mp3",
-			},
-		})
-		svc := lyrics.NewLyrics(&tests.MockDataStore{MockedMediaFile: repo}, nil)
+		ds := persistence.New(db.Db())
+		useRepoRootAsLibrary(ctx, ds)
+		putRickAstleySong(ctx, ds, "tests/fixtures/01 Invisible (RED) Edit Version.mp3", string(embeddedJSON))
+		putRickAstleySong(ctx, ds, "tests/fixtures/test.mp3", "[]")
+		svc := lyrics.NewLyrics(ds, nil)
 
 		list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
 		Expect(err).ToNot(HaveOccurred())
@@ -438,26 +436,45 @@ var _ = Describe("Lyrics", func() {
 
 	var _ = Describe("GetLyricsByArtistTitle", func() {
 		var svc lyrics.Lyrics
-		var repo *tests.MockMediaFileRepo
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded" })
-			repo = &tests.MockMediaFileRepo{}
-			ds = &tests.MockDataStore{MockedMediaFile: repo}
+			ds = persistence.New(db.Db())
 			svc = lyrics.NewLyrics(ds, nil)
 		})
 
 		It("bounds the query to a duplicate window", func() {
-			repo.SetData(model.MediaFiles{})
-			_, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lrc" })
+			useRepoRootAsLibrary(ctx, ds)
+			var decoys []string
+			for i := range 10 {
+				decoys = append(decoys, putRickAstleySong(ctx, ds, fmt.Sprintf("missing/%02d.mp3", i), ""))
+			}
+			withSidecar := putRickAstleySong(ctx, ds, "tests/fixtures/test.mp3", "")
+			_, err := db.Db().Exec("UPDATE media_file SET updated_at = ? WHERE id = ?", time.Now().Add(-time.Hour), withSidecar)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(repo.Options.Max).To(Equal(10))
+
+			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(BeNil())
+
+			Expect(ds.MediaFile().Delete(ctx, decoys[0])).To(Succeed())
+			list, err = svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(syncedLyrics))
 		})
 
 		It("returns nil when no media file matches", func() {
-			repo.SetData(model.MediaFiles{})
-			list, err := svc.GetLyricsByArtistTitle(ctx, "Nobody", "No Song")
+			lyricsJSON, err := json.Marshal(embeddedLyrics)
+			Expect(err).ToNot(HaveOccurred())
+			putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
+
+			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "No Song")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(BeNil())
+
+			list, err = svc.GetLyricsByArtistTitle(ctx, "Nobody", "Never Gonna Give You Up")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(BeNil())
 		})
@@ -468,9 +485,7 @@ var _ = Describe("Lyrics", func() {
 			embedded, _ := embeddedList.Main()
 			embeddedJSON, err := json.Marshal(model.LyricList{embedded})
 			Expect(err).ToNot(HaveOccurred())
-			repo.SetData(model.MediaFiles{
-				{ID: "1", Title: "Never Gonna Give You Up", Lyrics: string(embeddedJSON)},
-			})
+			putRickAstleySong(ctx, ds, "song.mp3", string(embeddedJSON))
 
 			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
 			Expect(err).ToNot(HaveOccurred())
@@ -479,6 +494,30 @@ var _ = Describe("Lyrics", func() {
 		})
 	})
 })
+
+func useRepoRootAsLibrary(ctx context.Context, ds model.DataStore) {
+	GinkgoHelper()
+	root, err := os.Getwd()
+	Expect(err).ToNot(HaveOccurred())
+	persistencetest.SetLibraries(ctx, ds, root)
+}
+
+// putRickAstleySong stores "Never Gonna Give You Up" by Rick Astley at path and returns its ID.
+func putRickAstleySong(ctx context.Context, ds model.DataStore, path, lyrics string) string {
+	GinkgoHelper()
+	artist := model.Artist{ID: "ar-rick", Name: "Rick Astley"}
+	Expect(ds.Artist().Put(ctx, &artist)).To(Succeed())
+	mf := &model.MediaFile{
+		LibraryID:    model.DefaultLibraryID,
+		Path:         path,
+		Title:        "Never Gonna Give You Up",
+		Lyrics:       lyrics,
+		UpdatedAt:    time.Now(),
+		Participants: model.Participants{model.RoleArtist: {{Artist: artist}}},
+	}
+	Expect(ds.MediaFile().Put(ctx, mf)).To(Succeed())
+	return mf.ID
+}
 
 type mockPluginLoader struct {
 	lyrics      model.LyricList

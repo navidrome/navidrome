@@ -14,19 +14,21 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("serveIndex", func() {
 	var ds model.DataStore
-	mockUser := &mockedUserRepo{}
+	var ctx context.Context
 	fs := os.DirFS("tests/fixtures")
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{MockedUser: mockUser}
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 	})
 
 	It("adds app_config to index.html", func() {
@@ -41,7 +43,6 @@ var _ = Describe("serveIndex", func() {
 	})
 
 	It("sets firstTime = true when User table is empty", func() {
-		mockUser.empty = true
 		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
@@ -52,7 +53,7 @@ var _ = Describe("serveIndex", func() {
 	})
 
 	It("sets firstTime = false when User table is not empty", func() {
-		mockUser.empty = false
+		Expect(ds.User().Put(ctx, &model.User{UserName: "johndoe"})).To(Succeed())
 		r := httptest.NewRequest(http.MethodGet, "/index.html", nil)
 		w := httptest.NewRecorder()
 
@@ -334,16 +335,4 @@ func extractAppConfig(body string) map[string]any {
 	Expect(err).ToNot(HaveOccurred(), match[1])
 	Expect(json.Unmarshal([]byte(str), &config)).To(Succeed())
 	return config
-}
-
-type mockedUserRepo struct {
-	model.UserRepository
-	empty bool
-}
-
-func (u *mockedUserRepo) CountAll(context.Context, ...model.QueryOptions) (int64, error) {
-	if u.empty {
-		return 0, nil
-	}
-	return 1, nil
 }

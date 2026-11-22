@@ -9,7 +9,7 @@ import (
 	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"
@@ -19,7 +19,7 @@ var _ = Describe("OpenAPI document routes", func() {
 	var router *Router
 
 	BeforeEach(func() {
-		router = New(&tests.MockDataStore{})
+		router = New(struct{ model.DataStore }{})
 	})
 
 	get := func(path string, headers map[string]string) *httptest.ResponseRecorder {
@@ -93,7 +93,7 @@ var _ = Describe("OpenAPI document routes", func() {
 		BeforeEach(func() {
 			plainETag = get("/api/v1/openapi.json", nil).Header().Get("ETag")
 			conf.Update(func(c *conf.Options) { c.BasePath = "/music" })
-			router = New(&tests.MockDataStore{})
+			router = New(struct{ model.DataStore }{})
 		})
 
 		DescribeTable("advertises the server under the base path and changes nothing else",
@@ -118,7 +118,7 @@ var _ = Describe("OpenAPI document routes", func() {
 
 		It("escapes base paths that need quoting", func() {
 			conf.Update(func(c *conf.Options) { c.BasePath = "/my music: \"live\"" })
-			router = New(&tests.MockDataStore{})
+			router = New(struct{ model.DataStore }{})
 			Expect(serverURL(decode("json", get("/api/v1/openapi.json", nil).Body.Bytes()))).To(Equal("/my music: \"live\"/api/v1"))
 			Expect(serverURL(decode("yaml", get("/api/v1/openapi.yaml", nil).Body.Bytes()))).To(Equal("/my music: \"live\"/api/v1"))
 		})

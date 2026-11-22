@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -50,16 +53,16 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 var _ = Describe("getLyrics", func() {
 	var ctx context.Context
 	var api *Router
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var fake *fakeLyricsService
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
-		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: testID("s1"), Title: "Song", LibraryID: 1},
-			{ID: testID("s2"), Title: "Silent Song", LibraryID: 1},
-		})
+		ds = persistence.New(db.Db())
+		persistencetest.PutMediaFiles(ctx, ds,
+			model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1},
+			model.MediaFile{ID: testID("s2"), Title: "Silent Song", LibraryID: 1},
+		)
 		fake = &fakeLyricsService{lyrics: map[string]model.LyricList{}}
 		api = &Router{
 			ds:     ds,

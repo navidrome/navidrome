@@ -15,7 +15,9 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,8 +33,9 @@ var _ = Describe("listenBrainzAgent", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
-		_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
+		ds = persistence.New(db.Db())
+		Expect(ds.User().Put(ctx, &model.User{ID: "user-1", UserName: "user-1"})).To(Succeed())
+		Expect(ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")).To(Succeed())
 		httpClient = &tests.FakeHttpClient{}
 		agent = listenBrainzConstructor(ds)
 		agent.client = newClient("http://localhost:8080", httpClient)
@@ -484,7 +487,7 @@ var _ = Describe("register", func() {
 	var ds model.DataStore
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
+		ds = struct{ model.DataStore }{}
 		delete(agents.Map, listenBrainzAgentName)
 		scrobbler.Unregister(listenBrainzAgentName)
 	})

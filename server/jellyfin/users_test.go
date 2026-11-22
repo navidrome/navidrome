@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -19,9 +20,9 @@ import (
 var _ = Describe("Users", func() {
 	var ctx context.Context
 	var api *Router
-	// The repo holds the full rows; the user carries the id/name-only copy its projection returns.
+	// The DB holds the full rows; the user carries the id/name-only copy its projection returns.
 	authedWithLibraries := func(r *http.Request, libs model.Libraries) *http.Request {
-		api.ds.Library().(*tests.MockLibraryRepo).SetData(libs)
+		putLibraries(ctx, api.ds, libs)
 		stripped := make(model.Libraries, len(libs))
 		for i, lib := range libs {
 			stripped[i] = model.Library{ID: lib.ID, Name: lib.Name}
@@ -30,7 +31,7 @@ var _ = Describe("Users", func() {
 	}
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		api = &Router{ds: &tests.MockDataStore{}}
+		api = &Router{ds: persistence.New(db.Db())}
 	})
 
 	Describe("getUserViews", func() {
@@ -107,7 +108,6 @@ var _ = Describe("Users", func() {
 	})
 
 	Describe("getPublicUsers", func() {
-		var ur *tests.MockedUserRepo
 		publicUsers := func() []dto.UserDto {
 			w := httptest.NewRecorder()
 			api.getPublicUsers(w, httptest.NewRequest(http.MethodGet, "/Users/Public", nil))
@@ -118,9 +118,8 @@ var _ = Describe("Users", func() {
 		}
 
 		BeforeEach(func() {
-			ur = api.ds.User().(*tests.MockedUserRepo)
-			Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
-			Expect(ur.Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
+			Expect(api.ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
+			Expect(api.ds.User().Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
 		})
 
 		It("returns an empty list when the config is unset", func() {
@@ -155,3 +154,19 @@ var _ = Describe("Users", func() {
 		})
 	})
 })
+
+// putLibraries stores libs with their stats and creation dates, which Library().Put does not store.
+func putLibraries(ctx context.Context, ds model.DataStore, libs model.Libraries) {
+	GinkgoHelper()
+	for _, lib := range libs {
+		if lib.Path == "" {
+			lib.Path = "/" + lib.Name
+		}
+		if lib.ID != model.DefaultLibraryID {
+			Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
+		}
+		_, err := db.Db().Exec("UPDATE library SET name = ?, path = ?, total_albums = ?, created_at = ? WHERE id = ?",
+			lib.Name, lib.Path, lib.TotalAlbums, lib.CreatedAt, lib.ID)
+		Expect(err).ToNot(HaveOccurred())
+	}
+}

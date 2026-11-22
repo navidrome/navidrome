@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -43,22 +44,20 @@ func (m *mockArchiver) ZipShare(_ context.Context, _ *model.Share, w io.Writer) 
 }
 
 var _ = Describe("handleDownloads", func() {
-	var ds *tests.MockDataStore
-	var shareRepo *tests.MockShareRepo
+	var ctx context.Context
+	var ds model.DataStore
 	var archiver *mockArchiver
 	var pub *Router
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
-		shareRepo = &tests.MockShareRepo{}
-		ds.MockedShare = shareRepo
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 		archiver = &mockArchiver{}
 		pub = &Router{ds: ds, archiver: archiver, share: core.NewShare(ds)}
 	})
 
-	shareIs := func(s *model.Share) {
-		shareRepo.ID = s.ID
-		shareRepo.Entity = s
+	shareIs := func(s model.Share) {
+		putShare(ctx, ds, s)
 	}
 
 	makeRequest := func(id string) *httptest.ResponseRecorder {
@@ -69,7 +68,7 @@ var _ = Describe("handleDownloads", func() {
 	}
 
 	It("sets a Content-Disposition filename from the share description", func() {
-		shareIs(&model.Share{ID: "abc123", Description: "My Mixtape", Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Description: "My Mixtape", Downloadable: true})
 
 		w := makeRequest("abc123")
 
@@ -81,7 +80,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("falls back to the share ID when there is no description", func() {
-		shareIs(&model.Share{ID: "abc123", Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Downloadable: true})
 
 		w := makeRequest("abc123")
 
@@ -89,7 +88,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("sanitizes characters that are unsafe in a filename", func() {
-		shareIs(&model.Share{ID: "abc123", Description: `AC/DC: Live, 1979`, Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Description: `AC/DC: Live, 1979`, Downloadable: true})
 
 		w := makeRequest("abc123")
 
@@ -97,7 +96,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("sanitizes the UTF-8 filename* as well", func() {
-		shareIs(&model.Share{ID: "abc123", Description: "Sigur Rós/Live", Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Description: "Sigur Rós/Live", Downloadable: true})
 
 		w := makeRequest("abc123")
 
@@ -105,7 +104,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("does not let the share description inject a second filename parameter", func() {
-		shareIs(&model.Share{ID: "abc123", Description: `mix"; filename="evil.html`, Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Description: `mix"; filename="evil.html`, Downloadable: true})
 
 		w := makeRequest("abc123")
 
@@ -117,7 +116,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("returns 403 without invoking the archiver when the share is not downloadable", func() {
-		shareIs(&model.Share{ID: "abc123", Description: "No Download", Downloadable: false})
+		shareIs(model.Share{ID: "abc123", Description: "No Download", Downloadable: false})
 
 		w := makeRequest("abc123")
 
@@ -127,7 +126,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("returns 404 when the share does not exist", func() {
-		shareIs(&model.Share{ID: "other", Downloadable: true})
+		shareIs(model.Share{ID: "other", Downloadable: true})
 
 		w := makeRequest("missing")
 
@@ -136,7 +135,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("returns 410 when the share has expired", func() {
-		shareIs(&model.Share{ID: "abc123", Downloadable: true, ExpiresAt: new(time.Now().Add(-time.Hour))})
+		shareIs(model.Share{ID: "abc123", Downloadable: true, ExpiresAt: new(time.Now().Add(-time.Hour))})
 
 		w := makeRequest("abc123")
 
@@ -145,7 +144,8 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("returns 500 when the share lookup fails", func() {
-		shareRepo.Error = errors.New("db error")
+		ds = withShareGetError(ds, errors.New("db error"))
+		pub = &Router{ds: ds, archiver: archiver, share: core.NewShare(ds)}
 
 		w := makeRequest("abc123")
 
