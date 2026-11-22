@@ -24,7 +24,7 @@ For large or cross-cutting changes, agree on the design and a sequence of small,
 
 ## Review your work before opening a PR
 
-Before opening any pull request, including a draft, you must personally read and review the entire diff and the relevant surrounding code, understand the implementation, and verify the affected behavior. This applies when an AI agent writes the code or creates the PR for you. An agent's summary or review does not satisfy this requirement. Personally review each subsequent update and verify its effects before pushing it or asking an agent to push it.
+Before opening any pull request, including a draft, you must personally read and review the entire diff and the relevant surrounding code, understand the implementation, and verify the affected behavior. This applies when an AI agent writes the code or creates the PR for you. An agent's summary or review does not satisfy this requirement. Personally review each subsequent update and verify its effects before pushing it or asking an agent to push it. A PR that looks like unreviewed AI output may be closed without review.
 
 Check the assumptions behind the change. Explain the implementation and important tradeoffs in your own words. For code changes, personally test the affected functionality, add regression tests where practical, and report the commands run and results actually observed. Identify failures, untested cases, and limitations. If an automated test is impractical, explain why and provide manual verification steps.
 
@@ -37,6 +37,8 @@ AI tools may assist professional and hobbyist contributors. All code contributor
 AI-assisted work must meet the personal full-diff review and functional testing requirements above before any PR is opened, including drafts or agent-created PRs. You remain responsible for explaining the implementation, addressing feedback, and correcting the code.
 
 Declare whether AI was used to generate or modify submitted code or tests, draft substantive PR text, or create the PR. A simple Yes or No in the PR description is enough. Tool names, prompts, and transcripts are not required.
+
+An AI agent must never check the personal review or development knowledge boxes in the PR template for you. A non-draft PR from an outside contributor gets the `review-attestation-missing` label and a reminder comment when the personal review box is unchecked, the PR template is missing, or a coding agent account opened the PR.
 
 AI tools may help you draft, edit, or translate PR explanations and review replies. Review the final text before you send it, make sure you agree with it, and take responsibility for it. Do not send AI-generated text that you have not reviewed to maintainers or other contributors. Please be mindful of the maintainer's time.
 

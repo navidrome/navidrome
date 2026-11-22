@@ -19,7 +19,7 @@ import (
 
 const timeout = 10 * time.Minute
 
-// Initiate is unauthenticated, so the number of live requests must be bounded.
+// maxPending bounds the number of live requests, because Initiate is unauthenticated.
 const maxPending = 1000
 
 var (
@@ -85,7 +85,7 @@ func newStore() *quickConnect {
 
 // Enabled reports whether users can approve codes from the web UI, which needs the Jellyfin API.
 func Enabled() bool {
-	return conf.Server.Jellyfin.Enabled && conf.Server.Jellyfin.QuickConnect
+	return conf.Server().Jellyfin.Enabled && conf.Server().Jellyfin.QuickConnect
 }
 
 func (qc *quickConnect) Initiate(device Device) (Request, error) {
@@ -100,7 +100,7 @@ func (qc *quickConnect) Initiate(device Device) (Request, error) {
 		App: strings.Clone(device.App), AppVersion: strings.Clone(device.AppVersion)}
 	now := time.Now()
 	e := &entry{
-		Request:   Request{Device: device, Secret: newSecret(), Code: qc.newCode(), DateAdded: now},
+		Device: device, Secret: newSecret(), Code: qc.newCode(), DateAdded: now,
 		expiresAt: now.Add(timeout),
 	}
 	qc.bySecret[e.Secret] = e
@@ -197,7 +197,7 @@ func newSecret() string {
 	return hex.EncodeToString(b)
 }
 
-// Users often type the code in groups ("123 456").
+// normalizeCode removes whitespace: users often type the code in groups ("123 456").
 func normalizeCode(code string) string {
 	return strings.Join(strings.Fields(code), "")
 }

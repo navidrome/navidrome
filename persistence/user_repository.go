@@ -35,7 +35,7 @@ type dbUser struct {
 
 func (u *dbUser) PostScan() error {
 	if u.LibrariesJSON != "" {
-		if err := json.Unmarshal([]byte(u.LibrariesJSON), &u.User.Libraries); err != nil {
+		if err := json.Unmarshal([]byte(u.LibrariesJSON), &u.Libraries); err != nil {
 			return fmt.Errorf("parsing user libraries from db: %w", err)
 		}
 	}
@@ -83,8 +83,9 @@ func (r *userRepository) selectUserWithLibraries(ctx context.Context, options ..
 				'updated_at', library.updated_at,
 				'created_at', library.created_at
 			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
-		LeftJoin("user_library ul ON user.id = ul.user_id").
-		LeftJoin("library ON ul.library_id = library.id").
+		// Admins get every library without relying on their user_library rows, which can be missing
+		LeftJoin("user_library ul ON ul.user_id = user.id AND NOT user.is_admin").
+		LeftJoin("library ON library.id = ul.library_id OR user.is_admin").
 		GroupBy("user.id")
 }
 
@@ -280,7 +281,7 @@ func (r *userRepository) Update(ctx context.Context, id string, entity model.Use
 		return rest.ErrPermissionDenied
 	}
 	if !usr.IsAdmin {
-		if !conf.Server.EnableUserEditing {
+		if !conf.Server().EnableUserEditing {
 			return rest.ErrPermissionDenied
 		}
 		u.IsAdmin = false
@@ -393,11 +394,11 @@ func keyTo32Bytes(input string) []byte {
 
 func (r *userRepository) initPasswordEncryptionKey(ctx context.Context) error {
 	encKey = keyTo32Bytes(consts.DefaultEncryptionKey)
-	if conf.Server.PasswordEncryptionKey == "" {
+	if conf.Server().PasswordEncryptionKey == "" {
 		return nil
 	}
 
-	key := keyTo32Bytes(conf.Server.PasswordEncryptionKey)
+	key := keyTo32Bytes(conf.Server().PasswordEncryptionKey)
 	keySum := fmt.Sprintf("%x", sha256.Sum256(key))
 
 	props := NewPropertyRepository(r.db)
@@ -449,7 +450,7 @@ func (r *userRepository) initPasswordEncryptionKey(ctx context.Context) error {
 	return nil
 }
 
-// encrypts u.NewPassword
+// encryptPassword encrypts u.NewPassword
 func (r *userRepository) encryptPassword(ctx context.Context, u *model.User) error {
 	encPassword, err := utils.Encrypt(ctx, encKey, u.NewPassword)
 	if err != nil {
@@ -460,7 +461,7 @@ func (r *userRepository) encryptPassword(ctx context.Context, u *model.User) err
 	return nil
 }
 
-// decrypts u.Password
+// decryptPassword decrypts u.Password
 func (r *userRepository) decryptPassword(ctx context.Context, u *model.User) error {
 	plaintext, err := utils.Decrypt(ctx, encKey, u.Password)
 	if err != nil {
@@ -483,11 +484,13 @@ func (r *userRepository) decryptAllPasswords(ctx context.Context, users model.Us
 // Library association methods
 
 func (r *userRepository) GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error) {
-	sel := Select("l.*").
-		From("library l").
-		Join("user_library ul ON l.id = ul.library_id").
-		Where(Eq{"ul.user_id": userID}).
-		OrderBy("l.name")
+	sel := Select("library.*").
+		From("library").
+		Where(Or{
+			Expr("library.id IN (SELECT library_id FROM user_library WHERE user_id = ?)", userID),
+			Expr("EXISTS (SELECT 1 FROM user WHERE id = ? AND is_admin)", userID),
+		}).
+		OrderBy("library.name")
 
 	var res model.Libraries
 	err := r.queryAll(ctx, sel, &res)

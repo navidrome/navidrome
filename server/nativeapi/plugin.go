@@ -41,10 +41,10 @@ func (api *Router) rescanPlugins(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Middleware to check if plugins feature is enabled
+// pluginsEnabledMiddleware checks if the plugins feature is enabled
 func pluginsEnabledMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !conf.Server.Plugins.Enabled {
+		if !conf.Server().Plugins.Enabled {
 			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}
@@ -62,6 +62,9 @@ type PluginUpdateRequest struct {
 	AllLibraries     *bool   `json:"allLibraries,omitempty"`
 	AllowWriteAccess *bool   `json:"allowWriteAccess,omitempty"`
 }
+
+// maxPluginUpdateBody leaves room for large plugin configs.
+const maxPluginUpdateBody = 1 << 20
 
 func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -85,9 +88,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 
 	// Parse update request
 	var req PluginUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error(ctx, "Error decoding request", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if !server.DecodeJSONBody(w, r, maxPluginUpdateBody, &req) {
 		return
 	}
 
@@ -138,7 +139,9 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnprocessableEntity)
-				_ = json.NewEncoder(w).Encode(errorResponse)
+				if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+					log.Error(ctx, "Error encoding enable plugin error response", "id", id, err)
+				}
 				return
 			}
 		} else {
@@ -186,7 +189,9 @@ func validateAndUpdateConfig(ctx context.Context, pm PluginManager, id, configJS
 		w.WriteHeader(http.StatusBadRequest)
 		// Try to return structured validation errors if available
 		response := map[string]any{"message": err.Error()}
-		_ = json.NewEncoder(w).Encode(response)
+		if encErr := json.NewEncoder(w).Encode(response); encErr != nil {
+			log.Error(ctx, "Error encoding config validation response", "id", id, encErr)
+		}
 		return err
 	}
 

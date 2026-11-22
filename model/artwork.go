@@ -117,7 +117,8 @@ const (
 	ArtworkPriorityBump     = 100
 )
 
-// Delete* takes the rows to remove; Purge* finds them itself and reports how many went.
+// ArtworkRepository stores the artwork images. Delete* takes the rows to remove; Purge* finds them itself
+// and reports how many went.
 type ArtworkRepository interface {
 	GetImage(ctx context.Context, hash string) (*Artwork, error)
 	PutImage(ctx context.Context, a *Artwork) error

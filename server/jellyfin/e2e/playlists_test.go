@@ -5,6 +5,7 @@ import (
 	"image"
 	jpeglib "image/jpeg"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/navidrome/navidrome/model"
@@ -121,11 +122,11 @@ var _ = Describe("Playlists", func() {
 		Describe("at a position", func() {
 			var plID string
 			addAt := func(position string, ids ...string) {
-				url := "/Playlists/" + enc(plID) + "/Items?position=" + position
+				q := url.Values{"position": {position}}
 				for _, id := range ids {
-					url += "&ids=" + enc(id)
+					q.Add("ids", enc(id))
 				}
-				Expect(post(url, "").Code).To(Equal(http.StatusNoContent))
+				Expect(post("/Playlists/"+enc(plID)+"/Items?"+q.Encode(), "").Code).To(Equal(http.StatusNoContent))
 			}
 			BeforeEach(func() {
 				plID = createPlaylist("Insert", []string{enc(songID("Come Together")), enc(songID("Something"))})

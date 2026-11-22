@@ -124,8 +124,8 @@ var _ = Describe("GenreRepository", func() {
 				Expect(genres).To(HaveLen(7))
 
 				Expect(slices.IsSortedFunc(genres, func(a, b model.Genre) int {
-					return strings.Compare(b.Name, a.Name) // Inverted to check descending order
-				}))
+					return strings.Compare(a.Name, b.Name)
+				})).To(BeTrue())
 			})
 
 			It("should sort by name in descending order", func() {
@@ -140,8 +140,8 @@ var _ = Describe("GenreRepository", func() {
 				Expect(genres).To(HaveLen(7))
 
 				Expect(slices.IsSortedFunc(genres, func(a, b model.Genre) int {
-					return strings.Compare(a.Name, b.Name)
-				}))
+					return strings.Compare(b.Name, a.Name)
+				})).To(BeTrue())
 			})
 		})
 	})

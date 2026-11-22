@@ -30,7 +30,7 @@ type metrics struct {
 }
 
 func GetPrometheusInstance(ds model.DataStore) Metrics {
-	if !conf.Server.Prometheus.Enabled {
+	if !conf.Server().Prometheus.Enabled {
 		return noopMetrics{}
 	}
 
@@ -91,9 +91,9 @@ func (m *metrics) RecordPluginRequest(_ context.Context, plugin, method string, 
 func (m *metrics) GetHandler() http.Handler {
 	r := chi.NewRouter()
 
-	if conf.Server.Prometheus.Password != "" {
+	if conf.Server().Prometheus.Password != "" {
 		r.Use(middleware.BasicAuth("metrics", map[string]string{
-			consts.PrometheusAuthUser: conf.Server.Prometheus.Password,
+			consts.PrometheusAuthUser: conf.Server().Prometheus.Password,
 		}))
 	}
 
@@ -117,7 +117,7 @@ type prometheusMetrics struct {
 	pluginRequestDuration *prometheus.SummaryVec
 }
 
-// Prometheus' metrics requires initialization. But not more than once
+// getPrometheusMetrics initializes Prometheus' metrics, which must not happen more than once
 var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 	quartilesToEstimate := map[float64]float64{0.5: 0.05, 0.75: 0.025, 0.9: 0.01, 0.99: 0.001}
 

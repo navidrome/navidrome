@@ -10,6 +10,7 @@ import {
   useRefresh,
   useTranslate,
 } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { makeStyles } from '@material-ui/core/styles'
 import {
   useMediaQuery,
@@ -20,7 +21,6 @@ import {
 } from '@material-ui/core'
 import { MdError, MdRefresh } from 'react-icons/md'
 import { List, DateField, SimpleList, useResourceRefresh } from '../common'
-import { httpClient } from '../dataProvider'
 import ToggleEnabledSwitch from './ToggleEnabledSwitch'
 
 const useStyles = makeStyles((theme) => ({
@@ -81,12 +81,14 @@ const ManifestField = ({ source }) => {
 
 const RescanButton = () => {
   const notify = useNotify()
+  const dataProvider = useDirectDataProvider()
   const refresh = useRefresh()
   const [loading, setLoading] = useState(false)
 
   const handleRescan = useCallback(() => {
     setLoading(true)
-    httpClient('/api/plugin/rescan', { method: 'POST' })
+    dataProvider
+      .rescanPlugins()
       .then(() => {
         refresh()
       })
@@ -96,7 +98,7 @@ const RescanButton = () => {
       .finally(() => {
         setLoading(false)
       })
-  }, [notify, refresh])
+  }, [dataProvider, notify, refresh])
 
   return (
     <Button

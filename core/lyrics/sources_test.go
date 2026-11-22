@@ -22,8 +22,8 @@ var _ = Describe("sources", func() {
 			mf := model.MediaFile{}
 			lyrics, err := fromEmbedded(ctx, &mf)
 
-			Expect(err).To(BeNil())
-			Expect(lyrics).To(HaveLen(0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeEmpty())
 		})
 
 		It("should return lyrics for a media file with well-formatted lyrics", func() {
@@ -45,7 +45,7 @@ var _ = Describe("sources", func() {
 			}
 
 			lyrics, err := fromEmbedded(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).ToNot(BeNil())
 			Expect(lyrics).To(Equal(expectedList))
 		})
@@ -54,8 +54,8 @@ var _ = Describe("sources", func() {
 			mf := model.MediaFile{Lyrics: "["}
 			lyrics, err := fromEmbedded(ctx, &mf)
 
-			Expect(lyrics).To(HaveLen(0))
-			Expect(err).ToNot(BeNil())
+			Expect(lyrics).To(BeEmpty())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -76,8 +76,8 @@ var _ = Describe("sources", func() {
 		It("should return nil for lyrics that don't exist", func() {
 			lyrics, err := fromExternalFile(ctx, mf("01 Invisible (RED) Edit Version.mp3"), ".lrc")
 
-			Expect(err).To(BeNil())
-			Expect(lyrics).To(HaveLen(0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeEmpty())
 		})
 
 		// fromExternalFile delegates format parsing to model.ParseLyrics; the
@@ -87,7 +87,7 @@ var _ = Describe("sources", func() {
 			func(name, suffix string, expectSynced bool) {
 				lyrics, err := fromExternalFile(ctx, mf(name), suffix)
 
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(lyrics).ToNot(BeEmpty())
 				Expect(lyrics[0].Line).ToNot(BeEmpty())
 				Expect(lyrics[0].Synced).To(Equal(expectSynced))
@@ -103,7 +103,7 @@ var _ = Describe("sources", func() {
 		It("should handle LRC files with UTF-8 BOM marker (issue #4631)", func() {
 			lyrics, err := fromExternalFile(ctx, mf("bom-test.mp3"), ".lrc")
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
 			Expect(lyrics[0].Synced).To(BeTrue(), "Lyrics with BOM marker should be recognized as synced")
 			Expect(lyrics[0].Line).To(HaveLen(1))
@@ -114,7 +114,7 @@ var _ = Describe("sources", func() {
 		It("should handle UTF-16 LE encoded LRC files", func() {
 			lyrics, err := fromExternalFile(ctx, mf("bom-utf16-test.mp3"), ".lrc")
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
 			Expect(lyrics[0].Synced).To(BeTrue(), "UTF-16 encoded lyrics should be recognized as synced")
 			Expect(lyrics[0].Line).To(HaveLen(2))
@@ -127,7 +127,7 @@ var _ = Describe("sources", func() {
 		It("should handle TTML files with UTF-8 BOM marker", func() {
 			lyrics, err := fromExternalFile(ctx, mf("bom-test.mp3"), ".ttml")
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
 			Expect(lyrics[0].Kind).To(Equal("main"))
 			Expect(lyrics[0].Synced).To(BeTrue())
@@ -139,7 +139,7 @@ var _ = Describe("sources", func() {
 		It("should handle UTF-16 BE encoded TTML files", func() {
 			lyrics, err := fromExternalFile(ctx, mf("bom-utf16-test.mp3"), ".ttml")
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
 			Expect(lyrics[0].Kind).To(Equal("main"))
 			Expect(lyrics[0].Synced).To(BeTrue())

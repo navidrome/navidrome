@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -59,8 +58,8 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("downsamples when only maxBitRate is specified (lower than source)", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DefaultDownsamplingFormat = "opus"
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 			w := doRawReq("stream", "id", trackID, "maxBitRate", "128")
 
@@ -98,6 +97,20 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
 		})
 
+		It("transcodes a lossy source to an explicitly requested lossless format", func() {
+			w := doRawReq("stream", "id", trackID, "format", "flac")
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("flac"))
+		})
+
+		It("falls back to the default downsampling format when a bitrate limit is also requested", func() {
+			w := doRawReq("stream", "id", trackID, "format", "flac", "maxBitRate", "1000")
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+		})
+
 		It("passes timeOffset through", func() {
 			w := doRawReq("stream", "id", trackID, "format", "opus", "maxBitRate", "128", "timeOffset", "30")
 
@@ -128,9 +141,11 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("downloads raw when no format specified and AutoTranscodeDownload is false", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableDownloads = true
-			conf.Server.AutoTranscodeDownload = false
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) {
+				c.EnableDownloads = true
+				c.AutoTranscodeDownload = false
+			})
 
 			w := doRawReq("download", "id", trackID)
 
@@ -139,8 +154,8 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("downloads with explicit format and bitrate", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableDownloads = true
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) { c.EnableDownloads = true })
 
 			w := doRawReq("download", "id", trackID, "format", "opus", "bitrate", "128")
 
@@ -151,8 +166,8 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("returns error when downloads are disabled", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableDownloads = false
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) { c.EnableDownloads = false })
 
 			resp := doReq("download", "id", trackID)
 
@@ -161,8 +176,8 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 		Context("when the player has a forced transcoding", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.EnableDownloads = true
+				DeferCleanup(conf.SnapshotConfig())
+				conf.Update(func(c *conf.Options) { c.EnableDownloads = true })
 				setPlayerForcedFormat("opus")
 			})
 
@@ -187,7 +202,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			})
 
 			It("uses the player's format when no format is requested and AutoTranscodeDownload is true", func() {
-				conf.Server.AutoTranscodeDownload = true
+				conf.Update(func(c *conf.Options) { c.AutoTranscodeDownload = true })
 
 				w := doRawReq("download", "id", trackID)
 

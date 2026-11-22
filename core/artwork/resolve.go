@@ -125,11 +125,11 @@ func Explainable(kind model.Kind) bool {
 func MayFetchExternal(kind model.Kind) bool {
 	switch kind {
 	case model.KindArtistArtwork:
-		return chainFetchesExternal(conf.Server.ArtistArtPriority)
+		return chainFetchesExternal(conf.Server().ArtistArtPriority)
 	case model.KindAlbumArtwork:
-		return chainFetchesExternal(conf.Server.CoverArtPriority)
+		return chainFetchesExternal(conf.Server().CoverArtPriority)
 	case model.KindPlaylistArtwork:
-		return conf.Server.EnableM3UExternalAlbumArt || chainFetchesExternal(conf.Server.CoverArtPriority)
+		return conf.Server().EnableM3UExternalAlbumArt || chainFetchesExternal(conf.Server().CoverArtPriority)
 	default:
 		return false
 	}
@@ -160,10 +160,10 @@ func ExternalLookupsPerItem(kind model.Kind, agents ImageAgentCount) int64 {
 		return int64(max(agents.Album, 1))
 	case model.KindPlaylistArtwork:
 		var n int64
-		if conf.Server.EnableM3UExternalAlbumArt {
+		if conf.Server().EnableM3UExternalAlbumArt {
 			n++
 		}
-		if chainFetchesExternal(conf.Server.CoverArtPriority) {
+		if chainFetchesExternal(conf.Server().CoverArtPriority) {
 			n += PlaylistGridSamples * int64(max(agents.Album, 1))
 		}
 		return n
@@ -180,8 +180,9 @@ func chainFetchesExternal(priority string) bool {
 	return false
 }
 
-// Album and artist fetches stop here when the resolver is local-only, rather than at each point in
-// the chain walk; resolvePlaylist gates the third network path, the m3u image URL, itself.
+// fetchExternalAlbum and fetchExternalArtist are where album and artist fetches stop when the resolver is
+// local-only, rather than at each point in the chain walk; resolvePlaylist gates the third network path,
+// the m3u image URL, itself.
 func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, error) {
 	if r.ext == nil {
 		return nil, "", nil
@@ -196,7 +197,7 @@ func (r *resolver) fetchExternalArtist(ctx context.Context, ar model.Artist) (io
 	return fetchArtistImage(ctx, r.ext.agents, r.ext.gate, ar)
 }
 
-// resolveAlbum walks conf.Server.CoverArtPriority over the folder, embedded and external sources.
+// resolveAlbum walks conf.Server().CoverArtPriority over the folder, embedded and external sources.
 func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution, error) {
 	al, err := r.ds.Album().Get(ctx, albumID)
 	if err != nil {
@@ -212,7 +213,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 	}
 
 	chain := chainState{trace: traceFrom(ctx)}
-	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.CoverArtPriority), ",") {
+	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server().CoverArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" {
 			continue
@@ -241,7 +242,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 	return chain.exhausted(), nil
 }
 
-// resolveArtist tries the uploaded image first, then walks conf.Server.ArtistArtPriority.
+// resolveArtist tries the uploaded image first, then walks conf.Server().ArtistArtPriority.
 func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resolution, error) {
 	ar, err := r.ds.Artist().Get(ctx, artistID)
 	if err != nil {
@@ -279,7 +280,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 		}
 	}
 
-	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
+	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server().ArtistArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" {
 			continue
@@ -362,7 +363,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		// The remote fetch and the generated grid are worker-only; a request must do neither.
 		return resolution{}, nil
 	}
-	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
+	if remoteImg != nil && conf.Server().EnableM3UExternalAlbumArt {
 		sf := func() (io.ReadCloser, string, error) { return fromURL(ctx, remoteImg) }
 		if res, ok, err := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
 			return res, nil
@@ -448,7 +449,7 @@ func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution,
 	}
 	chain := chainState{trace: traceFrom(ctx)}
 	switch {
-	case !conf.Server.EnableMediaFileCoverArt:
+	case !conf.Server().EnableMediaFileCoverArt:
 		chain.record("embedded", OutcomeSkipped, "EnableMediaFileCoverArt is off")
 		return resolution{}, nil
 	case !mf.HasCoverArt:
@@ -466,7 +467,7 @@ func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution,
 	return chain.exhausted(), nil
 }
 
-// resolveDisc walks conf.Server.DiscArtPriority. Disc artwork keeps no state row and is never
+// resolveDisc walks conf.Server().DiscArtPriority. Disc artwork keeps no state row and is never
 // queued: the serving path reads it through on every request, so this only ever explains.
 func (r *resolver) resolveDisc(ctx context.Context, id string) (resolution, error) {
 	dr, err := newDiscArtworkReader(ctx, r.ds, model.ArtworkID{Kind: model.KindDiscArtwork, ID: id})
@@ -474,7 +475,7 @@ func (r *resolver) resolveDisc(ctx context.Context, id string) (resolution, erro
 		return resolution{}, err
 	}
 	chain := chainState{trace: traceFrom(ctx)}
-	return dr.selectImage(ctx, r.ffmpeg, conf.Server.DiscArtPriority, &chain)
+	return dr.selectImage(ctx, r.ffmpeg, conf.Server().DiscArtPriority, &chain)
 }
 
 // resolveExternalStep runs a single external sourceFunc through the named gate. A not-found is a
@@ -544,7 +545,7 @@ func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, 
 // Basename-only on purpose: the chain climbs parent folders, so a token's prefix is not fixed.
 func IsArtistImageFile(name string) bool {
 	name = strings.ToLower(name)
-	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
+	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server().ArtistArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" || pattern == externalCandidate || pattern == "image-folder" {
 			continue
@@ -557,7 +558,7 @@ func IsArtistImageFile(name string) bool {
 }
 
 func resolveArtistImageFolder(ar *model.Artist) (resolution, bool) {
-	folder := conf.Server.ArtistImageFolder
+	folder := conf.Server().ArtistImageFolder
 	if folder == "" {
 		return resolution{}, false
 	}

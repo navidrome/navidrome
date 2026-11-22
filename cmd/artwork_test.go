@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
@@ -56,9 +55,10 @@ var _ = Describe("parseArtworkKind", func() {
 
 var _ = Describe("resolveArtworkTargets", func() {
 	var ds *tests.MockDataStore
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		artists := tests.CreateMockArtistRepo()
 		artists.SetData(model.Artists{{ID: "artist1"}})
 		ds = &tests.MockDataStore{MockedArtist: artists}
@@ -226,8 +226,7 @@ var _ = Describe("formatExplain", func() {
 	var rep explainReport
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.ArtistArtPriority = "external, artist.*"
+		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external, artist.*" })
 		rep = explainReport{
 			kind:   model.KindArtistArtwork,
 			id:     "ar-1",
@@ -289,7 +288,7 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
-		conf.Server.CoverArtPriority = "cover.*, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*, embedded" })
 		rep.kind = model.KindPlaylistArtwork
 		rep.steps = nil
 		rep.agents = ""
@@ -305,7 +304,7 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("says disc artwork keeps no state instead of reporting it as unresolved state", func() {
-		conf.Server.DiscArtPriority = "cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "cover.jpg, embedded" })
 		rep = explainReport{
 			kind: model.KindDiscArtwork, id: "al-1:2", name: "OK Computer (disc 2)",
 			steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
@@ -387,7 +386,7 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("reports the setting that governs media file artwork", func() {
-		conf.Server.EnableMediaFileCoverArt = false
+		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 		rep = explainReport{
 			kind: model.KindMediaFileArtwork, id: "mf-1", name: "Airbag",
 			walked: true,
@@ -406,9 +405,10 @@ var _ = Describe("formatExplain", func() {
 
 var _ = Describe("explainConfig", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DiscArtPriority = "cover.jpg"
-		conf.Server.EnableMediaFileCoverArt = true
+		conf.Update(func(c *conf.Options) {
+			c.DiscArtPriority = "cover.jpg"
+			c.EnableMediaFileCoverArt = true
+		})
 	})
 
 	DescribeTable("names the setting that decides where a kind's artwork comes from",
@@ -425,9 +425,9 @@ var _ = Describe("explainConfig", func() {
 
 var _ = Describe("artwork refresh command", func() {
 	It("requires at least one argument", func() {
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{})).To(HaveOccurred())
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"id1"})).ToNot(HaveOccurred())
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1"})).ToNot(HaveOccurred())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{})).ToNot(Succeed())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"id1"})).To(Succeed())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1"})).To(Succeed())
 	})
 })
 
@@ -475,7 +475,10 @@ var _ = Describe("artwork reprocess selection", func() {
 })
 
 var _ = Describe("explain/reprocess source round trip", func() {
-	ctx := context.Background()
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	// storedSource reads back the Source line explain printed, as an operator would copy it.
 	storedSource := func(out string) string {
@@ -567,7 +570,7 @@ var _ = Describe("reprocessArtwork", func() {
 	var queue *tests.MockArtworkQueueRepo
 	var out strings.Builder
 	var imageAgents artwork.ImageAgentCount
-	ctx := context.Background()
+	var ctx context.Context
 	kinds := []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
 	accept := func(io.Writer, int64, int64) bool { return true }
 	decline := func(io.Writer, int64, int64) bool { return false }
@@ -578,10 +581,12 @@ var _ = Describe("reprocessArtwork", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CoverArtPriority = "cover.*, external"
-		conf.Server.ArtistArtPriority = "artist.*, external"
-		conf.Server.EnableM3UExternalAlbumArt = false
+		ctx = GinkgoT().Context()
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*, external"
+			c.ArtistArtPriority = "artist.*, external"
+			c.EnableM3UExternalAlbumArt = false
+		})
 		imageAgents = artwork.ImageAgentCount{Artist: 1, Album: 1}
 		ds = &tests.MockDataStore{}
 		art = ds.Artwork().(*tests.MockArtworkRepo)
@@ -714,7 +719,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("says so when the selection needs no external lookup", func() {
-		conf.Server.CoverArtPriority = "cover.*"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
@@ -723,8 +728,10 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("counts playlists as external cost when the m3u image fetch is enabled", func() {
-		conf.Server.CoverArtPriority = "cover.*"
-		conf.Server.EnableM3UExternalAlbumArt = true
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*"
+			c.EnableM3UExternalAlbumArt = true
+		})
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 		var external int64
 		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
@@ -803,8 +810,8 @@ var _ = Describe("reprocessArtwork", func() {
 
 var _ = Describe("artwork status command", func() {
 	It("takes no arguments", func() {
-		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{})).ToNot(HaveOccurred())
-		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{"x"})).To(HaveOccurred())
+		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{})).To(Succeed())
+		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{"x"})).ToNot(Succeed())
 	})
 })
 
@@ -812,9 +819,10 @@ var _ = Describe("collectStatus", func() {
 	var ds *tests.MockDataStore
 	var art *tests.MockArtworkRepo
 	var queue *tests.MockArtworkQueueRepo
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		art = ds.Artwork().(*tests.MockArtworkRepo)
 		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
@@ -967,9 +975,10 @@ var _ = Describe("refreshItems", func() {
 	var queue *tests.MockArtworkQueueRepo
 	var art *tests.MockArtworkRepo
 	var out strings.Builder
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		albums := tests.CreateMockAlbumRepo()
 		albums.SetData(model.Albums{{ID: "al-1"}, {ID: "al-3"}})
 		ds = &tests.MockDataStore{MockedAlbum: albums}
@@ -1012,10 +1021,11 @@ var _ = Describe("refreshItems", func() {
 
 var _ = Describe("needsImageAgents", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CoverArtPriority = "cover.*, external"
-		conf.Server.ArtistArtPriority = "artist.*, external"
-		conf.Server.EnableM3UExternalAlbumArt = false
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*, external"
+			c.ArtistArtPriority = "artist.*, external"
+			c.EnableM3UExternalAlbumArt = false
+		})
 	})
 
 	It("is false for a selection no agent can serve", func() {
@@ -1033,24 +1043,25 @@ var _ = Describe("needsImageAgents", func() {
 	})
 
 	It("is false once the chains no longer reach an agent", func() {
-		conf.Server.CoverArtPriority = "cover.*"
-		conf.Server.ArtistArtPriority = "artist.*"
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*"
+			c.ArtistArtPriority = "artist.*"
+		})
 		Expect(needsImageAgents(artwork.ReprocessKinds)).To(BeFalse())
 	})
 })
 
 var _ = Describe("configuredAgents", func() {
-	BeforeEach(func() { DeferCleanup(configtest.SetupConfig()) })
 
 	It("splits and trims the configured list", func() {
-		conf.Server.Agents = "lastfm, spotify ,deezer"
+		conf.Update(func(c *conf.Options) { c.Agents = "lastfm, spotify ,deezer" })
 		Expect(configuredAgents()).To(Equal([]string{"lastfm", "spotify", "deezer"}))
 	})
 
 	// An empty name would match no plugin, but it also must not make the list look non-empty:
 	// LoadPlugins treats an empty list as "load nothing".
 	It("drops empty entries rather than passing a name nothing can match", func() {
-		conf.Server.Agents = " , ,"
+		conf.Update(func(c *conf.Options) { c.Agents = " , ," })
 		Expect(configuredAgents()).To(BeEmpty())
 	})
 })
@@ -1139,11 +1150,12 @@ var _ = Describe("cancelArtwork", func() {
 	var ds *tests.MockDataStore
 	var queue *tests.MockArtworkQueueRepo
 	var out strings.Builder
-	ctx := context.Background()
+	var ctx context.Context
 	accept := func(io.Writer, int64, int64) bool { return true }
 	decline := func(io.Writer, int64, int64) bool { return false }
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
 		out.Reset()

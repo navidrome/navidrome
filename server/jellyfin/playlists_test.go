@@ -1,16 +1,21 @@
 package jellyfin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -156,10 +161,12 @@ var _ = DescribeTable("insertPosition",
 )
 
 var _ = Describe("Playlists", func() {
+	var ctx context.Context
 	var api *Router
 	var fp *fakePlaylists
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		fp = &fakePlaylists{}
 		api = &Router{ds: &tests.MockDataStore{}, playlists: fp}
 	})
@@ -167,8 +174,8 @@ var _ = Describe("Playlists", func() {
 	Describe("createPlaylist", func() {
 		It("creates a playlist and returns its id", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(testID("s1"))+`","`+dto.EncodeID(testID("s2"))+`"]}`)).
-				WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(testID("s1"))+`","`+dto.EncodeID(testID("s2"))+`"]}`)).
+				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res map[string]string
@@ -180,8 +187,8 @@ var _ = Describe("Playlists", func() {
 
 		It("returns 400 on an invalid JSON body", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`not json`)).
-				WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists", strings.NewReader(`not json`)).
+				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
@@ -189,14 +196,14 @@ var _ = Describe("Playlists", func() {
 		It("returns 500 when the service fails", func() {
 			fp.createErr = errors.New("boom")
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix"}`)).
-				WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix"}`)).
+				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 
 		createReq := func(body string) *http.Request {
-			return httptest.NewRequest("POST", "/Playlists", strings.NewReader(body)).
+			return httptest.NewRequest(http.MethodPost, "/Playlists", strings.NewReader(body)).
 				WithContext(GinkgoT().Context())
 		}
 
@@ -231,7 +238,7 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items", nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1")+"/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistItems(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -256,8 +263,8 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items?StartIndex=1&Limit=1", nil).
-				WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1")+"/Items?StartIndex=1&Limit=1", nil).
+				WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylistItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -279,8 +286,8 @@ var _ = Describe("Playlists", func() {
 				},
 			}
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items?StartIndex=-1&Limit=1", nil).
-				WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1")+"/Items?StartIndex=-1&Limit=1", nil).
+				WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylistItems, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -294,7 +301,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 for a non-owned or absent playlist", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/missing/Items", nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/missing/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("missing")))
 			api.getPlaylistItems(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -303,17 +310,15 @@ var _ = Describe("Playlists", func() {
 
 	Describe("container id expansion", func() {
 		var ds *tests.MockDataStore
-		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = context.Background()
 			ds = &tests.MockDataStore{}
 			api = &Router{ds: ds, playlists: fp}
 		})
 
 		createWith := func(id string) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(id)+`"]}`)).
+			r := httptest.NewRequest(http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix","Ids":["`+dto.EncodeID(id)+`"]}`)).
 				WithContext(ctx)
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -352,6 +357,142 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("request limits", func() {
+		var ds *tests.MockDataStore
+		song := dto.EncodeID(testID("s1"))
+		artist := dto.EncodeID(testID("ar1"))
+
+		BeforeEach(func() {
+			ds = &tests.MockDataStore{}
+			api = &Router{ds: ds, playlists: fp}
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}})
+		})
+
+		repeat := func(id string, n int) []string { return slices.Repeat([]string{id}, n) }
+		// An artist whose expansion alone is just over a per-request track limit of 5.
+		withHugeArtist := func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
+			songs := make(model.MediaFiles, 6)
+			for i := range songs {
+				songs[i] = model.MediaFile{ID: testID(fmt.Sprintf("big-%d", i))}
+			}
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
+		}
+		create := func(body any) *httptest.ResponseRecorder {
+			b, err := json.Marshal(body)
+			Expect(err).ToNot(HaveOccurred())
+			w := httptest.NewRecorder()
+			invoke(api.createPlaylist, w, httptest.NewRequest(http.MethodPost, "/Playlists", bytes.NewReader(b)).WithContext(ctx))
+			return w
+		}
+		update := func(body any) *httptest.ResponseRecorder {
+			b, err := json.Marshal(body)
+			Expect(err).ToNot(HaveOccurred())
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1")), bytes.NewReader(b)).WithContext(ctx)
+			invoke(api.updatePlaylist, w, withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1"))))
+			return w
+		}
+		addItems := func(ids []string) *httptest.ResponseRecorder {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+strings.Join(ids, ","), nil).WithContext(ctx)
+			invoke(api.addToPlaylist, w, withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1"))))
+			return w
+		}
+
+		DescribeTable("creates a playlist naming up to DevMaxPlaylistTracksPerRequest ids",
+			func(limit, sent int) {
+				if limit >= 0 {
+					conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = limit })
+				}
+				w := create(map[string]any{"Name": "Mix", "Ids": repeat(song, sent)})
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(fp.createdIds).To(HaveLen(sent))
+			},
+			Entry("exactly the limit", 5, 5),
+			Entry("any number when the limit is 0", 0, 6),
+			Entry("the default limit, in a body larger than 1 MiB", -1, 50_000),
+			Entry("a raised limit, in a body larger than 2 MiB", 100_000, 100_000),
+		)
+
+		It("expands without a track limit when DevMaxPlaylistTracksPerRequest is 0", func() {
+			withHugeArtist()
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 0 })
+			w := create(map[string]any{"Name": "Mix", "Ids": []string{artist}})
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(fp.createdIds).To(HaveLen(6))
+		})
+
+		It("asks a playlist container for at most one track past the limit", func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			tracks := make(model.PlaylistTracks, 6)
+			for i := range tracks {
+				tracks[i] = model.PlaylistTrack{ID: strconv.Itoa(i + 1), MediaFileID: testID(fmt.Sprintf("pl-%d", i))}
+			}
+			fp.getPls = &model.Playlist{ID: testID("pl9"), Tracks: tracks}
+
+			w := create(map[string]any{"Name": "Mix", "Ids": []string{dto.EncodeID(testID("pl9"))}})
+
+			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+			Expect(fp.tracksRepo).ToNot(BeNil())
+			Expect(fp.tracksRepo.Options.Max).To(Equal(6))
+		})
+
+		It("rejects a create body with data after the JSON object with 400", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Playlists", strings.NewReader(`{"Name":"Mix"} {"Name":"Other"}`)).WithContext(ctx)
+			invoke(api.createPlaylist, w, r)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			Expect(fp.createdName).To(BeEmpty())
+		})
+
+		tooManyIDs := func() []string {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			return repeat(song, 6)
+		}
+		expandsTooFar := func() []string {
+			withHugeArtist()
+			return []string{artist}
+		}
+		withIDs := func(ids func() []string) func() any {
+			return func() any { return map[string]any{"Name": "Mix", "Ids": ids()} }
+		}
+		bodyTooBig := func() any { return map[string]any{"Name": strings.Repeat("x", int(maxPlaylistBody()))} }
+
+		DescribeTable("create and update reject oversized requests with 413 without writing",
+			func(send func(any) *httptest.ResponseRecorder, body func() any) {
+				w := send(body())
+				Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+				Expect(fp.createdIds).To(BeNil())
+				Expect(fp.updatePlaylistID).To(BeEmpty())
+			},
+			Entry("create, more ids than DevMaxPlaylistTracksPerRequest", create, withIDs(tooManyIDs)),
+			Entry("create, ids that expand past DevMaxPlaylistTracksPerRequest", create, withIDs(expandsTooFar)),
+			Entry("create, a body over the size limit", create, bodyTooBig),
+			Entry("update, more ids than DevMaxPlaylistTracksPerRequest", update, withIDs(tooManyIDs)),
+			Entry("update, ids that expand past DevMaxPlaylistTracksPerRequest", update, withIDs(expandsTooFar)),
+			Entry("update, a body over the size limit", update, bodyTooBig),
+		)
+
+		It("adds items naming up to DevMaxPlaylistTracksPerRequest ids", func() {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 5 })
+			w := addItems(repeat(song, 5))
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(fp.addIds).To(HaveLen(5))
+		})
+
+		DescribeTable("adding items rejects oversized requests with 413 without adding",
+			func(ids func() []string) {
+				w := addItems(ids())
+				Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+				Expect(fp.addPlaylistID).To(BeEmpty())
+			},
+			Entry("more ids than DevMaxPlaylistTracksPerRequest", tooManyIDs),
+			Entry("ids that expand past DevMaxPlaylistTracksPerRequest", expandsTooFar),
+		)
+	})
+
 	Describe("getPlaylist", func() {
 		It("returns OpenAccess from Public and item ids (encoded media file ids, not entry ids)", func() {
 			pls := &model.Playlist{
@@ -364,7 +505,7 @@ var _ = Describe("Playlists", func() {
 			}
 			fp.getPls, fp.getByIDPls = pls, pls
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1"), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -378,7 +519,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 for a non-owned or absent playlist", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/missing", nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/missing", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("missing")))
 			invoke(api.getPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -387,7 +528,7 @@ var _ = Describe("Playlists", func() {
 
 	Describe("deleteItem", func() {
 		deleteReq := func(id string) *http.Request {
-			r := httptest.NewRequest("DELETE", "/Items/"+dto.EncodeID(id), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodDelete, "/Items/"+dto.EncodeID(id), nil).WithContext(ctx)
 			return withChiURLParam(r, "itemId", dto.EncodeID(id))
 		}
 
@@ -423,7 +564,7 @@ var _ = Describe("Playlists", func() {
 	Describe("addToPlaylist", func() {
 		It("adds tracks by song id from the lowercase ids param real Jellyfin clients send", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -433,7 +574,7 @@ var _ = Describe("Playlists", func() {
 
 		It("accepts a PascalCase Ids param (case-folded by the middleware)", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?Ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?Ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -443,7 +584,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 when the service rejects the request (not found/not owned)", func() {
 			fp.addErr = model.ErrNotAuthorized
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -452,7 +593,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 403 when the playlist is not editable (synced/smart), like Jellyfin", func() {
 			fp.addErr = model.ErrPlaylistNotEditable
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusForbidden))
@@ -460,7 +601,7 @@ var _ = Describe("Playlists", func() {
 
 		It("passes no ids (not a spurious empty string) when the ids param is absent", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodPost, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -472,7 +613,7 @@ var _ = Describe("Playlists", func() {
 	Describe("removeFromPlaylist", func() {
 		It("removes entries by the lowercase entryIds param real Jellyfin clients send (playlist-track position ids, not song ids)", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -482,7 +623,7 @@ var _ = Describe("Playlists", func() {
 
 		It("accepts a PascalCase EntryIds param (case-folded by the middleware)", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?EntryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?EntryIds="+dto.EncodePlaylistEntryID("1")+","+dto.EncodePlaylistEntryID("2"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -491,7 +632,7 @@ var _ = Describe("Playlists", func() {
 
 		It("404s an entryId that is a song id rather than a playlist-entry position", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodeID(testID("s1")), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodeID(testID("s1")), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -501,7 +642,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 when the service rejects the request (not found/not owned)", func() {
 			fp.removeErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -510,7 +651,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 403 when the playlist is not editable (synced/smart), like Jellyfin", func() {
 			fp.removeErr = model.ErrPlaylistNotEditable
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusForbidden))
@@ -518,7 +659,7 @@ var _ = Describe("Playlists", func() {
 
 		It("passes no ids (not a spurious empty string) when the entryIds param is absent", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodDelete, "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items", nil).WithContext(ctx)
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
@@ -531,8 +672,7 @@ var _ = Describe("Playlists", func() {
 		It("returns the current user with CanEdit true for an editable playlist", func() {
 			fp.getByIDPls = &model.Playlist{ID: testID("pl1")}
 			w := httptest.NewRecorder()
-			ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistUsers(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -544,8 +684,7 @@ var _ = Describe("Playlists", func() {
 		It("reports CanEdit false for a synced playlist", func() {
 			fp.getByIDPls = &model.Playlist{ID: testID("pl1"), Sync: true}
 			w := httptest.NewRecorder()
-			ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistUsers(w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -557,8 +696,7 @@ var _ = Describe("Playlists", func() {
 		It("returns 404 when the playlist is not visible", func() {
 			fp.getByIDErr = model.ErrNotFound
 			w := httptest.NewRecorder()
-			ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice"}))
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			api.getPlaylistUsers(w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -568,7 +706,7 @@ var _ = Describe("Playlists", func() {
 	Describe("getPlaylistUser", func() {
 		requestUser := func() *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users/"+testID("u1"), nil).WithContext(context.Background())
+			r := httptest.NewRequest(http.MethodGet, "/Playlists/"+testID("pl1")+"/Users/"+testID("u1"), nil).WithContext(ctx)
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("playlistId", dto.EncodeID(testID("pl1")))
 			rctx.URLParams.Add("userId", testID("u1"))

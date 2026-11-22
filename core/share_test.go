@@ -15,9 +15,10 @@ var _ = Describe("Share", func() {
 	var ds model.DataStore
 	var share Share
 	var mockedRepo rest.Persistable[model.Share]
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		mockedRepo = ds.Share().(rest.Persistable[model.Share])
 		share = NewShare(ds)
@@ -41,7 +42,7 @@ var _ = Describe("Share", func() {
 			})
 
 			It("assigns the logged-in user as owner, ignoring a client-supplied UserID", func() {
-				loggedInCtx := request.WithUser(context.Background(), model.User{ID: "logged-in-user"})
+				loggedInCtx := request.WithUser(ctx, model.User{ID: "logged-in-user"})
 				repo := share.Repository().(rest.Persistable[model.Share])
 				entity := &model.Share{Description: "test", ResourceIDs: "123", UserID: "victim-user"}
 				_, err := repo.Save(loggedInCtx, entity)

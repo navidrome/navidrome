@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -35,9 +34,10 @@ var _ = Describe("Song Endpoints", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
-		conf.Server.SessionTimeout = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.SessionTimeout = time.Minute
+		})
 
 		// Setup mock repositories
 		mfRepo = tests.CreateMockMediaFileRepo()
@@ -276,7 +276,7 @@ var _ = Describe("Song Endpoints", func() {
 
 				// Should still return all songs since our mock doesn't implement pagination
 				// but the request should be processed successfully
-				Expect(len(response)).To(BeNumerically(">=", 1))
+				Expect(response).ToNot(BeEmpty())
 			})
 
 			It("handles sort parameters", func() {
@@ -309,7 +309,7 @@ var _ = Describe("Song Endpoints", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Mock doesn't implement filtering, but request should be processed
-				Expect(len(response)).To(BeNumerically(">=", 1))
+				Expect(response).ToNot(BeEmpty())
 			})
 		})
 	})
@@ -358,7 +358,7 @@ var _ = Describe("Song Endpoints", func() {
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				Expect(err).ToNot(HaveOccurred())
 
-				Expect(response).To(HaveLen(0))
+				Expect(response).To(BeEmpty())
 			})
 		})
 	})

@@ -15,7 +15,7 @@ const storageMount = "/storage"
 type storageServiceImpl struct{}
 
 func getHostStoragePath(pluginName string) string {
-	return filepath.Join(conf.Server.DataFolder.String(), "plugins", pluginName, "storage")
+	return filepath.Join(conf.Server().DataFolder.String(), "plugins", pluginName, "storage")
 }
 
 func newStorageService(pluginName string) (host.StorageService, error) {

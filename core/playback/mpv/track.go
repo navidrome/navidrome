@@ -7,6 +7,7 @@ package mpv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -36,7 +37,7 @@ func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName str
 
 	args := createMPVCommand(deviceName, mf.AbsolutePath(), tmpSocketName)
 	if len(args) == 0 {
-		return nil, fmt.Errorf("no mpv command arguments provided")
+		return nil, errors.New("no mpv command arguments provided")
 	}
 	exe, err := start(ctx, args)
 	if err != nil {
@@ -76,7 +77,7 @@ func (t *MpvTrack) String() string {
 	return fmt.Sprintf("Name: %s, Socket: %s", t.MediaFile.Path, t.IPCSocketName)
 }
 
-// Used to control the playback volume. A float value between 0.0 and 1.0.
+// SetVolume controls the playback volume. A float value between 0.0 and 1.0.
 func (t *MpvTrack) SetVolume(value float32) {
 	// mpv's volume as described in the --volume parameter:
 	// Set the startup volume. 0 means silence, 100 means no volume reduction or amplification.

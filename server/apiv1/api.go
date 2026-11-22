@@ -56,7 +56,7 @@ func problemRecoverer(next http.Handler) http.Handler {
 				return
 			}
 			if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
-				panic(rec)
+				panic(rec) //nolint:forbidigo
 			}
 			log.Error(r.Context(), "API v1: panic in handler", "panic", rec, "stack", string(debug.Stack()))
 			writeProblemStatus(w, r, http.StatusInternalServerError, ProblemCodeInternal, "")
@@ -67,7 +67,8 @@ func problemRecoverer(next http.Handler) http.Handler {
 
 var routableMethods = []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
 
-// Looks routes up on mux itself: chi's RouteContext().Routes points at the parent router when mounted.
+// allowedMethods looks routes up on mux itself: chi's RouteContext().Routes points at the parent router
+// when mounted.
 func allowedMethods(mux chi.Routes, req *http.Request) []string {
 	path := routePath(req)
 	var allowed []string

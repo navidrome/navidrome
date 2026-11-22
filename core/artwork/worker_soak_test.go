@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -31,7 +30,6 @@ var _ = Describe("Worker soak", func() {
 		if testing.Short() {
 			Skip("skipping soak test in short mode")
 		}
-		DeferCleanup(configtest.SetupConfig())
 
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
@@ -58,7 +56,7 @@ var _ = Describe("Worker soak", func() {
 		}
 		store := NewImageStore(GinkgoT().TempDir())
 		proc := &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
-		conf.Server.CoverArtPriority = "cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 
 		// Dangling refs mirror an entity deleted after being enqueued.
 		items := []model.ArtworkQueueItem{
@@ -101,7 +99,7 @@ var _ = Describe("Worker soak", func() {
 		start := time.Now()
 		for i := range soakCycles {
 			it := items[i%len(items)]
-			out, _, _ := proc.acquire(context.Background(), it)
+			out, _, _ := proc.acquire(ctx, it)
 
 			// Read-back exercises the surfaces a caller would use after acquisition.
 			if out == outcomeFound {

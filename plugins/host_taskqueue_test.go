@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/tests"
@@ -37,8 +36,7 @@ var _ = Describe("TaskQueueService", func() {
 		tmpDir, err = os.MkdirTemp("", "taskqueue-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
@@ -500,7 +498,7 @@ var _ = Describe("TaskQueueService", func() {
 
 		It("stores error message on failure", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
-				return "", fmt.Errorf("something went wrong")
+				return "", errors.New("something went wrong")
 			}
 
 			err := service.CreateQueue(ctx, "msg-fail", host.QueueConfig{
@@ -526,7 +524,7 @@ var _ = Describe("TaskQueueService", func() {
 
 		It("uses explicit message over error message on failure", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
-				return "partial progress made", fmt.Errorf("timeout exceeded")
+				return "partial progress made", errors.New("timeout exceeded")
 			}
 
 			err := service.CreateQueue(ctx, "msg-fail-with-msg", host.QueueConfig{
@@ -557,7 +555,7 @@ var _ = Describe("TaskQueueService", func() {
 
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return "", fmt.Errorf("task failed")
+				return "", errors.New("task failed")
 			}
 
 			err := service.CreateQueue(ctx, "retry-test", host.QueueConfig{
@@ -589,7 +587,7 @@ var _ = Describe("TaskQueueService", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, attempt int32) (string, error) {
 				callCount.Add(1)
 				if attempt == 1 {
-					return "", fmt.Errorf("temporary error")
+					return "", errors.New("temporary error")
 				}
 				return "success", nil
 			}
@@ -621,7 +619,7 @@ var _ = Describe("TaskQueueService", func() {
 
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return "", fmt.Errorf("always fail")
+				return "", errors.New("always fail")
 			}
 
 			err := service.CreateQueue(ctx, "backoff-overflow", host.QueueConfig{
@@ -840,12 +838,14 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+			c.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
+			c.DataFolder = conf.NewDir(tmpDir)
+		})
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()

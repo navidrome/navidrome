@@ -175,7 +175,7 @@ flowchart TD
 1. **Folder Traversal**
     - Uses `walkDirTree` to traverse the directory structure
     - Handles symbolic links and hidden files
-    - Processes `.ndignore` files for exclusions
+    - Processes `.ndignore` files for exclusions, and skips folders containing a `.nomedia` file when `Scanner.RespectNoMedia` is enabled
     - Maps files to appropriate types (audio, image, playlist)
 
 2. **Metadata Extraction**
@@ -411,7 +411,7 @@ The scanner implements a sophisticated concurrency model to optimize performance
 
 2. **Within-Phase Concurrency**:
     - Each phase has configurable concurrency for its stages
-    - For example, `phase_1_folders.go` processes folders concurrently: `ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(conf.Server.DevScannerThreads))`
+    - For example, `phase_1_folders.go` processes folders concurrently: `ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(conf.Server().DevScannerThreads))`
     - Multiple stages can exist within a phase, each with its own concurrency level
 
 3. **Pipeline Architecture Benefits**:

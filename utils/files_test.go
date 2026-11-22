@@ -131,7 +131,7 @@ var _ = Describe("CleanFileName", func() {
 	It("truncates to 50 characters", func() {
 		long := strings.Repeat("abcdefghij", 10) // 100 chars
 		result := utils.CleanFileName(long)
-		Expect(len(result)).To(Equal(50))
+		Expect(result).To(HaveLen(50))
 	})
 
 	It("trims trailing underscores and hyphens after truncation", func() {

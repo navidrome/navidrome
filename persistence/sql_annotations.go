@@ -63,7 +63,7 @@ func filtersNeedAnnotation(query SelectBuilder) bool {
 func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, idField string) SelectBuilder {
 	userID := loggedUser(ctx).ID
 	if userID == invalidUserId {
-		return query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
+		return query.Columns(r.tableName + ".average_rating")
 	}
 	query = query.
 		LeftJoin("annotation on ("+
@@ -77,7 +77,7 @@ func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, 
 			"play_date",
 			"rated_at",
 		)
-	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
+	if conf.Server().AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
 		query = query.Columns(
 			fmt.Sprintf("round(coalesce(round(cast(play_count as float) / coalesce(%[1]s.song_count, 1), 1), 0)) as play_count", r.tableName),
 		)
@@ -85,7 +85,7 @@ func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, 
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
 
-	query = query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
+	query = query.Columns(r.tableName + ".average_rating")
 
 	return query
 }

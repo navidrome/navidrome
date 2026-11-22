@@ -63,8 +63,8 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Album.FolderIDs = ids
 	}
-	a.Album.RGAlbumGain = a.RgAlbumGain
-	a.Album.RGAlbumPeak = a.RgAlbumPeak
+	a.RGAlbumGain = a.RgAlbumGain
+	a.RGAlbumPeak = a.RgAlbumPeak
 	return nil
 }
 
@@ -79,8 +79,13 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	args["search_participants"] = strings.Join(participantNames, " ")
 	args["search_normalized"] = str.NormalizeForFTS(a.Name, a.AlbumArtist)
 
-	args["tags"] = marshalTags(a.Album.Tags)
-	args["participants"] = marshalParticipants(a.Album.Participants)
+	var err error
+	if args["tags"], err = marshalTags(a.Album.Tags); err != nil {
+		return err
+	}
+	if args["participants"], err = marshalParticipants(a.Album.Participants); err != nil {
+		return err
+	}
 
 	folderIDs, err := json.Marshal(a.Album.FolderIDs)
 	if err != nil {
@@ -150,7 +155,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 })
 
 func recentlyAddedSort() string {
-	if conf.Server.RecentlyAddedByModTime {
+	if conf.Server().RecentlyAddedByModTime {
 		return "album.updated_at, album.id"
 	}
 	return "album.created_at, album.id"
@@ -219,6 +224,7 @@ func (r *albumRepository) Put(ctx context.Context, al *model.Album) error {
 }
 
 // TODO Move external metadata to a separated table
+
 func (r *albumRepository) UpdateExternalInfo(ctx context.Context, al *model.Album) error {
 	_, err := r.put(ctx, al.ID, &dbAlbum{Album: al}, "description", "small_image_url", "medium_image_url", "large_image_url", "external_url", "external_info_updated_at")
 	return err

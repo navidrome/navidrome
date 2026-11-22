@@ -15,18 +15,20 @@ import (
 )
 
 var _ = Describe("Browsing", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	ctxUser := func(libs model.Libraries) context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
+		return request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
 	}
 
 	// admin has no explicit Libraries; access is granted via the IsAdmin bypass, not membership.
 	ctxAdmin := func() context.Context {
-		return request.WithUser(context.Background(), model.User{ID: testID("admin"), IsAdmin: true, Libraries: nil})
+		return request.WithUser(ctx, model.User{ID: testID("admin"), IsAdmin: true, Libraries: nil})
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		api = &Router{ds: ds}
 	})
@@ -35,7 +37,7 @@ var _ = Describe("Browsing", func() {
 		It("lists artists via /Artists", func() {
 			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "A"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Artists", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -47,7 +49,7 @@ var _ = Describe("Browsing", func() {
 		It("handles /Artists/AlbumArtists the same way", func() {
 			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "A"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists/AlbumArtists", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Artists/AlbumArtists", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -60,7 +62,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1}, {ID: 2}}
-			r := httptest.NewRequest("GET", "/Artists", nil).WithContext(ctxUser(libs))
+			r := httptest.NewRequest(http.MethodGet, "/Artists", nil).WithContext(ctxUser(libs))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := artistRepo.Options.Filters.ToSql()
@@ -74,7 +76,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1}, {ID: 2}}
-			r := httptest.NewRequest("GET", "/Artists?ParentId="+dto.EncodeLibraryID(2), nil).WithContext(ctxUser(libs))
+			r := httptest.NewRequest(http.MethodGet, "/Artists?ParentId="+dto.EncodeLibraryID(2), nil).WithContext(ctxUser(libs))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := artistRepo.Options.Filters.ToSql()
@@ -89,7 +91,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1}} // no access to library 99
-			r := httptest.NewRequest("GET", "/Artists?ParentId="+dto.EncodeLibraryID(99), nil).WithContext(ctxUser(libs))
+			r := httptest.NewRequest(http.MethodGet, "/Artists?ParentId="+dto.EncodeLibraryID(99), nil).WithContext(ctxUser(libs))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := artistRepo.Options.Filters.ToSql()
@@ -103,7 +105,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo := ds.Artist().(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists?SearchTerm=art", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Artists?SearchTerm=art", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -116,13 +118,13 @@ var _ = Describe("Browsing", func() {
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists?SearchTerm=art", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Artists?SearchTerm=art", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(artistRepo.Options.Max).To(Equal(defaultSearchLimit + 1))
 
 			w = httptest.NewRecorder()
-			r = httptest.NewRequest("GET", "/Artists?SearchTerm=art&Limit=999999", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r = httptest.NewRequest(http.MethodGet, "/Artists?SearchTerm=art&Limit=999999", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(artistRepo.Options.Max).To(Equal(maxSearchLimit + 1))
@@ -132,7 +134,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo := ds.Artist().(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists?StartIndex=5&Limit=10", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Artists?StartIndex=5&Limit=10", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(artistRepo.Options.Offset).To(Equal(5))
@@ -143,7 +145,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo := ds.Artist().(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists", nil).WithContext(ctxAdmin())
+			r := httptest.NewRequest(http.MethodGet, "/Artists", nil).WithContext(ctxAdmin())
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			// accessibleLibraryIDs is empty for an admin (Libraries is nil), so
@@ -161,7 +163,7 @@ var _ = Describe("Browsing", func() {
 				artistRepo := ds.Artist().(*tests.MockArtistRepo)
 				artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", url, nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+				r := httptest.NewRequest(http.MethodGet, url, nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 				invoke(handler(api), w, r)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				sql, args, err := artistRepo.Options.Filters.ToSql()
@@ -183,7 +185,7 @@ var _ = Describe("Browsing", func() {
 			artistRepo := ds.Artist().(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Artists?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getArtists, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
@@ -192,7 +194,7 @@ var _ = Describe("Browsing", func() {
 	Describe("getGenres", func() {
 		It("lists genres via /Genres", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Genres", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Genres", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getGenres, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -202,14 +204,14 @@ var _ = Describe("Browsing", func() {
 
 		It("handles /MusicGenres the same way", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/MusicGenres", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/MusicGenres", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getGenres, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 		})
 
 		It("treats a negative StartIndex as 0 instead of panicking", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Genres?StartIndex=-1&Limit=5", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Genres?StartIndex=-1&Limit=5", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getGenres, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -222,7 +224,7 @@ var _ = Describe("Browsing", func() {
 		It("scopes results to the user's accessible libraries", func() {
 			tagRepo := ds.Tag().(*tests.MockTagRepo)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Studios", nil).WithContext(ctxUser(model.Libraries{{ID: 1}, {ID: 2}}))
+			r := httptest.NewRequest(http.MethodGet, "/Studios", nil).WithContext(ctxUser(model.Libraries{{ID: 1}, {ID: 2}}))
 			invoke(api.getStudios, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := tagRepo.Options.Filters.ToSql()
@@ -236,7 +238,7 @@ var _ = Describe("Browsing", func() {
 		It("does not restrict results for an admin user", func() {
 			tagRepo := ds.Tag().(*tests.MockTagRepo)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Studios", nil).WithContext(ctxAdmin())
+			r := httptest.NewRequest(http.MethodGet, "/Studios", nil).WithContext(ctxAdmin())
 			invoke(api.getStudios, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(tagRepo.Options.Filters).To(BeNil())
@@ -244,14 +246,14 @@ var _ = Describe("Browsing", func() {
 
 		It("404s a malformed ParentId instead of listing every library's studios", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Studios?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Studios?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getStudios, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
 		It("treats a negative StartIndex as 0 instead of panicking", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Studios?StartIndex=-1&Limit=5", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Studios?StartIndex=-1&Limit=5", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getStudios, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
@@ -264,7 +266,7 @@ var _ = Describe("Browsing", func() {
 		It("scopes genres to the user's accessible libraries", func() {
 			genreRepo := ds.Genre().(*tests.MockedGenreRepo)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/Filters", nil).WithContext(ctxUser(model.Libraries{{ID: 1}, {ID: 2}}))
+			r := httptest.NewRequest(http.MethodGet, "/Items/Filters", nil).WithContext(ctxUser(model.Libraries{{ID: 1}, {ID: 2}}))
 			invoke(api.getQueryFiltersLegacy, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			sql, args, err := genreRepo.Options.Filters.ToSql()
@@ -276,7 +278,7 @@ var _ = Describe("Browsing", func() {
 		It("does not restrict genres for an admin user", func() {
 			genreRepo := ds.Genre().(*tests.MockedGenreRepo)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/Filters", nil).WithContext(ctxAdmin())
+			r := httptest.NewRequest(http.MethodGet, "/Items/Filters", nil).WithContext(ctxAdmin())
 			invoke(api.getQueryFiltersLegacy, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(genreRepo.Options.Filters).To(BeNil())
@@ -284,7 +286,7 @@ var _ = Describe("Browsing", func() {
 
 		It("404s a malformed ParentId instead of listing every library's filters", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items/Filters?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			r := httptest.NewRequest(http.MethodGet, "/Items/Filters?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getQueryFiltersLegacy, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})

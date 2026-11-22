@@ -128,7 +128,7 @@ func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ..
 	if len(tableName) > 0 {
 		tn = tableName[0]
 	}
-	if conf.Server.PreferSortTags || conf.Server.EnableNaturalSorting {
+	if conf.Server().PreferSortTags || conf.Server().EnableNaturalSorting {
 		for k, v := range mappings {
 			mappings[k] = mapSortOrder(tn, v)
 		}
@@ -169,6 +169,7 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 }
 
 // TODO Change all sortMappings to have a consistent case
+
 func (r sqlRepository) sortMapping(sort string) string {
 	if mapping, _, ok := r.lookupSortMapping(sort); ok {
 		return mapping
@@ -515,7 +516,7 @@ func (r sqlRepository) queryAllSlice(ctx context.Context, sq SelectBuilder, resp
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
-	if options.Offset > conf.Server.DevOffsetOptimize {
+	if options.Offset > conf.Server().DevOffsetOptimize {
 		sq = sq.RemoveOffset()
 		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
 		rowidSq = rowidSq.Limit(uint64(options.Offset))

@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"image"
@@ -19,7 +20,6 @@ import (
 
 	_ "github.com/navidrome/navidrome/adapters/gotaglib"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -67,31 +67,34 @@ var userTables []string
 var _ = BeforeSuite(func() {
 	suiteDBTempDir = GinkgoT().TempDir()
 
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
+		c.DataFolder = conf.NewDir(GinkgoT().TempDir())
+	})
 	db.Db().SetMaxOpenConns(1)
-	db.Init(request.WithUser(context.Background(), model.User{ID: "admin-1", IsAdmin: true}))
+	db.Init(request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", IsAdmin: true}))
 
 	userTables = harness.ResettableTables()
 })
 
 var _ = AfterSuite(func() {
-	db.Close(context.Background())
+	db.Close(GinkgoT().Context())
 })
 
 func setupResolutionHarness() {
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 
 	tempDir := GinkgoT().TempDir()
-	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = conf.NewDir(tempDir)
-	conf.Server.MusicFolder = fakeLibPath
-	conf.Server.DevExternalScanner = false
-	conf.Server.ImageCacheSize = "0"
-	conf.Server.EnableExternalServices = false
-	conf.Server.EnableMediaFileCoverArt = true
-	conf.Server.DevArtworkWorkerConcurrency = 1
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
+		c.DataFolder = conf.NewDir(tempDir)
+		c.MusicFolder = fakeLibPath
+		c.DevExternalScanner = false
+		c.ImageCacheSize = "0"
+		c.EnableExternalServices = false
+		c.EnableMediaFileCoverArt = true
+		c.DevArtworkWorkerConcurrency = 1
+	})
 
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
 	harness.TruncateDB(userTables)
@@ -115,7 +118,7 @@ func setupResolutionHarness() {
 	// size=0 requests stream originals, so this reader is never called (serving_test covers resizing).
 	imgCache := cache.NewFileCache("ArtworkResolutionE2E", "100MB", "images", 0,
 		func(context.Context, cache.Item) (io.Reader, error) {
-			return nil, fmt.Errorf("resize not exercised in e2e")
+			return nil, errors.New("resize not exercised in e2e")
 		})
 	Eventually(func() bool { return imgCache.Available(rctx) }, 10*time.Second).Should(BeTrue())
 
@@ -322,19 +325,14 @@ func loadEmbeddedFixture() {
 }
 
 func extractEmbeddedArt(mp3 []byte) []byte {
+	GinkgoHelper()
 	tf, err := taglib.OpenStream(bytes.NewReader(mp3))
-	if err != nil {
-		panic("embedded-art fixture: taglib.OpenStream failed: " + err.Error())
-	}
+	Expect(err).ToNot(HaveOccurred(), "embedded-art fixture: taglib.OpenStream failed")
 	defer tf.Close()
-	images := tf.Properties().Images
-	if len(images) == 0 {
-		panic("embedded-art fixture has no embedded images")
-	}
+	Expect(tf.Properties().Images).ToNot(BeEmpty(), "embedded-art fixture has no embedded images")
 	data, err := tf.Image(0)
-	if err != nil || len(data) == 0 {
-		panic("embedded-art fixture: could not read image 0")
-	}
+	Expect(err).ToNot(HaveOccurred(), "embedded-art fixture: could not read image 0")
+	Expect(data).ToNot(BeEmpty(), "embedded-art fixture: image 0 is empty")
 	return data
 }
 

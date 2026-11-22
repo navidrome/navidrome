@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/nanoid"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
@@ -41,7 +41,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	if err != nil {
 		return nil, err
 	}
-	expiresAt := V(share.ExpiresAt)
+	expiresAt := gg.V(share.ExpiresAt)
 	if !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
 		return nil, model.ErrExpired
 	}
@@ -91,8 +91,8 @@ func (r *shareRepositoryWrapper) Save(ctx context.Context, s *model.Share) (stri
 		return "", err
 	}
 	s.ID = id
-	if V(s.ExpiresAt).IsZero() {
-		s.ExpiresAt = new(time.Now().Add(conf.Server.DefaultShareExpiration))
+	if gg.V(s.ExpiresAt).IsZero() {
+		s.ExpiresAt = new(time.Now().Add(conf.Server().DefaultShareExpiration))
 	}
 
 	s.ResourceType, err = r.resourceType(ctx, s.ResourceIDs)
@@ -121,7 +121,7 @@ var shareableKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwor
 // ride along behind a valid first one, and requires all IDs to be of the same kind.
 func (r *shareRepositoryWrapper) resourceType(ctx context.Context, resourceIDs string) (string, error) {
 	resourceType := ""
-	for _, id := range strings.Split(resourceIDs, ",") {
+	for id := range strings.SplitSeq(resourceIDs, ",") {
 		kind, err := model.GetEntityKindByID(ctx, r.ds, id)
 		if err != nil {
 			return "", err
@@ -142,7 +142,7 @@ func (r *shareRepositoryWrapper) Update(ctx context.Context, id string, entity m
 	cols := []string{"description", "downloadable"}
 
 	// TODO Better handling of Share expiration
-	if !V(entity.ExpiresAt).IsZero() {
+	if !gg.V(entity.ExpiresAt).IsZero() {
 		cols = append(cols, "expires_at")
 	}
 	return r.ShareRepository.Update(ctx, id, entity, cols...)

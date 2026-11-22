@@ -48,7 +48,7 @@ func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 		return &watcher{
 			ds:              ds,
 			scanner:         s,
-			triggerWait:     conf.Server.Scanner.WatcherWait,
+			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 500),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
@@ -101,7 +101,7 @@ func (w *watcher) Run(ctx context.Context) error {
 
 			go func() {
 				var err error
-				if conf.Server.DevSelectiveWatcher {
+				if conf.Server().DevSelectiveWatcher {
 					_, err = w.scanner.ScanFolders(ctx, false, targetSlice)
 				} else {
 					_, err = w.scanner.ScanAll(ctx, false)
@@ -159,7 +159,7 @@ func (w *watcher) Watch(ctx context.Context, lib *model.Library) error {
 	}
 
 	// Start new watcher
-	watcherCtx, cancel := context.WithCancel(w.mainCtx) //nolint:gosec // cancel is stored in instance and called on shutdown
+	watcherCtx, cancel := context.WithCancel(w.mainCtx)
 	instance := &libraryWatcherInstance{
 		library: lib,
 		cancel:  cancel,

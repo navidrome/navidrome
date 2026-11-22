@@ -8,9 +8,11 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 )
 
-// Use this in migrations that need to communicate something important (breaking changes, forced reindexes, etc...)
+// notice is for migrations that need to communicate something important (breaking changes, forced
+// reindexes, etc...)
 func notice(ctx context.Context, tx *sql.Tx, msg string) {
 	if isDBInitialized(ctx, tx) {
 		line := strings.Repeat("*", len(msg)+8)
@@ -18,7 +20,7 @@ func notice(ctx context.Context, tx *sql.Tx, msg string) {
 	}
 }
 
-// Call this in migrations that requires a full rescan
+// forceFullRescan is for migrations that require a full rescan
 func forceFullRescan(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, fmt.Sprintf(`
 INSERT OR REPLACE into property (id, value) values ('%s', '1');
@@ -38,25 +40,14 @@ var (
 
 func isDBInitialized(ctx context.Context, tx *sql.Tx) bool {
 	once.Do(func() {
-		rows, err := tx.QueryContext(ctx, "select count(*) from property where id=?", consts.InitialSetupFlagKey)
-		checkErr(err)
-		initialized = checkCount(rows) > 0
+		var count int
+		err := tx.QueryRowContext(ctx, "select count(*) from property where id=?", consts.InitialSetupFlagKey).Scan(&count)
+		if err != nil {
+			log.Error(ctx, "Could not check if the database is initialized", err)
+		}
+		initialized = count > 0
 	})
 	return initialized
-}
-
-func checkCount(rows *sql.Rows) (count int) {
-	for rows.Next() {
-		err := rows.Scan(&count)
-		checkErr(err)
-	}
-	return count
-}
-
-func checkErr(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 type (
@@ -74,8 +65,8 @@ func createExecuteFunc(ctx context.Context, tx *sql.Tx) execStmtFunc {
 	}
 }
 
-// Hack way to add a new `not null` column to a table, setting the initial value for existing rows based on a
-// SQL expression. It is done in 3 steps:
+// createAddColumnFunc is a hack to add a new `not null` column to a table, setting the initial value for
+// existing rows based on a SQL expression. It is done in 3 steps:
 //  1. Add the column as nullable. Due to the way SQLite manipulates the DDL in memory, we need to add extra padding
 //     to the default value to avoid truncating it when changing the column to not null
 //  2. Update the column with the initial value
@@ -86,7 +77,7 @@ func createAddColumnFunc(ctx context.Context, tx *sql.Tx) addColumnFunc {
 	return func(tableName, columnName, columnType, defaultValue, initialValue string) execFunc {
 		return func() error {
 			// Format the `default null` value to have the same length as the final defaultValue
-			finalLen := len(fmt.Sprintf(`%s not`, defaultValue))
+			finalLen := len(defaultValue + " not")
 			tempDefault := fmt.Sprintf(`default %s null`, strings.Repeat(" ", finalLen))
 			_, err := tx.ExecContext(ctx, fmt.Sprintf(`
 alter table %s add column %s %s %s;`, tableName, columnName, columnType, tempDefault))

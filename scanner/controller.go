@@ -36,10 +36,10 @@ func New(rootCtx context.Context, ds model.DataStore, broker events.Broker,
 		broker:             broker,
 		pls:                pls,
 		metrics:            m,
-		devExternalScanner: conf.Server.DevExternalScanner,
+		devExternalScanner: conf.Server().DevExternalScanner,
 	}
 	if !c.devExternalScanner {
-		c.limiter = new(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
+		c.limiter = new(rate.Sometimes{Interval: conf.Server().DevActivityPanelUpdateRate})
 	}
 	return c
 }
@@ -234,7 +234,7 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// Wait for the scan to finish, sending progress events to all connected clients
 	scanWarnings, scanError := s.trackProgress(ctx, progress)
 	for _, w := range scanWarnings {
-		log.Warn(ctx, fmt.Sprintf("Scan warning: %s", w))
+		log.Warn(ctx, "Scan warning: "+w)
 	}
 	// Store scan error in database so it can be displayed in the UI
 	if scanError != nil {

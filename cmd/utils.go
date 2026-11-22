@@ -20,7 +20,7 @@ import (
 
 // existingDBFile returns the database file (DbPath minus DSN params), and whether it exists.
 func existingDBFile() (string, bool) {
-	path, _, _ := strings.Cut(conf.Server.DbPath, "?")
+	path, _, _ := strings.Cut(conf.Server().DbPath, "?")
 	_, err := os.Stat(path)
 	return path, err == nil
 }

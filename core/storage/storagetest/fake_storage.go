@@ -1,4 +1,3 @@
-//nolint:unused
 package storagetest
 
 import (
@@ -16,6 +15,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils/random"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 )
 
 // FakeStorage is a fake storage that provides a FakeFS.
@@ -127,17 +128,14 @@ func (ffs *FakeFS) ClearError(filePath string) {
 }
 
 func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any, when ...time.Time) {
+	ginkgo.GinkgoHelper()
 	f, ok := ffs.MapFS[filePath]
-	if !ok {
-		panic(fmt.Errorf("file %s not found", filePath))
-	}
+	gomega.Expect(ok).To(gomega.BeTrue(), "file %s not found", filePath)
 	var tags map[string]any
-	err := json.Unmarshal(f.Data, &tags)
-	if err != nil {
-		panic(err)
-	}
+	gomega.Expect(json.Unmarshal(f.Data, &tags)).To(gomega.Succeed())
 	maps.Copy(tags, newTags)
-	data, _ := json.Marshal(tags)
+	data, err := json.Marshal(tags)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	f.Data = data
 	ffs.Touch(filePath, when...)
 }
@@ -211,7 +209,8 @@ func File(tags ...map[string]any) *fstest.MapFile {
 	if _, ok := ts[fakeFileInfoMode]; !ok {
 		ts[fakeFileInfoMode] = fs.ModePerm
 	}
-	data, _ := json.Marshal(ts)
+	data, err := json.Marshal(ts)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	if _, ok := ts[fakeFileInfoSize]; !ok {
 		ts[fakeFileInfoSize] = int64(len(data))
 	}

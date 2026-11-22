@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -32,7 +32,7 @@ func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
 func (api *Router) buildShare(r *http.Request, share model.Share) responses.Share {
 	resp := responses.Share{
 		ID:          share.ID,
-		Url:         public.ShareURL(r.Context(), share.ID),
+		Url:         publicurl.ShareURL(r.Context(), share.ID),
 		Description: share.Description,
 		Username:    share.Username,
 		Created:     share.CreatedAt,
@@ -62,7 +62,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	repo := api.share.Repository()
 	share := &model.Share{
 		Description:  description,
-		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare && conf.Server.EnableDownloads),
+		Downloadable: p.BoolOr("downloadable", conf.Server().DefaultDownloadableShare && conf.Server().EnableDownloads),
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 		ResourceIDs:  strings.Join(ids, ","),
 	}

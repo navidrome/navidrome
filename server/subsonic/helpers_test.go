@@ -3,12 +3,12 @@ package subsonic
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"time"
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -19,8 +19,10 @@ import (
 )
 
 var _ = Describe("helpers", func() {
+	var ctx context.Context
+
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		ctx = GinkgoT().Context()
 		auth.TokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test public secret"), nil)
 	})
@@ -60,12 +62,9 @@ var _ = Describe("helpers", func() {
 	})
 
 	Describe("sortName", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 		When("PreferSortTags is false", func() {
 			BeforeEach(func() {
-				conf.Server.PreferSortTags = false
+				conf.Update(func(c *conf.Options) { c.PreferSortTags = false })
 			})
 			It("returns the order name even if sort name is provided", func() {
 				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Order Album Name"))
@@ -76,7 +75,7 @@ var _ = Describe("helpers", func() {
 		})
 		When("PreferSortTags is true", func() {
 			BeforeEach(func() {
-				conf.Server.PreferSortTags = true
+				conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 			})
 			It("returns the sort name if provided", func() {
 				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Sort Album Name"))
@@ -179,13 +178,13 @@ var _ = Describe("helpers", func() {
 		}
 
 		It("Handles album count without artist participations", func() {
-			conf.Server.Subsonic.ArtistParticipations = false
+			conf.Update(func(c *conf.Options) { c.Subsonic.ArtistParticipations = false })
 			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(3)))
 		})
 
 		It("Handles album count without with participations", func() {
-			conf.Server.Subsonic.ArtistParticipations = true
+			conf.Update(func(c *conf.Options) { c.Subsonic.ArtistParticipations = true })
 			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(4)))
 		})
@@ -209,7 +208,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("childFromMediaFile", func() {
 		var mf model.MediaFile
-		var ctx context.Context
 
 		BeforeEach(func() {
 			mf = model.MediaFile{
@@ -227,12 +225,11 @@ var _ = Describe("helpers", func() {
 				Suffix:      "mp3",
 				BitRate:     320,
 			}
-			ctx = context.Background()
 		})
 
 		Context("with minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "minimal-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -267,7 +264,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with non-minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -292,7 +289,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when minimal clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -323,7 +320,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("artwork coverArt emission", func() {
 		const hash = "0123456789abcdef"
-		ctx := context.Background()
 
 		DescribeTable("coverArtOrEmpty",
 			func(id model.ArtworkID, absent bool, expected string) {
@@ -336,11 +332,11 @@ var _ = Describe("helpers", func() {
 
 		Describe("childFromAlbum", func() {
 			It("suffixes coverArt with the content hash when resolved", func() {
-				al := model.Album{ID: "al-1", ItemImage: model.ItemImage{ImageHash: hash}}
+				al := model.Album{ID: "al-1", ImageHash: hash}
 				Expect(childFromAlbum(ctx, al).CoverArt).To(Equal("al-al-1_" + hash))
 			})
 			It("omits coverArt when known absent", func() {
-				al := model.Album{ID: "al-1", ItemImage: model.ItemImage{ImageAbsent: true}}
+				al := model.Album{ID: "al-1", ImageAbsent: true}
 				Expect(childFromAlbum(ctx, al).CoverArt).To(BeEmpty())
 			})
 			It("emits the bare id when unresolved", func() {
@@ -358,12 +354,12 @@ var _ = Describe("helpers", func() {
 
 			It("does not stamp a track's own art hash onto the album id", func() {
 				mf := model.MediaFile{ID: "mf-1", AlbumID: "al-1",
-					ItemImage:  model.ItemImage{ImageHash: "0000ownarthash00"},
+					ImageHash:  "0000ownarthash00",
 					AlbumImage: model.ItemImage{ImageHash: hash}}
 				Expect(childFromMediaFile(ctx, mf).CoverArt).To(Equal("al-al-1_" + hash))
 			})
 			It("omits coverArt when known absent", func() {
-				mf := model.MediaFile{ID: "mf-1", AlbumID: "al-1", ItemImage: model.ItemImage{ImageAbsent: true}}
+				mf := model.MediaFile{ID: "mf-1", AlbumID: "al-1", ImageAbsent: true}
 				Expect(childFromMediaFile(ctx, mf).CoverArt).To(BeEmpty())
 			})
 			It("emits the bare id when unresolved", func() {
@@ -373,15 +369,15 @@ var _ = Describe("helpers", func() {
 		})
 
 		Describe("toArtist / toArtistID3", func() {
-			r := httptest.NewRequest("GET", "/test", nil)
+			r := httptest.NewRequest(http.MethodGet, "/test", nil)
 			It("emits both coverArt and imageUrl when resolved", func() {
-				a := model.Artist{ID: "ar-1", ItemImage: model.ItemImage{ImageHash: hash}}
+				a := model.Artist{ID: "ar-1", ImageHash: hash}
 				artist := toArtist(r, a)
 				Expect(artist.CoverArt).To(Equal("ar-ar-1_" + hash))
 				Expect(artist.ArtistImageUrl).ToNot(BeEmpty())
 			})
 			It("omits coverArt and imageUrl when known absent", func() {
-				a := model.Artist{ID: "ar-1", ItemImage: model.ItemImage{ImageAbsent: true}}
+				a := model.Artist{ID: "ar-1", ImageAbsent: true}
 				artist := toArtist(r, a)
 				Expect(artist.CoverArt).To(BeEmpty())
 				Expect(artist.ArtistImageUrl).To(BeEmpty())
@@ -399,7 +395,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("osChildFromMediaFile", func() {
 		var mf model.MediaFile
-		var ctx context.Context
 
 		BeforeEach(func() {
 			mf = model.MediaFile{
@@ -408,12 +403,11 @@ var _ = Describe("helpers", func() {
 				Artist:  "Test Artist",
 				Comment: "Test Comment",
 			}
-			ctx = context.Background()
 		})
 
 		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -426,7 +420,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with non-legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -486,7 +480,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when legacy clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -507,7 +501,6 @@ var _ = Describe("helpers", func() {
 
 	Describe("selectedMusicFolderIds", func() {
 		var user model.User
-		var ctx context.Context
 
 		BeforeEach(func() {
 			user = model.User{
@@ -518,12 +511,12 @@ var _ = Describe("helpers", func() {
 					{ID: 3, Name: "Library 3"},
 				},
 			}
-			ctx = request.WithUser(context.Background(), user)
+			ctx = request.WithUser(ctx, user)
 		})
 
 		Context("when musicFolderId parameter is provided", func() {
 			It("should return the specified musicFolderId values", func() {
-				r := httptest.NewRequest("GET", "/test?musicFolderId=1&musicFolderId=3", nil)
+				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=1&musicFolderId=3", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -532,7 +525,7 @@ var _ = Describe("helpers", func() {
 			})
 
 			It("should ignore invalid musicFolderId parameter values", func() {
-				r := httptest.NewRequest("GET", "/test?musicFolderId=invalid&musicFolderId=2", nil)
+				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=invalid&musicFolderId=2", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -541,7 +534,7 @@ var _ = Describe("helpers", func() {
 			})
 
 			It("should return error when any library ID is not accessible", func() {
-				r := httptest.NewRequest("GET", "/test?musicFolderId=1&musicFolderId=5&musicFolderId=2&musicFolderId=99", nil)
+				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=1&musicFolderId=5&musicFolderId=2&musicFolderId=99", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -554,7 +547,7 @@ var _ = Describe("helpers", func() {
 		Context("when musicFolderId parameter is not provided", func() {
 			Context("and required is false", func() {
 				It("should return all user's library IDs", func() {
-					r := httptest.NewRequest("GET", "/test", nil)
+					r := httptest.NewRequest(http.MethodGet, "/test", nil)
 					r = r.WithContext(ctx)
 
 					ids, err := selectedMusicFolderIds(r, false)
@@ -564,8 +557,8 @@ var _ = Describe("helpers", func() {
 
 				It("should return empty slice when user has no libraries", func() {
 					userWithoutLibs := model.User{ID: "no-libs-user", Libraries: []model.Library{}}
-					ctxWithoutLibs := request.WithUser(context.Background(), userWithoutLibs)
-					r := httptest.NewRequest("GET", "/test", nil)
+					ctxWithoutLibs := request.WithUser(ctx, userWithoutLibs)
+					r := httptest.NewRequest(http.MethodGet, "/test", nil)
 					r = r.WithContext(ctxWithoutLibs)
 
 					ids, err := selectedMusicFolderIds(r, false)
@@ -576,7 +569,7 @@ var _ = Describe("helpers", func() {
 
 			Context("and required is true", func() {
 				It("should return ErrMissingParam error", func() {
-					r := httptest.NewRequest("GET", "/test", nil)
+					r := httptest.NewRequest(http.MethodGet, "/test", nil)
 					r = r.WithContext(ctx)
 
 					ids, err := selectedMusicFolderIds(r, true)
@@ -588,7 +581,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when musicFolderId parameter is empty", func() {
 			It("should return all user's library IDs even when empty parameter is provided", func() {
-				r := httptest.NewRequest("GET", "/test?musicFolderId=", nil)
+				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -599,7 +592,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when all musicFolderId parameters are invalid", func() {
 			It("should return all user libraries when all musicFolderId parameters are invalid", func() {
-				r := httptest.NewRequest("GET", "/test?musicFolderId=invalid&musicFolderId=notanumber", nil)
+				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=invalid&musicFolderId=notanumber", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -610,21 +603,16 @@ var _ = Describe("helpers", func() {
 	})
 
 	Describe("AverageRating in responses", func() {
-		var ctx context.Context
-
 		BeforeEach(func() {
-			ctx = context.Background()
-			conf.Server.Subsonic.EnableAverageRating = true
+			conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 		})
 
 		Describe("childFromMediaFile", func() {
 			It("includes averageRating when set", func() {
 				mf := model.MediaFile{
-					ID:    "mf-avg-1",
-					Title: "Test Song",
-					Annotations: model.Annotations{
-						AverageRating: 4.5,
-					},
+					ID:            "mf-avg-1",
+					Title:         "Test Song",
+					AverageRating: 4.5,
 				}
 				child := childFromMediaFile(ctx, mf)
 				Expect(child.AverageRating).To(Equal(4.5))
@@ -643,11 +631,9 @@ var _ = Describe("helpers", func() {
 		Describe("childFromAlbum", func() {
 			It("includes averageRating when set", func() {
 				al := model.Album{
-					ID:   "al-avg-1",
-					Name: "Test Album",
-					Annotations: model.Annotations{
-						AverageRating: 3.75,
-					},
+					ID:            "al-avg-1",
+					Name:          "Test Album",
+					AverageRating: 3.75,
 				}
 				child := childFromAlbum(ctx, al)
 				Expect(child.AverageRating).To(Equal(3.75))
@@ -665,14 +651,12 @@ var _ = Describe("helpers", func() {
 
 		Describe("toArtist", func() {
 			It("includes averageRating when set", func() {
-				conf.Server.Subsonic.EnableAverageRating = true
-				r := httptest.NewRequest("GET", "/test", nil)
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
+				r := httptest.NewRequest(http.MethodGet, "/test", nil)
 				a := model.Artist{
-					ID:   "ar-avg-1",
-					Name: "Test Artist",
-					Annotations: model.Annotations{
-						AverageRating: 5.0,
-					},
+					ID:            "ar-avg-1",
+					Name:          "Test Artist",
+					AverageRating: 5.0,
 				}
 				artist := toArtist(r, a)
 				Expect(artist.AverageRating).To(Equal(5.0))
@@ -681,14 +665,12 @@ var _ = Describe("helpers", func() {
 
 		Describe("toArtistID3", func() {
 			It("includes averageRating when set", func() {
-				conf.Server.Subsonic.EnableAverageRating = true
-				r := httptest.NewRequest("GET", "/test", nil)
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
+				r := httptest.NewRequest(http.MethodGet, "/test", nil)
 				a := model.Artist{
-					ID:   "ar-avg-2",
-					Name: "Test Artist ID3",
-					Annotations: model.Annotations{
-						AverageRating: 2.5,
-					},
+					ID:            "ar-avg-2",
+					Name:          "Test Artist ID3",
+					AverageRating: 2.5,
 				}
 				artist := toArtistID3(r, a)
 				Expect(artist.AverageRating).To(Equal(2.5))
@@ -698,7 +680,7 @@ var _ = Describe("helpers", func() {
 		Describe("buildAlbumID3 Created field", func() {
 			When("RecentlyAddedByModTime is false", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				})
 
 				It("uses CreatedAt when set", func() {
@@ -731,7 +713,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is true", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {
@@ -769,7 +751,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is false", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				})
 
 				It("uses CreatedAt, not BirthTime", func() {
@@ -795,7 +777,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is true", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {
@@ -817,35 +799,29 @@ var _ = Describe("helpers", func() {
 
 		Describe("EnableAverageRating config", func() {
 			It("excludes averageRating when disabled", func() {
-				conf.Server.Subsonic.EnableAverageRating = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = false })
 
 				mf := model.MediaFile{
-					ID:    "mf-cfg-1",
-					Title: "Test Song",
-					Annotations: model.Annotations{
-						AverageRating: 4.5,
-					},
+					ID:            "mf-cfg-1",
+					Title:         "Test Song",
+					AverageRating: 4.5,
 				}
 				child := childFromMediaFile(ctx, mf)
 				Expect(child.AverageRating).To(Equal(0.0))
 
 				al := model.Album{
-					ID:   "al-cfg-1",
-					Name: "Test Album",
-					Annotations: model.Annotations{
-						AverageRating: 3.75,
-					},
+					ID:            "al-cfg-1",
+					Name:          "Test Album",
+					AverageRating: 3.75,
 				}
 				albumChild := childFromAlbum(ctx, al)
 				Expect(albumChild.AverageRating).To(Equal(0.0))
 
-				r := httptest.NewRequest("GET", "/test", nil)
+				r := httptest.NewRequest(http.MethodGet, "/test", nil)
 				a := model.Artist{
-					ID:   "ar-cfg-1",
-					Name: "Test Artist",
-					Annotations: model.Annotations{
-						AverageRating: 5.0,
-					},
+					ID:            "ar-cfg-1",
+					Name:          "Test Artist",
+					AverageRating: 5.0,
 				}
 				artist := toArtist(r, a)
 				Expect(artist.AverageRating).To(Equal(0.0))

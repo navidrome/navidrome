@@ -7,7 +7,6 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/lastfm"
 	_ "github.com/navidrome/navidrome/adapters/listenbrainz"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/matcher"
@@ -28,9 +27,8 @@ var _ = Describe("Provider - TopSongs", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		// Disable fuzzy matching for these tests to avoid unexpected GetAll calls
-		conf.Server.Matcher.FuzzyThreshold = 100
+		conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 
 		ctx = GinkgoT().Context()
 
@@ -144,7 +142,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		track := model.MediaFile{
 			ID: "song-1", Title: "Song One", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{
-				{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"}},
+				{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"},
 			}},
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
@@ -175,7 +173,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		track := model.MediaFile{
 			ID: "one-track", Title: "Collab Song", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{
-				{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"}},
+				{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one", MbzArtistID: "mbid-artist-1"},
 			}},
 		}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{track}, nil)
@@ -334,7 +332,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
 
 		// Title track-fetch: tracks must carry RoleArtist participants so back-mapping routes them.
-		participant1 := model.Participant{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}}
+		participant1 := model.Participant{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}
 		song1 := model.MediaFile{
 			ID: "song-1", Title: "Song One", Artist: "Artist One", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{participant1}},
@@ -375,7 +373,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
 
 		// Title track-fetch: song2 must carry RoleArtist participants for back-mapping.
-		participant1 := model.Participant{Artist: model.Artist{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}}
+		participant1 := model.Participant{ID: "artist-1", Name: "Artist One", OrderArtistName: "artist one"}
 		song2 := model.MediaFile{
 			ID: "song-2", Title: "Song Two", Artist: "Artist One", ArtistID: "artist-1",
 			Participants: model.Participants{model.RoleArtist: model.ParticipantList{participant1}},

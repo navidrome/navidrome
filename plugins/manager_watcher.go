@@ -19,7 +19,7 @@ const debounceDuration = 2 * time.Second
 // startWatcher starts the file watcher for the plugins folder.
 // It watches for CREATE, WRITE, and REMOVE events on .wasm files.
 func (m *Manager) startWatcher() error {
-	folder := conf.Server.Plugins.Folder.String()
+	folder := conf.Server().Plugins.Folder.String()
 	if folder == "" {
 		return nil
 	}
@@ -150,7 +150,7 @@ func (m *Manager) processPluginEvent(pluginName string) {
 	delete(m.debounceTimers, pluginName)
 	m.debounceMu.Unlock()
 
-	folder := conf.Server.Plugins.Folder.String()
+	folder := conf.Server().Plugins.Folder.String()
 	ndpPath := filepath.Join(folder, pluginName+PackageExtension)
 
 	action := determinePluginAction(ndpPath)
@@ -217,5 +217,6 @@ func (m *Manager) processPluginEvent(pluginName string) {
 		if err := m.removePluginFromDB(ctx, repo, dbPlugin); err != nil {
 			log.Error(m.ctx, "Failed to delete plugin from DB", "plugin", pluginName, err)
 		}
+	case actionNone:
 	}
 }

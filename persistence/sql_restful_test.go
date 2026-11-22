@@ -7,12 +7,17 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("sqlRestful", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("parseRestFilters", func() {
 		var r sqlRepository
 		var options rest.QueryOptions
@@ -23,17 +28,16 @@ var _ = Describe("sqlRestful", func() {
 
 		It("returns nil if filters is empty", func() {
 			options.Filters = nil
-			Expect(r.parseRestFilters(context.Background(), options)).To(BeNil())
+			Expect(r.parseRestFilters(ctx, options)).To(BeNil())
 		})
 
 		It(`returns nil if tries a filter with legacySearchExpr("'")`, func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Search.Backend = "legacy"
+			conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 			r.filterMappings = map[string]filterFunc{
 				"name": fullTextFilter("table"),
 			}
 			options.Filters = map[string]any{"name": "'"}
-			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
+			Expect(r.parseRestFilters(ctx, options)).To(BeEmpty())
 		})
 
 		It("does not add nill filters", func() {
@@ -43,22 +47,22 @@ var _ = Describe("sqlRestful", func() {
 				},
 			}
 			options.Filters = map[string]any{"name": "joe"}
-			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
+			Expect(r.parseRestFilters(ctx, options)).To(BeEmpty())
 		})
 
 		It("returns a '=' condition for 'id' filter", func() {
 			options.Filters = map[string]any{"id": "123"}
-			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Eq{"id": "123"}}))
+			Expect(r.parseRestFilters(ctx, options)).To(Equal(squirrel.And{squirrel.Eq{"id": "123"}}))
 		})
 
 		It("returns a 'in' condition for multiples 'id' filters", func() {
 			options.Filters = map[string]any{"id": []string{"123", "456"}}
-			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Eq{"id": []string{"123", "456"}}}))
+			Expect(r.parseRestFilters(ctx, options)).To(Equal(squirrel.And{squirrel.Eq{"id": []string{"123", "456"}}}))
 		})
 
 		It("returns a 'like' condition for other filters", func() {
 			options.Filters = map[string]any{"name": "joe"}
-			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Like{"name": "joe%"}}))
+			Expect(r.parseRestFilters(ctx, options)).To(Equal(squirrel.And{squirrel.Like{"name": "joe%"}}))
 		})
 
 		It("uses the custom filter", func() {
@@ -68,7 +72,7 @@ var _ = Describe("sqlRestful", func() {
 				},
 			}
 			options.Filters = map[string]any{"test": 100}
-			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Gt{"test": 100}}))
+			Expect(r.parseRestFilters(ctx, options)).To(Equal(squirrel.And{squirrel.Gt{"test": 100}}))
 		})
 	})
 
@@ -78,8 +82,7 @@ var _ = Describe("sqlRestful", func() {
 		var mbidFields []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Search.Backend = "legacy"
+			conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 			tableName = "test_table"
 			mbidFields = []string{"mbid", "artist_mbid"}
 			filter = fullTextFilter(tableName, mbidFields...)
@@ -138,7 +141,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("when SearchFullString config changes behavior", func() {
 			It("uses different separator with SearchFullString=false", func() {
-				conf.Server.Search.FullString = false
+				conf.Update(func(c *conf.Options) { c.Search.FullString = false })
 				result := filter("search", "test query")
 
 				sql, args, err := result.ToSql()
@@ -150,7 +153,7 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("uses no separator with SearchFullString=true", func() {
-				conf.Server.Search.FullString = true
+				conf.Update(func(c *conf.Options) { c.Search.FullString = true })
 				result := filter("search", "test query")
 
 				sql, args, err := result.ToSql()
@@ -164,7 +167,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("single-character queries (regression: must not be rejected)", func() {
 			It("returns valid filter for single-char query with legacy backend", func() {
-				conf.Server.Search.Backend = "legacy"
+				conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 				result := filter("search", "a")
 				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")
 				sql, args, err := result.ToSql()
@@ -174,8 +177,10 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("returns valid filter for single-char query with FTS backend", func() {
-				conf.Server.Search.Backend = "fts"
-				conf.Server.Search.FullString = false
+				conf.Update(func(c *conf.Options) {
+					c.Search.Backend = "fts"
+					c.Search.FullString = false
+				})
 				ftsFilter := fullTextFilter(tableName, mbidFields...)
 				result := ftsFilter("search", "a")
 				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
@@ -43,8 +42,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		artwork = &fakeArtwork{data: "image data"}
 		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
 		w = httptest.NewRecorder()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LyricsPriority = "embedded,.lrc"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.lrc" })
 	})
 
 	Describe("GetCoverArt", func() {
@@ -62,7 +60,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			r := newGetRequest() // No id parameter
 			_, err := router.GetCoverArt(w, r)
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(artwork.recvId).To(BeEmpty())
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})

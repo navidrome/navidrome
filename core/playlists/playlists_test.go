@@ -2,12 +2,12 @@ package playlists_test
 
 import (
 	"context"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -22,9 +22,10 @@ var _ = Describe("Playlists", func() {
 	var ds *tests.MockDataStore
 	var ps playlists.Playlists
 	var mockPlsRepo *tests.MockPlaylistRepo
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		ds = &tests.MockDataStore{
 			MockedPlaylist: mockPlsRepo,
@@ -393,9 +394,8 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
@@ -457,9 +457,8 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			// Create a real image file on disk
 			imgDir := filepath.Join(tmpDir, "artwork", "playlist")
@@ -521,4 +520,16 @@ var _ = Describe("Playlists", func() {
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 	})
+})
+
+var _ = Describe("MaxRequestBytes", func() {
+	DescribeTable("scales the body limit with DevMaxPlaylistTracksPerRequest",
+		func(tracks int, expected int64) {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = tracks })
+			Expect(playlists.MaxRequestBytes(4<<20, 64)).To(Equal(expected))
+		},
+		Entry("keeps the floor when the tracks need less", 50_000, int64(4<<20)),
+		Entry("grows past the floor when the tracks need more", 100_000, int64(6_400_000)),
+		Entry("has no limit when the track limit is 0", 0, int64(math.MaxInt64)),
+	)
 })

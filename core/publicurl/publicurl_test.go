@@ -25,25 +25,29 @@ func TestPublicURL(t *testing.T) {
 	RunSpecs(t, "Public URL Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 var _ = Describe("Public URL Utilities", func() {
+	var ctx context.Context
+
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		ctx = GinkgoT().Context()
 	})
 
 	Describe("PublicURL", func() {
 		When("ShareURL is set", func() {
 			BeforeEach(func() {
-				conf.Server.ShareURL = "https://share.example.com"
+				conf.Update(func(c *conf.Options) { c.ShareURL = "https://share.example.com" })
 			})
 
 			It("uses ShareURL as the base", func() {
-				result := publicurl.PublicURL(context.Background(), "/path/to/resource", nil)
+				result := publicurl.PublicURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("https://share.example.com/path/to/resource"))
 			})
 
 			It("includes query parameters", func() {
 				params := url.Values{"size": []string{"300"}, "format": []string{"png"}}
-				result := publicurl.PublicURL(context.Background(), "/image/123", params)
+				result := publicurl.PublicURL(ctx, "/image/123", params)
 				Expect(result).To(ContainSubstring("https://share.example.com/image/123"))
 				Expect(result).To(ContainSubstring("size=300"))
 				Expect(result).To(ContainSubstring("format=png"))
@@ -52,41 +56,41 @@ var _ = Describe("Public URL Utilities", func() {
 
 		When("ShareURL includes a path", func() {
 			BeforeEach(func() {
-				conf.Server.ShareURL = "https://example.com/navi"
+				conf.Update(func(c *conf.Options) { c.ShareURL = "https://example.com/navi" })
 			})
 
 			It("prepends the ShareURL path to the resource", func() {
-				result := publicurl.PublicURL(context.Background(), "/share/img/hash", nil)
+				result := publicurl.PublicURL(ctx, "/share/img/hash", nil)
 				Expect(result).To(Equal("https://example.com/navi/share/img/hash"))
 			})
 
 			It("prepends the ShareURL path and includes query parameters", func() {
 				params := url.Values{"size": []string{"600"}}
-				result := publicurl.PublicURL(context.Background(), "/share/img/hash", params)
+				result := publicurl.PublicURL(ctx, "/share/img/hash", params)
 				Expect(result).To(Equal("https://example.com/navi/share/img/hash?size=600"))
 			})
 
 			It("handles trailing slash in ShareURL path", func() {
-				conf.Server.ShareURL = "https://example.com/navi/"
-				result := publicurl.PublicURL(context.Background(), "/share/img/hash", nil)
+				conf.Update(func(c *conf.Options) { c.ShareURL = "https://example.com/navi/" })
+				result := publicurl.PublicURL(ctx, "/share/img/hash", nil)
 				Expect(result).To(Equal("https://example.com/navi/share/img/hash"))
 			})
 		})
 
 		When("ShareURL is not set", func() {
 			BeforeEach(func() {
-				conf.Server.ShareURL = ""
+				conf.Update(func(c *conf.Options) { c.ShareURL = "" })
 			})
 
 			It("falls back to AbsoluteURL with request", func() {
-				ctx := request.WithServerAddress(context.Background(), "https", "myserver.com")
+				ctx = request.WithServerAddress(ctx, "https", "myserver.com")
 				result := publicurl.PublicURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("https://myserver.com/path/to/resource"))
 			})
 
 			It("falls back to localhost on the configured port without request", func() {
-				conf.Server.Port = 4533
-				result := publicurl.PublicURL(context.Background(), "/path/to/resource", nil)
+				conf.Update(func(c *conf.Options) { c.Port = 4533 })
+				result := publicurl.PublicURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("http://localhost:4533/path/to/resource"))
 			})
 		})
@@ -95,107 +99,131 @@ var _ = Describe("Public URL Utilities", func() {
 	Describe("AbsoluteURL", func() {
 		When("BaseHost is set", func() {
 			BeforeEach(func() {
-				conf.Server.BaseHost = "configured.example.com"
-				conf.Server.BaseScheme = "https"
-				conf.Server.BasePath = ""
+				conf.Update(func(c *conf.Options) {
+					c.BaseHost = "configured.example.com"
+					c.BaseScheme = "https"
+					c.BasePath = ""
+				})
 			})
 
 			It("uses BaseHost and BaseScheme", func() {
-				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				result := publicurl.AbsoluteURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("https://configured.example.com/path/to/resource"))
 			})
 
 			It("defaults to http scheme if BaseScheme is empty", func() {
-				conf.Server.BaseScheme = ""
-				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				conf.Update(func(c *conf.Options) { c.BaseScheme = "" })
+				result := publicurl.AbsoluteURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("http://configured.example.com/path/to/resource"))
 			})
 		})
 
 		When("BaseHost is not set", func() {
 			BeforeEach(func() {
-				conf.Server.BaseHost = ""
-				conf.Server.BasePath = ""
+				conf.Update(func(c *conf.Options) {
+					c.BaseHost = ""
+					c.BasePath = ""
+				})
 			})
 
 			It("extracts host from request", func() {
-				ctx := request.WithServerAddress(context.Background(), "https", "request.example.com")
+				ctx = request.WithServerAddress(ctx, "https", "request.example.com")
 				result := publicurl.AbsoluteURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("https://request.example.com/path/to/resource"))
 			})
 
 			It("falls back to localhost on the configured port without request", func() {
-				conf.Server.Port = 8080
-				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				conf.Update(func(c *conf.Options) { c.Port = 8080 })
+				result := publicurl.AbsoluteURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("http://localhost:8080/path/to/resource"))
 			})
 
 			It("uses https in the fallback when TLS is configured", func() {
-				conf.Server.Port = 4533
-				conf.Server.TLSCert = "cert.pem"
-				conf.Server.TLSKey = "key.pem"
-				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				conf.Update(func(c *conf.Options) {
+					c.Port = 4533
+					c.TLSCert = "cert.pem"
+					c.TLSKey = "key.pem"
+				})
+				result := publicurl.AbsoluteURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("https://localhost:4533/path/to/resource"))
 			})
 
 			It("stays on http when only the certificate is configured", func() {
-				conf.Server.Port = 4533
-				conf.Server.TLSCert = "cert.pem"
-				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				conf.Update(func(c *conf.Options) {
+					c.Port = 4533
+					c.TLSCert = "cert.pem"
+				})
+				result := publicurl.AbsoluteURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("http://localhost:4533/path/to/resource"))
 			})
 		})
 
 		When("BasePath is set", func() {
 			BeforeEach(func() {
-				conf.Server.BasePath = "/navidrome"
-				conf.Server.BaseHost = "example.com"
-				conf.Server.BaseScheme = "https"
+				conf.Update(func(c *conf.Options) {
+					c.BasePath = "/navidrome"
+					c.BaseHost = "example.com"
+					c.BaseScheme = "https"
+				})
 			})
 
 			It("prepends BasePath to the URL", func() {
-				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				result := publicurl.AbsoluteURL(ctx, "/path/to/resource", nil)
 				Expect(result).To(Equal("https://example.com/navidrome/path/to/resource"))
 			})
 		})
 
 		It("passes through absolute URLs unchanged", func() {
-			result := publicurl.AbsoluteURL(context.Background(), "https://other.example.com/path", nil)
+			result := publicurl.AbsoluteURL(ctx, "https://other.example.com/path", nil)
 			Expect(result).To(Equal("https://other.example.com/path"))
 		})
 
 		It("includes query parameters", func() {
-			conf.Server.BaseHost = "example.com"
-			conf.Server.BaseScheme = "https"
+			conf.Update(func(c *conf.Options) {
+				c.BaseHost = "example.com"
+				c.BaseScheme = "https"
+			})
 			params := url.Values{"key": []string{"value"}}
-			result := publicurl.AbsoluteURL(context.Background(), "/path", params)
+			result := publicurl.AbsoluteURL(ctx, "/path", params)
 			Expect(result).To(Equal("https://example.com/path?key=value"))
 		})
 	})
 
 	Describe("ImageURL", func() {
 		BeforeEach(func() {
-			conf.Server.ShareURL = "https://share.example.com"
+			conf.Update(func(c *conf.Options) { c.ShareURL = "https://share.example.com" })
 			// Initialize JWT auth for token generation
 			auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
 		})
 
 		It("generates a URL with the artwork token", func() {
 			artID := model.NewArtworkID(model.KindAlbumArtwork, "album-123", nil)
-			result := publicurl.ImageURL(context.Background(), artID, 0)
+			result := publicurl.ImageURL(ctx, artID, 0)
 			Expect(result).To(HavePrefix("https://share.example.com/share/img/"))
 		})
 
 		It("includes size parameter when provided", func() {
 			artID := model.NewArtworkID(model.KindArtistArtwork, "artist-1", nil)
-			result := publicurl.ImageURL(context.Background(), artID, 300)
+			result := publicurl.ImageURL(ctx, artID, 300)
 			Expect(result).To(ContainSubstring("size=300"))
 		})
 
 		It("omits size parameter when zero", func() {
 			artID := model.NewArtworkID(model.KindMediaFileArtwork, "track-1", nil)
-			result := publicurl.ImageURL(context.Background(), artID, 0)
+			result := publicurl.ImageURL(ctx, artID, 0)
 			Expect(result).ToNot(ContainSubstring("size="))
+		})
+	})
+
+	Describe("ShareURL", func() {
+		It("builds the share page URL under the configured ShareURL path", func() {
+			conf.Update(func(c *conf.Options) { c.ShareURL = "https://example.com/navi/" })
+			Expect(publicurl.ShareURL(ctx, "abc123")).To(Equal("https://example.com/navi/share/abc123"))
+		})
+
+		It("uses the request address when ShareURL is not set", func() {
+			ctx = request.WithServerAddress(ctx, "https", "music.example.com")
+			Expect(publicurl.ShareURL(ctx, "abc123")).To(Equal("https://music.example.com/share/abc123"))
 		})
 	})
 
@@ -208,7 +236,7 @@ var _ = Describe("Public URL Utilities", func() {
 		})
 
 		It("uses the address of the request that triggered the call", func() {
-			ctx := request.WithServerAddress(context.Background(), "https", "music.example.com")
+			ctx = request.WithServerAddress(ctx, "https", "music.example.com")
 
 			result := publicurl.ImageURL(ctx, artID, 300)
 			Expect(result).To(HavePrefix("https://music.example.com/share/img/"))
@@ -216,16 +244,16 @@ var _ = Describe("Public URL Utilities", func() {
 		})
 
 		It("prefers ShareURL over the address in the context", func() {
-			conf.Server.ShareURL = "https://share.example.com"
-			ctx := request.WithServerAddress(context.Background(), "https", "music.example.com")
+			conf.Update(func(c *conf.Options) { c.ShareURL = "https://share.example.com" })
+			ctx = request.WithServerAddress(ctx, "https", "music.example.com")
 
 			result := publicurl.ImageURL(ctx, artID, 0)
 			Expect(result).To(HavePrefix("https://share.example.com/share/img/"))
 		})
 
 		It("falls back to localhost on the configured port when no address is available", func() {
-			conf.Server.Port = 4533
-			result := publicurl.ImageURL(context.Background(), artID, 0)
+			conf.Update(func(c *conf.Options) { c.Port = 4533 })
+			result := publicurl.ImageURL(ctx, artID, 0)
 			Expect(result).To(HavePrefix("http://localhost:4533/share/img/"))
 		})
 	})

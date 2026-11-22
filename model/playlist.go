@@ -59,7 +59,7 @@ func (pls Playlist) RefreshDelay() time.Duration {
 	if pls.IsSmartPlaylist() && pls.Rules.RefreshDelay > 0 {
 		return pls.Rules.RefreshDelay
 	}
-	return conf.Server.SmartPlaylistRefreshDelay
+	return conf.Server().SmartPlaylistRefreshDelay
 }
 
 func (pls Playlist) MediaFiles() MediaFiles {
@@ -74,8 +74,8 @@ func (pls *Playlist) refreshStats() {
 	pls.Duration = 0
 	pls.Size = 0
 	for _, t := range pls.Tracks {
-		pls.Duration += t.MediaFile.Duration
-		pls.Size += t.MediaFile.Size
+		pls.Duration += t.Duration
+		pls.Size += t.Size
 	}
 }
 
@@ -198,7 +198,8 @@ func normalizeChildPathRule(rule map[string]any, referencingPlaylistPath string)
 	return normalized
 }
 
-// filepath.IsAbs rejects a bare leading separator on Windows, but that is how Unix spells absolute.
+// isAbsPlaylistRef also accepts a bare leading separator: filepath.IsAbs rejects it on Windows, but that is
+// how Unix spells absolute.
 func isAbsPlaylistRef(path string) bool {
 	return filepath.IsAbs(path) || os.IsPathSeparator(path[0])
 }
@@ -249,6 +250,7 @@ type PlaylistTrackRepository interface {
 	GetCursor(ctx context.Context, options ...QueryOptions) (PlaylistTrackCursor, error)
 	GetAlbumIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
 	GetMediaFileIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
+	GetPositionIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
 	Add(ctx context.Context, mediaFileIds []string) (int, error)
 	Insert(ctx context.Context, mediaFileIds []string, pos int) (int, error)
 	AddAlbums(ctx context.Context, albumIds []string) (int, error)

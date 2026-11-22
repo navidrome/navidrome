@@ -210,7 +210,6 @@ const Player = () => {
       playMode: playerState.mode,
       mode: 'full',
       loadAudioErrorPlayNext: false,
-      autoPlayInitLoadPlayList: true,
       clearPriorAudioLists: false,
       showDestroy: true,
       showDownload: false,
@@ -251,6 +250,8 @@ const Player = () => {
         playerState.autoPlay !== false &&
         (playerState.clear || playerState.playIndex === 0),
       clearPriorAudioLists: playerState.clear,
+      // Off for the queue restored at startup, so it does not start by itself
+      autoPlayInitLoadPlayList: playerState.autoPlay !== false,
       extendsContent: (
         <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
       ),

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,10 +32,12 @@ func adminContext(ctx context.Context) context.Context {
 	return request.WithUser(ctx, model.User{IsAdmin: true})
 }
 
-// marshalManifest marshals a manifest to JSON string, returning empty string on error.
-func marshalManifest(m *Manifest) string {
-	b, _ := json.Marshal(m)
-	return string(b)
+func marshalManifest(m *Manifest) (string, error) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "", fmt.Errorf("marshalling manifest: %w", err)
+	}
+	return string(b), nil
 }
 
 // ComputeFileSHA256 computes the SHA-256 hash of a file without loading it into memory.
@@ -55,11 +58,15 @@ func ComputeFileSHA256(path string) (string, error) {
 
 // addPluginToDB adds a new plugin to the database as disabled.
 func (m *Manager) addPluginToDB(ctx context.Context, repo model.PluginRepository, name, path string, metadata *PluginMetadata) error {
+	manifest, err := marshalManifest(metadata.Manifest)
+	if err != nil {
+		return err
+	}
 	now := time.Now()
 	newPlugin := &model.Plugin{
 		ID:        name,
 		Path:      path,
-		Manifest:  marshalManifest(metadata.Manifest),
+		Manifest:  manifest,
 		SHA256:    metadata.SHA256,
 		Enabled:   false,
 		CreatedAt: now,
@@ -76,6 +83,10 @@ func (m *Manager) addPluginToDB(ctx context.Context, repo model.PluginRepository
 // updatePluginInDB updates an existing plugin in the database after a file change.
 // If the plugin was enabled, it will be unloaded and disabled.
 func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginRepository, dbPlugin *model.Plugin, path string, metadata *PluginMetadata) error {
+	manifest, err := marshalManifest(metadata.Manifest)
+	if err != nil {
+		return err
+	}
 	wasEnabled := dbPlugin.Enabled
 	if wasEnabled {
 		if err := m.unloadPlugin(dbPlugin.ID); err != nil {
@@ -83,7 +94,7 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 		}
 	}
 	dbPlugin.Path = path
-	dbPlugin.Manifest = marshalManifest(metadata.Manifest)
+	dbPlugin.Manifest = manifest
 	dbPlugin.SHA256 = metadata.SHA256
 	dbPlugin.Enabled = false
 	dbPlugin.LastError = ""
@@ -130,7 +141,7 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 // - Removed plugins are deleted from DB (after unloading if enabled)
 func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)

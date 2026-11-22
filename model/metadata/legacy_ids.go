@@ -27,7 +27,7 @@ func legacyTrackID(mf model.MediaFile, prependLibId bool) string {
 func legacyAlbumID(mf model.MediaFile, md Metadata, prependLibId bool) string {
 	_, _, releaseDate := md.mapDates()
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", legacyMapAlbumArtistName(md), legacyMapAlbumName(md)))
-	if !conf.Server.Scanner.GroupAlbumReleases {
+	if !conf.Server().Scanner.GroupAlbumReleases {
 		if len(releaseDate) != 0 {
 			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
 		}

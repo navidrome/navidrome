@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -80,8 +81,35 @@ func (r *playQueueRepository) RetrieveWithMediaFiles(ctx context.Context, userId
 	var res playQueue
 	err := r.queryOne(ctx, sel, &res)
 	q := r.toModel(&res)
-	q.Items = r.loadTracks(ctx, q.Items)
+	stored := q.Items
+	var loadErr error
+	q.Items, loadErr = r.loadTracks(ctx, stored)
+	if loadErr != nil && err == nil {
+		err = fmt.Errorf("%w: %w", model.ErrIncompleteQueue, loadErr)
+	}
+	if loadErr == nil && len(q.Items) < len(stored) {
+		q.Current, q.Position = remapCurrent(stored, q.Items, q.Current, q.Position)
+	}
 	return &q, err
+}
+
+// remapCurrent relies on loaded being stored in the same order, minus the missing tracks. If the current track
+// is gone, it moves to the next remaining one (or the last) and restarts it.
+func remapCurrent(stored, loaded model.MediaFiles, current int, position int64) (int, int64) {
+	kept := 0
+	for i, t := range stored {
+		if kept >= len(loaded) || loaded[kept].ID != t.ID {
+			continue
+		}
+		if i >= current {
+			if i > current {
+				position = 0
+			}
+			return kept, position
+		}
+		kept++
+	}
+	return max(len(loaded)-1, 0), 0
 }
 
 func (r *playQueueRepository) Retrieve(ctx context.Context, userId string) (*model.PlayQueue, error) {
@@ -130,13 +158,14 @@ func (r *playQueueRepository) toModel(pq *playQueue) model.PlayQueue {
 
 // loadTracks loads the tracks from the database. It receives a list of track IDs and returns a list of MediaFiles
 // in the same order as the input list.
-func (r *playQueueRepository) loadTracks(ctx context.Context, tracks model.MediaFiles) model.MediaFiles {
+func (r *playQueueRepository) loadTracks(ctx context.Context, tracks model.MediaFiles) (model.MediaFiles, error) {
 	if len(tracks) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	mfRepo := NewMediaFileRepository(r.db)
 	trackMap := map[string]model.MediaFile{}
+	var loadErr error
 
 	// Create an iterator to collect all track IDs
 	ids := slice.SeqFunc(tracks, func(t model.MediaFile) string { return t.ID })
@@ -148,6 +177,7 @@ func (r *playQueueRepository) loadTracks(ctx context.Context, tracks model.Media
 		if err != nil {
 			u := loggedUser(ctx)
 			log.Error(ctx, "Could not load playqueue/bookmark's tracks", "user", u.UserName, err)
+			loadErr = err
 		}
 		for _, t := range tracks {
 			trackMap[t.ID] = t
@@ -162,7 +192,7 @@ func (r *playQueueRepository) loadTracks(ctx context.Context, tracks model.Media
 			newTracks = append(newTracks, track)
 		}
 	}
-	return newTracks
+	return newTracks, loadErr
 }
 
 func (r *playQueueRepository) clearPlayQueue(ctx context.Context, userId string) error {

@@ -84,7 +84,7 @@ type taskQueueServiceImpl struct {
 // newTaskQueueService creates a new taskQueueServiceImpl with its own SQLite database.
 // The given ctx bounds the service's background work (queue workers, cleanup loop).
 func newTaskQueueService(ctx context.Context, pluginName string, manager *Manager, maxConcurrency int32) (*taskQueueServiceImpl, error) {
-	dataDir := filepath.Join(conf.Server.DataFolder.String(), "plugins", pluginName)
+	dataDir := filepath.Join(conf.Server().DataFolder.String(), "plugins", pluginName)
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("creating plugin data directory: %w", err)
 	}
@@ -103,7 +103,7 @@ func newTaskQueueService(ctx context.Context, pluginName string, manager *Manage
 		return nil, fmt.Errorf("creating taskqueue schema: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(ctx) //nolint:gosec // cancel is stored in struct and called in Close()
+	ctx, cancel := context.WithCancel(ctx)
 
 	s := &taskQueueServiceImpl{
 		pluginName:     pluginName,
@@ -199,7 +199,7 @@ func (s *taskQueueServiceImpl) clampConcurrency(ctx context.Context, name string
 
 func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, config host.QueueConfig) error {
 	if len(name) == 0 {
-		return fmt.Errorf("queue name cannot be empty")
+		return errors.New("queue name cannot be empty")
 	}
 	if len(name) > maxQueueNameLength {
 		return fmt.Errorf("queue name exceeds maximum length of %d bytes", maxQueueNameLength)

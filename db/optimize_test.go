@@ -19,7 +19,7 @@ var _ = Describe("Optimize", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		now = time.Date(2026, time.July, 9, 12, 0, 0, 0, time.UTC)
 		var err error
 		database, err = sql.Open(db.Dialect, "file::memory:")

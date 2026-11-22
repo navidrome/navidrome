@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -47,7 +46,7 @@ var _ = Describe("Auth", func() {
 		Describe("createAdmin", func() {
 			var createdAt time.Time
 			BeforeEach(func() {
-				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
+				req = httptest.NewRequest(http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 				createdAt = time.Now()
 				createAdmin(ds)(resp, req)
@@ -56,7 +55,7 @@ var _ = Describe("Auth", func() {
 			It("creates an admin user with the specified password", func() {
 				usr := ds.User()
 				u, err := usr.FindByUsername(ctx, "johndoe")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
 				Expect(*u.LastLoginAt).To(BeTemporally(">=", createdAt, time.Second))
@@ -65,8 +64,8 @@ var _ = Describe("Auth", func() {
 			It("returns the expected payload", func() {
 				Expect(resp.Code).To(Equal(http.StatusOK))
 				var parsed map[string]any
-				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-				Expect(parsed["isAdmin"]).To(Equal(true))
+				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+				Expect(parsed["isAdmin"]).To(BeTrue())
 				Expect(parsed["username"]).To(Equal("johndoe"))
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
@@ -77,7 +76,7 @@ var _ = Describe("Auth", func() {
 		Describe("createAdminUser", func() {
 			It("returns the error when the user cannot be saved", func() {
 				ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: errors.New("db is down")}}
-				err := createAdminUser(context.Background(), ds, "johndoe", "secret")
+				err := createAdminUser(ctx, ds, "johndoe", "secret")
 				Expect(err).To(MatchError(ContainSubstring("db is down")))
 			})
 		})
@@ -85,7 +84,7 @@ var _ = Describe("Auth", func() {
 		Describe("createAdmin when the user cannot be stored", func() {
 			It("responds 500 rather than falling through to login", func() {
 				failing := dsWithFailingPut(errors.New("db is down"))
-				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
+				req = httptest.NewRequest(http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 
 				createAdmin(failing)(resp, req)
@@ -107,11 +106,13 @@ var _ = Describe("Auth", func() {
 			BeforeEach(func() {
 				usr := ds.User()
 				_ = usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
-				req = httptest.NewRequest("GET", "/index.html", nil)
+				req = httptest.NewRequest(http.MethodGet, "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
-				conf.Server.UILoginBackgroundURL = ""
-				conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16,2001:4860:4860::/48"
+				conf.Update(func(c *conf.Options) {
+					c.UILoginBackgroundURL = ""
+					c.ExtAuth.TrustedSources = "192.168.0.0/16,2001:4860:4860::/48"
+				})
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
@@ -185,8 +186,10 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("does not set auth data when listening on unix socket without whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ExtAuth.TrustedSources = ""
+				conf.Update(func(c *conf.Options) {
+					c.Address = "unix:/tmp/navidrome-test"
+					c.ExtAuth.TrustedSources = ""
+				})
 
 				// No ReverseProxyIp in request context
 				serveIndex(ds, fs, nil)(resp, req)
@@ -196,7 +199,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("does not set auth data when listening on unix socket with incorrect whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
+				conf.Update(func(c *conf.Options) { c.Address = "unix:/tmp/navidrome-test" })
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
 				serveIndex(ds, fs, nil)(resp, req)
@@ -206,8 +209,10 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data when listening on unix socket with correct whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ExtAuth.TrustedSources = conf.Server.ExtAuth.TrustedSources + ",@"
+				conf.Update(func(c *conf.Options) {
+					c.Address = "unix:/tmp/navidrome-test"
+					c.ExtAuth.TrustedSources = c.ExtAuth.TrustedSources + ",@"
+				})
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
 				serveIndex(ds, fs, nil)(resp, req)
@@ -221,7 +226,7 @@ var _ = Describe("Auth", func() {
 
 		Describe("login", func() {
 			BeforeEach(func() {
-				req = httptest.NewRequest("POST", "/login", strings.NewReader(`{"username":"janedoe", "password":"abc123"}`))
+				req = httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"janedoe", "password":"abc123"}`))
 				resp = httptest.NewRecorder()
 			})
 
@@ -232,7 +237,7 @@ var _ = Describe("Auth", func() {
 
 			It("rejects a request body larger than the limit", func() {
 				body := `{"username":"janedoe", "password":"abc123", "padding":"` + strings.Repeat("x", MaxLoginBodySize) + `"}`
-				req = httptest.NewRequest("POST", "/login", strings.NewReader(body))
+				req = httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(body))
 				LimitLoginBody(http.HandlerFunc(login(ds))).ServeHTTP(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity))
 			})
@@ -245,8 +250,8 @@ var _ = Describe("Auth", func() {
 				Expect(resp.Code).To(Equal(http.StatusOK))
 
 				var parsed map[string]any
-				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-				Expect(parsed["isAdmin"]).To(Equal(false))
+				Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+				Expect(parsed["isAdmin"]).To(BeFalse())
 				Expect(parsed["username"]).To(Equal("janedoe"))
 				Expect(parsed["name"]).To(Equal("Jane"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
@@ -260,7 +265,7 @@ var _ = Describe("Auth", func() {
 		var r *http.Request
 
 		BeforeEach(func() {
-			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
+			conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "192.168.0.0/16" })
 			prevLevel := log.CurrentLevel()
 			l, h := test.NewNullLogger()
 			hook = h
@@ -270,7 +275,7 @@ var _ = Describe("Auth", func() {
 				log.SetDefaultLogger(prevLogger)
 				log.SetLevel(prevLevel)
 			})
-			r = httptest.NewRequest("GET", "/", nil)
+			r = httptest.NewRequest(http.MethodGet, "/", nil)
 		})
 
 		warnings := func() []*logrus.Entry {
@@ -307,7 +312,7 @@ var _ = Describe("Auth", func() {
 
 	Describe("tokenFromHeader", func() {
 		It("returns the token when the Authorization header is set correctly", func() {
-			req := httptest.NewRequest("GET", "/", nil)
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set(consts.UIAuthorizationHeader, "Bearer testtoken")
 
 			token := tokenFromHeader(req)
@@ -315,14 +320,14 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("returns an empty string when the Authorization header is not set", func() {
-			req := httptest.NewRequest("GET", "/", nil)
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			token := tokenFromHeader(req)
 			Expect(token).To(BeEmpty())
 		})
 
 		It("returns an empty string when the Authorization header is not a Bearer token", func() {
-			req := httptest.NewRequest("GET", "/", nil)
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set(consts.UIAuthorizationHeader, "Basic testtoken")
 
 			token := tokenFromHeader(req)
@@ -330,7 +335,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("returns an empty string when the Bearer token is too short", func() {
-			req := httptest.NewRequest("GET", "/", nil)
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set(consts.UIAuthorizationHeader, "Bearer")
 
 			token := tokenFromHeader(req)
@@ -388,10 +393,12 @@ var _ = Describe("Auth", func() {
 
 		BeforeEach(func() {
 			ds = &tests.MockDataStore{}
-			req = httptest.NewRequest("GET", "/", nil)
+			req = httptest.NewRequest(http.MethodGet, "/", nil)
 			req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIP))
-			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
-			conf.Server.ExtAuth.UserHeader = "Remote-User"
+			conf.Update(func(c *conf.Options) {
+				c.ExtAuth.TrustedSources = "192.168.0.0/16"
+				c.ExtAuth.UserHeader = "Remote-User"
+			})
 		})
 
 		It("makes the first user an admin", func() {
@@ -404,7 +411,7 @@ var _ = Describe("Auth", func() {
 
 			// Verify user was created as admin
 			u, err := ds.User().FindByUsername(ctx, "firstuser")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(u.IsAdmin).To(BeTrue())
 		})
 
@@ -426,7 +433,7 @@ var _ = Describe("Auth", func() {
 
 			// Verify user was created as non-admin
 			u, err := ds.User().FindByUsername(ctx, "seconduser")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(u.IsAdmin).To(BeFalse())
 		})
 	})
@@ -436,8 +443,7 @@ var _ = Describe("Auth", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SessionTimeout = time.Hour
+			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			ds = &tests.MockDataStore{}
 			auth.Init(ds)
 			ur := ds.User().(*tests.MockedUserRepo)
@@ -446,7 +452,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {
-			r := httptest.NewRequest("GET", "/api/song", nil)
+			r := httptest.NewRequest(http.MethodGet, "/api/song", nil)
 			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
 			w := httptest.NewRecorder()
 			handler := JWTVerifier(Authenticator(ds)(http.HandlerFunc(
@@ -476,7 +482,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("ignores a stray token for someone else when config auto-login resolves the user", func() {
-			conf.Server.DevAutoLoginUsername = usr.UserName
+			conf.Update(func(c *conf.Options) { c.DevAutoLoginUsername = usr.UserName })
 			tokenStr, err := auth.CreateToken(&model.User{UserName: "someone-else"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
@@ -492,9 +498,8 @@ var _ = Describe("Auth", func() {
 
 	Describe("JWTRefresher", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
-			conf.Server.SessionTimeout = time.Hour
+			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			auth.Init(&tests.MockDataStore{})
 		})
 
@@ -503,7 +508,7 @@ var _ = Describe("Auth", func() {
 			tokenStr, err := auth.CreateToken(&usr)
 			Expect(err).ToNot(HaveOccurred())
 
-			r := httptest.NewRequest("GET", "/api/song", nil)
+			r := httptest.NewRequest(http.MethodGet, "/api/song", nil)
 			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+tokenStr)
 			w := httptest.NewRecorder()
 			JWTVerifier(JWTRefresher(handler)).ServeHTTP(w, r)

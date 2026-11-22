@@ -77,7 +77,11 @@ func (d *Discovery) ServeOn(ctx context.Context, conn net.PacketConn) {
 			continue
 		}
 		info := discoveryInfo{Address: discoveryAddress(ctx, remote), Id: d.serverID(ctx), Name: serverName()}
-		res, _ := json.Marshal(info)
+		res, err := json.Marshal(info)
+		if err != nil {
+			log.Error(ctx, "Jellyfin API: could not encode auto-discovery response", err)
+			continue
+		}
 		log.Debug(ctx, "Jellyfin API: answering auto-discovery request", "from", remote.String(), "address", info.Address)
 		if _, err := conn.WriteTo(res, remote); err != nil {
 			log.Debug(ctx, "Jellyfin API: could not answer auto-discovery request", "to", remote.String(), err)
@@ -85,25 +89,27 @@ func (d *Discovery) ServeOn(ctx context.Context, conn net.PacketConn) {
 	}
 }
 
-// Behind a unix socket nothing listens on Port, so only a BaseURL host gives clients an address.
+// hasAdvertisableAddress is false behind a unix socket with no BaseURL host: nothing listens on Port
+// there, so only a BaseURL host gives clients an address.
 func hasAdvertisableAddress() bool {
-	return conf.Server.BaseHost != "" || !strings.HasPrefix(conf.Server.Address, "unix:")
+	return conf.Server().BaseHost != "" || !strings.HasPrefix(conf.Server().Address, "unix:")
 }
 
 func discoveryAddress(ctx context.Context, remote net.Addr) string {
-	scheme := gg.If(conf.Server.TLSEnabled(), "https", "http")
-	host := net.JoinHostPort(localIPFor(remote), strconv.Itoa(conf.Server.Port))
+	scheme := gg.If(conf.Server().TLSEnabled(), "https", "http")
+	host := net.JoinHostPort(localIPFor(remote), strconv.Itoa(conf.Server().Port))
 	return publicurl.AbsoluteURL(request.WithServerAddress(ctx, scheme, host), consts.URLPathJellyfinAPI, nil)
 }
 
-// On a multi-homed host, only the interface that routes to the requester is reachable by it.
+// localIPFor returns the configured Address when it is a specific IP. Otherwise it picks the interface that
+// routes to the requester, since on a multi-homed host only that one is reachable by it.
 func localIPFor(remote net.Addr) string {
-	if ip := parseIP(conf.Server.Address); ip.IsValid() && !ip.IsUnspecified() {
+	if ip := parseIP(conf.Server().Address); ip.IsValid() && !ip.IsUnspecified() {
 		return ip.String()
 	}
 	c, err := net.Dial("udp", remote.String())
 	if err != nil {
-		return conf.Server.Address
+		return conf.Server().Address
 	}
 	defer c.Close()
 	return c.LocalAddr().(*net.UDPAddr).IP.String()

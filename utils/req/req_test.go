@@ -2,6 +2,7 @@ package req_test
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -21,7 +22,7 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("ParamString", func() {
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", "/ping?a=123", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?a=123", nil))
 		})
 
 		It("returns param as string", func() {
@@ -38,7 +39,7 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("ParamStringDefault", func() {
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", "/ping?a=123", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?a=123", nil))
 		})
 
 		It("returns param as string", func() {
@@ -52,7 +53,7 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("ParamStrings", func() {
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", "/ping?a=123&a=456", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?a=123&a=456", nil))
 		})
 
 		It("returns all param occurrences as []string", func() {
@@ -69,7 +70,7 @@ var _ = Describe("Request Helpers", func() {
 		t := d.UnixMilli()
 		now := time.Now()
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", fmt.Sprintf("/ping?t=%d&inv=abc", t), nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, fmt.Sprintf("/ping?t=%d&inv=abc", t), nil))
 		})
 
 		It("returns parsed time", func() {
@@ -91,7 +92,7 @@ var _ = Describe("Request Helpers", func() {
 		t1 := d1.UnixMilli()
 		t2 := d2.UnixMilli()
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", fmt.Sprintf("/ping?t=%d&t=%d", t1, t2), nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, fmt.Sprintf("/ping?t=%d&t=%d", t1, t2), nil))
 		})
 
 		It("returns all param occurrences as []time.Time", func() {
@@ -106,7 +107,7 @@ var _ = Describe("Request Helpers", func() {
 
 		It("returns current time as default if param is invalid", func() {
 			now := time.Now()
-			r = req.Params(httptest.NewRequest("GET", "/ping?t=null", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?t=null", nil))
 			times, err := r.Times("t")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(times).To(HaveLen(1))
@@ -116,7 +117,7 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("ParamInt", func() {
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", "/ping?i=123&inv=123.45", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?i=123&inv=123.45", nil))
 		})
 		Context("int", func() {
 			It("returns parsed int", func() {
@@ -158,7 +159,7 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("ParamInts", func() {
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", "/ping?i=123&i=456", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?i=123&i=456", nil))
 		})
 
 		It("returns array of occurrences found", func() {
@@ -175,7 +176,7 @@ var _ = Describe("Request Helpers", func() {
 	Describe("ParamBool", func() {
 		Context("value is true", func() {
 			BeforeEach(func() {
-				r = req.Params(httptest.NewRequest("GET", "/ping?b=true&c=on&d=1&e=True", nil))
+				r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?b=true&c=on&d=1&e=True", nil))
 			})
 
 			It("parses 'true'", func() {
@@ -197,7 +198,7 @@ var _ = Describe("Request Helpers", func() {
 
 		Context("value is false", func() {
 			BeforeEach(func() {
-				r = req.Params(httptest.NewRequest("GET", "/ping?b=false&c=off&d=0", nil))
+				r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?b=false&c=off&d=0", nil))
 			})
 
 			It("parses 'false'", func() {
@@ -220,7 +221,7 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("ParamStringPtr", func() {
 		BeforeEach(func() {
-			r = req.Params(httptest.NewRequest("GET", "/ping?a=123", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?a=123", nil))
 		})
 
 		It("returns pointer to string if param exists", func() {
@@ -235,7 +236,7 @@ var _ = Describe("Request Helpers", func() {
 		})
 
 		It("returns pointer to empty string if param exists but is empty", func() {
-			r = req.Params(httptest.NewRequest("GET", "/ping?a=", nil))
+			r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?a=", nil))
 			ptr := r.StringPtr("a")
 			Expect(ptr).ToNot(BeNil())
 			Expect(*ptr).To(Equal(""))
@@ -244,17 +245,17 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("Float64Or", func() {
 		It("returns parsed float value", func() {
-			r := req.Params(httptest.NewRequest("GET", "/test?rate=1.5", nil))
+			r := req.Params(httptest.NewRequest(http.MethodGet, "/test?rate=1.5", nil))
 			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.5))
 		})
 
 		It("returns default when param is missing", func() {
-			r := req.Params(httptest.NewRequest("GET", "/test", nil))
+			r := req.Params(httptest.NewRequest(http.MethodGet, "/test", nil))
 			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.0))
 		})
 
 		It("returns default when param is not a valid float", func() {
-			r := req.Params(httptest.NewRequest("GET", "/test?rate=abc", nil))
+			r := req.Params(httptest.NewRequest(http.MethodGet, "/test?rate=abc", nil))
 			Expect(r.Float64Or("rate", 1.0)).To(Equal(1.0))
 		})
 	})
@@ -262,7 +263,7 @@ var _ = Describe("Request Helpers", func() {
 	Describe("ParamBoolPtr", func() {
 		Context("value is true", func() {
 			BeforeEach(func() {
-				r = req.Params(httptest.NewRequest("GET", "/ping?b=true", nil))
+				r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?b=true", nil))
 			})
 
 			It("returns pointer to true if param is 'true'", func() {
@@ -274,7 +275,7 @@ var _ = Describe("Request Helpers", func() {
 
 		Context("value is false", func() {
 			BeforeEach(func() {
-				r = req.Params(httptest.NewRequest("GET", "/ping?b=false", nil))
+				r = req.Params(httptest.NewRequest(http.MethodGet, "/ping?b=false", nil))
 			})
 
 			It("returns pointer to false if param is 'false'", func() {
@@ -294,7 +295,7 @@ var _ = Describe("Request Helpers", func() {
 var _ = Describe("IfNoneMatch", func() {
 	DescribeTable("matches the ETag",
 		func(header string, expected bool) {
-			r := httptest.NewRequest("GET", "/", nil)
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
 			if header != "" {
 				r.Header.Set("If-None-Match", header)
 			}

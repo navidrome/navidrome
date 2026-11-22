@@ -26,7 +26,7 @@ var _ = Describe("sqlBookmarks", func() {
 
 		It("saves and overrides bookmarks", func() {
 			By("Saving the bookmark")
-			Expect(mr.AddBookmark(ctx, songAntenna.ID, "this is a comment", 123)).To(BeNil())
+			Expect(mr.AddBookmark(ctx, songAntenna.ID, "this is a comment", 123)).To(Succeed())
 
 			bms, err := mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
@@ -42,7 +42,7 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(updated).To(BeTemporally(">=", created))
 
 			By("Overriding the bookmark")
-			Expect(mr.AddBookmark(ctx, songAntenna.ID, "another comment", 333)).To(BeNil())
+			Expect(mr.AddBookmark(ctx, songAntenna.ID, "another comment", 333)).To(Succeed())
 
 			bms, err = mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
@@ -54,7 +54,7 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(bms[0].UpdatedAt).To(BeTemporally(">=", updated))
 
 			By("Saving another bookmark")
-			Expect(mr.AddBookmark(ctx, songComeTogether.ID, "one more comment", 444)).To(BeNil())
+			Expect(mr.AddBookmark(ctx, songComeTogether.ID, "one more comment", 444)).To(Succeed())
 			bms, err = mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bms).To(HaveLen(2))

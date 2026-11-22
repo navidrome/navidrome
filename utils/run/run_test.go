@@ -19,7 +19,7 @@ func TestRun(t *testing.T) {
 var _ = Describe("Sequentially", func() {
 	It("should return nil if no functions are provided", func() {
 		err := run.Sequentially()
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("should return nil if all functions succeed", func() {
@@ -27,7 +27,7 @@ var _ = Describe("Sequentially", func() {
 			func() error { return nil },
 			func() error { return nil },
 		)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("should return the error from the first failing function", func() {
@@ -56,7 +56,7 @@ var _ = Describe("Parallel", func() {
 	It("should return a function that returns nil if no functions are provided", func() {
 		parallelFunc := run.Parallel()
 		err := parallelFunc()
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("should return a function that returns nil if all functions succeed", func() {
@@ -66,7 +66,7 @@ var _ = Describe("Parallel", func() {
 			func() error { return nil },
 		)
 		err := parallelFunc()
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("should return the first error encountered when functions fail", func() {

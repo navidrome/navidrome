@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"strconv"
@@ -19,7 +20,7 @@ var parser = cron.NewParser(
 // robfig/cron's standard parser. Duration strings (e.g., "5m") are converted to "@every 5m".
 func ParseCrontab(spec string) (cron.Schedule, error) {
 	if spec == "" {
-		return nil, fmt.Errorf("empty spec string")
+		return nil, errors.New("empty spec string")
 	}
 
 	if _, err := time.ParseDuration(spec); err == nil {
@@ -35,7 +36,7 @@ func ParseCrontab(spec string) (cron.Schedule, error) {
 	if strings.HasPrefix(spec, "TZ=") || strings.HasPrefix(spec, "CRON_TZ=") {
 		i := strings.Index(spec, " ")
 		if i == -1 {
-			return nil, fmt.Errorf("missing spec after timezone")
+			return nil, errors.New("missing spec after timezone")
 		}
 		tzPrefix = spec[:i] + " "
 		spec = strings.TrimSpace(spec[i:])

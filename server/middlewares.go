@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -110,7 +111,7 @@ func secureMiddleware() func(http.Handler) http.Handler {
 		FrameDeny:               true,
 		ReferrerPolicy:          "same-origin",
 		PermissionsPolicy:       "autoplay=(), camera=(), microphone=(), usb=()",
-		CustomFrameOptionsValue: conf.Server.HTTPHeaders.FrameOptions,
+		CustomFrameOptionsValue: conf.Server().HTTPHeaders.FrameOptions,
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
@@ -146,7 +147,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     cmp.Or(conf.Server.BasePath, "/"),
+				Path:     cmp.Or(conf.Server().BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {
@@ -174,7 +175,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 // a client cannot pick its own identity and evade controls keyed on it. The peer address is kept
 // in the context as request.ReverseProxyIp.
 func realIPMiddleware(next http.Handler) http.Handler {
-	trusted := conf.Server.ExtAuth.TrustedSources
+	trusted := conf.Server().ExtAuth.TrustedSources
 	fromPeer := middleware.ClientIPFromRemoteAddr(next)
 	if trusted == "" {
 		return fromPeer
@@ -223,7 +224,7 @@ func peerHost(r *http.Request) string {
 // exactly one hop.
 func trustedProxyPrefixes(list string) []string {
 	var prefixes []string
-	for _, entry := range strings.Split(list, ",") {
+	for entry := range strings.SplitSeq(list, ",") {
 		entry = strings.TrimSpace(entry)
 		if _, err := netip.ParsePrefix(entry); err == nil {
 			prefixes = append(prefixes, entry)
@@ -374,7 +375,9 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			usr, ok := request.UserFrom(ctx)
-			if ok {
+			// Internal calls (e.g. plugins) are not user activity: skip the last access update.
+			_, internal := request.InternalAuthFrom(ctx)
+			if ok && !internal {
 				userAccessLimiter.Do(usr.ID, func() {
 					start := time.Now()
 					ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -392,5 +395,43 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 			}
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// DecodeJSONBody decodes exactly one JSON value of at most limit bytes into v, answering 413 or 400 itself on failure.
+func DecodeJSONBody(w http.ResponseWriter, r *http.Request, limit int64, v any) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
+	if err := dec.Decode(v); err != nil {
+		status, msg := jsonBodyError(err)
+		http.Error(w, msg, status)
+		return false
+	}
+	// Decode alone would ignore anything after the first value.
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		status, msg := jsonBodyError(err)
+		if status == http.StatusBadRequest {
+			msg = "Request body must only contain a single JSON value"
+		}
+		http.Error(w, msg, status)
+		return false
+	}
+	return true
+}
+
+func jsonBodyError(err error) (int, string) {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	var sizeErr *http.MaxBytesError
+	switch {
+	case errors.As(err, &sizeErr):
+		return http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body must not be larger than %d bytes", sizeErr.Limit)
+	case errors.Is(err, io.EOF):
+		return http.StatusBadRequest, "Request body must not be empty"
+	case errors.As(err, &syntaxErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxErr.Offset)
+	case errors.As(err, &typeErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", typeErr.Field, typeErr.Offset)
+	default:
+		return http.StatusBadRequest, "Request body contains badly-formed JSON"
 	}
 }

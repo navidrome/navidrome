@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -54,7 +53,7 @@ func (f *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int,
 
 func newImageRequest(itemId string) (*httptest.ResponseRecorder, *http.Request) {
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/Items/"+itemId+"/Images/Primary", nil)
+	r := httptest.NewRequest(http.MethodGet, "/Items/"+itemId+"/Images/Primary", nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("itemId", itemId)
 	rctx.URLParams.Add("type", "Primary")
@@ -254,7 +253,7 @@ var _ = Describe("postItemImage", func() {
 	It("uploads a raw JPEG body and returns 204", func() {
 		body := jpegBytes()
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -270,7 +269,7 @@ var _ = Describe("postItemImage", func() {
 		raw := pngBytes()
 		encoded := base64.StdEncoding.EncodeToString(raw)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader([]byte(encoded)))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader([]byte(encoded)))
 		r.Header.Set("Content-Type", "image/jpeg") // lies: the payload is a PNG
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -286,7 +285,7 @@ var _ = Describe("postItemImage", func() {
 		fp.getByIDErr = model.ErrNotFound
 		bodyReader := bytes.NewReader([]byte("some-bytes-that-must-be-drained"))
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("al1"))+"/Images/Primary", bodyReader)
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("al1"))+"/Images/Primary", bodyReader)
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al1")))
 
@@ -299,7 +298,7 @@ var _ = Describe("postItemImage", func() {
 	It("returns 500 when the service fails", func() {
 		fp.setImageErr = errors.New("boom")
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -311,7 +310,7 @@ var _ = Describe("postItemImage", func() {
 	It("accepts a raw WebP body", func() {
 		body := webpBytes()
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/webp")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -325,7 +324,7 @@ var _ = Describe("postItemImage", func() {
 	It("accepts a raw GIF body", func() {
 		body := gifBytes()
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/gif")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -337,10 +336,9 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("rejects an oversized body with 400, like the native endpoint", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MaxImageUploadSize = "16" // 16 bytes
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "16" }) // 16 bytes
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -351,14 +349,13 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("applies the size limit to the decoded image, not the base64 body", func() {
-		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
 		// The raw image is exactly at the limit; its base64 form is 4/3 bigger.
-		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img))
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img)) })
 		body := []byte(base64.StdEncoding.EncodeToString(img))
 		Expect(len(body)).To(BeNumerically(">", len(img)))
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/png")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -369,12 +366,11 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("rejects a base64 body whose decoded image exceeds the limit with 400", func() {
-		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
-		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img) - 1)
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img) - 1) })
 		body := []byte(base64.StdEncoding.EncodeToString(img))
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/png")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -386,7 +382,7 @@ var _ = Describe("postItemImage", func() {
 
 	It("rejects a body that is neither an image nor base64 with 400", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", strings.NewReader("!!not base64!!"))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", strings.NewReader("!!not base64!!"))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -399,7 +395,7 @@ var _ = Describe("postItemImage", func() {
 	It("rejects bytes that sniff as an image but don't decode (e.g. a truncated or renamed file)", func() {
 		body := []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F'} // JPEG magic, not a JPEG
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
@@ -410,10 +406,9 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("forbids a non-admin upload when artwork upload is disabled", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableArtworkUpload = false
+		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 		r = r.WithContext(request.WithUser(r.Context(), model.User{ID: testID("u1"), IsAdmin: false}))
@@ -425,10 +420,9 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("still allows an admin upload when artwork upload is disabled", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableArtworkUpload = false
+		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
+		r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 		r = r.WithContext(request.WithUser(r.Context(), model.User{ID: testID("admin"), IsAdmin: true}))
@@ -444,7 +438,7 @@ var _ = Describe("deleteItemImage", func() {
 		fp := &fakePlaylists{getByIDPls: &model.Playlist{ID: testID("pl1")}}
 		api := &Router{playlists: fp}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("DELETE", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", nil)
+		r := httptest.NewRequest(http.MethodDelete, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", nil)
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
 		api.deleteItemImage(w, r)
@@ -457,7 +451,7 @@ var _ = Describe("deleteItemImage", func() {
 		fp := &fakePlaylists{getByIDErr: model.ErrNotFound}
 		api := &Router{playlists: fp}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("DELETE", "/Items/"+dto.EncodeID(testID("al1"))+"/Images/Primary", nil)
+		r := httptest.NewRequest(http.MethodDelete, "/Items/"+dto.EncodeID(testID("al1"))+"/Images/Primary", nil)
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al1")))
 
 		api.deleteItemImage(w, r)
@@ -469,7 +463,7 @@ var _ = Describe("deleteItemImage", func() {
 		fp := &fakePlaylists{getByIDPls: &model.Playlist{ID: testID("pl1")}, removeImageErr: errors.New("boom")}
 		api := &Router{playlists: fp}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("DELETE", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", nil)
+		r := httptest.NewRequest(http.MethodDelete, "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", nil)
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("pl1")))
 
 		api.deleteItemImage(w, r)

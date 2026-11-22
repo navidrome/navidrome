@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -44,7 +43,6 @@ var _ = Describe("AlbumRepository", func() {
 		var ids []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ids = nil
 			for _, n := range []string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"} {
 				aid := "nat-" + n
@@ -60,8 +58,10 @@ var _ = Describe("AlbumRepository", func() {
 
 		DescribeTable("sorts albums by name",
 			func(naturalSorting, preferSortTags bool, expected []string) {
-				conf.Server.EnableNaturalSorting = naturalSorting
-				conf.Server.PreferSortTags = preferSortTags
+				conf.Update(func(c *conf.Options) {
+					c.EnableNaturalSorting = naturalSorting
+					c.PreferSortTags = preferSortTags
+				})
 				albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
 				albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 					Sort: "name", Filters: squirrel.Eq{"album.id": ids},
@@ -497,7 +497,7 @@ var _ = Describe("AlbumRepository", func() {
 		// Implementation is in withAnnotation() method
 		DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute })
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
@@ -520,7 +520,7 @@ var _ = Describe("AlbumRepository", func() {
 
 		DescribeTable("normalizes play count when AlbumPlayCountMode is normalized",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized })
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
@@ -648,11 +648,11 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(dba.Album.Participants).To(HaveLen(2))
 				Expect(dba.Album.Participants).To(HaveKeyWithValue(
 					model.RoleFromString("composer"),
-					model.ParticipantList{{Artist: model.Artist{ID: "1", Name: "Composer 1"}}},
+					model.ParticipantList{{ID: "1", Name: "Composer 1"}},
 				))
 				Expect(dba.Album.Participants).To(HaveKeyWithValue(
 					model.RoleFromString("artist"),
-					model.ParticipantList{{Artist: model.Artist{ID: "2", Name: "Artist 2"}}, {Artist: model.Artist{ID: "3", Name: "Artist 3"}, SubRole: "subRole"}},
+					model.ParticipantList{{ID: "2", Name: "Artist 2"}, {ID: "3", Name: "Artist 3", SubRole: "subRole"}},
 				))
 			})
 
@@ -694,7 +694,7 @@ var _ = Describe("AlbumRepository", func() {
 			It("maps participants correctly", func() {
 				dba.Album.Participants = model.Participants{
 					model.RoleAlbumArtist: model.ParticipantList{_p("AA1", "AlbumArtist1")},
-					model.RoleComposer:    model.ParticipantList{{Artist: model.Artist{ID: "C1", Name: "Composer1"}, SubRole: "composer"}},
+					model.RoleComposer:    model.ParticipantList{{ID: "C1", Name: "Composer1", SubRole: "composer"}},
 				}
 				Expect(dba.PostMapArgs(args)).To(Succeed())
 				Expect(args).To(HaveKeyWithValue(
@@ -721,15 +721,15 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("dbAlbums.toModels", func() {
 		It("converts dbAlbums to model.Albums", func() {
 			dba := dbAlbums{
-				{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, Annotations: model.Annotations{PlayCount: 4}}},
-				{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, Annotations: model.Annotations{PlayCount: 6}}},
+				{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, PlayCount: 4}},
+				{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, PlayCount: 6}},
 			}
 			albums := dba.toModels()
 			for i := range dba {
-				Expect(albums[i].ID).To(Equal(dba[i].Album.ID))
-				Expect(albums[i].Name).To(Equal(dba[i].Album.Name))
-				Expect(albums[i].SongCount).To(Equal(dba[i].Album.SongCount))
-				Expect(albums[i].PlayCount).To(Equal(dba[i].Album.PlayCount))
+				Expect(albums[i].ID).To(Equal(dba[i].ID))
+				Expect(albums[i].Name).To(Equal(dba[i].Name))
+				Expect(albums[i].SongCount).To(Equal(dba[i].SongCount))
+				Expect(albums[i].PlayCount).To(Equal(dba[i].PlayCount))
 			}
 		})
 	})
@@ -827,10 +827,10 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Real Artist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "real-artist-1", Name: "Real Artist"}},
+						{ID: "real-artist-1", Name: "Real Artist"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "real-artist-1", Name: "Real Artist"}, SubRole: "primary"},
+						{ID: "real-artist-1", Name: "Real Artist", SubRole: "primary"},
 					},
 				},
 			}
@@ -862,8 +862,8 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtistID: artist.ID,
 				AlbumArtist:   artist.Name,
 				Participants: model.Participants{
-					model.RoleAlbumArtist: {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
-					model.RoleComposer:    {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
+					model.RoleAlbumArtist: {{ID: artist.ID, Name: artist.Name}},
+					model.RoleComposer:    {{ID: artist.ID, Name: artist.Name}},
 				},
 			}
 			Expect(albumRepo.Put(ctx, album)).To(Succeed())
@@ -904,7 +904,7 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtistID: artist.ID,
 				AlbumArtist:   artist.Name,
 				Participants: model.Participants{
-					model.RoleAlbumArtist: {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
+					model.RoleAlbumArtist: {{ID: artist.ID, Name: artist.Name}},
 				},
 			}
 			DeferCleanup(func() {
@@ -945,13 +945,13 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Real Artist 1",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "real-artist-mix-1", Name: "Real Artist 1"}},
-						{Artist: model.Artist{ID: "non-existent-mix-1", Name: "Non Existent 1"}},
-						{Artist: model.Artist{ID: "real-artist-mix-2", Name: "Real Artist 2"}},
+						{ID: "real-artist-mix-1", Name: "Real Artist 1"},
+						{ID: "non-existent-mix-1", Name: "Non Existent 1"},
+						{ID: "real-artist-mix-2", Name: "Real Artist 2"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "non-existent-mix-2", Name: "Non Existent 2"}},
-						{Artist: model.Artist{ID: "real-artist-mix-1", Name: "Real Artist 1"}},
+						{ID: "non-existent-mix-2", Name: "Non Existent 2"},
+						{ID: "real-artist-mix-1", Name: "Real Artist 1"},
 					},
 				},
 			}
@@ -998,16 +998,16 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Lead Vocalist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "complex-artist-1", Name: "Lead Vocalist"}},
-						{Artist: model.Artist{ID: "complex-artist-2", Name: "Guitarist"}, SubRole: "lead guitar"},
-						{Artist: model.Artist{ID: "complex-artist-2", Name: "Guitarist"}, SubRole: "rhythm guitar"},
+						{ID: "complex-artist-1", Name: "Lead Vocalist"},
+						{ID: "complex-artist-2", Name: "Guitarist", SubRole: "lead guitar"},
+						{ID: "complex-artist-2", Name: "Guitarist", SubRole: "rhythm guitar"},
 					},
 					model.RoleProducer: {
-						{Artist: model.Artist{ID: "complex-artist-3", Name: "Producer"}, SubRole: "executive"},
+						{ID: "complex-artist-3", Name: "Producer", SubRole: "executive"},
 					},
 					model.RoleEngineer: {
-						{Artist: model.Artist{ID: "complex-artist-4", Name: "Engineer"}, SubRole: "mixing"},
-						{Artist: model.Artist{ID: "complex-artist-4", Name: "Engineer"}, SubRole: "mastering"},
+						{ID: "complex-artist-4", Name: "Engineer", SubRole: "mixing"},
+						{ID: "complex-artist-4", Name: "Engineer", SubRole: "mastering"},
 					},
 				},
 			}
@@ -1048,15 +1048,15 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Non Existent Album Artist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "non-existent-artist-1", Name: "Non Existent Artist 1"}},
-						{Artist: model.Artist{ID: "non-existent-artist-2", Name: "Non Existent Artist 2"}},
+						{ID: "non-existent-artist-1", Name: "Non Existent Artist 1"},
+						{ID: "non-existent-artist-2", Name: "Non Existent Artist 2"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "non-existent-composer-1", Name: "Non Existent Composer 1"}},
-						{Artist: model.Artist{ID: "non-existent-composer-2", Name: "Non Existent Composer 2"}},
+						{ID: "non-existent-composer-1", Name: "Non Existent Composer 1"},
+						{ID: "non-existent-composer-2", Name: "Non Existent Composer 2"},
 					},
 					model.RoleAlbumArtist: {
-						{Artist: model.Artist{ID: "non-existent-album-artist-1", Name: "Non Existent Album Artist 1"}},
+						{ID: "non-existent-album-artist-1", Name: "Non Existent Album Artist 1"},
 					},
 				},
 			}
@@ -1097,10 +1097,10 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Role Change Artist",
 				Participants: model.Participants{
 					model.RoleAlbumArtist: {
-						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+						{ID: "role-change-artist-1", Name: "Role Change Artist"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+						{ID: "role-change-artist-1", Name: "Role Change Artist"},
 					},
 				},
 			}
@@ -1118,7 +1118,7 @@ var _ = Describe("AlbumRepository", func() {
 			// Now update album so artist is ONLY a composer (remove albumartist role)
 			album.Participants = model.Participants{
 				model.RoleComposer: {
-					{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+					{ID: "role-change-artist-1", Name: "Role Change Artist"},
 				},
 			}
 
@@ -1202,7 +1202,7 @@ var _ = Describe("AlbumRepository", func() {
 		It("does not panic when the cursor yields a dbAlbum with nil Album", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbAlbum (where Album is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbAlbum, error) bool) {
 				var empty dbAlbum // Album pointer is nil
 				yield(empty, dbErr)
@@ -1313,9 +1313,9 @@ var _ = Describe("AlbumRepository", func() {
 })
 
 func _p(id, name string, sortName ...string) model.Participant {
-	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
+	p := model.Participant{ID: id, Name: name}
 	if len(sortName) > 0 {
-		p.Artist.SortArtistName = sortName[0]
+		p.SortArtistName = sortName[0]
 	}
 	return p
 }

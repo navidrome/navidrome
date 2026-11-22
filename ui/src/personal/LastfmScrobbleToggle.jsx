@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNotify, useTranslate } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import {
   FormControl,
   FormControlLabel,
@@ -10,11 +11,11 @@ import {
 } from '@material-ui/core'
 import { useInterval } from '../common'
 import { baseUrl, openInNewTab } from '../utils'
-import { httpClient } from '../dataProvider'
 
 const Progress = (props) => {
   const { setLinked, setCheckingLink, openedTab } = props
   const notify = useNotify()
+  const dataProvider = useDirectDataProvider()
   let linkCheckDelay = 2000
   let linkChecks = 30
 
@@ -30,10 +31,11 @@ const Progress = (props) => {
   }
 
   useInterval(() => {
-    httpClient('/api/lastfm/link')
+    dataProvider
+      .getLastfmLink()
       .then((response) => {
         let result = false
-        if (response.json.status === true) {
+        if (response.data.status === true) {
           result = true
           endChecking(true)
         }
@@ -61,6 +63,7 @@ const Progress = (props) => {
 
 export const LastfmScrobbleToggle = (props) => {
   const notify = useNotify()
+  const dataProvider = useDirectDataProvider()
   const translate = useTranslate()
   const [linked, setLinked] = useState(null)
   const [checkingLink, setCheckingLink] = useState(false)
@@ -68,15 +71,16 @@ export const LastfmScrobbleToggle = (props) => {
   const openedTab = useRef()
 
   useEffect(() => {
-    httpClient('/api/lastfm/link')
+    dataProvider
+      .getLastfmLink()
       .then((response) => {
-        setLinked(response.json.status === true)
-        setApiKey(response.json.apiKey)
+        setLinked(response.data.status === true)
+        setApiKey(response.data.apiKey)
       })
       .catch(() => {
         setLinked(false)
       })
-  }, [setLinked, setApiKey])
+  }, [dataProvider, setLinked, setApiKey])
 
   const startLink = () => {
     // Open the tab synchronously so popup blockers attribute it to the click.
@@ -89,9 +93,10 @@ export const LastfmScrobbleToggle = (props) => {
     }
     openedTab.current = tab
     setCheckingLink(true)
-    httpClient('/api/lastfm/link')
+    dataProvider
+      .getLastfmLink()
       .then((response) => {
-        const linkToken = response.json.linkToken
+        const linkToken = response.data.linkToken
         if (!linkToken) {
           tab?.close()
           notify('message.lastfmLinkFailure', 'warning')
@@ -115,7 +120,8 @@ export const LastfmScrobbleToggle = (props) => {
     if (!linked) {
       startLink()
     } else {
-      httpClient('/api/lastfm/link', { method: 'DELETE' })
+      dataProvider
+        .unlinkLastfm()
         .then(() => {
           setLinked(false)
           notify('message.lastfmUnlinkSuccess', 'success')

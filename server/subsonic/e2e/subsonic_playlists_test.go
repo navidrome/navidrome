@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -461,7 +462,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Expect(resp.Playlist.Name).To(Equal("Smart Playlist"))
 			Expect(resp.Playlist.OpenSubsonicPlaylist).ToNot(BeNil())
 			Expect(resp.Playlist.OpenSubsonicPlaylist.Readonly).To(BeTrue())
-			expectedValidUntil := time.Now().Add(conf.Server.SmartPlaylistRefreshDelay)
+			expectedValidUntil := time.Now().Add(conf.Server().SmartPlaylistRefreshDelay)
 			Expect(*resp.Playlist.OpenSubsonicPlaylist.ValidUntil).To(BeTemporally("~", expectedValidUntil, time.Second))
 		})
 
@@ -535,7 +536,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
 			// Force immediate refresh for all smart playlists
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 
 			// Create smart playlist with boolean true
 			boolPls := &model.Playlist{
@@ -684,5 +685,58 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			Entry("album", "album"),
 			Entry("comment", "comment"),
 		)
+	})
+
+	Describe("Removing songs when the playlist has a missing track (issue #6461)", Ordered, func() {
+		var playlistID string
+		var songs model.MediaFiles
+
+		BeforeAll(func() {
+			setupTestDB()
+
+			var err error
+			songs, err = ds.MediaFile().GetAll(ctx, model.QueryOptions{Sort: "title", Max: 3})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(3))
+
+			resp := doReq("createPlaylist", "name", "Missing Track Playlist",
+				"songId", songs[0].ID, "songId", songs[1].ID, "songId", songs[2].ID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			playlistID = resp.Playlist.Id
+
+			// The middle song's file disappears from the library
+			Expect(ds.MediaFile().MarkMissing(ctx, true, &songs[1])).To(Succeed())
+		})
+
+		storedIDs := func() []string {
+			ids, err := ds.Playlist().Tracks(ctx, playlistID, false).GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			return ids
+		}
+
+		It("songIndexToRemove counts only the tracks getPlaylist returns", func() {
+			By("getPlaylist hiding the missing track")
+			resp := doReq("getPlaylist", "id", playlistID)
+			Expect(resp.Playlist.Entry).To(HaveLen(2))
+			Expect(resp.Playlist.Entry[1].Id).To(Equal(songs[2].ID))
+
+			resp = doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", "1")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			resp = doReq("getPlaylist", "id", playlistID)
+			Expect(resp.Playlist.Entry).To(HaveLen(1))
+			Expect(resp.Playlist.Entry[0].Id).To(Equal(songs[0].ID))
+			Expect(storedIDs()).To(Equal([]string{songs[0].ID, songs[1].ID}), "the hidden missing track must be kept")
+		})
+
+		It("ignores an index past the end of the visible list", func() {
+			before := storedIDs()
+			visible := doReq("getPlaylist", "id", playlistID).Playlist.Entry
+			Expect(len(visible)).To(BeNumerically("<", len(before)))
+
+			resp := doReq("updatePlaylist", "playlistId", playlistID, "songIndexToRemove", strconv.Itoa(len(visible)))
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(storedIDs()).To(Equal(before))
+		})
 	})
 })

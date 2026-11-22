@@ -1,0 +1,79 @@
+name: Review attestation label
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-attestation-${{ github.event.pull_request.number }}
+
+jobs:
+  sync-label:
+    name: Sync review-attestation-missing label
+    if: ${{ !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      # Reads only PR metadata; never check out PR code under pull_request_target.
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const label = 'review-attestation-missing';
+            const commentMarker = '<!-- review-attestation-reminder -->';
+            const nonAgentBots = ['dependabot[bot]', 'github-actions[bot]'];
+            const rulesUrl = 'https://github.com/navidrome/navidrome/blob/master/CONTRIBUTING.md#review-your-work-before-opening-a-pr';
+            const templateUrl = 'https://github.com/navidrome/navidrome/blob/master/.github/pull_request_template.md?plain=1';
+            const issue = { ...context.repo, issue_number: context.payload.pull_request.number };
+            // Re-read the PR so a queued run never acts on a stale event payload.
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: issue.issue_number });
+            if (pr.draft || nonAgentBots.includes(pr.user.login)) return;
+
+            const body = (pr.body ?? '')
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/^[ \t]*(```|~~~)[\s\S]*?^[ \t]*\1/gm, '');
+            let reason = '';
+            if (pr.user.type === 'Bot') {
+              reason = 'A coding agent account opened this PR, so no person has confirmed a review yet.';
+            } else if (!/^###\s+Checklist\s*$/m.test(body)) {
+              reason = `The PR description does not use the [PR template](${templateUrl}), so the review confirmation is missing.`;
+            } else if (!/^[ \t]*-\s*\[[xX]\]\s*I personally read and reviewed the entire diff/m.test(body)) {
+              reason = 'The "I personally read and reviewed the entire diff..." box is not checked.';
+            }
+
+            const labeled = pr.labels.some((l) => l.name === label);
+            core.info(reason ? `Missing attestation: ${reason}` : 'Attestation present');
+            if (!reason) {
+              if (labeled) {
+                try {
+                  await github.rest.issues.removeLabel({ ...issue, name: label });
+                } catch (e) {
+                  if (e.status !== 404) throw e;
+                }
+              }
+              return;
+            }
+
+            if (!labeled) {
+              await github.rest.issues.addLabels({ ...issue, labels: [label] });
+            }
+            const comments = await github.paginate(github.rest.issues.listComments, { ...issue, per_page: 100 });
+            if (comments.some((c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker))) return;
+            await github.rest.issues.createComment({
+              ...issue,
+              body: [
+                commentMarker,
+                'Thanks for the PR. Before it can be reviewed, please follow the [review rule](' + rulesUrl + '):',
+                '',
+                '- Read and review the entire diff and the relevant code yourself.',
+                '- Test the affected behavior yourself.',
+                '',
+                "An AI agent's summary or review does not count. If an agent wrote this code, review it as if someone else wrote it.",
+                '',
+                `**Why you see this:** ${reason}`,
+                '',
+                'When you are done, edit the PR description and check the "I personally read and reviewed the entire diff..." box. The `' + label + '` label then goes away. A PR that looks like unreviewed AI output may be closed without review.',
+              ].join('\n'),
+            });

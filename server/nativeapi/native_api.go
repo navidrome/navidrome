@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"context"
+	"mime"
 	"net/http"
 	"strconv"
 	"time"
@@ -73,11 +74,11 @@ func (api *Router) routes() http.Handler {
 		api.addArtistRoute(r)
 		rx(r, "/genre", api.ds.Genre(), false)
 		rx(r, "/player", api.ds.Player(), true)
-		rx(r, "/transcoding", api.ds.Transcoding(), conf.Server.EnableTranscodingConfig)
+		rx(r, "/transcoding", api.ds.Transcoding(), conf.Server().EnableTranscodingConfig)
 		api.addRadioRoute(r)
 		rx(r, "/tag", api.ds.Tag(), false)
 		rx(r, "/scrobble", api.ds.Scrobble(), false)
-		if conf.Server.EnableSharing {
+		if conf.Server().EnableSharing {
 			rx(r, "/share", api.share.Repository(), true)
 		}
 
@@ -125,9 +126,10 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 
 	r.Route("/playlist", func(r chi.Router) {
 		r.Get("/", rest.GetAll(repo))
+		createJSON := limitPlaylistJSON(rest.Post(repo))
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("Content-type") == "application/json" {
-				rest.Post(repo)(w, r)
+			if mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mediaType == "application/json" {
+				createJSON.ServeHTTP(w, r)
 				return
 			}
 			createPlaylistFromM3U(api.playlists)(w, r)
@@ -136,7 +138,7 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(repo))
-			r.Put("/", rest.Put(repo))
+			r.With(limitPlaylistJSON).Put("/", rest.Put(repo))
 			r.Delete("/", rest.Delete(repo))
 			r.Post("/image", uploadPlaylistImage(api.playlists))
 			r.Delete("/image", deletePlaylistImage(api.playlists))
@@ -211,13 +213,13 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 }
 
 func (api *Router) addInspectRoute(r chi.Router) {
-	if conf.Server.Inspect.Enabled {
+	if conf.Server().Inspect.Enabled {
 		r.Group(func(r chi.Router) {
-			if conf.Server.Inspect.MaxRequests > 0 {
-				log.Debug("Throttling inspect", "maxRequests", conf.Server.Inspect.MaxRequests,
-					"backlogLimit", conf.Server.Inspect.BacklogLimit, "backlogTimeout",
-					conf.Server.Inspect.BacklogTimeout)
-				r.Use(middleware.ThrottleBacklog(conf.Server.Inspect.MaxRequests, conf.Server.Inspect.BacklogLimit, time.Duration(conf.Server.Inspect.BacklogTimeout)))
+			if conf.Server().Inspect.MaxRequests > 0 {
+				log.Debug("Throttling inspect", "maxRequests", conf.Server().Inspect.MaxRequests,
+					"backlogLimit", conf.Server().Inspect.BacklogLimit, "backlogTimeout",
+					conf.Server().Inspect.BacklogTimeout)
+				r.Use(middleware.ThrottleBacklog(conf.Server().Inspect.MaxRequests, conf.Server().Inspect.BacklogLimit, time.Duration(conf.Server().Inspect.BacklogTimeout)))
 			}
 			r.Get("/inspect", inspect(api.ds))
 		})
@@ -225,7 +227,7 @@ func (api *Router) addInspectRoute(r chi.Router) {
 }
 
 func (api *Router) addConfigRoute(r chi.Router) {
-	if conf.Server.DevUIShowConfig {
+	if conf.Server().DevUIShowConfig {
 		r.Get("/config/*", getConfig)
 	}
 }
@@ -239,15 +241,15 @@ func (api *Router) addKeepAliveRoute(r chi.Router) {
 func (api *Router) addInsightsRoute(r chi.Router) {
 	r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
 		last, success := api.insights.LastRun(r.Context())
-		if conf.Server.EnableInsightsCollector {
-			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`)) //nolint:gosec
+		if conf.Server().EnableInsightsCollector {
+			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
 		} else {
 			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
 		}
 	})
 }
 
-// Middleware to ensure only admin users can access endpoints
+// adminOnlyMiddleware ensures only admin users can access endpoints
 func adminOnlyMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := request.UserFrom(r.Context())

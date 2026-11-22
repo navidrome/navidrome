@@ -28,10 +28,10 @@ type localStorage struct {
 }
 
 func newLocalStorage(u url.URL) storage.Storage {
-	newExtractor, ok := extractors[conf.Server.Scanner.Extractor]
+	newExtractor, ok := extractors[conf.Server().Scanner.Extractor]
 	if !ok || newExtractor == nil {
-		if conf.Server.Scanner.Extractor != consts.DefaultScannerExtractor {
-			log.Warn("Extractor not found, using default", "extractor", conf.Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		if conf.Server().Scanner.Extractor != consts.DefaultScannerExtractor {
+			log.Warn("Extractor not found, using default", "extractor", conf.Server().Scanner.Extractor, "default", consts.DefaultScannerExtractor)
 		}
 		newExtractor = extractors[consts.DefaultScannerExtractor]
 		if newExtractor == nil {
@@ -52,7 +52,7 @@ func newLocalStorage(u url.URL) storage.Storage {
 
 func (s *localStorage) FS() (storage.MusicFS, error) {
 	path := s.u.Path
-	if _, err := os.Stat(path); err != nil { //nolint:gosec
+	if _, err := os.Stat(path); err != nil {
 		return nil, fmt.Errorf("%w: %s", err, path)
 	}
 	return &localFS{FS: os.DirFS(path), extractor: s.extractor, root: path}, nil

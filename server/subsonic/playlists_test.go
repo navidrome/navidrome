@@ -3,6 +3,8 @@ package subsonic
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -10,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,9 +27,9 @@ var _ = Describe("buildPlaylist", func() {
 	var playlist model.Playlist
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		ctx = context.Background()
 	})
 
 	Describe("normal playlist", func() {
@@ -50,7 +53,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "minimal-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -75,7 +78,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with non-minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -124,7 +127,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("when minimal clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -153,7 +156,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -207,7 +210,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "minimal-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -233,7 +236,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with non-minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -256,7 +259,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -303,9 +306,9 @@ var _ = Describe("buildPlaylist", func() {
 
 	Describe("annotation leakage", func() {
 		It("does not serialize starred/rating even when the model carries them", func() {
-			p := model.Playlist{ID: "pl-1", Name: "My Playlist"}
-			p.Starred = true
-			p.Rating = 5
+			p := model.Playlist{ID: "pl-1", Name: "My Playlist",
+				Starred: true,
+				Rating:  5}
 
 			resp := router.buildPlaylist(ctx, p)
 
@@ -378,14 +381,67 @@ var _ = Describe("UpdatePlaylist", func() {
 	})
 })
 
+var _ = Describe("playlist track limit", func() {
+	var router *Router
+	var fp *fakePlaylists
+
+	BeforeEach(func() {
+		fp = &fakePlaylists{}
+		router = New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil)
+		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 3 })
+	})
+
+	songParams := func(param string, n int) []string { return slices.Repeat([]string{param + "=s1"}, n) }
+	expectGenericError := func(err error) {
+		var subErr subError
+		Expect(errors.As(err, &subErr)).To(BeTrue())
+		Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+	}
+
+	DescribeTable("creates a playlist with up to DevMaxPlaylistTracksPerRequest songs",
+		func(limit, sent int) {
+			conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = limit })
+			_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", sent)...)...))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fp.lastCreate).To(HaveLen(sent))
+		},
+		Entry("exactly the limit", 3, 3),
+		Entry("any number when the limit is 0", 0, 4),
+	)
+
+	It("rejects createPlaylist with more songs than the limit, with error code 0", func() {
+		_, err := router.CreatePlaylist(newGetRequest(append([]string{"name=Mix"}, songParams("songId", 4)...)...))
+		expectGenericError(err)
+		Expect(fp.createCalled).To(BeFalse())
+	})
+
+	It("rejects updatePlaylist adding more songs than the limit, with error code 0", func() {
+		_, err := router.UpdatePlaylist(newGetRequest(append([]string{"playlistId=123"}, songParams("songIdToAdd", 4)...)...))
+		expectGenericError(err)
+		Expect(fp.lastPlaylistID).To(BeEmpty())
+	})
+})
+
 type fakePlaylists struct {
 	playlists.Playlists
+	createCalled   bool
+	lastCreate     []string
 	lastPlaylistID string
 	lastName       *string
 	lastComment    *string
 	lastPublic     *bool
 	lastAdd        []string
 	lastRemove     []int
+}
+
+func (f *fakePlaylists) Create(_ context.Context, _ string, _ string, ids []string) (string, error) {
+	f.createCalled = true
+	f.lastCreate = ids
+	return "new-id", nil
+}
+
+func (f *fakePlaylists) GetWithTracks(_ context.Context, id string) (*model.Playlist, error) {
+	return &model.Playlist{ID: id}, nil
 }
 
 func (f *fakePlaylists) Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {

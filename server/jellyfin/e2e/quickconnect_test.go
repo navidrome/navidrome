@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,8 +14,7 @@ import (
 var _ = Describe("QuickConnect", func() {
 	BeforeEach(func() {
 		setupTestDB()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.QuickConnect = true
+		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
 	})
 
 	clientReq := func(deviceID, method, path, body string) *httptest.ResponseRecorder {
@@ -56,7 +54,7 @@ var _ = Describe("QuickConnect", func() {
 		Expect(res.SessionInfo).ToNot(BeNil())
 		Expect(res.SessionInfo.DeviceId).To(Equal("other-device"))
 
-		r := httptest.NewRequest("GET", "/Users/Me", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
 		r.Header.Set("X-Emby-Token", res.AccessToken)
 		me := httptest.NewRecorder()
 		router.ServeHTTP(me, r)
@@ -81,7 +79,7 @@ var _ = Describe("QuickConnect", func() {
 	})
 
 	It("answers 401 on every Quick Connect call when disabled", func() {
-		conf.Server.Jellyfin.QuickConnect = false
+		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = false })
 		Expect(rawReq("GET", "/QuickConnect/Enabled", "").Body.String()).To(MatchJSON("false"))
 		Expect(clientReq("new-device", "POST", "/QuickConnect/Initiate", "").Code).To(Equal(http.StatusUnauthorized))
 		Expect(rawReq("GET", "/QuickConnect/Connect?Secret=x", "").Code).To(Equal(http.StatusUnauthorized))

@@ -2,15 +2,17 @@ package playlists_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"testing/iotest"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -29,9 +31,10 @@ var _ = Describe("Playlists - Import", func() {
 	var ps playlists.Playlists
 	var mockPlsRepo *tests.MockPlaylistRepo
 	var mockLibRepo *tests.MockLibraryRepo
-	ctx := context.Background()
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		mockPlsRepo = tests.CreateMockPlaylistRepo()
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
@@ -44,7 +47,6 @@ var _ = Describe("Playlists - Import", func() {
 	Describe("ImportFromFolder", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
@@ -101,7 +103,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("parses #EXTALBUMARTURL with HTTP URL", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "pls-with-art-url.m3u")
 				Expect(err).ToNot(HaveOccurred())
@@ -255,7 +257,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("ignores HTTP #EXTALBUMARTURL when EnableM3UExternalAlbumArt is false", func() {
-				conf.Server.EnableM3UExternalAlbumArt = false
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = false })
 
 				tmpDir := GinkgoT().TempDir()
 				m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\ntest.mp3\n"
@@ -273,7 +275,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("updates ExternalImageURL on re-scan even when UploadedImage is set", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
@@ -411,7 +413,7 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Public).To(BeFalse())
 			})
 			It("uses server default when public field is absent", func() {
-				conf.Server.DefaultPlaylistPublicVisibility = true
+				conf.Update(func(c *conf.Options) { c.DefaultPlaylistPublicVisibility = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
@@ -770,7 +772,6 @@ var _ = Describe("Playlists - Import", func() {
 
 	Describe("ImportFile", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
 		})
 
@@ -997,6 +998,81 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(pls.Tracks[2].Path).To(Equal("album2/test2.mp3"))
 		})
 
+		Describe("entry limit", func() {
+			repeat := func(n int) string {
+				return strings.Repeat("/music/tests/test.mp3\n", n)
+			}
+			BeforeEach(func() {
+				repo.data = []string{"tests/test.mp3"}
+				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 3 })
+			})
+
+			It("imports a playlist with exactly DevMaxPlaylistTracksPerRequest entries, duplicates included", func() {
+				pls, err := ps.ImportM3U(ctx, strings.NewReader(repeat(3)))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(3))
+			})
+
+			It("rejects a playlist over the limit without saving it", func() {
+				_, err := ps.ImportM3U(ctx, strings.NewReader(repeat(4)))
+				Expect(err).To(MatchError(playlists.ErrTooManyEntries))
+				Expect(mockPlsRepo.Last).To(BeNil())
+			})
+
+			It("imports any number of entries when the limit is 0", func() {
+				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 0 })
+				pls, err := ps.ImportM3U(ctx, strings.NewReader(repeat(4)))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(4))
+			})
+
+			It("does not cap playlists imported from disk", func() {
+				tmpDir := GinkgoT().TempDir()
+				libDir := filepath.Join(tmpDir, "music")
+				Expect(os.Mkdir(libDir, 0755)).To(Succeed())
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: libDir}})
+				plsFile := filepath.Join(tmpDir, "big.m3u")
+				content := strings.Repeat(libDir+"/tests/test.mp3\n", 4)
+				Expect(os.WriteFile(plsFile, []byte(content), 0600)).To(Succeed())
+
+				pls, err := ps.ImportFile(ctx, plsFile, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(4))
+			})
+		})
+
+		It("makes a second upload wait for the running one, without reading its body", func() {
+			repo.data = []string{"tests/test.mp3"}
+			pr, pw := io.Pipe()
+			firstDone := make(chan error, 1)
+			go func() {
+				_, err := ps.ImportM3U(ctx, pr)
+				firstDone <- err
+			}()
+			_, err := pw.Write([]byte("/music/tests/test.mp3\n"))
+			Expect(err).ToNot(HaveOccurred())
+
+			waiting, cancel := context.WithCancel(ctx)
+			cancel()
+			second := &readRecorder{}
+			_, err = ps.ImportM3U(waiting, second)
+			Expect(err).To(MatchError(context.Canceled))
+			Expect(second.read).To(BeFalse())
+
+			Expect(pw.Close()).To(Succeed())
+			Eventually(firstDone).Should(Receive(BeNil()))
+		})
+
+		It("fails on a read error instead of saving a truncated playlist", func() {
+			repo.data = []string{"tests/test.mp3"}
+			readErr := errors.New("body too large")
+			body := io.MultiReader(strings.NewReader("/music/tests/test.mp3\n"), iotest.ErrReader(readErr))
+
+			_, err := ps.ImportM3U(ctx, body)
+			Expect(err).To(MatchError(readErr))
+			Expect(mockPlsRepo.Last).To(BeNil())
+		})
+
 		It("is case-insensitive when comparing paths", func() {
 			repo.data = []string{
 				"abc/tEsT1.Mp3",
@@ -1012,7 +1088,7 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("parses #EXTALBUMARTURL with HTTP URL via ImportM3U", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 			repo.data = []string{"tests/test.mp3"}
 			m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\n/music/tests/test.mp3\n"
@@ -1121,7 +1197,6 @@ var _ = Describe("Playlists - Import", func() {
 		var folder model.Folder
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			folder = model.Folder{
 				LibraryPath: "/music",
 				Path:        "playlists/abc",
@@ -1130,28 +1205,28 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if PlaylistsPath is empty", func() {
-			conf.Server.PlaylistsPath = ""
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if PlaylistsPath is any (**/**)", func() {
-			conf.Server.PlaylistsPath = "**/**"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "**/**" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
 			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other/**:playlists/**" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
-			conf.Server.PlaylistsPath = "other"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other" })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
-			conf.Server.PlaylistsPath = "."
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "." })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 
 			folder2 := model.Folder{
@@ -1256,4 +1331,11 @@ func (m *mockFolderRepoForImport) GetByPath(_ context.Context, _ model.Library, 
 
 func hashOf(content string) string {
 	return id.Encode(xxh3.Hash128([]byte(content)).Bytes())
+}
+
+type readRecorder struct{ read bool }
+
+func (r *readRecorder) Read([]byte) (int, error) {
+	r.read = true
+	return 0, io.EOF
 }

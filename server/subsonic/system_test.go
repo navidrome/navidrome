@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/model"
@@ -12,7 +13,7 @@ import (
 var _ = Describe("TokenInfo", func() {
 	It("returns the authenticated username", func() {
 		api := &Router{}
-		r := httptest.NewRequest("GET", "/tokenInfo", nil)
+		r := httptest.NewRequest(http.MethodGet, "/tokenInfo", nil)
 		r = r.WithContext(request.WithUser(r.Context(), model.User{UserName: "deluan"}))
 
 		resp, err := api.TokenInfo(r)

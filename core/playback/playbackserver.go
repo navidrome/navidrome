@@ -7,6 +7,7 @@ package playback
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
@@ -18,11 +19,10 @@ import (
 type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDeviceForUser(user string) (*playbackDevice, error)
-	GetMediaFile(id string) (*model.MediaFile, error)
+	GetMediaFile(ctx context.Context, id string) (*model.MediaFile, error)
 }
 
 type playbackServer struct {
-	ctx             *context.Context
 	datastore       model.DataStore
 	playbackDevices []playbackDevice
 }
@@ -36,9 +36,7 @@ func GetInstance(ds model.DataStore) PlaybackServer {
 
 // Run starts the playback server which serves request until canceled using the given context
 func (ps *playbackServer) Run(ctx context.Context) error {
-	ps.ctx = &ctx
-
-	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	devices, err := ps.initDeviceStatus(ctx, conf.Server().Jukebox.Devices, conf.Server().Jukebox.Default)
 	if err != nil {
 		return err
 	}
@@ -106,12 +104,12 @@ func (ps *playbackServer) getDefaultDevice() (*playbackDevice, error) {
 			return &ps.playbackDevices[idx], nil
 		}
 	}
-	return nil, fmt.Errorf("no default device found")
+	return nil, errors.New("no default device found")
 }
 
 // GetMediaFile retrieves the MediaFile given by the id parameter
-func (ps *playbackServer) GetMediaFile(id string) (*model.MediaFile, error) {
-	return ps.datastore.MediaFile().Get(*ps.ctx, id)
+func (ps *playbackServer) GetMediaFile(ctx context.Context, id string) (*model.MediaFile, error) {
+	return ps.datastore.MediaFile().Get(ctx, id)
 }
 
 // GetDeviceForUser returns the audio playback device for the given user. As of now this is but only the default device.

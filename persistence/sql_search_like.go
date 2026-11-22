@@ -57,7 +57,7 @@ func legacySearchExpr(tableName string, s string) Sqlizer {
 		return nil
 	}
 	var sep string
-	if !conf.Server.Search.FullString {
+	if !conf.Server().Search.FullString {
 		sep = " "
 	}
 	parts := strings.Split(q, " ")

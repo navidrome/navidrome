@@ -1,8 +1,16 @@
 package configtest
 
-import "github.com/navidrome/navidrome/conf"
+import (
+	"github.com/navidrome/navidrome/conf"
+	"github.com/onsi/ginkgo/v2"
+)
 
-// TODO Remove this redirection and call SnapshotConfig directly from tests
-func SetupConfig() func() {
-	return conf.SnapshotConfig()
+// RestoreAfterEachSpec restores the config after every spec. Call it at the top level of a suite.
+// Ordered specs are skipped so a BeforeAll can set config for its whole container.
+func RestoreAfterEachSpec() bool {
+	return ginkgo.BeforeEach(func() {
+		if !ginkgo.CurrentSpecReport().IsInOrderedContainer {
+			ginkgo.DeferCleanup(conf.SnapshotConfig())
+		}
+	})
 }

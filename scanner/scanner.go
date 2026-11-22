@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -236,7 +237,7 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 	}
 
 	if len(successfulLibs) == 0 {
-		return fmt.Errorf("no libraries available for scanning")
+		return errors.New("no libraries available for scanning")
 	}
 
 	// Update state with only successfully initialized libraries

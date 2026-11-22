@@ -17,7 +17,7 @@ import (
 
 func start(ctx context.Context, args []string) (Executor, error) {
 	if len(args) == 0 {
-		return Executor{}, fmt.Errorf("no command arguments provided")
+		return Executor{}, errors.New("no command arguments provided")
 	}
 	log.Debug("Executing mpv command", "cmd", args)
 	j := Executor{args: args}
@@ -34,7 +34,7 @@ func (j *Executor) Cancel() error {
 	if j.cmd != nil {
 		return j.cmd.Cancel()
 	}
-	return fmt.Errorf("there is non command to cancel")
+	return errors.New("there is non command to cancel")
 }
 
 type Executor struct {
@@ -72,12 +72,12 @@ func (j *Executor) wait() {
 	_ = j.out.Close()
 }
 
-// Path will always be an absolute path
+// createMPVCommand expects filename to always be an absolute path
 func createMPVCommand(deviceName string, filename string, socketName string) []string {
 	// Parse the template structure using shell parsing to handle quoted arguments
-	templateArgs, err := shellquote.Split(conf.Server.MPVCmdTemplate)
+	templateArgs, err := shellquote.Split(conf.Server().MPVCmdTemplate)
 	if err != nil {
-		log.Error("Failed to parse MPV command template", "template", conf.Server.MPVCmdTemplate, err)
+		log.Error("Failed to parse MPV command template", "template", conf.Server().MPVCmdTemplate, err)
 		return nil
 	}
 
@@ -102,11 +102,11 @@ func createMPVCommand(deviceName string, filename string, socketName string) []s
 	return templateArgs
 }
 
-// This is a 1:1 copy of the stuff in ffmpeg.go, need to be unified.
+// mpvCommand is a 1:1 copy of the stuff in ffmpeg.go, need to be unified.
 func mpvCommand() (string, error) {
 	mpvOnce.Do(func() {
-		if conf.Server.MPVPath != "" {
-			mpvPath = conf.Server.MPVPath
+		if conf.Server().MPVPath != "" {
+			mpvPath = conf.Server().MPVPath
 			mpvPath, mpvErr = exec.LookPath(mpvPath)
 		} else {
 			mpvPath, mpvErr = exec.LookPath("mpv")

@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/model"
@@ -14,10 +15,12 @@ import (
 )
 
 var _ = Describe("LibraryScanning", func() {
+	var ctx context.Context
 	var api *Router
 	var ms *tests.MockScanner
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ms = tests.NewMockScanner()
 		api = &Router{scanner: ms}
 	})
@@ -25,14 +28,14 @@ var _ = Describe("LibraryScanning", func() {
 	Describe("StartScan", func() {
 		It("triggers a full scan with no parameters", func() {
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with no parameters
-			r := httptest.NewRequest("GET", "/rest/startScan", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -52,14 +55,14 @@ var _ = Describe("LibraryScanning", func() {
 
 		It("triggers a full scan with fullScan=true", func() {
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with fullScan parameter
-			r := httptest.NewRequest("GET", "/rest/startScan?fullScan=true", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?fullScan=true", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -85,14 +88,14 @@ var _ = Describe("LibraryScanning", func() {
 			api.ds = mockDS
 
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with single target parameter
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Rock", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Rock", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -121,14 +124,14 @@ var _ = Describe("LibraryScanning", func() {
 			api.ds = mockDS
 
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with multiple target parameters
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Reggae&target=2:Classical/Bach", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Reggae&target=2:Classical/Bach", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -159,14 +162,14 @@ var _ = Describe("LibraryScanning", func() {
 			api.ds = mockDS
 
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with target and fullScan parameters
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Jazz&fullScan=true", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Jazz&fullScan=true", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -188,14 +191,14 @@ var _ = Describe("LibraryScanning", func() {
 
 		It("returns error for invalid target format", func() {
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with invalid target format (missing colon)
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1MusicRock", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1MusicRock", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -211,14 +214,14 @@ var _ = Describe("LibraryScanning", func() {
 
 		It("returns error for invalid library ID in target", func() {
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with invalid library ID
-			r := httptest.NewRequest("GET", "/rest/startScan?target=0:Music/Rock", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=0:Music/Rock", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -240,14 +243,14 @@ var _ = Describe("LibraryScanning", func() {
 			api.ds = mockDS
 
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with library ID that doesn't exist
-			r := httptest.NewRequest("GET", "/rest/startScan?target=999:Music/Rock", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=999:Music/Rock", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -276,14 +279,14 @@ var _ = Describe("LibraryScanning", func() {
 			api.ds = mockDS
 
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with single library and empty path
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -315,14 +318,14 @@ var _ = Describe("LibraryScanning", func() {
 			api.ds = mockDS
 
 			// Create admin user
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
 			// Create request with single library and empty path
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:", nil)
+			r = r.WithContext(userCtx)
 
 			// Call endpoint
 			response, err := api.StartScan(r)
@@ -356,13 +359,13 @@ var _ = Describe("LibraryScanning", func() {
 				}
 			})
 
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
-			r := httptest.NewRequest("GET", "/rest/startScan", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan", nil)
+			r = r.WithContext(userCtx)
 
 			response, err := api.StartScan(r)
 
@@ -386,13 +389,13 @@ var _ = Describe("LibraryScanning", func() {
 				}
 			})
 
-			ctx := request.WithUser(context.Background(), model.User{
+			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
 				IsAdmin: true,
 			})
 
-			r := httptest.NewRequest("GET", "/rest/startScan?fullScan=true", nil)
-			r = r.WithContext(ctx)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?fullScan=true", nil)
+			r = r.WithContext(userCtx)
 
 			response, err := api.StartScan(r)
 
@@ -414,8 +417,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request
-			ctx := context.Background()
-			r := httptest.NewRequest("GET", "/rest/getScanStatus", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getScanStatus", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint

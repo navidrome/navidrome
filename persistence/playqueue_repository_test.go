@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -19,8 +18,7 @@ var _ = Describe("PlayQueueRepository", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		ctx = log.NewContext(context.TODO())
+		ctx = log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlayQueueRepository(GetDBXBuilder())
 	})
@@ -311,36 +309,67 @@ var _ = Describe("PlayQueueRepository", func() {
 			AssertPlayQueue(expected, actual)
 		})
 
-		It("does not return tracks if they don't exist in the DB", func() {
-			// Add a new song to the DB
-			newSong := songRadioactivity
-			newSong.ID = "temp-track"
-			newSong.Path = "/new-path"
-			mfRepo := NewMediaFileRepository(GetDBXBuilder())
-
-			Expect(mfRepo.Put(ctx, &newSong)).To(Succeed())
-
-			// Create a playqueue with the new song
-			pq := aPlayQueue("userid", 0, 0, newSong, songAntenna)
-			Expect(repo.Store(ctx, pq)).To(Succeed())
-
-			// Retrieve the playqueue
-			actual, err := repo.RetrieveWithMediaFiles(ctx, "userid")
+		It("returns ErrIncompleteQueue with the queue as stored when the tracks fail to load", func() {
+			Expect(repo.Store(ctx, aPlayQueue("userid", 1, 45, songComeTogether, songDayInALife))).To(Succeed())
+			tx, err := GetDBXBuilder().Begin()
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = tx.Rollback() })
+			_, err = tx.NewQuery("ALTER TABLE media_file RENAME TO media_file_unavailable").Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			// The playqueue should contain both tracks
-			AssertPlayQueue(pq, actual)
+			actual, err := NewPlayQueueRepository(tx).RetrieveWithMediaFiles(ctx, "userid")
+			Expect(err).To(MatchError(model.ErrIncompleteQueue))
+			Expect(actual.Items).To(BeEmpty())
+			Expect(actual.Current).To(Equal(1))
+			Expect(actual.Position).To(Equal(int64(45)))
+		})
 
-			// Delete the new song
-			Expect(mfRepo.Delete(ctx, "temp-track")).To(Succeed())
+		Context("when tracks are no longer in the library", func() {
+			var mfRepo model.MediaFileRepository
+			gone := songRadioactivity
+			gone.ID = "gone-track"
+			gone.Path = "/gone-track"
 
-			// Retrieve the playqueue
-			actual, err = repo.RetrieveWithMediaFiles(ctx, "userid")
-			Expect(err).ToNot(HaveOccurred())
+			BeforeEach(func() {
+				mfRepo = NewMediaFileRepository(GetDBXBuilder())
+				Expect(mfRepo.Put(ctx, &gone)).To(Succeed())
+				DeferCleanup(func() { _ = mfRepo.Delete(ctx, gone.ID) })
+			})
 
-			// The playqueue should not contain the deleted track
-			Expect(actual.Items).To(HaveLen(1))
-			Expect(actual.Items[0].ID).To(Equal(songAntenna.ID))
+			retrieveAfterRemoval := func(current int, position int64, items ...model.MediaFile) *model.PlayQueue {
+				Expect(repo.Store(ctx, aPlayQueue("userid", current, position, items...))).To(Succeed())
+				Expect(mfRepo.Delete(ctx, gone.ID)).To(Succeed())
+				actual, err := repo.RetrieveWithMediaFiles(ctx, "userid")
+				Expect(err).ToNot(HaveOccurred())
+				return actual
+			}
+
+			DescribeTable("points to the right current track",
+				func(current int, items []model.MediaFile, expectedID string, expectedPosition int64) {
+					actual := retrieveAfterRemoval(current, 45, items...)
+
+					Expect(actual.Items).To(HaveLen(len(items) - 1))
+					Expect(actual.Items[actual.Current].ID).To(Equal(expectedID))
+					Expect(actual.Position).To(Equal(expectedPosition))
+				},
+				Entry("when an earlier track is removed", 1, []model.MediaFile{gone, songComeTogether, songDayInALife}, songComeTogether.ID, int64(45)),
+				Entry("when a later track is removed", 0, []model.MediaFile{songComeTogether, gone}, songComeTogether.ID, int64(45)),
+				Entry("moving to the next track from the start when the current one is removed", 1, []model.MediaFile{songComeTogether, gone, songDayInALife}, songDayInALife.ID, int64(0)),
+				Entry("moving to the last track when the removed current one was the last", 1, []model.MediaFile{songComeTogether, gone}, songComeTogether.ID, int64(0)),
+			)
+
+			It("leaves the stored queue untouched", func() {
+				retrieveAfterRemoval(1, 45, gone, songComeTogether, songDayInALife)
+
+				Consistently(func(g Gomega) {
+					stored, err := repo.Retrieve(ctx, "userid")
+					g.Expect(err).ToNot(HaveOccurred())
+					g.Expect(stored.Items).To(HaveLen(3))
+					g.Expect(stored.Items[0].ID).To(Equal(gone.ID))
+					g.Expect(stored.Current).To(Equal(1))
+					g.Expect(stored.Position).To(Equal(int64(45)))
+				}).Should(Succeed())
+			})
 		})
 	})
 
@@ -399,11 +428,10 @@ var _ = Describe("PlayQueueRepository", func() {
 })
 
 func countPlayQueues(repo model.PlayQueueRepository, userId string) int {
+	GinkgoHelper()
 	r := repo.(*playQueueRepository)
 	c, err := r.count(GinkgoT().Context(), squirrel.Select().Where(squirrel.Eq{"user_id": userId}))
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	return int(c)
 }
 

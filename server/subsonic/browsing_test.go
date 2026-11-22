@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/core/auth"
@@ -32,10 +33,10 @@ var _ = Describe("Browsing", func() {
 	var ds model.DataStore
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		api = &Router{ds: ds}
-		ctx = context.Background()
 	})
 
 	Describe("GetMusicFolders", func() {
@@ -44,7 +45,7 @@ var _ = Describe("Browsing", func() {
 			ctx := contextWithUser(ctx, "user-id", 1, 2, 3)
 
 			// Create request
-			r := httptest.NewRequest("GET", "/rest/getMusicFolders", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getMusicFolders", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -67,7 +68,7 @@ var _ = Describe("Browsing", func() {
 			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=2 (not accessible)
-			r := httptest.NewRequest("GET", "/rest/getIndexes?musicFolderId=2", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getIndexes?musicFolderId=2", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -97,7 +98,7 @@ var _ = Describe("Browsing", func() {
 			})
 
 			// Create request without musicFolderId
-			r := httptest.NewRequest("GET", "/rest/getIndexes", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getIndexes", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -116,7 +117,7 @@ var _ = Describe("Browsing", func() {
 			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=3 (not accessible)
-			r := httptest.NewRequest("GET", "/rest/getArtists?musicFolderId=3", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtists?musicFolderId=3", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -146,7 +147,7 @@ var _ = Describe("Browsing", func() {
 			})
 
 			// Create request without musicFolderId
-			r := httptest.NewRequest("GET", "/rest/getArtists", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtists", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -162,15 +163,15 @@ var _ = Describe("Browsing", func() {
 	Describe("GetAlbumInfo", func() {
 		It("emits image URLs when the album artwork is unresolved", func() {
 			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1"}}
-			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
 			resp, err := api.GetAlbumInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumInfo.SmallImageUrl).ToNot(BeEmpty())
 			Expect(resp.AlbumInfo.LargeImageUrl).ToNot(BeEmpty())
 		})
 		It("omits image URLs when the album artwork is known absent", func() {
-			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
-			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
+			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ImageAbsent: true}}
+			r := httptest.NewRequest(http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
 			resp, err := api.GetAlbumInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumInfo.SmallImageUrl).To(BeEmpty())
@@ -182,14 +183,14 @@ var _ = Describe("Browsing", func() {
 	Describe("GetArtistInfo", func() {
 		It("emits image URLs when the artist artwork is unresolved", func() {
 			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1"}}
-			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistInfo.SmallImageUrl).ToNot(BeEmpty())
 		})
 		It("omits image URLs when the artist artwork is known absent", func() {
-			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
-			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ImageAbsent: true}}
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistInfo.SmallImageUrl).To(BeEmpty())

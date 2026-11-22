@@ -1,7 +1,6 @@
 package public
 
 import (
-	"context"
 	"net/http"
 	"path"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -30,7 +28,7 @@ type Router struct {
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, decider stream.TranscodeDecider, share core.Share, archiver core.Archiver) *Router {
 	p := &Router{ds: ds, artwork: artwork, streamer: streamer, decider: decider, share: share, archiver: archiver}
-	shareRoot := path.Join(conf.Server.BasePath, consts.URLPathPublic)
+	shareRoot := path.Join(conf.Server().BasePath, consts.URLPathPublic)
 	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))
 	p.Handler = p.routes()
 
@@ -43,13 +41,13 @@ func (pub *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
 		r.Group(func(r chi.Router) {
-			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-				conf.Server.DevArtworkThrottleBacklogTimeout))
+			r.Use(server.ThrottleBacklog(conf.Server().DevArtworkMaxRequests, conf.Server().DevArtworkThrottleBacklogLimit,
+				conf.Server().DevArtworkThrottleBacklogTimeout))
 			r.HandleFunc("/img/{id}", pub.handleImages)
 		})
-		if conf.Server.EnableSharing {
+		if conf.Server().EnableSharing {
 			r.HandleFunc("/s/{id}", pub.handleStream)
-			if conf.Server.EnableDownloads {
+			if conf.Server().EnableDownloads {
 				r.HandleFunc("/d/{id}", pub.handleDownloads)
 			}
 			r.HandleFunc("/{id}/m3u", pub.handleM3U)
@@ -59,9 +57,4 @@ func (pub *Router) routes() http.Handler {
 		}
 	})
 	return r
-}
-
-func ShareURL(ctx context.Context, id string) string {
-	uri := path.Join(consts.URLPathPublic, id)
-	return publicurl.PublicURL(ctx, uri, nil)
 }

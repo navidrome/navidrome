@@ -15,12 +15,13 @@ import (
 var _ = Describe("Players", func() {
 	var players Players
 	var repo *mockPlayerRepository
-	ctx := log.NewContext(context.TODO())
-	ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "johndoe"})
-	ctx = request.WithUsername(ctx, "johndoe")
+	var ctx context.Context
 	var beforeRegister time.Time
 
 	BeforeEach(func() {
+		ctx = log.NewContext(GinkgoT().Context())
+		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "johndoe"})
+		ctx = request.WithUsername(ctx, "johndoe")
 		repo = &mockPlayerRepository{}
 		ds := &tests.MockDataStore{MockedPlayer: repo, MockedTranscoding: &tests.MockTranscodingRepo{}}
 		players = NewPlayers(ds)
@@ -124,9 +125,10 @@ var _ = Describe("Players", func() {
 		})
 
 		Context("bad username casing", func() {
-			ctx := log.NewContext(context.TODO())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "Johndoe"})
-			ctx = request.WithUsername(ctx, "Johndoe")
+			BeforeEach(func() {
+				ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "Johndoe"})
+				ctx = request.WithUsername(ctx, "Johndoe")
+			})
 
 			It("finds player by client and user names when not ID is provided", func() {
 				plr := &model.Player{ID: "123", Name: "A Player", Client: "client", UserId: "userid", UserAgent: "chrome", LastSeen: time.Time{}}

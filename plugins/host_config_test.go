@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -53,10 +52,12 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 	hashHex := hex.EncodeToString(hash[:])
 
 	// Setup config
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 
 	// Setup mock DataStore
 	mockPluginRepo := tests.CreateMockPluginRepo()
@@ -97,7 +98,10 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 		}
 		defer instance.Close(ctx)
 
-		inputBytes, _ := json.Marshal(input)
+		inputBytes, err := json.Marshal(input)
+		if err != nil {
+			return nil, err
+		}
 		_, outputBytes, err := instance.Call("nd_test_config", inputBytes)
 		if err != nil {
 			return nil, err
@@ -121,7 +125,7 @@ var _ = Describe("ConfigService", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 	})
 
 	Describe("newConfigService", func() {

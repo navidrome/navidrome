@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -51,9 +51,9 @@ var _ = Describe("Artwork hydration", func() {
 	}
 
 	BeforeEach(func() {
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		clearArtworkTables()
 		DeferCleanup(clearArtworkTables)
-		ctx = request.WithUser(log.NewContext(context.Background()), adminUser)
 		aw = NewArtworkRepository(GetDBXBuilder())
 	})
 
@@ -239,8 +239,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		BeforeEach(func() {
 			repo = NewMediaFileRepository(GetDBXBuilder())
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		})
 
 		It("resolves the embedded-eligible fallback matrix", func() {
@@ -360,7 +359,7 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("uses album info for an eligible file when EnableMediaFileCoverArt is off", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			setCover("1001", true)
 			DeferCleanup(func() { setCover("1001", false) })
 
@@ -502,13 +501,13 @@ var _ = Describe("Artwork hydration", func() {
 			Entry("by recently added", model.QueryOptions{Sort: "recently_added", Order: "desc"},
 				func(a model.Album) string { return fmt.Sprint(a.CreatedAt) }),
 			Entry("by year", model.QueryOptions{Sort: "max_year"},
-				func(a model.Album) string { return fmt.Sprint(a.MaxYear) }),
+				func(a model.Album) string { return strconv.Itoa(a.MaxYear) }),
 			Entry("by play count", model.QueryOptions{Sort: "play_count", Order: "desc"},
-				func(a model.Album) string { return fmt.Sprint(a.PlayCount) }),
+				func(a model.Album) string { return strconv.FormatInt(a.PlayCount, 10) }),
 			Entry("by last played", model.QueryOptions{Sort: "play_date", Order: "desc"},
 				func(a model.Album) string { return fmt.Sprint(a.PlayDate) }),
 			Entry("by rating", model.QueryOptions{Sort: "rating", Order: "desc"},
-				func(a model.Album) string { return fmt.Sprint(a.Rating) }),
+				func(a model.Album) string { return strconv.Itoa(a.Rating) }),
 			Entry("starred only", model.QueryOptions{Sort: "starred_at", Order: "desc",
 				Filters: squirrel.Eq{"starred": true}},
 				func(a model.Album) string { return fmt.Sprint(a.StarredAt) }),
@@ -530,11 +529,11 @@ var _ = Describe("Artwork hydration", func() {
 			Entry("by name", model.QueryOptions{Sort: "name"},
 				func(a model.Artist) string { return a.OrderArtistName }),
 			Entry("by album count", model.QueryOptions{Sort: "album_count", Order: "desc"},
-				func(a model.Artist) string { return fmt.Sprint(a.AlbumCount) }),
+				func(a model.Artist) string { return strconv.Itoa(a.AlbumCount) }),
 			Entry("by song count", model.QueryOptions{Sort: "song_count", Order: "desc"},
-				func(a model.Artist) string { return fmt.Sprint(a.SongCount) }),
+				func(a model.Artist) string { return strconv.Itoa(a.SongCount) }),
 			Entry("by play count", model.QueryOptions{Sort: "play_count", Order: "desc"},
-				func(a model.Artist) string { return fmt.Sprint(a.PlayCount) }),
+				func(a model.Artist) string { return strconv.FormatInt(a.PlayCount, 10) }),
 			Entry("starred only", model.QueryOptions{Sort: "starred_at", Order: "desc",
 				Filters: squirrel.Eq{"starred": true}},
 				func(a model.Artist) string { return fmt.Sprint(a.StarredAt) }),
@@ -573,7 +572,7 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("keeps a non-admin from streaming another user's private playlists", func() {
-			otherCtx := request.WithUser(log.NewContext(context.Background()), regularUser)
+			otherCtx := request.WithUser(ctx, regularUser)
 			repo := NewPlaylistRepository(GetDBXBuilder())
 			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
 

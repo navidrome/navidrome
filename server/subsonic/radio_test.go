@@ -2,10 +2,10 @@ package subsonic
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -21,10 +21,10 @@ var _ = Describe("Radio", func() {
 	var radioRepo *tests.MockedRadioRepo
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		api = &Router{ds: ds}
-		ctx = context.Background()
 		radioRepo = tests.CreateMockedRadioRepo()
 		ds.MockedRadio = radioRepo
 	})
@@ -38,7 +38,7 @@ var _ = Describe("Radio", func() {
 		})
 
 		It("returns all radios with basic fields", func() {
-			r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 			r = r.WithContext(ctx)
 
 			response, err := api.GetInternetRadios(r)
@@ -56,14 +56,13 @@ var _ = Describe("Radio", func() {
 
 		Context("with a non-legacy client", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "modern-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
 
 			It("includes coverArt from UploadedImage", func() {
-				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -78,10 +77,10 @@ var _ = Describe("Radio", func() {
 
 			It("suffixes coverArt with the content hash when resolved and omits it when known absent", func() {
 				radioRepo.All = model.Radios{
-					{ID: "rd-1", Name: "Radio 1", UploadedImage: "rd-1_cover.jpg", ItemImage: model.ItemImage{ImageHash: "0123456789abcdef"}},
-					{ID: "rd-2", Name: "Radio 2", UploadedImage: "rd-2_cover.jpg", ItemImage: model.ItemImage{ImageAbsent: true}},
+					{ID: "rd-1", Name: "Radio 1", UploadedImage: "rd-1_cover.jpg", ImageHash: "0123456789abcdef"},
+					{ID: "rd-2", Name: "Radio 2", UploadedImage: "rd-2_cover.jpg", ImageAbsent: true},
 				}
-				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -94,14 +93,13 @@ var _ = Describe("Radio", func() {
 
 		Context("with a legacy client", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
 
 			It("does not include coverArt", func() {
-				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -115,10 +113,9 @@ var _ = Describe("Radio", func() {
 
 		Context("when no player in context", func() {
 			It("does not include coverArt (empty client matches legacy list)", func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 
-				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -130,14 +127,13 @@ var _ = Describe("Radio", func() {
 
 		Context("when legacy clients list is empty", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Subsonic.LegacyClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
 
 			It("includes coverArt for all clients", func() {
-				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -151,7 +147,7 @@ var _ = Describe("Radio", func() {
 		It("returns error when repository fails", func() {
 			radioRepo.SetError(true)
 
-			r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
 			r = r.WithContext(ctx)
 
 			_, err := api.GetInternetRadios(r)

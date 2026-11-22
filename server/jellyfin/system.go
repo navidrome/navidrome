@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"net/netip"
@@ -26,21 +25,22 @@ import (
 const jellyfinVersion = "12.1.0"
 
 func serverName() string {
-	if conf.Server.Jellyfin.ServerName != "" {
-		return conf.Server.Jellyfin.ServerName
+	if conf.Server().Jellyfin.ServerName != "" {
+		return conf.Server().Jellyfin.ServerName
 	}
-	return fmt.Sprintf("Navidrome %s", consts.Version)
+	return "Navidrome " + consts.Version
 }
 
 func (api *Router) serverID(ctx context.Context) string {
 	return resolveServerID(ctx, api.ds, &api.serverIDVal)
 }
 
-// Package-level: the Router and Discovery are separate objects and must not persist different ids.
+// serverIDMu is package-level: the Router and Discovery are separate objects and must not persist
+// different ids.
 var serverIDMu sync.Mutex
 
-// Clients cache ServerId across sessions, so it is persisted. Only a successful read or write is
-// cached: a transient failure yields a temporary id and retries on the next call.
+// resolveServerID persists the ServerId, because clients cache it across sessions. Only a successful read
+// or write is cached: a transient failure yields a temporary id and retries on the next call.
 func resolveServerID(ctx context.Context, ds model.DataStore, cached *string) string {
 	serverIDMu.Lock()
 	defer serverIDMu.Unlock()
@@ -90,7 +90,7 @@ func (api *Router) publicInfo(r *http.Request) dto.PublicSystemInfo {
 // its server base URL; without it its SDK api instance is undefined and sign-in crashes.
 func localAddress(r *http.Request) string {
 	scheme, host := server.ServerAddress(r)
-	return scheme + "://" + host + path.Join(conf.Server.BasePath, consts.URLPathJellyfinAPI)
+	return scheme + "://" + host + path.Join(conf.Server().BasePath, consts.URLPathJellyfinAPI)
 }
 
 func (api *Router) getPublicSystemInfo(w http.ResponseWriter, r *http.Request) {
