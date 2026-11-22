@@ -49,7 +49,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
+		p = external.NewProvider(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
 		conf.Update(func(c *conf.Options) { c.DevAlbumInfoTimeToLive = 1 * time.Hour })
 	})
 
@@ -96,6 +96,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		Expect(stored.Description).To(Equal("Album Description"))
 		Expect(stored.LargeImageUrl).To(Equal("http://example.com/large.jpg"))
 		Expect(stored.SmallImageUrl).To(Equal("http://example.com/small.jpg"))
+		Expect(external.QueuedAlbumRefreshes(p)).To(BeZero(), "freshly fetched info must not be refreshed again")
 
 		ag.AssertExpectations(GinkgoT())
 	})
@@ -141,6 +142,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updatedAlbum).NotTo(BeNil())
 		expectCached(updatedAlbum, originalAlbum)
+		Expect(external.QueuedAlbumRefreshes(p)).To(Equal(1))
 
 		ag.AssertNotCalled(GinkgoT(), "GetAlbumInfo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})

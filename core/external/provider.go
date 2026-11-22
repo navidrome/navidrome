@@ -87,10 +87,11 @@ type Agents interface {
 	agents.SimilarSongsByArtistRetriever
 }
 
-func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
+// NewProvider runs background info refreshes until ctx is done.
+func NewProvider(ctx context.Context, ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
 	e := &provider{ds: ds, ag: agents, matcher: m, broker: broker}
-	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
-	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
+	e.artistQueue = newRefreshQueue(ctx, e.populateArtistInfo)
+	e.albumQueue = newRefreshQueue(ctx, e.populateAlbumInfo)
 	return e
 }
 
@@ -133,10 +134,7 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	// If info is expired, trigger a populateAlbumInfo in the background
-	if time.Since(updatedAt) > conf.Server().DevAlbumInfoTimeToLive {
+	} else if time.Since(updatedAt) > conf.Server().DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", albumName)
 		e.albumQueue.enqueue(&album)
 	}
@@ -240,10 +238,7 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 		if err != nil {
 			return auxArtist{}, err
 		}
-	}
-
-	// If info is expired, trigger a populateArtistInfo in the background
-	if time.Since(updatedAt) > conf.Server().DevArtistInfoTimeToLive {
+	} else if time.Since(updatedAt) > conf.Server().DevArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artistName)
 		e.artistQueue.enqueue(&artist)
 	}

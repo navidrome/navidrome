@@ -70,7 +70,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
 		broker = &fakeBroker{}
-		p = external.NewProvider(ds, ag, matcher.New(ds), broker)
+		p = external.NewProvider(ctx, ds, ag, matcher.New(ds), broker)
 	})
 
 	It("repopulates an artist even when its info is fresh", func() {
@@ -140,7 +140,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar-1", Name: "Test Artist"})
 		expectArtistAgents()
 		failing := failingArtists(ds, errDBDown)
-		p = external.NewProvider(failing, ag, matcher.New(failing), broker)
+		p = external.NewProvider(ctx, failing, ag, matcher.New(failing), broker)
 
 		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(MatchError(errDBDown))
 

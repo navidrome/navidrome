@@ -428,7 +428,7 @@ var _ = Describe("Artwork", func() {
 			firstKey := first.ETag
 			readAll(first)
 
-			setImagesUpdatedAt(fid, time.Now())
+			setImagesUpdatedAt(fid, time.Now().Add(time.Hour))
 			second, err := svc.Get(ctx, discID, 64, false)
 			Expect(err).ToNot(HaveOccurred())
 			readAll(second)
@@ -447,7 +447,7 @@ var _ = Describe("Artwork", func() {
 			readAll(first)
 			Expect(first.ETag).ToNot(BeEmpty())
 
-			setImagesUpdatedAt(fid, time.Now())
+			setImagesUpdatedAt(fid, time.Now().Add(time.Hour))
 			second, err := svc.Get(ctx, discID, 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			readAll(second)
