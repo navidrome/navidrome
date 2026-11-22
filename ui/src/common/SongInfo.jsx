@@ -17,6 +17,7 @@ import {
   DateField,
   ArtistLinkField,
   BitrateField,
+  InfoLabelCell,
   ParticipantsInfo,
   PathField,
   SizeField,
@@ -33,8 +34,8 @@ const useStyles = makeStyles({
       content: (props) => (props.gain ? " ' db'" : ''),
     },
   },
-  tableCell: {
-    width: '17.5%',
+  container: {
+    overflowWrap: 'anywhere',
   },
   value: {
     whiteSpace: 'pre-line',
@@ -123,7 +124,7 @@ export const SongInfo = (props) => {
   )
 
   return (
-    <TableContainer>
+    <TableContainer className={classes.container}>
       {record.rawTags && (
         <Tabs value={tab} onChange={(_, value) => setTab(value)}>
           <Tab
@@ -148,25 +149,22 @@ export const SongInfo = (props) => {
             {Object.keys(data).map((key) => {
               return (
                 <TableRow key={`${record.id}-${key}`}>
-                  <TableCell scope="row" className={classes.tableCell}>
+                  <InfoLabelCell>
                     {translate(`resources.song.fields.${key}`, {
                       _: humanize(underscore(key)),
                     })}
                     :
-                  </TableCell>
+                  </InfoLabelCell>
                   <TableCell align="left" className={classes.value}>
                     {data[key]}
                   </TableCell>
                 </TableRow>
               )
             })}
-            <ParticipantsInfo classes={classes} record={record} />
+            <ParticipantsInfo record={record} />
             {tags.length > 0 && (
               <TableRow key={`${record.id}-separator`}>
-                <TableCell
-                  scope="row"
-                  className={classes.tableCell}
-                ></TableCell>
+                <InfoLabelCell />
                 <TableCell align="left" className={classes.value}>
                   <h4>{translate(`resources.song.fields.tags`)}</h4>
                 </TableCell>
@@ -174,9 +172,7 @@ export const SongInfo = (props) => {
             )}
             {tags.map(([name, values]) => (
               <TableRow key={`${record.id}-tag-${name}`}>
-                <TableCell scope="row" className={classes.tableCell}>
-                  {name}:
-                </TableCell>
+                <InfoLabelCell>{name}:</InfoLabelCell>
                 <TableCell align="left" className={classes.value}>
                   {values.join(' • ')}
                 </TableCell>
@@ -194,16 +190,14 @@ export const SongInfo = (props) => {
           <Table size="small" aria-label="song raw tags">
             <TableBody>
               <TableRow key={`${record.id}-raw-path`}>
-                <TableCell scope="row" className={classes.tableCell}>
+                <InfoLabelCell>
                   {translate(`resources.song.fields.path`)}:
-                </TableCell>
+                </InfoLabelCell>
                 <TableCell align="left">{data.path}</TableCell>
               </TableRow>
               {Object.entries(record.rawTags).map(([key, value]) => (
                 <TableRow key={`${record.id}-raw-${key}`}>
-                  <TableCell scope="row" className={classes.tableCell}>
-                    {key}:
-                  </TableCell>
+                  <InfoLabelCell>{key}:</InfoLabelCell>
                   <TableCell align="left" className={classes.value}>
                     {value.join(' • ')}
                   </TableCell>

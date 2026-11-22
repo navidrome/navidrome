@@ -4,48 +4,64 @@ import { useTranslate } from 'react-admin'
 
 import en from '../i18n/en.json'
 import { ArtistLinkField } from './index'
+import { InfoLabelCell } from './InfoLabelCell'
 
-export const ParticipantsInfo = ({ classes, record }) => {
+const groupBySubRole = (role, artists) => {
+  const groups = new Map()
+  for (const { subRole, ...artist } of artists) {
+    const key = subRole ?? ''
+    if (!groups.has(key)) {
+      groups.set(key, [])
+    }
+    groups.get(key).push(artist)
+  }
+  return [...groups].map(([subRole, artists]) => ({ role, subRole, artists }))
+}
+
+export const ParticipantsInfo = ({ record }) => {
   const translate = useTranslate()
   const existingRoles = en?.resources?.artist?.roles ?? {}
 
-  const roles = []
+  const rows = []
 
   if (record.participants) {
-    for (const name of Object.keys(record.participants)) {
-      if (name === 'albumartist' || name === 'artist') {
+    for (const [role, artists] of Object.entries(record.participants)) {
+      if (role === 'albumartist' || role === 'artist') {
         continue
       }
-      roles.push([name, record.participants[name].length])
+      rows.push(...groupBySubRole(role, artists))
     }
   }
 
-  if (roles.length === 0) {
+  if (rows.length === 0) {
     return null
   }
 
+  const roleLabel = (role, count) =>
+    role in existingRoles
+      ? translate(`resources.artist.roles.${role}`, { smart_count: count })
+      : humanize(role)
+
   return (
     <>
-      {roles.length > 0 && (
-        <TableRow key={`${record.id}-separator`}>
-          <TableCell scope="row" className={classes.tableCell}></TableCell>
+      <TableRow key={`${record.id}-separator`}>
+        <InfoLabelCell />
+        <TableCell align="left">
+          <h4>{translate(`resources.song.fields.participants`)}</h4>
+        </TableCell>
+      </TableRow>
+      {rows.map(({ role, subRole, artists }) => (
+        <TableRow key={`${record.id}-${role}-${subRole}`}>
+          <InfoLabelCell>
+            {roleLabel(role, artists.length)}
+            {subRole && ` (${subRole})`}:
+          </InfoLabelCell>
           <TableCell align="left">
-            <h4>{translate(`resources.song.fields.participants`)}</h4>
-          </TableCell>
-        </TableRow>
-      )}
-      {roles.map(([role, count]) => (
-        <TableRow key={`${record.id}-${role}`}>
-          <TableCell scope="row" className={classes.tableCell}>
-            {role in existingRoles
-              ? translate(`resources.artist.roles.${role}`, {
-                  smart_count: count,
-                })
-              : humanize(role)}
-            :
-          </TableCell>
-          <TableCell align="left">
-            <ArtistLinkField source={role} record={record} limit={Infinity} />
+            <ArtistLinkField
+              source={role}
+              record={{ participants: { [role]: artists } }}
+              limit={Infinity}
+            />
           </TableCell>
         </TableRow>
       ))}

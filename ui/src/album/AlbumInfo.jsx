@@ -18,14 +18,15 @@ import { makeStyles } from '@material-ui/core/styles'
 import {
   DateField,
   ArtistLinkField,
+  InfoLabelCell,
   MultiLineTextField,
   ParticipantsInfo,
   RangeField,
 } from '../common'
 
 const useStyles = makeStyles({
-  tableCell: {
-    width: '17.5%',
+  container: {
+    overflowWrap: 'anywhere',
   },
   value: {
     whiteSpace: 'pre-line',
@@ -116,29 +117,25 @@ const AlbumInfo = (props) => {
   })
 
   return (
-    <TableContainer>
+    <TableContainer className={classes.container}>
       <Table aria-label="album details" size="small">
         <TableBody>
           {Object.keys(data).map((key) => {
             return (
               <TableRow key={`${record.id}-${key}`}>
-                <TableCell
-                  component="th"
-                  scope="row"
-                  className={classes.tableCell}
-                >
+                <InfoLabelCell component="th">
                   {translate(`resources.album.fields.${key}`, {
                     _: humanize(underscore(key)),
                   })}
                   :
-                </TableCell>
+                </InfoLabelCell>
                 <TableCell align="left" className={classes.value}>
                   {data[key]}
                 </TableCell>
               </TableRow>
             )
           })}
-          <ParticipantsInfo record={record} classes={classes} />
+          <ParticipantsInfo record={record} />
         </TableBody>
       </Table>
     </TableContainer>
