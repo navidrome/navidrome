@@ -45,6 +45,10 @@ func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (
 // getPlaybackInfo answers /Items/{itemId}/PlaybackInfo with a single MediaSource for direct
 // playback. Format negotiation happens later in streamAudio (like Subsonic defers it to /stream).
 func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
+	if rd, ok := api.radioForRequest(r); ok {
+		api.radioPlaybackInfo(w, r, *rd)
+		return
+	}
 	mf, ok := api.mediaFileForRequest(w, r)
 	if !ok {
 		return
@@ -71,6 +75,9 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 // streamAudio serves /Audio/{itemId}/stream[.container], reusing the same transcode-decision +
 // streaming pipeline as the Subsonic /stream endpoint.
 func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
+	if api.redirectToStation(w, r) {
+		return
+	}
 	mf, ok := api.mediaFileForRequest(w, r)
 	if !ok {
 		return
@@ -91,6 +98,9 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 // streamUniversal serves /Audio/{itemId}/universal, where Container lists the "container|codec"
 // entries the client direct-plays, and TranscodingContainer/AudioCodec name the fallback target.
 func (api *Router) streamUniversal(w http.ResponseWriter, r *http.Request) {
+	if api.redirectToStation(w, r) {
+		return
+	}
 	mf, ok := api.mediaFileForRequest(w, r)
 	if !ok {
 		return

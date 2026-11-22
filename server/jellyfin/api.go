@@ -190,6 +190,11 @@ func (api *Router) routes() http.Handler {
 		r.Get("/audio/{itemId}/main.m3u8", api.streamHls)
 		r.Get("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
 		r.Post("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
+		r.Get("/videos/{itemId}/stream", api.streamVideo)
+		r.Get("/videos/{itemId}/stream.{container}", api.streamVideo)
+		r.Head("/videos/{itemId}/stream", api.streamVideo)
+		r.Head("/videos/{itemId}/stream.{container}", api.streamVideo)
+		r.Get("/livetv/channels", api.getLiveTvChannels)
 		r.Get("/audio/{itemId}/lyrics", api.getLyrics)
 		// Direct-file endpoints: some clients (Finamp's just_audio) fetch here instead of
 		// /Audio/{id}/stream; /Download reuses the direct-play handler as Jellyfin serves the same file.
