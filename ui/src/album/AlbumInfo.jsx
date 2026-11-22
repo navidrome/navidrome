@@ -2,7 +2,6 @@ import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import { humanize, underscore } from 'inflection'
 import TableCell from '@material-ui/core/TableCell'
-import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
 import {
   ArrayField,
@@ -19,15 +18,13 @@ import {
   DateField,
   ArtistLinkField,
   InfoLabelCell,
+  InfoTableContainer,
   MultiLineTextField,
   ParticipantsInfo,
   RangeField,
 } from '../common'
 
 const useStyles = makeStyles({
-  container: {
-    overflowWrap: 'anywhere',
-  },
   value: {
     whiteSpace: 'pre-line',
   },
@@ -117,7 +114,7 @@ const AlbumInfo = (props) => {
   })
 
   return (
-    <TableContainer className={classes.container}>
+    <InfoTableContainer>
       <Table aria-label="album details" size="small">
         <TableBody>
           {Object.keys(data).map((key) => {
@@ -138,7 +135,7 @@ const AlbumInfo = (props) => {
           <ParticipantsInfo record={record} />
         </TableBody>
       </Table>
-    </TableContainer>
+    </InfoTableContainer>
   )
 }
 

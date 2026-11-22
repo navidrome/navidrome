@@ -4,7 +4,7 @@ import { useTranslate } from 'react-admin'
 
 import en from '../i18n/en.json'
 import { ArtistLinkField } from './index'
-import { InfoLabelCell } from './InfoLabelCell'
+import { InfoLabelCell } from './InfoTable'
 
 const groupBySubRole = (role, artists) => {
   const groups = new Map()

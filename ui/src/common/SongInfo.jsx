@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
-import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
 import {
   BooleanField,
@@ -18,6 +17,7 @@ import {
   ArtistLinkField,
   BitrateField,
   InfoLabelCell,
+  InfoTableContainer,
   ParticipantsInfo,
   PathField,
   SizeField,
@@ -33,9 +33,6 @@ const useStyles = makeStyles({
     '&:after': {
       content: (props) => (props.gain ? " ' db'" : ''),
     },
-  },
-  container: {
-    overflowWrap: 'anywhere',
   },
   value: {
     whiteSpace: 'pre-line',
@@ -86,15 +83,6 @@ export const SongInfo = (props) => {
     comment: <MultiLineTextField source="comment" />,
   }
 
-  const roles = []
-
-  for (const name of Object.keys(record.participants)) {
-    if (name === 'albumartist' || name === 'artist') {
-      continue
-    }
-    roles.push([name, record.participants[name].length])
-  }
-
   const optionalFields = [
     'discSubtitle',
     'comment',
@@ -124,7 +112,7 @@ export const SongInfo = (props) => {
   )
 
   return (
-    <TableContainer className={classes.container}>
+    <InfoTableContainer>
       {record.rawTags && (
         <Tabs value={tab} onChange={(_, value) => setTab(value)}>
           <Tab
@@ -207,6 +195,6 @@ export const SongInfo = (props) => {
           </Table>
         </div>
       )}
-    </TableContainer>
+    </InfoTableContainer>
   )
 }
