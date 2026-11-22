@@ -145,28 +145,20 @@ var _ = Describe("Live TV radio", func() {
 		Entry("GET", http.MethodGet),
 	)
 
-	DescribeTable("stream URLs built by the client redirect to the station",
+	// A redirect would carry the client's X-Emby-Token header to the station's host.
+	DescribeTable("never sends a client to the station from a stream URL",
 		func(method, path string) {
 			w := call(method, strings.ReplaceAll(path, "{id}", stationID("r-alpha")), "")
 
-			Expect(w.Code).To(Equal(http.StatusFound))
-			Expect(w.Header().Get("Location")).To(Equal("https://alpha.example.org/stream.mp3"))
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(w.Header().Get("Location")).To(BeEmpty())
 		},
 		Entry("audio stream", http.MethodGet, "/Audio/{id}/stream"),
 		Entry("audio stream with container", http.MethodGet, "/Audio/{id}/stream.mp3"),
 		Entry("audio universal", http.MethodGet, "/Audio/{id}/universal"),
 		Entry("audio stream HEAD", http.MethodHead, "/Audio/{id}/stream"),
 		Entry("video stream", http.MethodGet, "/Videos/{id}/stream"),
-		Entry("video stream with container", http.MethodGet, "/Videos/{id}/stream.ts"),
 	)
-
-	It("does not serve a song through the video stream route", func() {
-		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1})
-
-		w := call(http.MethodGet, "/Videos/"+dto.EncodeID(testID("s1"))+"/stream", "")
-
-		Expect(w.Code).To(Equal(http.StatusNotFound))
-	})
 
 	It("serves a station's uploaded image", func() {
 		w := call(http.MethodGet, "/Items/"+stationID("r-alpha")+"/Images/Primary", "")

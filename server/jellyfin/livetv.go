@@ -26,23 +26,3 @@ func (api *Router) getLiveTvChannels(w http.ResponseWriter, r *http.Request) {
 	items := slice.Map(radios, dto.RadioToBaseItem)
 	api.ok(w, r, result(paginate(items, offset, limit), len(items), offset))
 }
-
-// redirectToStation serves stream URLs clients build themselves instead of playing PlaybackInfo's
-// Path. Navidrome doesn't proxy stations, so the client fetches the station directly.
-func redirectToStation(w http.ResponseWriter, r *http.Request, rd model.Radio) {
-	http.Redirect(w, r, rd.StreamUrl, http.StatusFound)
-}
-
-// streamVideo handles /Videos/{itemId}/stream, where real Jellyfin plays Live TV channels, even
-// radio ones. Only stations are served here.
-func (api *Router) streamVideo(w http.ResponseWriter, r *http.Request) {
-	_, rd, ok := api.playableForRequest(w, r)
-	if !ok {
-		return
-	}
-	if rd == nil {
-		api.notFound(w, r)
-		return
-	}
-	redirectToStation(w, r, *rd)
-}

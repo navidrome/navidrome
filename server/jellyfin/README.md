@@ -181,7 +181,7 @@ views as `UserViews`), as Jellyfin does at the user root.
 | Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE UserItems/{itemId}/Rating`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET`/`POST UserItems/{itemId}/UserData`, `GET`/`POST Users/{userId}/Items/{itemId}/UserData` |
 | Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` (`HEAD` too on stream, universal, File, Download and images; a transcode HEAD answers without starting it) |
 | Lyrics | `GET Audio/{itemId}/Lyrics` |
-| Internet radio (see below) | `GET LiveTv/Channels`, `GET`/`HEAD Videos/{itemId}/stream[.{container}]` (stations only) |
+| Internet radio (see below) | `GET LiveTv/Channels` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Playing/Ping` (no-op), `POST Sessions/Capabilities[/Full]` |
 | Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items` (`POST` honors `position`), `POST Playlists/{playlistId}/Items/{entryId}/Move/{newIndex}`, `GET Playlists/{playlistId}/Users[/{userId}]` |
 | Real-time | `GET socket` (WebSocket; keeps clients like Finamp from 404-loop-reconnecting) |
@@ -301,8 +301,9 @@ tuner. Navidrome exposes its internet radio stations the same way, for the clien
   `RequiresOpening: false` and `SupportsTranscoding: false`. Clients play the station directly, so
   `LiveStreams/Open`/`Close` are not needed and not implemented. Navidrome does not proxy or
   transcode stations.
-- **`Audio/{id}/stream`, `Audio/{id}/universal` and `Videos/{id}/stream`** answer a station id with a
-  `302` to the station URL, for clients that build stream URLs instead of reading `Path`.
+- **Stream endpoints don't serve stations.** `Audio/{id}/stream` and `universal` 404 for a station id.
+  Redirecting to the station URL would leak the client's auth headers: Go's `net/http` and Apple's
+  URLSession both forward `X-Emby-Token`/`X-Emby-Authorization` across hosts on a redirect.
 - **`Sessions/Playing*`** reports for a station return `204` without reaching the scrobbler.
 - A station's image is its uploaded image, if any (same as Subsonic's `getInternetRadioStations`).
 - The user policy sets `EnableLiveTvAccess: true`. Stations are managed in the Navidrome UI or the
