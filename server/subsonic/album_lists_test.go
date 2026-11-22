@@ -309,7 +309,7 @@ var _ = Describe("Album Lists", func() {
 				model.MediaFile{ID: "2", Title: "Song 2", Tags: model.Tags{model.TagGenre: {"rock"}}},
 				model.MediaFile{ID: "3", Title: "Song 3", Tags: model.Tags{model.TagGenre: {"jazz"}}},
 			)
-			r := newGetRequest("count=2", "genre=rock")
+			r := newGetRequest("count=10", "genre=rock")
 
 			resp, err := router.GetSongsByGenre(r)
 

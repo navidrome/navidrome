@@ -204,7 +204,12 @@ var _ = Describe("MediaRetrievalController", func() {
 		})
 		It("should return empty subsonic response if the record corresponding to the given artist & title is not found", func() {
 			r := newGetRequest("artist=Dheeraj", "title=Rinkiya+Ke+Papa")
-			putRickAstleySong(ctx, ds, "song.mp3", "")
+			start := int64(0)
+			lyricsJSON, err := json.Marshal(model.LyricList{
+				{Kind: model.LyricKindMain, Lang: "eng", Line: []model.Line{{Start: &start, Value: "Never gonna give you up"}}},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
 			response, err := router.GetLyrics(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response.Lyrics.Artist).To(Equal(""))
