@@ -36,7 +36,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		conf.Update(func(c *conf.Options) { c.DevArtistInfoTimeToLive = 1 * time.Hour })
 		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
+		p = external.NewProviderWithContext(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
 	})
 
 	It("returns error when artist is not found", func() {
@@ -105,6 +105,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		Expect(stored.ExternalInfoUpdatedAt).NotTo(BeNil())
 		Expect(stored.SimilarArtists).To(HaveLen(3), "the stored list keeps similar artists missing from the library")
 		Expect(stored.SimilarArtists[0].ID).To(Equal("ar-similar-2"))
+		Expect(external.QueuedArtistRefreshes(p)).To(BeZero(), "freshly fetched info must not be refreshed again")
 
 		ag.AssertExpectations(GinkgoT())
 	})
@@ -208,6 +209,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-expired", 5, false)
 
 		Expect(err).NotTo(HaveOccurred())
+		Expect(external.QueuedArtistRefreshes(p)).To(Equal(1))
 		Expect(updatedArtist).NotTo(BeNil())
 		Expect(updatedArtist.ID).To(Equal(originalArtist.ID))
 		Expect(updatedArtist.Name).To(Equal(originalArtist.Name))

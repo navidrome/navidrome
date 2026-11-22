@@ -56,11 +56,11 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			similarAgent:  mockAgent,
 		}
 
-		provider = NewProvider(ds, agentsCombined, matcher.New(ds), &fakeBroker{})
+		provider = NewProviderWithContext(ctx, ds, agentsCombined, matcher.New(ds), &fakeBroker{})
 	})
 
 	useStore := func(store model.DataStore) {
-		provider = NewProvider(store, agentsCombined, matcher.New(store), &fakeBroker{})
+		provider = NewProviderWithContext(ctx, store, agentsCombined, matcher.New(store), &fakeBroker{})
 	}
 
 	putPlaylist := func(pls model.Playlist, trackIDs ...string) {

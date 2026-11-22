@@ -35,12 +35,12 @@ var _ = Describe("Provider - TopSongs", func() {
 		conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
-		p = NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
+		p = NewProviderWithContext(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
 	})
 
 	withFailingArtists := func(err error) {
 		failing := failingArtists(ds, err)
-		p = NewProvider(failing, ag, matcher.New(failing), &fakeBroker{})
+		p = NewProviderWithContext(ctx, failing, ag, matcher.New(failing), &fakeBroker{})
 	}
 
 	It("returns top songs for a known artist", func() {
