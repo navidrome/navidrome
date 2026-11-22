@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"math"
 	"mime"
@@ -24,33 +25,53 @@ import (
 // library, writing 404 (never 403, to avoid an existence oracle) and returning ok=false otherwise.
 // Shared by getPlaybackInfo and streamAudio so a guessed id can't probe or stream another library.
 func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (*model.MediaFile, bool) {
-	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "itemId")
 	if !ok {
 		return nil, false
 	}
+	if mf, ok := api.accessibleMediaFile(r.Context(), id); ok {
+		return mf, true
+	}
+	http.Error(w, "Not Found", http.StatusNotFound)
+	return nil, false
+}
+
+// playableForRequest is mediaFileForRequest that also accepts an internet radio station, probed
+// only when no media file matches so song requests pay nothing extra.
+func (api *Router) playableForRequest(w http.ResponseWriter, r *http.Request) (*model.MediaFile, *model.Radio, bool) {
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return nil, nil, false
+	}
+	if mf, ok := api.accessibleMediaFile(r.Context(), id); ok {
+		return mf, nil, true
+	}
+	if rd, err := api.ds.Radio().Get(r.Context(), id); err == nil {
+		return nil, rd, true
+	}
+	http.Error(w, "Not Found", http.StatusNotFound)
+	return nil, nil, false
+}
+
+func (api *Router) accessibleMediaFile(ctx context.Context, id string) (*model.MediaFile, bool) {
 	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
-		http.Error(w, "Not Found", http.StatusNotFound)
 		return nil, false
 	}
 	u, _ := request.UserFrom(ctx)
-	if !u.HasLibraryAccess(mf.LibraryID) {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return nil, false
-	}
-	return mf, true
+	return mf, u.HasLibraryAccess(mf.LibraryID)
 }
 
 // getPlaybackInfo answers /Items/{itemId}/PlaybackInfo with a single MediaSource for direct
 // playback. Format negotiation happens later in streamAudio (like Subsonic defers it to /stream).
 func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
-	if rd, ok := api.radioForRequest(r); ok {
-		api.radioPlaybackInfo(w, r, *rd)
+	mf, rd, ok := api.playableForRequest(w, r)
+	if !ok {
 		return
 	}
-	mf, ok := api.mediaFileForRequest(w, r)
-	if !ok {
+	if rd != nil {
+		src := dto.MediaSourceFromRadio(*rd)
+		api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: src.Id})
 		return
 	}
 	src := dto.MediaSourceFromMediaFile(*mf)
@@ -75,11 +96,12 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 // streamAudio serves /Audio/{itemId}/stream[.container], reusing the same transcode-decision +
 // streaming pipeline as the Subsonic /stream endpoint.
 func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
-	if api.redirectToStation(w, r) {
+	mf, rd, ok := api.playableForRequest(w, r)
+	if !ok {
 		return
 	}
-	mf, ok := api.mediaFileForRequest(w, r)
-	if !ok {
+	if rd != nil {
+		redirectToStation(w, r, *rd)
 		return
 	}
 	p := req.Params(r)
@@ -98,11 +120,12 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 // streamUniversal serves /Audio/{itemId}/universal, where Container lists the "container|codec"
 // entries the client direct-plays, and TranscodingContainer/AudioCodec name the fallback target.
 func (api *Router) streamUniversal(w http.ResponseWriter, r *http.Request) {
-	if api.redirectToStation(w, r) {
+	mf, rd, ok := api.playableForRequest(w, r)
+	if !ok {
 		return
 	}
-	mf, ok := api.mediaFileForRequest(w, r)
-	if !ok {
+	if rd != nil {
+		redirectToStation(w, r, *rd)
 		return
 	}
 	p := req.Params(r)

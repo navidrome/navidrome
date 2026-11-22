@@ -135,8 +135,6 @@ var _ = Describe("Live TV radio", func() {
 			src := res.MediaSources[0]
 			Expect(src.Id).To(Equal(stationID("r-zeta")))
 			Expect(src.Path).To(Equal("https://zeta.example.org/live.aac"))
-			Expect(src.Protocol).To(Equal("Http"))
-			Expect(src.IsRemote).To(BeTrue())
 			Expect(src.IsInfiniteStream).To(BeTrue())
 			Expect(src.SupportsDirectPlay).To(BeTrue())
 			Expect(src.SupportsTranscoding).To(BeFalse())

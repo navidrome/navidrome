@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
@@ -28,35 +27,22 @@ func (api *Router) getLiveTvChannels(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, result(paginate(items, offset, limit), len(items), offset))
 }
 
-// radioForRequest returns the station {itemId} names, if it names one.
-func (api *Router) radioForRequest(r *http.Request) (*model.Radio, bool) {
-	id, ok := dto.DecodeID(chi.URLParam(r, "itemId"))
-	if !ok {
-		return nil, false
-	}
-	rd, err := api.ds.Radio().Get(r.Context(), id)
-	return rd, err == nil
-}
-
-func (api *Router) radioPlaybackInfo(w http.ResponseWriter, r *http.Request, rd model.Radio) {
-	src := dto.MediaSourceFromRadio(rd)
-	api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: src.Id})
-}
-
 // redirectToStation serves stream URLs clients build themselves instead of playing PlaybackInfo's
 // Path. Navidrome doesn't proxy stations, so the client fetches the station directly.
-func (api *Router) redirectToStation(w http.ResponseWriter, r *http.Request) bool {
-	rd, ok := api.radioForRequest(r)
-	if ok {
-		http.Redirect(w, r, rd.StreamUrl, http.StatusFound)
-	}
-	return ok
+func redirectToStation(w http.ResponseWriter, r *http.Request, rd model.Radio) {
+	http.Redirect(w, r, rd.StreamUrl, http.StatusFound)
 }
 
 // streamVideo handles /Videos/{itemId}/stream, where real Jellyfin plays Live TV channels, even
 // radio ones. Only stations are served here.
 func (api *Router) streamVideo(w http.ResponseWriter, r *http.Request) {
-	if !api.redirectToStation(w, r) {
-		api.notFound(w, r)
+	_, rd, ok := api.playableForRequest(w, r)
+	if !ok {
+		return
 	}
+	if rd == nil {
+		api.notFound(w, r)
+		return
+	}
+	redirectToStation(w, r, *rd)
 }

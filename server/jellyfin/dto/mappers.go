@@ -509,11 +509,10 @@ func RadioToBaseItem(rd model.Radio) BaseItemDto {
 		BackdropImageTags: []string{},
 	}
 	// An uploaded image is a station's only art source, as in Subsonic's getInternetRadioStations.
-	if rd.UploadedImage != "" {
-		if tag, blurs, _ := primaryImage(rd.ItemImage, rd.ID, nil); tag != "" {
-			item.ImageTags = map[string]string{"Primary": tag}
-			item.ImageBlurHashes = blurs
-		}
+	if rd.UploadedImage != "" && !rd.ImageAbsent {
+		tag, blurs, _ := primaryImage(rd.ItemImage, rd.ID, nil)
+		item.ImageTags = map[string]string{"Primary": tag}
+		item.ImageBlurHashes = blurs
 	}
 	return item
 }
