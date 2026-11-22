@@ -49,7 +49,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
-		p = external.NewProviderWithContext(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
+		p = external.NewProvider(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
 		conf.Update(func(c *conf.Options) { c.DevAlbumInfoTimeToLive = 1 * time.Hour })
 	})
 

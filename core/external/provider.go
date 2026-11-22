@@ -87,11 +87,8 @@ type Agents interface {
 	agents.SimilarSongsByArtistRetriever
 }
 
-func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
-	return newProvider(context.TODO(), ds, agents, m, broker)
-}
-
-func newProvider(ctx context.Context, ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) *provider {
+// NewProvider runs background info refreshes until ctx is done.
+func NewProvider(ctx context.Context, ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
 	e := &provider{ds: ds, ag: agents, matcher: m, broker: broker}
 	e.artistQueue = newRefreshQueue(ctx, e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(ctx, e.populateAlbumInfo)

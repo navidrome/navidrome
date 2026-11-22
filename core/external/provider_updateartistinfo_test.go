@@ -36,7 +36,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		conf.Update(func(c *conf.Options) { c.DevArtistInfoTimeToLive = 1 * time.Hour })
 		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
-		p = external.NewProviderWithContext(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
+		p = external.NewProvider(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
 	})
 
 	It("returns error when artist is not found", func() {
