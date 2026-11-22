@@ -5,7 +5,10 @@ import {
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
   clearQueue,
+  playNext,
+  playTracks,
   setPlayMode,
+  setTrack,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -287,6 +290,28 @@ describe('playerReducer', () => {
         ['a', 'key-a'],
         ['b', 'key-b'],
       ])
+    })
+
+    // The refresh turns autoplay off, so the restored queue does not start by
+    // itself. An explicit play must turn it back on.
+    const song = { id: 'song-9', title: 'Song 9' }
+    it.each([
+      ['playTracks', () => playTracks({ [song.id]: song }, [song.id])],
+      ['setTrack', () => setTrack(song)],
+      ['playNext', () => playNext({ [song.id]: song }, [song.id])],
+    ])('%s turns autoplay back on after a refresh', (_, action) => {
+      const refreshed = playerReducer(
+        {
+          queue: [{ trackId: 'song-1', uuid: 'a' }],
+          savedPlayIndex: 0,
+          current: {},
+          clear: false,
+          volume: 1,
+        },
+        { type: PLAYER_REFRESH_QUEUE, data: {} },
+      )
+      expect(refreshed.autoPlay).toBe(false)
+      expect(playerReducer(refreshed, action()).autoPlay).toBe(true)
     })
   })
 })

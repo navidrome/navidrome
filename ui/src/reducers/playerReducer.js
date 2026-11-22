@@ -117,6 +117,7 @@ const reducePlayTracks = (state, { data, id }) => {
     queue,
     playIndex,
     clear: true,
+    autoPlay: true,
   }
 }
 
@@ -126,6 +127,7 @@ const reduceSetTrack = (state, { data }) => {
     queue: [mapToAudioLists(data)],
     playIndex: 0,
     clear: true,
+    autoPlay: true,
   }
 }
 
@@ -157,6 +159,7 @@ const reducePlayNext = (state, { data }) => {
     ...state,
     queue: newQueue,
     clear: true,
+    autoPlay: true,
   }
 }
 
