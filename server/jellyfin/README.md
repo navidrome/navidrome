@@ -8,8 +8,8 @@ requiring a real Jellyfin server.
 
 It is **not** a full Jellyfin server implementation: only the endpoints needed to browse a music
 library, stream audio, manage favorites/ratings for songs, albums, artists, and playlists, report
-playback, and manage playlists are implemented. Video, live TV, plugins, and Jellyfin's
-admin/dashboard APIs are out of scope.
+playback, manage playlists, and play internet radio stations are implemented. Video, live TV other
+than radio, plugins, and Jellyfin's admin/dashboard APIs are out of scope.
 
 ## Enabling
 
@@ -181,6 +181,7 @@ views as `UserViews`), as Jellyfin does at the user root.
 | Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE UserItems/{itemId}/Rating`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET`/`POST UserItems/{itemId}/UserData`, `GET`/`POST Users/{userId}/Items/{itemId}/UserData` |
 | Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` (`HEAD` too on stream, universal, File, Download and images; a transcode HEAD answers without starting it) |
 | Lyrics | `GET Audio/{itemId}/Lyrics` |
+| Internet radio (see below) | `GET LiveTv/Channels` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Playing/Ping` (no-op), `POST Sessions/Capabilities[/Full]` |
 | Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items` (`POST` honors `position`), `POST Playlists/{playlistId}/Items/{entryId}/Move/{newIndex}`, `GET Playlists/{playlistId}/Users[/{userId}]` |
 | Real-time | `GET socket` (WebSocket; keeps clients like Finamp from 404-loop-reconnecting) |
@@ -286,6 +287,27 @@ list badge). Browse lists set both from embedded lyrics only. `PlaybackInfo` run
 per track with a short timeout bound, so sidecar and cached/fast plugin lyrics show up there without
 stalling playback start on a slow cold plugin lookup. Feishin also requires server version ≥ 10.9
 (we advertise 12.1.0).
+
+## Internet radio
+
+Jellyfin has no internet radio concept of its own: stations are Live TV channels from an M3U
+tuner. Navidrome exposes its internet radio stations the same way, for the clients that play them
+(Nocturne, WatchAmp, Symfonium):
+
+- **`GET LiveTv/Channels`** lists every station as a `TvChannel` item with `ChannelType: Radio`
+  and `MediaType: Audio`, sorted by name, honoring `StartIndex`/`Limit`. `Type=TV` returns no
+  stations. `GET Items/{id}` resolves a station too.
+- **`PlaybackInfo`** returns the station URL as the media source `Path`, with
+  `RequiresOpening: false` and `SupportsTranscoding: false`. Clients play the station directly, so
+  `LiveStreams/Open`/`Close` are not needed and not implemented. Navidrome does not proxy or
+  transcode stations.
+- **Stream endpoints don't serve stations.** `Audio/{id}/stream` and `universal` 404 for a station id.
+  Redirecting to the station URL would leak the client's auth headers: Go's `net/http` and Apple's
+  URLSession both forward `X-Emby-Token`/`X-Emby-Authorization` across hosts on a redirect.
+- **`Sessions/Playing*`** reports for a station return `204` without reaching the scrobbler.
+- A station's image is its uploaded image, if any (same as Subsonic's `getInternetRadioStations`).
+- The user policy sets `EnableLiveTvAccess: true`. Stations are managed in the Navidrome UI or the
+  Subsonic API; `LiveTv/TunerHosts` is not implemented.
 
 ## AudioMuse-AI compatible endpoints
 

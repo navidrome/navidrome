@@ -984,6 +984,9 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 		}
 		return dto.SongToBaseItem(*mf, fields), true
 	}
+	if rd, err := api.ds.Radio().Get(ctx, id); err == nil {
+		return dto.RadioToBaseItem(*rd), true
+	}
 	// api.playlists.Get enforces ownership/visibility, so a non-owned or missing id falls through.
 	if pl, err := api.playlists.Get(ctx, id); err == nil {
 		return dto.PlaylistToBaseItem(*pl, fields), true
