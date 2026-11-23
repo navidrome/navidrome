@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"mime"
@@ -29,7 +30,7 @@ func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (
 	if !ok {
 		return nil, false
 	}
-	if mf, ok := api.accessibleMediaFile(r.Context(), id); ok {
+	if mf, err := api.accessibleMediaFile(r.Context(), id); err == nil {
 		return mf, true
 	}
 	http.Error(w, "Not Found", http.StatusNotFound)
@@ -43,23 +44,34 @@ func (api *Router) playableForRequest(w http.ResponseWriter, r *http.Request) (*
 	if !ok {
 		return nil, nil, false
 	}
-	if mf, ok := api.accessibleMediaFile(r.Context(), id); ok {
+	mf, err := api.accessibleMediaFile(r.Context(), id)
+	if err == nil {
 		return mf, nil, true
 	}
-	if rd, err := api.ds.Radio().Get(r.Context(), id); err == nil {
-		return nil, rd, true
+	if errors.Is(err, model.ErrNotFound) {
+		var rd *model.Radio
+		if rd, err = api.ds.Radio().Get(r.Context(), id); err == nil {
+			return nil, rd, true
+		}
 	}
-	http.Error(w, "Not Found", http.StatusNotFound)
+	if errors.Is(err, model.ErrNotFound) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	} else {
+		api.internalError(w, r, err)
+	}
 	return nil, nil, false
 }
 
-func (api *Router) accessibleMediaFile(ctx context.Context, id string) (*model.MediaFile, bool) {
+// accessibleMediaFile reports a file in a library the user can't access as model.ErrNotFound.
+func (api *Router) accessibleMediaFile(ctx context.Context, id string) (*model.MediaFile, error) {
 	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
-	u, _ := request.UserFrom(ctx)
-	return mf, u.HasLibraryAccess(mf.LibraryID)
+	if u, _ := request.UserFrom(ctx); !u.HasLibraryAccess(mf.LibraryID) {
+		return nil, model.ErrNotFound
+	}
+	return mf, nil
 }
 
 // getPlaybackInfo answers /Items/{itemId}/PlaybackInfo with a single MediaSource for direct

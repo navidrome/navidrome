@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -124,6 +125,14 @@ var _ = Describe("Live TV radio", func() {
 		}
 	})
 
+	It("reports a failed station lookup as a server error, not a missing item", func() {
+		api = New(failingRadioDS{DataStore: ds}, art, nil, nil, &fakePlayers{}, pt, nil, nil, nil, nil, nil, nil)
+
+		w := call(http.MethodPost, "/Items/"+stationID("r-zeta")+"/PlaybackInfo", `{}`)
+
+		Expect(w.Code).To(Equal(http.StatusInternalServerError))
+	})
+
 	DescribeTable("PlaybackInfo returns the station URL for direct playback",
 		func(method string) {
 			w := call(method, "/Items/"+stationID("r-zeta")+"/PlaybackInfo", `{"DeviceProfile":{}}`)
@@ -200,3 +209,13 @@ var _ = Describe("Live TV radio", func() {
 		Expect(u.Policy.EnableLiveTvAccess).To(BeTrue())
 	})
 })
+
+type failingRadioDS struct{ model.DataStore }
+
+func (failingRadioDS) Radio() model.RadioRepository { return failingRadioRepo{} }
+
+type failingRadioRepo struct{ model.RadioRepository }
+
+func (failingRadioRepo) Get(context.Context, string) (*model.Radio, error) {
+	return nil, errors.New("database is locked")
+}
