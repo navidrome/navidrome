@@ -43,6 +43,11 @@ func NewHTTPClient(wrapped httpDoer, ttl time.Duration) *HTTPClient {
 }
 
 func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
+	// Only GET responses are cached. Replaying a stored reply to a POST (a scrobble, a now-playing
+	// update) would hand a retry the previous failure without reaching the service.
+	if req.Method != http.MethodGet {
+		return c.hc.Do(req)
+	}
 	key, err := c.serializeReq(req)
 	if err != nil {
 		return nil, err

@@ -1,10 +1,12 @@
 package cache
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
@@ -90,6 +92,56 @@ var _ = Describe("HTTPClient", func() {
 			_, err = chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(requestsReceived).To(Equal(2))
+		})
+	})
+
+	Context("non-GET", func() {
+		var chc *HTTPClient
+		var ts *httptest.Server
+		var requestsReceived int
+
+		BeforeEach(func() {
+			requestsReceived = 0
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestsReceived++
+				if requestsReceived == 1 {
+					w.WriteHeader(http.StatusBadGateway)
+					return
+				}
+				_, _ = fmt.Fprint(w, "ok")
+			}))
+			chc = NewHTTPClient(http.DefaultClient, consts.DefaultHttpClientTimeOut)
+		})
+
+		AfterEach(func() {
+			ts.Close()
+		})
+
+		It("sends every request to the server, so an error reply is not replayed", func() {
+			r, _ := http.NewRequest(http.MethodPost, ts.URL, strings.NewReader("listen"))
+			resp, err := chc.Do(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusBadGateway))
+			_ = resp.Body.Close()
+
+			// Same request
+			r, _ = http.NewRequest(http.MethodPost, ts.URL, strings.NewReader("listen"))
+			resp, err = chc.Do(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.StatusCode).To(Equal(http.StatusOK))
+			body, err := io.ReadAll(resp.Body)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(body)).To(Equal("ok"))
+			Expect(requestsReceived).To(Equal(2))
+		})
+
+		It("keeps the caller's context", func() {
+			ctx, cancel := context.WithCancel(GinkgoT().Context())
+			cancel()
+			r, _ := http.NewRequestWithContext(ctx, http.MethodPost, ts.URL, strings.NewReader("listen"))
+			_, err := chc.Do(r)
+			Expect(err).To(MatchError(context.Canceled))
+			Expect(requestsReceived).To(Equal(0))
 		})
 	})
 })
