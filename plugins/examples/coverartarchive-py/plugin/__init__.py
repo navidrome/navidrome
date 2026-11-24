@@ -5,14 +5,25 @@
 #
 # Build with:
 #   extism-py plugin/__init__.py -o coverartarchive-py.wasm
-#
-# Test with:
-#   extism call coverartarchive-py.wasm nd_get_album_images --wasi \
-#     --input '{"name":"Dummy","artist":"Portishead","mbid":"76df3287-6cda-33eb-8e9a-044b5e15ffdd"}' \
-#     --allow-host "coverartarchive.org" --allow-host "archive.org"
 
+import base64
 import extism
 import json
+
+
+@extism.import_fn("extism:host/user", "http_send")
+def _http_send(offset: int) -> int: ...
+
+
+def http_get(url):
+    """GET url via Navidrome's HTTP host service. Returns (status_code, body_bytes)."""
+    request = json.dumps({"request": {"method": "GET", "url": url}}).encode("utf-8")
+    response_offset = _http_send(extism.memory.alloc(request).offset)
+    resp = json.loads(extism.memory.string(extism.memory.find(response_offset)))
+    if resp.get("error"):
+        raise Exception(f"HTTP request failed: {resp['error']}")
+    result = resp["result"]
+    return result["statusCode"], base64.b64decode(result.get("body", ""))
 
 
 @extism.plugin_fn
@@ -26,13 +37,13 @@ def nd_get_album_images():
     
     # Query Cover Art Archive API
     url = f"https://coverartarchive.org/release/{mbid}"
-    response = extism.Http.request(url, meth="GET")
-    
-    if response.status_code != 200:
-        raise Exception(f"not found: CAA returned status {response.status_code}")
-    
+    status, body = http_get(url)
+
+    if status != 200:
+        raise Exception(f"not found: CAA returned status {status}")
+
     try:
-        data = json.loads(response.data_str())
+        data = json.loads(body)
     except json.JSONDecodeError:
         raise Exception("not found: invalid JSON response")
     

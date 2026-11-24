@@ -23,7 +23,7 @@ type Criteria struct {
 	Limit        int
 	LimitPercent int
 	Offset       int
-	RefreshDelay time.Duration // 0 = use conf.Server.SmartPlaylistRefreshDelay
+	RefreshDelay time.Duration // 0 = use conf.Server().SmartPlaylistRefreshDelay
 }
 
 // EffectiveLimit resolves the effective limit for a query. If a fixed Limit is
@@ -64,18 +64,21 @@ func (c Criteria) IsPercentageLimit() bool {
 }
 
 func (c Criteria) ChildPlaylistIds() []string {
-	if c.Expression == nil {
-		return nil
-	}
+	return c.childPlaylistRefs(conjunction.ChildPlaylistIds)
+}
 
+func (c Criteria) ChildPlaylistPaths() []string {
+	return c.childPlaylistRefs(conjunction.ChildPlaylistPaths)
+}
+
+func (c Criteria) childPlaylistRefs(extract func(conjunction) []string) []string {
 	parent, ok := c.Expression.(conjunction)
 	if !ok {
 		return nil
 	}
-
-	ids := parent.ChildPlaylistIds()
-	slices.Sort(ids)
-	return slices.Compact(ids)
+	refs := extract(parent)
+	slices.Sort(refs)
+	return slices.Compact(refs)
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {

@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing/fstest"
@@ -23,9 +22,9 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega" //nolint:staticcheck
 )
@@ -47,28 +46,28 @@ func CreateFS(files fstest.MapFS) storagetest.FakeFS {
 
 // SetupDB boots the golden database: a temp SQLite file, the given users (password "password",
 // all with access to the seeded "Music Library"), a full scan of the registered fake FS, and a
-// snapshot for per-test restore. Callers must set conf.Server.MusicFolder and register the FS
+// snapshot for per-test restore. Callers must set MusicFolder and register the FS
 // first; each user's Libraries field is populated in place.
 func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	tmpDir := ginkgo.GinkgoT().TempDir()
 	h := &DB{FilePath: filepath.Join(tmpDir, "test-e2e.db")}
 	h.SnapshotPath = h.FilePath + ".snapshot"
-	conf.Server.DbPath = h.FilePath + "?_journal_mode=WAL"
+	conf.Update(func(c *conf.Options) { c.DbPath = h.FilePath + "?_journal_mode=WAL" })
 	db.Db().SetMaxOpenConns(1)
 	db.Init(ctx)
 
-	ds := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds := persistence.New(db.Db())
 	auth.Init(ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(ds.Library(ctx).Put(&h.Library)).To(Succeed())
+	Expect(ds.Library().Put(ctx, &h.Library)).To(Succeed())
 
 	for _, u := range users {
 		seeded := *u
 		seeded.NewPassword = "password"
-		Expect(ds.User(ctx).Put(&seeded)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(u.ID, []int{h.Library.ID})).To(Succeed())
-		loaded, err := ds.User(ctx).FindByUsername(u.UserName)
+		Expect(ds.User().Put(ctx, &seeded)).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, u.ID, []int{h.Library.ID})).To(Succeed())
+		loaded, err := ds.User().FindByUsername(ctx, u.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		u.Libraries = loaded.Libraries
 	}
@@ -78,28 +77,8 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-	Expect(err).ToNot(HaveOccurred())
-	data, err := os.ReadFile(h.FilePath)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(h.SnapshotPath, data, 0o600)).To(Succeed()) //nolint:gosec // path derives from TempDir
+	Expect(persistencetest.Snapshot(h.SnapshotPath)).To(Succeed())
 	return h
-}
-
-// ResettableTables lists the tables a per-spec reset may write. FTS shadow tables are excluded:
-// their content tables' triggers keep them in sync, and writing them directly corrupts the index.
-func ResettableTables() []string {
-	rows, err := db.Db().Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
-	defer rows.Close()
-	var tables []string
-	for rows.Next() {
-		var name string
-		Expect(rows.Scan(&name)).To(Succeed())
-		tables = append(tables, name)
-	}
-	Expect(rows.Err()).ToNot(HaveOccurred())
-	return tables
 }
 
 // TruncateDB empties every resettable table, leaving the migrated schema in place — for suites
@@ -117,27 +96,9 @@ func TruncateDB(tables []string) {
 	}
 }
 
-// Restore reloads every table from the golden snapshot via ATTACH DATABASE — much faster than a
-// rescan.
+// Restore reloads every table from the golden snapshot — much faster than a rescan.
 func (h *DB) Restore() {
-	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-
-	for _, table := range ResettableTables() {
-		// Table names come from sqlite_master, not user input.
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	_, err = sqlDB.Exec("DETACH DATABASE snapshot")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("PRAGMA foreign_keys = ON")
-	Expect(err).ToNot(HaveOccurred())
+	Expect(persistencetest.RestoreFrom(h.SnapshotPath)).To(Succeed())
 }
 
 // SpyStreamer captures the Request passed to NewStream and returns a minimal fake stream.
@@ -175,8 +136,6 @@ func (NoopFFmpeg) Transcode(context.Context, ffmpeg.TranscodeOptions) (io.ReadCl
 func (NoopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
 	return nil, errors.New("noop ffmpeg: extract image not supported")
 }
-
-func (NoopFFmpeg) Probe(context.Context, []string) (string, error) { return "", nil }
 
 func (NoopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
 	return nil, errors.New("noop ffmpeg: probe not supported")

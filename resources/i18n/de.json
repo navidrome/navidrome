@@ -93,7 +93,8 @@
         "addToPlaylist": "Zu einer Wiedergabeliste hinzufügen",
         "download": "Herunterladen",
         "info": "Mehr Informationen",
-        "share": "Freigabe erstellen"
+        "share": "Freigabe erstellen",
+        "refresh": "Metadaten aktualisieren"
       },
       "lists": {
         "all": "Alle",
@@ -155,11 +156,13 @@
         "newPassword": "Neues Passwort",
         "token": "Token",
         "lastAccessAt": "Letzter Zugriff am",
-        "libraries": "Bibliotheken"
+        "libraries": "Bibliotheken",
+        "scrobbleFilter": "Scrobble-Filter"
       },
       "helperTexts": {
         "name": "Die Änderung wird erst nach dem nächsten Login gültig",
-        "libraries": "Wähle spezifische Bibliotheken für diesen Benutzer, oder leer lassen für Standard Bibliotheken"
+        "libraries": "Wähle spezifische Bibliotheken für diesen Benutzer, oder leer lassen für Standard Bibliotheken",
+        "scrobbleFilter": "Titel, die diesen Regeln für intelligente Wiedergabelisten entsprechen, werden nicht an Last.fm, ListenBrainz oder Scrobbler-Plugins übermittelt. Es werden dieselbe JSON-Syntax und dasselbe Verhalten wie bei intelligenten Wiedergabelisten verwendet. Beispiel: {\"all\":[{\"lt\":{\"rating\":4}}]}. Ist das Feld leer, wird alles gescrobbelt. Lokale Wiedergabezahlen bleiben davon unberührt."
       },
       "notifications": {
         "created": "Benutzer erstellt",
@@ -173,7 +176,8 @@
         "adminAutoLibraries": "Administrator-Benutzer haben automatisch Zugriff auf alle Bibliotheken"
       },
       "validation": {
-        "librariesRequired": "Mindestens eine Bibliothek muss für nicht-administrator Benutzer ausgewählt sein"
+        "librariesRequired": "Mindestens eine Bibliothek muss für nicht-administrator Benutzer ausgewählt sein",
+        "invalidScrobbleFilter": "Es müssen gültige Regeln für intelligente Wiedergabelisten sein. Limit, Offset und Aktualisierungsverzögerung werden nicht unterstützt."
       }
     },
     "player": {
@@ -196,6 +200,9 @@
         "targetFormat": "Zielformat",
         "defaultBitRate": "Standardbitrate",
         "command": "Befehl"
+      },
+      "choices": {
+        "noDefaultBitRate": "Keine"
       }
     },
     "playlist": {
@@ -210,7 +217,8 @@
         "songCount": "Titelanzahl",
         "comment": "Kommentar",
         "sync": "Auto-Import",
-        "path": "Importieren aus"
+        "path": "Importieren aus",
+        "starred": "Favorit"
       },
       "actions": {
         "selectPlaylist": "Wiedergabeliste auswählen:",
@@ -390,6 +398,7 @@
         "invalidJson": "Konfiguration muss valides JSON sein"
       },
       "messages": {
+        "idHelp": "Die Plugin-ID, abgeleitet vom Dateinamen. Verwende diese, um in Konfigurationen (z. B. bei Agents) auf dieses Plugin zu verweisen.",
         "configHelp": "Plugin mit Schlüssel-Werte Paaren konfigurieren. Leer lassen wenn das Plugin keine Konfiguration benötigt.",
         "clickPermissions": "Berechtigung anklicken für mehr Details",
         "noConfig": "Keine Konfiguration gesetzt",
@@ -564,7 +573,7 @@
     "noPlaylistsAvailable": "Keine Wiedergabeliste verfügbar",
     "delete_user_title": "Benutzer '%{name}' löschen",
     "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Wiedergabelisten und Einstellungen) wirklich löschen?",
-    "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
+    "notifications_blocked": "Benachrichtigungen für diese Seite sind in den Browsereinstellungen blockiert",
     "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen",
     "lastfmLinkSuccess": "Last.fm Verbindung hergestellt und scrobbling aktiviert",
     "lastfmLinkFailure": "Last.fm konnte nicht verbunden werden",
@@ -599,7 +608,8 @@
     "coverUploaded": "Cover aktualisiert",
     "coverRemoved": "Cover entfernt",
     "coverUploadError": "Fehler beim Hochladen des Covers",
-    "coverRemoveError": "Fehler beim Entfernen des Covers"
+    "coverRemoveError": "Fehler beim Entfernen des Covers",
+    "metadataRefreshStarted": "Aktualisiert Metadaten im Hintergrund"
   },
   "menu": {
     "library": "Bibliothek",
@@ -634,7 +644,8 @@
       "multipleLibraries": "%{selected} von %{total} Bibliotheken",
       "selectLibraries": "Bibliotheken auswählen",
       "none": "Keine"
-    }
+    },
+    "onlyFavourites": "Nur Favoriten anzeigen"
   },
   "player": {
     "playListsText": "Warteschlange abspielen",

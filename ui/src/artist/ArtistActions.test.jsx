@@ -18,20 +18,26 @@ vi.mock('../subsonic', () => ({
   default: { getSimilarSongs2: vi.fn(), getTopSongs: vi.fn() },
 }))
 
-const { mockConfig } = vi.hoisted(() => ({
+const { mockConfig, mockPermissions } = vi.hoisted(() => ({
   mockConfig: { enableSharing: true, enableDownloads: true },
+  mockPermissions: { value: 'admin' },
 }))
 vi.mock('../config', () => ({ default: mockConfig }))
 
 const mockNotify = vi.fn()
 const mockGetList = vi.fn().mockResolvedValue({ data: [{ id: 's1' }] })
+const mockRefreshMetadata = vi.fn().mockResolvedValue({ data: { id: 'ar1' } })
 
 vi.mock('react-admin', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
     useNotify: () => mockNotify,
-    useDataProvider: () => ({ getList: mockGetList }),
+    useDataProvider: () => ({
+      getList: mockGetList,
+      refreshMetadata: mockRefreshMetadata,
+    }),
+    usePermissions: () => ({ permissions: mockPermissions.value }),
     useTranslate: () => (x) => x,
   }
 })
@@ -64,6 +70,7 @@ describe('ArtistActions', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockConfig.enableSharing = true
     mockConfig.enableDownloads = true
+    mockPermissions.value = 'admin'
 
     const songWithReplayGain = {
       id: 'rec1',
@@ -288,6 +295,27 @@ describe('ArtistActions', () => {
       renderArtistActions({ ...defaultRecord, missing: true })
       expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
       expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Refresh metadata action', () => {
+    const refreshLabel = 'resources.album.actions.refresh'
+
+    it('refreshes the artist metadata for admins', async () => {
+      renderArtistActions()
+      fireEvent.click(screen.getByRole('button', { name: refreshLabel }))
+
+      await waitFor(() =>
+        expect(mockRefreshMetadata).toHaveBeenCalledWith('artist', 'ar1'),
+      )
+    })
+
+    it('hides the action for non-admin users', () => {
+      mockPermissions.value = 'regular'
+      renderArtistActions()
+      expect(
+        screen.queryByRole('button', { name: refreshLabel }),
+      ).not.toBeInTheDocument()
     })
   })
 })

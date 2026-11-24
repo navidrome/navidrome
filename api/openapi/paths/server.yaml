@@ -1,0 +1,19 @@
+get:
+  operationId: getServerInfo
+  x-module: core
+  x-stability-level: alpha
+  tags: [server]
+  summary: Describe the server
+  description: |
+    Returns the public server description. No authentication required.
+    Authenticated requests will additionally receive the implemented capability modules
+    once authentication is available.
+  responses:
+    '200':
+      description: Server description.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/ServerInfo.yaml
+    '500':
+      $ref: ../components/responses/InternalError.yaml

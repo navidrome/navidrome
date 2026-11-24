@@ -49,6 +49,12 @@ type client struct {
 	hc     httpDoer
 }
 
+// escapePlus works around Last.fm decoding artist.* and track.* params twice, turning "+" into a space.
+// album.getInfo decodes only once, so it must not use this.
+func escapePlus(s string) string {
+	return strings.ReplaceAll(s, "+", "%2B")
+}
+
 func (c *client) albumGetInfo(ctx context.Context, name string, artist string, mbid string, lang string) (*Album, error) {
 	params := url.Values{}
 	params.Add("method", "album.getInfo")
@@ -66,7 +72,7 @@ func (c *client) albumGetInfo(ctx context.Context, name string, artist string, m
 func (c *client) artistGetInfo(ctx context.Context, name string, lang string) (*Artist, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getInfo")
-	params.Add("artist", name)
+	params.Add("artist", escapePlus(name))
 	params.Add("lang", lang)
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
@@ -78,7 +84,7 @@ func (c *client) artistGetInfo(ctx context.Context, name string, lang string) (*
 func (c *client) artistGetSimilar(ctx context.Context, name string, limit int) (*SimilarArtists, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getSimilar")
-	params.Add("artist", name)
+	params.Add("artist", escapePlus(name))
 	params.Add("limit", strconv.Itoa(limit))
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
@@ -90,7 +96,7 @@ func (c *client) artistGetSimilar(ctx context.Context, name string, limit int) (
 func (c *client) artistGetTopTracks(ctx context.Context, name string, limit int) (*TopTracks, error) {
 	params := url.Values{}
 	params.Add("method", "artist.getTopTracks")
-	params.Add("artist", name)
+	params.Add("artist", escapePlus(name))
 	params.Add("limit", strconv.Itoa(limit))
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
@@ -102,8 +108,8 @@ func (c *client) artistGetTopTracks(ctx context.Context, name string, limit int)
 func (c *client) trackGetSimilar(ctx context.Context, name, artist string, limit int) (*SimilarTracks, error) {
 	params := url.Values{}
 	params.Add("method", "track.getSimilar")
-	params.Add("track", name)
-	params.Add("artist", artist)
+	params.Add("track", escapePlus(name))
+	params.Add("artist", escapePlus(artist))
 	params.Add("limit", strconv.Itoa(limit))
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
@@ -176,7 +182,14 @@ func (c *client) scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	params.Add("album", info.album)
 	params.Add("trackNumber", strconv.Itoa(info.trackNumber))
 	params.Add("mbid", info.mbid)
-	params.Add("duration", strconv.Itoa(info.duration))
+
+	// Last.fm requires a minimum duration of 30 seconds to scrobble a track. To circumvent this, only send the duration if it is greater than or equal to 30 seconds.
+	if info.duration >= 30 {
+		params.Add("duration", strconv.Itoa(info.duration))
+	} else {
+		log.Debug(ctx, "LastFM: scrobble duration is less than 30 seconds, duration will not be transmitted", "duration", info.duration)
+	}
+
 	params.Add("albumArtist", info.albumArtist)
 	params.Add("sk", sessionKey)
 	resp, err := c.makeRequest(ctx, http.MethodPost, params, true)
@@ -223,7 +236,7 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 
 	var response Response
 	jsonErr := decoder.Decode(&response)
-	if resp.StatusCode != 200 && jsonErr != nil {
+	if resp.StatusCode != http.StatusOK && jsonErr != nil {
 		return nil, fmt.Errorf("last.fm http status: (%d)", resp.StatusCode)
 	}
 	if jsonErr != nil {

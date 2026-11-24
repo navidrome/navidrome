@@ -95,7 +95,7 @@ func (m *Matcher) matchByID(ctx context.Context, songs []agents.Song, result map
 	if len(ids) == 0 {
 		return nil
 	}
-	res, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	res, err := m.ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"media_file.id": ids},
 			squirrel.Eq{"missing": false},
@@ -134,7 +134,7 @@ func (m *Matcher) matchByMBID(ctx context.Context, songs []agents.Song, result m
 	if len(mbids) == 0 {
 		return nil
 	}
-	res, err := m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	res, err := m.ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"mbz_recording_id": mbids},
 			squirrel.Eq{"missing": false},
@@ -180,7 +180,7 @@ func (m *Matcher) matchByISRC(ctx context.Context, songs []agents.Song, result m
 	if len(isrcs) == 0 {
 		return nil
 	}
-	res, err := m.ds.MediaFile(ctx).GetAllByTags(model.TagISRC, isrcs, model.QueryOptions{
+	res, err := m.ds.MediaFile().GetAllByTags(ctx, model.TagISRC, isrcs, model.QueryOptions{
 		Filters: squirrel.Eq{"missing": false},
 		Sort:    "starred desc, rating desc, year asc, compilation asc",
 	})
@@ -340,7 +340,7 @@ func (m *Matcher) matchByTitle(ctx context.Context, songs []agents.Song, result 
 	}
 
 	tracksByQuery := resolved.bucketTracks(tracks)
-	threshold := float64(conf.Server.Matcher.FuzzyThreshold) / 100.0
+	threshold := float64(conf.Server().Matcher.FuzzyThreshold) / 100.0
 	for _, iq := range queries {
 		sanitized := tracksByQuery[iq.index]
 		if mf, found := m.findBestMatch(iq.query, sanitized, threshold); found {
@@ -442,7 +442,7 @@ func (m *Matcher) resolveArtists(ctx context.Context, queries []indexedQuery) (r
 		filter = append(filter, squirrel.Eq{"id": slices.Collect(maps.Keys(allIDs))})
 	}
 	if len(filter) > 0 {
-		artists, err := m.ds.Artist(ctx).GetAll(model.QueryOptions{Filters: filter})
+		artists, err := m.ds.Artist().GetAll(ctx, model.QueryOptions{Filters: filter})
 		if err != nil {
 			return resolvedArtists{}, err
 		}
@@ -543,7 +543,7 @@ func (m *Matcher) fetchTracksCreditedTo(ctx context.Context, artistIDs []string)
 		return nil, nil
 	}
 	args := slice.Map(artistIDs, func(id string) any { return id })
-	return m.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	return m.ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Expr(
 				"media_file.id IN (SELECT media_file_id FROM media_file_artists "+
@@ -571,7 +571,7 @@ func (m *Matcher) findBestMatch(q songQuery, candidates []scoredTrack, threshold
 	bestScore := matchScore{titleSimilarity: -1}
 	found := false
 
-	preferStarred := conf.Server.Matcher.PreferStarred
+	preferStarred := conf.Server().Matcher.PreferStarred
 	for _, c := range candidates {
 		titleSim := similarityRatio(q.title, c.title)
 		if titleSim < threshold {

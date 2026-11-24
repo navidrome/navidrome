@@ -44,9 +44,9 @@ func (s *scannerExternal) scan(ctx context.Context, fullScan bool, targets []mod
 	args := []string{
 		"scan",
 		"--nobanner", "--subprocess",
-		"--configfile", conf.Server.ConfigFile,
-		"--datafolder", conf.Server.DataFolder.String(),
-		"--cachefolder", conf.Server.CacheFolder.String(),
+		"--configfile", conf.Server().ConfigFile,
+		"--datafolder", conf.Server().DataFolder.String(),
+		"--cachefolder", conf.Server().CacheFolder.String(),
 	}
 
 	// Add targets if provided
@@ -157,7 +157,7 @@ func writeTargetsToFile(targets []model.ScanTarget) (string, error) {
 
 	for _, target := range targets {
 		if _, err := fmt.Fprintln(tmpFile, target.String()); err != nil {
-			os.Remove(tmpFile.Name()) //nolint:gosec
+			os.Remove(tmpFile.Name())
 			return "", fmt.Errorf("failed to write to temp file: %w", err)
 		}
 	}

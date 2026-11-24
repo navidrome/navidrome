@@ -5,7 +5,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -54,7 +53,7 @@ var _ = Describe("Helpers", func() {
 			now := time.Now()
 			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
 			args, err := toSQLArgs(m)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(args).To(SatisfyAll(
 				HaveKeyWithValue("id", "123"),
 				HaveKeyWithValue("album_id", "456"),
@@ -72,7 +71,7 @@ var _ = Describe("Helpers", func() {
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(ConsistOf(1))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -82,14 +81,11 @@ var _ = Describe("Helpers", func() {
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
 			Expect(args).To(BeEmpty())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
 	Describe("mapSortOrder", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("does not change the sort string if there are no order columns", func() {
 			Expect(mapSortOrder("album", "album_name asc")).To(Equal("album_name asc"))
@@ -97,8 +93,10 @@ var _ = Describe("Helpers", func() {
 
 		DescribeTable("maps order columns to a collated expression",
 			func(preferSortTags, naturalSorting bool, expected string) {
-				conf.Server.PreferSortTags = preferSortTags
-				conf.Server.EnableNaturalSorting = naturalSorting
+				conf.Update(func(c *conf.Options) {
+					c.PreferSortTags = preferSortTags
+					c.EnableNaturalSorting = naturalSorting
+				})
 				Expect(mapSortOrder("album", "ORDER_ALBUM_NAME asc")).To(Equal(expected))
 			},
 			Entry("qualified column", false, false,
@@ -112,7 +110,7 @@ var _ = Describe("Helpers", func() {
 		)
 
 		It("changes multiple order columns to sort expressions", func() {
-			conf.Server.PreferSortTags = true
+			conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
 			Expect(mapSortOrder("album", sort)).To(Equal(
 				`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
@@ -121,16 +119,13 @@ var _ = Describe("Helpers", func() {
 	})
 
 	Describe("naturalSort", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("leaves the column alone by default, keeping its declared collation", func() {
 			Expect(naturalSort("media_file.title")).To(Equal("media_file.title"))
 		})
 
 		It("applies the natural collation when enabled", func() {
-			conf.Server.EnableNaturalSorting = true
+			conf.Update(func(c *conf.Options) { c.EnableNaturalSorting = true })
 			Expect(naturalSort("media_file.title")).To(Equal("(media_file.title collate NATSORT)"))
 		})
 	})

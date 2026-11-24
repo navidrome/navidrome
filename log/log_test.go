@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kr/pretty"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -24,8 +25,10 @@ func TestLog(t *testing.T) {
 var _ = Describe("Logger", func() {
 	var l *logrus.Logger
 	var hook *test.Hook
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		l, hook = test.NewNullLogger()
 		SetLevel(LevelTrace)
 		SetDefaultLogger(l)
@@ -45,7 +48,7 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("Empty context", func() {
-			Error(context.TODO(), "Simple Message")
+			Error(ctx, "Simple Message")
 			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
 			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
@@ -73,8 +76,8 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("can get data from the request's context", func() {
-			ctx := NewContext(context.TODO(), "foo", "bar")
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			ctx = NewContext(ctx, "foo", "bar")
+			req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
 
 			Error(req, "Simple Message", "key1", "value1")
 
@@ -94,7 +97,7 @@ var _ = Describe("Logger", func() {
 			SetLogSourceLine(true)
 			Error("A crash happened")
 			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:95"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:98"))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
@@ -203,17 +206,16 @@ var _ = Describe("Logger", func() {
 	Describe("extractLogger", func() {
 		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns an error if the context is a string", func() {
 			_, err := extractLogger("any msg")
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns the logger from context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
-			ctx := context.Background()
 			ctx = context.WithValue(ctx, loggerCtxKey, logger)
 
 			Expect(extractLogger(ctx)).To(Equal(logger))
@@ -221,9 +223,8 @@ var _ = Describe("Logger", func() {
 
 		It("returns the logger from request's context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
-			ctx := context.Background()
 			ctx = context.WithValue(ctx, loggerCtxKey, logger)
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
 
 			Expect(extractLogger(req)).To(Equal(logger))
 		})
@@ -290,6 +291,70 @@ var _ = Describe("Logger", func() {
 			got := Redact(string(blob))
 			Expect(got).ToNot(ContainSubstring("secret"))
 			Expect(got).To(ContainSubstring(`"User-Agent":["Finamp/1.0"]`))
+		})
+
+		// https://github.com/navidrome/navidrome/discussions/6232
+		DescribeTable("redacts config keys in the startup Configuration dump",
+			func(line, expected string) {
+				Expect(Redact(line)).To(Equal(expected))
+			},
+			Entry("unpadded ApiKey", `ApiKey:"0123456789abcdef0123456789abcdef"`, `ApiKey:"[REDACTED]"`),
+			Entry("unpadded Secret", `Secret:"fedcba9876543210fedcba9876543210"`, `Secret:"[REDACTED]"`),
+			Entry("padded ApiKey", `        ApiKey:                  "0123456789abcdef0123456789abcdef",`,
+				`        ApiKey:                  "[REDACTED]",`),
+			Entry("padded Secret", `        Secret:                  "fedcba9876543210fedcba9876543210",`,
+				`        Secret:                  "[REDACTED]",`),
+			Entry("unpadded Prometheus Password", `Password:"p@ss w0rd!"`, `Password:"[REDACTED]"`),
+			Entry("padded Prometheus Password", `        Password:    "p@ss w0rd!",`, `        Password:    "[REDACTED]",`),
+			Entry("Prometheus Password with escaped quotes", `        Password:    "a\"b\\\"c",`,
+				`        Password:    "[REDACTED]",`),
+		)
+
+		It("redacts secrets in a pretty-printed config struct", func() {
+			// Mirrors conf.lastfmOptions and conf.prometheusOptions (conf imports log, so it can't be
+			// used here). pretty only breaks a struct into padded lines when it is long enough, so
+			// keep all the fields.
+			type lastfmOptions struct {
+				Enabled                 bool
+				ApiKey                  string
+				Secret                  string
+				Language                string
+				ScrobbleFirstArtistOnly bool
+				Languages               []string
+			}
+			type prometheusOptions struct {
+				Enabled     bool
+				MetricsPath string
+				Password    string
+			}
+			type configOptions struct {
+				Address    string
+				LastFM     lastfmOptions
+				Prometheus prometheusOptions
+			}
+			cfg := configOptions{
+				Address: "0.0.0.0",
+				LastFM: lastfmOptions{
+					Enabled:   true,
+					ApiKey:    "0123456789abcdef0123456789abcdef",
+					Secret:    "fedcba9876543210fedcba9876543210",
+					Language:  "en",
+					Languages: []string{"en"},
+				},
+				Prometheus: prometheusOptions{
+					Enabled:     true,
+					MetricsPath: "/metrics",
+					Password:    `prom"pass-tail`,
+				},
+			}
+			dump := pretty.Sprintf("Configuration: %# v", cfg)
+			Expect(dump).To(MatchRegexp(`ApiKey:\s{2,}"`), "the dump must use the padded layout")
+
+			got := Redact(dump)
+			Expect(got).ToNot(ContainSubstring(cfg.LastFM.ApiKey))
+			Expect(got).ToNot(ContainSubstring(cfg.LastFM.Secret))
+			Expect(got).ToNot(ContainSubstring("pass-tail"))
+			Expect(got).To(ContainSubstring(`"en"`))
 		})
 	})
 })

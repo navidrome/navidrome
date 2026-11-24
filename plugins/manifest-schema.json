@@ -134,7 +134,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.musicbrainz.org')",
+          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.musicbrainz.org'). A named host alone can't reach a private address; also list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that",
           "items": {
             "type": "string"
           }
@@ -174,7 +174,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.musicbrainz.org')",
+          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.musicbrainz.org'). Required: with no entries every connection is blocked. A named host alone can't reach a private address; also list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that",
           "items": {
             "type": "string"
           }

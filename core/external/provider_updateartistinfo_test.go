@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/matcher"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -24,21 +25,18 @@ func init() {
 
 var _ = Describe("Provider - UpdateArtistInfo", func() {
 	var (
-		ctx            context.Context
-		p              external.Provider
-		ds             *tests.MockDataStore
-		ag             *mockAgents
-		mockArtistRepo *tests.MockArtistRepo
+		ctx context.Context
+		p   external.Provider
+		ds  model.DataStore
+		ag  *mockAgents
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DevArtistInfoTimeToLive = 1 * time.Hour
 		ctx = GinkgoT().Context()
-		ds = new(tests.MockDataStore)
+		conf.Update(func(c *conf.Options) { c.DevArtistInfoTimeToLive = 1 * time.Hour })
+		ds = persistence.New(db.Db())
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
-		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
+		p = external.NewProvider(ctx, ds, ag, matcher.New(ds), &fakeBroker{})
 	})
 
 	It("returns error when artist is not found", func() {
@@ -58,7 +56,6 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ID:   "ar-existing",
 			Name: "Test Artist",
 		}
-		mockArtistRepo.SetData(model.Artists{*originalArtist})
 
 		expectedMBID := "mbid-artist-123"
 		expectedBio := "Artist Bio"
@@ -81,7 +78,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ag.On("GetArtistURL", ctx, "ar-existing", "Test Artist", expectedMBID).Return(expectedURL, nil).Once()
 		ag.On("GetSimilarArtists", ctx, "ar-existing", "Test Artist", expectedMBID, 100).Return(rawSimilar, nil).Once()
 
-		mockArtistRepo.SetData(model.Artists{*originalArtist, similarInDS})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-existing", 10, false)
 
@@ -101,13 +98,22 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-2"))
 		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar Artist 2"))
 
+		stored, err := ds.Artist().Get(ctx, "ar-existing")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stored.Biography).To(Equal("Artist Bio"))
+		Expect(stored.LargeImageUrl).To(Equal("http://large.jpg"))
+		Expect(stored.ExternalInfoUpdatedAt).NotTo(BeNil())
+		Expect(stored.SimilarArtists).To(HaveLen(3), "the stored list keeps similar artists missing from the library")
+		Expect(stored.SimilarArtists[0].ID).To(Equal("ar-similar-2"))
+		Expect(external.QueuedArtistRefreshes(p)).To(BeZero(), "freshly fetched info must not be refreshed again")
+
 		ag.AssertExpectations(GinkgoT())
 	})
 
 	// Stamping a throttled round would cache the empty result for the whole TTL.
 	It("does not stamp ExternalInfoUpdatedAt when the agents are throttled", func() {
 		originalArtist := &model.Artist{ID: "ar-throttled", Name: "Throttled Artist"}
-		mockArtistRepo.SetData(model.Artists{*originalArtist})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist)
 
 		ag.On("GetArtistMBID", ctx, "ar-throttled", "Throttled Artist").Return("", agents.ErrRetryLater).Once()
 		ag.On("GetArtistImages", ctx, "ar-throttled", "Throttled Artist", "").Return(nil, agents.ErrRetryLater).Once()
@@ -128,7 +134,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ID:   "ar-encoded-bio",
 			Name: "Encoded Bio Artist",
 		}
-		mockArtistRepo.SetData(model.Artists{*originalArtist})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist)
 
 		expectedMBID := "mbid-encoded-bio"
 		expectedBio := "R&amp;B"
@@ -155,14 +161,14 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ExternalUrl:           "http://cached.url",
 			Biography:             "Cached Bio",
 			LargeImageUrl:         "http://cached_large.jpg",
-			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server().DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-similar-present", Name: "Similar Present"},
 				{ID: "ar-similar-absent", Name: "Similar Absent"},
 			},
 		}
 		similarInDS := model.Artist{ID: "ar-similar-present", Name: "Similar Present Updated"}
-		mockArtistRepo.SetData(model.Artists{*originalArtist, similarInDS})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-cached", 5, false)
 
@@ -174,7 +180,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		Expect(updatedArtist.ExternalUrl).To(Equal(originalArtist.ExternalUrl))
 		Expect(updatedArtist.Biography).To(Equal(originalArtist.Biography))
 		Expect(updatedArtist.LargeImageUrl).To(Equal(originalArtist.LargeImageUrl))
-		Expect(updatedArtist.ExternalInfoUpdatedAt).To(Equal(originalArtist.ExternalInfoUpdatedAt))
+		Expect(*updatedArtist.ExternalInfoUpdatedAt).To(BeTemporally("==", *originalArtist.ExternalInfoUpdatedAt))
 
 		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
 		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal(similarInDS.ID))
@@ -188,7 +194,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 
 	It("returns cached info and triggers background refresh when info is expired", func() {
 		now := time.Now()
-		expiredTime := now.Add(-conf.Server.DevArtistInfoTimeToLive * 2)
+		expiredTime := now.Add(-conf.Server().DevArtistInfoTimeToLive * 2)
 		originalArtist := &model.Artist{
 			ID:                    "ar-expired",
 			Name:                  "Expired Artist",
@@ -198,15 +204,16 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			},
 		}
 		similarInDS := model.Artist{ID: "ar-exp-similar", Name: "Expired Similar Updated"}
-		mockArtistRepo.SetData(model.Artists{*originalArtist, similarInDS})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-expired", 5, false)
 
 		Expect(err).NotTo(HaveOccurred())
+		Expect(external.QueuedArtistRefreshes(p)).To(Equal(1))
 		Expect(updatedArtist).NotTo(BeNil())
 		Expect(updatedArtist.ID).To(Equal(originalArtist.ID))
 		Expect(updatedArtist.Name).To(Equal(originalArtist.Name))
-		Expect(updatedArtist.ExternalInfoUpdatedAt).To(Equal(originalArtist.ExternalInfoUpdatedAt))
+		Expect(*updatedArtist.ExternalInfoUpdatedAt).To(BeTemporally("==", *originalArtist.ExternalInfoUpdatedAt))
 
 		Expect(updatedArtist.SimilarArtists).To(HaveLen(1))
 		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal(similarInDS.ID))
@@ -223,7 +230,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		originalArtist := &model.Artist{
 			ID:                    "ar-similar-test",
 			Name:                  "Similar Test Artist",
-			ExternalInfoUpdatedAt: new(now.Add(-conf.Server.DevArtistInfoTimeToLive / 2)),
+			ExternalInfoUpdatedAt: new(now.Add(-conf.Server().DevArtistInfoTimeToLive / 2)),
 			SimilarArtists: model.Artists{
 				{ID: "ar-sim-present", Name: "Similar Present"},
 				{ID: "", Name: "Similar Absent Raw"},
@@ -231,7 +238,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			},
 		}
 		similarInDS := model.Artist{ID: "ar-sim-present", Name: "Similar Present Updated"}
-		mockArtistRepo.SetData(model.Artists{*originalArtist, similarInDS})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarInDS)
 
 		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-similar-test", 5, true)
 
@@ -252,7 +259,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			ID:   "ar-agent-fail",
 			Name: "Agent Fail Artist",
 		}
-		mockArtistRepo.SetData(model.Artists{*originalArtist})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist)
 
 		expectedErr := errors.New("agent MBID failed")
 		ag.On("GetArtistMBID", ctx, "ar-agent-fail", "Agent Fail Artist").Return("", expectedErr).Once()
@@ -275,7 +282,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			Name: "ID Match Artist",
 		}
 		similarByID := model.Artist{ID: "ar-similar-by-id", Name: "Similar By ID", MbzArtistID: "mbid-similar"}
-		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByID})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarByID)
 
 		// Agent returns similar artist with ID (highest priority matching)
 		rawSimilar := []agents.Artist{
@@ -303,7 +310,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			Name: "MBID Match Artist",
 		}
 		similarByMBID := model.Artist{ID: "ar-similar-by-mbid", Name: "Similar By MBID", MbzArtistID: "mbid-similar"}
-		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByMBID})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarByMBID)
 
 		// Agent returns similar artist with only MBID (no ID)
 		rawSimilar := []agents.Artist{
@@ -331,7 +338,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 			Name: "Name Match Artist",
 		}
 		similarByName := model.Artist{ID: "ar-similar-by-name", Name: "Similar By Name"}
-		mockArtistRepo.SetData(model.Artists{*originalArtist, similarByName})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, *originalArtist, similarByName)
 
 		// Agent returns similar artist with non-matching ID and MBID
 		rawSimilar := []agents.Artist{

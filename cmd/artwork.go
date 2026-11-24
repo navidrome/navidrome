@@ -42,9 +42,10 @@ func init() {
 			"stored trace of the last resolution; also initializes plugin agents, which may open "+
 			"external connections")
 	artworkReprocessCmd.Flags().StringSliceVar(&artworkKinds, "kind", nil,
-		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
+		"kinds to reprocess ("+kindPrefixes(artwork.ReprocessKinds)+"); repeatable")
 	artworkReprocessCmd.Flags().StringSliceVar(&artworkSources, "source", nil,
-		"only items currently resolved from these sources (e.g. folder, external:deezer, absent)")
+		"only items currently resolved from these sources (e.g. folder, external:deezer, absent, "+
+			"or failed for the absent ones that gave up)")
 	artworkReprocessCmd.Flags().BoolVar(&artworkAll, "all", false, "reprocess every kind")
 	artworkReprocessCmd.Flags().BoolVar(&artworkDryRun, "dry-run", false,
 		"report what would be queued and exit without queueing")
@@ -113,7 +114,7 @@ var artworkCancelCmd = &cobra.Command{
 		"Work already picked up is not interrupted, and an item with no artwork yet can be\n" +
 		"queued again by the hourly re-check. The selection is applied again when you confirm,\n" +
 		"so anything queued after the preview is cancelled too. Use it to call off a bulk\n" +
-		"backfill, not to stop the worker.",
+		"reprocess, not to stop the worker.",
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		runCancel(cmd.Context())
@@ -122,7 +123,7 @@ var artworkCancelCmd = &cobra.Command{
 
 var artworkStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Report the artwork queue, where artwork resolves from, and the backfill state",
+	Short: "Report the artwork queue, where artwork resolves from, and the config state",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		runStatus(cmd.Context())
@@ -146,9 +147,11 @@ type sourceCount struct {
 	count  int64
 }
 
+// absentCount partitions a kind's absent states: noImage was answered, failed gave up.
 type absentCount struct {
-	kind model.Kind
-	model.ArtworkAbsentStat
+	kind    model.Kind
+	noImage int64
+	failed  int64
 }
 
 type statusReport struct {
@@ -170,47 +173,39 @@ func queueTotal(stats []model.ArtworkQueueStat) int64 {
 	return n
 }
 
-func (r statusReport) backfillQueued() int64 {
-	var n int64
-	for _, s := range r.queue {
-		if s.Priority == model.ArtworkPriorityBackfill {
-			n += s.Count
-		}
-	}
-	return n
-}
-
 func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error) {
-	q := ds.ArtworkQueue(ctx)
+	q := ds.ArtworkQueue()
 	var rep statusReport
 	var err error
-	if rep.queue, err = q.CountQueued(nil, nil); err != nil {
+	if rep.queue, err = q.CountQueued(ctx, nil, nil); err != nil {
 		return rep, fmt.Errorf("breaking the artwork queue down by kind: %w", err)
 	}
 
-	cutoff := time.Now().Add(-artwork.StaleAbsentAge)
-	for _, k := range artwork.RecheckKinds {
-		sources, err := q.SourcesInUse(k)
+	for _, k := range artwork.ReprocessKinds {
+		sources, err := q.SourcesInUse(ctx, k)
 		if err != nil {
 			return rep, fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
 		}
 		slices.Sort(sources)
 		for _, s := range sources {
-			n, err := q.CountBySource(k, []string{s})
+			n, err := q.CountBySource(ctx, k, []string{s})
 			if err != nil {
 				return rep, fmt.Errorf("counting %s artwork resolved from %s: %w", k, displaySource(s), err)
 			}
 			rep.sources = append(rep.sources, sourceCount{kind: k, source: s, count: n})
+			// An absent state is exactly a row with no source, so it needs no second query.
+			if s == "" {
+				failed, err := q.CountBySource(ctx, k, []string{model.ArtworkSourceFailed})
+				if err != nil {
+					return rep, fmt.Errorf("counting failed %s artwork: %w", k, err)
+				}
+				rep.absent = append(rep.absent, absentCount{kind: k, noImage: n - failed, failed: failed})
+			}
 		}
-		stat, err := q.CountAbsent(k, cutoff)
-		if err != nil {
-			return rep, fmt.Errorf("counting absent %s artwork: %w", k, err)
-		}
-		rep.absent = append(rep.absent, absentCount{kind: k, ArtworkAbsentStat: stat})
 	}
 
 	rep.current, rep.inputs = artwork.ConfigFingerprint(), artwork.FingerprintInputs()
-	if rep.stored, err = ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, ""); err != nil {
+	if rep.stored, err = ds.Property().DefaultGet(ctx, consts.ArtConfFingerprintPropertyKey, ""); err != nil {
 		return rep, fmt.Errorf("reading the stored artwork fingerprint: %w", err)
 	}
 	return rep, nil
@@ -234,19 +229,20 @@ func formatStatus(rep statusReport) string {
 	}
 
 	fmt.Fprintln(w, "\nAbsent (resolved, no image found)")
-	fmt.Fprintln(w, "  KIND\tABSENT\tDUE FOR RECHECK")
+	fmt.Fprintln(w, "  KIND\tNO IMAGE\tFAILED")
 	for _, a := range rep.absent {
-		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.Total, a.Stale)
+		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.noImage, a.failed)
 	}
-	fmt.Fprintf(w, "  (eligible once the last attempt is older than %gh; re-queued %d per kind per hour, oldest first)\n",
-		artwork.StaleAbsentAge.Hours(), artwork.StaleAbsentRecheckBatch)
+	fmt.Fprintln(w, "  (nothing retries these; 'artwork reprocess --source absent' retries both columns)")
+	fmt.Fprintln(w, "  (failed = gave up rather than being answered, so the ones most likely to resolve;\n"+
+		"   'artwork reprocess --source failed' retries just those)")
 
-	fmt.Fprintln(w, "\nBackfill")
-	fmt.Fprintf(w, "  State:\t%s\n", backfillState(rep))
+	fmt.Fprintln(w, "\nConfig")
+	fmt.Fprintf(w, "  State:\t%s\n", configState(rep))
 	fmt.Fprintf(w, "  Stored fingerprint:\t%s\n", cmp.Or(rep.stored, "(none)"))
 	fmt.Fprintf(w, "  Current fingerprint:\t%s\n", rep.current)
 	if len(rep.inputs) > 0 {
-		fmt.Fprintln(w, "  Fingerprint inputs (changing any of these re-resolves the whole library):")
+		fmt.Fprintln(w, "  Fingerprint inputs (changing any of these makes the stored artwork stale):")
 		for _, in := range rep.inputs {
 			fmt.Fprintf(w, "    %s:\t%s\n", in.Name, in.Value)
 		}
@@ -256,18 +252,10 @@ func formatStatus(rep statusReport) string {
 	return sb.String()
 }
 
-// backfillState leads with the queued backlog: by the time anyone runs this, backfill has usually
-// already stored the new fingerprint, and "up to date" would bury the flood it is still working through.
-func backfillState(rep statusReport) string {
-	pending := "fingerprint changed — every artist, album, playlist and radio will be re-enqueued on the next startup"
-	if n := rep.backfillQueued(); n > 0 {
-		if rep.stored != rep.current {
-			return fmt.Sprintf("backfill running: %d items queued, and %s", n, pending)
-		}
-		return fmt.Sprintf("backfill running: %d items queued (fingerprint up to date)", n)
-	}
+func configState(rep statusReport) string {
 	if rep.stored != rep.current {
-		return pending
+		return "fingerprint changed — stored artwork keeps the old resolution; " +
+			"run 'artwork reprocess --all' to apply it"
 	}
 	return "up to date"
 }
@@ -297,8 +285,8 @@ type artworkPriority struct {
 var knownPriorities = []artworkPriority{
 	{"bump", model.ArtworkPriorityBump},
 	{"scan", model.ArtworkPriorityScan},
-	{"backfill", model.ArtworkPriorityBackfill},
 	{"recheck", model.ArtworkPriorityRecheck},
+	{"backfill", model.ArtworkPriorityBackfill},
 }
 
 // priorityName falls back to the number: a row written by a newer version still has to print.
@@ -351,29 +339,41 @@ func runReprocess(ctx context.Context) {
 func selectedKinds(kinds, sources []string, all bool) ([]model.Kind, error) {
 	// A source filter on its own is already a complete selection, so it does not also need a kind.
 	if all || (len(kinds) == 0 && len(sources) > 0) {
-		return artwork.RecheckKinds, nil
+		return artwork.ReprocessKinds, nil
 	}
 	if len(kinds) == 0 {
-		return nil, fmt.Errorf("no selector given: pass --kind, --source or --all")
+		return nil, errors.New("no selector given: pass --kind, --source or --all")
 	}
 	return parseAll(kinds, func(s string) (model.Kind, error) {
-		return parseArtworkKind(s, artwork.RecheckKinds)
+		return parseArtworkKind(s, artwork.ReprocessKinds)
 	})
 }
 
-// absentSource is how the stored empty source — resolved, no image — is spelled on the CLI.
-const absentSource = "absent"
+// absentSource is how the stored empty source — resolved, no image — is spelled on the CLI, and
+// failedSource the subset of it that gave up rather than being answered.
+const (
+	absentSource = "absent"
+	failedSource = "failed"
+)
 
 func repositorySources(sources []string) []string {
 	return slice.Map(sources, func(s string) string {
-		if s == absentSource {
+		switch s {
+		case absentSource:
 			return ""
+		case failedSource:
+			return model.ArtworkSourceFailed
 		}
 		return s
 	})
 }
 
-func displaySource(s string) string { return cmp.Or(s, absentSource) }
+func displaySource(s string) string {
+	if s == model.ArtworkSourceFailed {
+		return failedSource
+	}
+	return cmp.Or(s, absentSource)
+}
 
 type confirmFunc func(out io.Writer, total, external int64) bool
 
@@ -416,7 +416,7 @@ func needsImageAgents(kinds []model.Kind) bool {
 // configuredAgents names the agents in priority order; one absent from it can never supply an image.
 func configuredAgents() []string {
 	var names []string
-	for name := range strings.SplitSeq(conf.Server.Agents, ",") {
+	for name := range strings.SplitSeq(conf.Server().Agents, ",") {
 		if name = strings.TrimSpace(name); name != "" {
 			names = append(names, name)
 		}
@@ -428,7 +428,7 @@ func promptConfirm(in io.Reader, verb string) confirmFunc {
 	return func(out io.Writer, total, external int64) bool {
 		var cost string
 		if external > 0 {
-			cost = fmt.Sprintf(" %s", externalLookupLine(external))
+			cost = " " + externalLookupLine(external)
 		}
 		fmt.Fprintf(out, "\nThis will %s %d items.%s Continue? [y/N] ", verb, total, cost)
 		var answer string
@@ -442,13 +442,13 @@ func promptConfirm(in io.Reader, verb string) confirmFunc {
 
 // validateSources rejects a typo'd source: matching nothing silently reads as "nothing to do" when
 // it means the filter was wrong. Checked table-wide, so a filter is never a typo for one --kind only.
-func validateSources(q model.ArtworkQueueRepository, sources []string) error {
+func validateSources(ctx context.Context, q model.ArtworkQueueRepository, sources []string) error {
 	if len(sources) == 0 {
 		return nil
 	}
 	var inUse []string
-	for _, k := range artwork.RecheckKinds {
-		found, err := q.SourcesInUse(k)
+	for _, k := range artwork.ReprocessKinds {
+		found, err := q.SourcesInUse(ctx, k)
 		if err != nil {
 			return fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
 		}
@@ -456,14 +456,16 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 	}
 	var unknown []string
 	for _, s := range sources {
-		if s != "" && !slices.Contains(inUse, s) { // the reserved absent source is valid even when nothing is absent
+		// The reserved absent and failed sources are valid even when nothing currently matches them.
+		if s != "" && s != model.ArtworkSourceFailed && !slices.Contains(inUse, s) {
 			unknown = append(unknown, displaySource(s))
 		}
 	}
 	if len(unknown) == 0 {
 		return nil
 	}
-	valid := slice.Map(inUse, displaySource)
+	// failed is accepted but never stored, so listing only what is in use would hide it.
+	valid := append(slice.Map(inUse, displaySource), failedSource)
 	slices.Sort(valid)
 	return fmt.Errorf("no artwork resolves from %s; sources in use: %s",
 		strings.Join(unknown, ", "), cmp.Or(strings.Join(valid, ", "), "(none)"))
@@ -473,15 +475,27 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 // actually inserted; the two differ because an already-queued row is left untouched.
 func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, sources []string,
 	imageAgents artwork.ImageAgentCount, dryRun bool, confirm confirmFunc, out io.Writer) error {
-	q := ds.ArtworkQueue(ctx)
-	if err := validateSources(q, sources); err != nil {
+	q := ds.ArtworkQueue()
+	if err := validateSources(ctx, q, sources); err != nil {
 		return err
+	}
+
+	// Derived from what actually drives the queries, so a filter added to this signature cannot
+	// silently keep stamping the fingerprint for a partial run.
+	markApplied := func() error {
+		if len(sources) > 0 || len(kinds) < len(artwork.ReprocessKinds) {
+			return nil
+		}
+		if err := artwork.MarkConfigApplied(ctx, ds); err != nil {
+			return fmt.Errorf("recording the applied artwork config: %w", err)
+		}
+		return nil
 	}
 
 	matched := make([]int64, len(kinds))
 	var total, external int64
 	for i, k := range kinds {
-		n, err := q.CountBySource(k, sources)
+		n, err := q.CountBySource(ctx, k, sources)
 		if err != nil {
 			return fmt.Errorf("counting %s artwork: %w", k, err)
 		}
@@ -496,8 +510,9 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		fmt.Fprintln(out, "\nDry run: nothing was queued.")
 		return nil
 	case total == 0:
+		// An empty match set still leaves nothing resolved under the old config.
 		fmt.Fprintln(out, "Nothing was queued.")
-		return nil
+		return markApplied()
 	case !confirm(out, total, external):
 		fmt.Fprintln(out, "Aborted: nothing was queued.")
 		return nil
@@ -508,7 +523,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		if matched[i] == 0 {
 			continue
 		}
-		n, err := q.EnqueueBySource(k, sources, model.ArtworkPriorityRecheck)
+		n, err := q.EnqueueBySource(ctx, k, sources, model.ArtworkPriorityRecheck)
 		if err != nil {
 			return fmt.Errorf("queueing %s artwork: %w", k, err)
 		}
@@ -519,7 +534,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 	if skipped := total - queued; skipped > 0 {
 		fmt.Fprintf(out, "Already queued, left unchanged: %d (priority and retry backoff untouched).\n", skipped)
 	}
-	return nil
+	return markApplied()
 }
 
 func runCancel(ctx context.Context) {
@@ -544,9 +559,9 @@ func cancelSelection(kinds, priorities []string, all bool) ([]model.Kind, []int,
 		return nil, nil, nil
 	}
 	if len(kinds) == 0 && len(priorities) == 0 {
-		return nil, nil, fmt.Errorf("no selector given: pass --kind, --priority or --all")
+		return nil, nil, errors.New("no selector given: pass --kind, --priority or --all")
 	}
-	// RefreshableKinds, not RecheckKinds: media files are queued, so --kind must reach them.
+	// RefreshableKinds, not ReprocessKinds: media files are queued, so --kind must reach them.
 	outKinds, err := parseAll(kinds, func(s string) (model.Kind, error) {
 		return parseArtworkKind(s, artwork.RefreshableKinds)
 	})
@@ -575,8 +590,8 @@ func parseAll[T comparable](values []string, parse func(string) (T, error)) ([]T
 
 func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, priorities []int,
 	dryRun bool, confirm confirmFunc, out io.Writer) error {
-	q := ds.ArtworkQueue(ctx)
-	matched, err := q.CountQueued(kinds, priorities)
+	q := ds.ArtworkQueue()
+	matched, err := q.CountQueued(ctx, kinds, priorities)
 	if err != nil {
 		return fmt.Errorf("counting queued artwork: %w", err)
 	}
@@ -597,7 +612,7 @@ func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, 
 		return nil
 	}
 
-	cancelled, err := q.PurgeQueued(kinds, priorities)
+	cancelled, err := q.PurgeQueued(ctx, kinds, priorities)
 	if err != nil {
 		return fmt.Errorf("cancelling queued artwork: %w", err)
 	}
@@ -796,13 +811,13 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 func explainConfig(kind model.Kind) (name, value string) {
 	switch kind {
 	case model.KindArtistArtwork:
-		return "ArtistArtPriority", conf.Server.ArtistArtPriority
+		return "ArtistArtPriority", conf.Server().ArtistArtPriority
 	case model.KindAlbumArtwork:
-		return "CoverArtPriority", conf.Server.CoverArtPriority
+		return "CoverArtPriority", conf.Server().CoverArtPriority
 	case model.KindDiscArtwork:
-		return "DiscArtPriority", conf.Server.DiscArtPriority
+		return "DiscArtPriority", conf.Server().DiscArtPriority
 	case model.KindMediaFileArtwork:
-		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server.EnableMediaFileCoverArt)
+		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server().EnableMediaFileCoverArt)
 	}
 	return "", ""
 }
@@ -969,11 +984,11 @@ func runExplain(ctx context.Context, args []string) {
 	}
 	rep := explainReport{kind: kind, id: id, name: name}
 	if artwork.KeepsState(kind) {
-		rep.stored, err = ds.Artwork(ctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+		rep.stored, err = ds.Artwork().GetItemArtwork(ctx, kind, id, model.ImageTypePrimary)
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
 			log.Fatal(ctx, "Failed to read artwork state", "kind", kind, "id", id, err)
 		}
-		rep.queued, err = ds.ArtworkQueue(ctx).Get(kind, id, model.ImageTypePrimary)
+		rep.queued, err = ds.ArtworkQueue().Get(ctx, kind, id, model.ImageTypePrimary)
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
 			log.Fatal(ctx, "Failed to read the artwork queue", "kind", kind, "id", id, err)
 		}
@@ -987,7 +1002,7 @@ func runExplain(ctx context.Context, args []string) {
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
 			mgr := loadPluginAgents(ctx, explainLive)
 			defer func() { _ = mgr.Stop() }()
-			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
+			rep.agents = explainAgents(conf.Server().Agents, availableImageAgents(ds, mgr, kind))
 		}
 		switch {
 		case rep.walked:

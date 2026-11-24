@@ -1,0 +1,35 @@
+type: object
+description: RFC 9457 problem details, returned for every 4xx and 5xx response.
+required: [title, status, code]
+properties:
+  type:
+    type: string
+    description: |
+      URI reference identifying the problem type. Omitted while the problem carries no semantics
+      beyond its HTTP status code, which RFC 9457 defines as `about:blank`. Problems with their
+      own semantics get their own URI; switch on `code` instead.
+  title:
+    type: string
+    description: Short human-readable summary, the same for all occurrences of this problem type.
+  status:
+    type: integer
+    description: HTTP status code of this response.
+  detail:
+    type: string
+    description: Human-readable explanation specific to this occurrence. Omitted for internal errors.
+  code:
+    type: string
+    description: Machine-readable error code, and the value clients switch on. New codes may be added.
+    enum:
+      - validation
+      - unauthorized
+      - forbidden
+      - not_found
+      - method_not_allowed
+      - unavailable
+      - internal
+  errors:
+    type: array
+    description: Per-field failures. Present only when `code` is `validation`.
+    items:
+      $ref: ./ValidationError.yaml

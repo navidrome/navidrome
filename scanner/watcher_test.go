@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,21 +22,19 @@ var _ = Describe("Watcher", func() {
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var mockScanner *tests.MockScanner
-	var mockDS *tests.MockDataStore
+	var ds model.DataStore
 	var w *watcher
 	var lib *model.Library
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		// Must dwarf the 20ms Consistently windows below, or a loaded runner's delayed timer reset flakes the debouncing spec.
-		conf.Server.Scanner.WatcherWait = 200 * time.Millisecond
+		conf.Update(func(c *conf.Options) { c.Scanner.WatcherWait = 200 * time.Millisecond })
 
 		ctx, cancel = context.WithCancel(GinkgoT().Context())
 		DeferCleanup(cancel)
 
 		// Use a fake storage scheme: watchLibrary goroutines spawned by Run/Watch are not
-		// joined on spec teardown, and the real file:// storage reads conf.Server on
-		// construction, racing with the configtest cleanup that restores the config.
+		// joined on spec teardown.
 		storagetest.Register("fake-watcher", &storagetest.FakeFS{})
 		lib = &model.Library{
 			ID:   1,
@@ -42,18 +42,15 @@ var _ = Describe("Watcher", func() {
 			Path: "fake-watcher:///test/library",
 		}
 
-		// Set up mocks
 		mockScanner = tests.NewMockScanner()
-		mockDS = &tests.MockDataStore{}
-		mockLibRepo := &tests.MockLibraryRepo{}
-		mockLibRepo.SetData(model.Libraries{*lib})
-		mockDS.MockedLibrary = mockLibRepo
+		ds = persistence.New(db.Db())
+		persistencetest.SetLibraries(ctx, ds, lib.Path)
 
 		// Create a new watcher instance (not singleton) for testing
 		w = &watcher{
-			ds:              mockDS,
+			ds:              ds,
 			scanner:         mockScanner,
-			triggerWait:     conf.Server.Scanner.WatcherWait,
+			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 10),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 			mainCtx:         ctx,
@@ -243,8 +240,7 @@ var _ = Describe("Watcher", func() {
 				Path: "fake-watcher:///test/library2",
 			}
 
-			mockLibRepo := mockDS.MockedLibrary.(*tests.MockLibraryRepo)
-			mockLibRepo.SetData(model.Libraries{*lib, *lib2})
+			persistencetest.SetLibraries(ctx, ds, lib.Path, lib2.Path)
 
 			// Start watcher in background
 			go func() {
@@ -435,22 +431,36 @@ var _ = Describe("Watcher", func() {
 			})
 		})
 
+		DescribeTable("with a .nomedia file in a parent folder",
+			func(respectNoMedia bool, expected bool) {
+				conf.Update(func(c *conf.Options) { c.Scanner.RespectNoMedia = respectNoMedia })
+				fsys := &mockMusicFS{FS: fstest.MapFS{
+					"rock/.nomedia":       &fstest.MapFile{},
+					"rock/album/song.mp3": &fstest.MapFile{},
+				}}
+				Expect(w.shouldIgnoreFolderPath(ctx, fsys, "rock/album")).To(Equal(expected))
+			},
+			Entry("ignores the folder when RespectNoMedia is enabled", true, true),
+			Entry("scans the folder when RespectNoMedia is disabled", false, false),
+		)
 	})
 })
 
 var _ = Describe("isIgnoredPath", func() {
+	var ctx context.Context
+
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		ctx = GinkgoT().Context()
 	})
 
 	Context("with IgnoreDotFolders enabled (default)", func() {
 		BeforeEach(func() {
-			conf.Server.Scanner.IgnoreDotFolders = true
+			conf.Update(func(c *conf.Options) { c.Scanner.IgnoreDotFolders = true })
 		})
 
 		DescribeTable("returns expected result",
 			func(p string, expected bool) {
-				Expect(isIgnoredPath(context.Background(), nil, filepath.FromSlash(p))).To(Equal(expected))
+				Expect(isIgnoredPath(ctx, nil, filepath.FromSlash(p))).To(Equal(expected))
 			},
 			Entry("media file in normal folder", "rock/Album/track.mp3", false),
 			Entry("dot-prefixed media file", "rock/Album/.hidden.mp3", true),
@@ -465,12 +475,12 @@ var _ = Describe("isIgnoredPath", func() {
 
 	Context("with IgnoreDotFolders disabled", func() {
 		BeforeEach(func() {
-			conf.Server.Scanner.IgnoreDotFolders = false
+			conf.Update(func(c *conf.Options) { c.Scanner.IgnoreDotFolders = false })
 		})
 
 		DescribeTable("returns expected result",
 			func(p string, expected bool) {
-				Expect(isIgnoredPath(context.Background(), nil, filepath.FromSlash(p))).To(Equal(expected))
+				Expect(isIgnoredPath(ctx, nil, filepath.FromSlash(p))).To(Equal(expected))
 			},
 			Entry("media file inside a dot-folder is allowed", "rock/.Hidden Album/track.mp3", false),
 			Entry("dot-prefixed media file is still ignored", "rock/Album/.hidden.mp3", true),

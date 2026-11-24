@@ -13,7 +13,7 @@ import (
 )
 
 func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.InspectOutput, error) {
-	file, err := ds.MediaFile(ctx).Get(id)
+	file, err := ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,12 @@ func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.Inspec
 		return nil, model.ErrNotFound
 	}
 
-	return core.Inspect(file.AbsolutePath(), file.LibraryID, file.FolderID)
+	lib, err := ds.Library().Get(ctx, file.LibraryID)
+	if err != nil {
+		return nil, err
+	}
+
+	return core.Inspect(file.AbsolutePath(), *lib, file.FolderID)
 }
 
 func inspect(ds model.DataStore) http.HandlerFunc {
@@ -60,7 +65,7 @@ func inspect(ds model.DataStore) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		if _, err := w.Write(response); err != nil { //nolint:gosec
+		if _, err := w.Write(response); err != nil {
 			log.Error(ctx, "Error sending response to client", err)
 		}
 	}

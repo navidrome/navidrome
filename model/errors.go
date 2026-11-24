@@ -1,13 +1,18 @@
 package model
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/deluan/rest"
+)
 
 var (
-	ErrNotFound            = errors.New("data not found")
+	ErrNotFound            = rest.ErrNotFound
 	ErrInvalidAuth         = errors.New("invalid authentication")
-	ErrNotAuthorized       = errors.New("not authorized")
+	ErrNotAuthorized       = rest.ErrPermissionDenied
 	ErrExpired             = errors.New("access expired")
 	ErrNotAvailable        = errors.New("functionality not available")
 	ErrValidation          = errors.New("validation error")
 	ErrPlaylistNotEditable = errors.New("playlist tracks are not editable")
+	ErrIncompleteQueue     = errors.New("could not load all play queue tracks")
 )

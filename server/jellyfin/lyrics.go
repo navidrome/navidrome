@@ -10,20 +10,35 @@ import (
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 )
 
-const lyricsLoadTimeout = time.Minute
+// playbackInfoLyricsTimeout bounds how long getPlaybackInfo waits for lyrics before
+// returning without the Lyric MediaStream; slow plugin lookups finish warming the cache in core/lyrics.
+var playbackInfoLyricsTimeout = 100 * time.Millisecond
 
-// cachedLyrics resolves lyrics through the full source pipeline (embedded, sidecar, plugins),
-// caching results — including empty: clients poll per played track, so misses are the hot path.
-func (api *Router) cachedLyrics(ctx context.Context, mf *model.MediaFile) model.LyricList {
-	// The load is shared across requests (singleflight) and cached, so don't let one
-	// cancelled request abort it for everybody — detach it from the request's lifetime,
-	// keeping a bound so a hung plugin can't pin the fetch (and its plugin slot) forever.
-	loadCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lyricsLoadTimeout)
-	defer cancel()
-	list, err := api.lyricsCache.GetWithLoader(mf.ID, func(string) (model.LyricList, time.Duration, error) {
-		l, err := api.lyrics.GetLyrics(loadCtx, mf)
-		return l, 0, err // 0 → cache DefaultTTL
-	})
+// playbackLyrics resolves lyrics for getPlaybackInfo within playbackInfoLyricsTimeout.
+func (api *Router) playbackLyrics(ctx context.Context, mf *model.MediaFile) model.LyricList {
+	resCh := make(chan model.LyricList, 1)
+	go func() {
+		defer close(resCh)
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error(ctx, "Panic recovered in playback lyrics lookup", "id", mf.ID, "err", r)
+			}
+		}()
+		resCh <- api.lyricsFor(ctx, mf)
+	}()
+	select {
+	case list := <-resCh:
+		return list
+	case <-ctx.Done():
+		return nil
+	case <-time.After(playbackInfoLyricsTimeout):
+		return nil
+	}
+}
+
+// lyricsFor resolves lyrics through the full source pipeline (embedded, sidecar, plugins).
+func (api *Router) lyricsFor(ctx context.Context, mf *model.MediaFile) model.LyricList {
+	list, err := api.lyrics.GetLyrics(ctx, mf)
 	if err != nil {
 		log.Error(ctx, "Error getting lyrics", "id", mf.ID, "title", mf.Title, err)
 		return nil
@@ -38,7 +53,7 @@ func (api *Router) getLyrics(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	main, found := servableLyric(api.cachedLyrics(r.Context(), mf))
+	main, found := servableLyric(api.lyricsFor(r.Context(), mf))
 	if !found {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return

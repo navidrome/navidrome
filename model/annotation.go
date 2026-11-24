@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Annotations struct {
 	PlayCount     int64      `structs:"play_count"     json:"playCount,omitempty"`
@@ -13,8 +16,8 @@ type Annotations struct {
 }
 
 type AnnotatedRepository interface {
-	IncPlayCount(itemID string, ts time.Time) error
-	SetStar(starred bool, itemIDs ...string) error
-	SetRating(rating int, itemID string) error
-	ReassignAnnotation(prevID string, newID string) error
+	IncPlayCount(ctx context.Context, itemID string, ts time.Time) error
+	SetStar(ctx context.Context, starred bool, itemIDs ...string) error
+	SetRating(ctx context.Context, rating int, itemID string) error
+	ReassignAnnotation(ctx context.Context, prevID string, newID string) error
 }

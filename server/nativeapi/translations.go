@@ -23,28 +23,28 @@ type translation struct {
 	TermCount int    `json:"termCount"`
 }
 
-func newTranslationRepository(context.Context) rest.Repository {
+func newTranslationRepository() rest.Repository[translation] {
 	return &translationRepository{}
 }
 
 type translationRepository struct{}
 
-func (r *translationRepository) Read(id string) (any, error) {
+func (r *translationRepository) Read(_ context.Context, id string) (*translation, error) {
 	translations, _ := loadTranslations()
 	if t, ok := translations[id]; ok {
-		return t, nil
+		return &t, nil
 	}
 	return nil, rest.ErrNotFound
 }
 
 // Count simple implementation, does not support any `options`
-func (r *translationRepository) Count(...rest.QueryOptions) (int64, error) {
+func (r *translationRepository) Count(context.Context, ...rest.QueryOptions) (int64, error) {
 	_, count := loadTranslations()
 	return count, nil
 }
 
 // ReadAll simple implementation, only returns IDs. Does not support any `options`
-func (r *translationRepository) ReadAll(...rest.QueryOptions) (any, error) {
+func (r *translationRepository) ReadAll(context.Context, ...rest.QueryOptions) ([]translation, error) {
 	translations, _ := loadTranslations()
 	var result []translation
 	for _, t := range translations {
@@ -52,14 +52,6 @@ func (r *translationRepository) ReadAll(...rest.QueryOptions) (any, error) {
 		result = append(result, t)
 	}
 	return result, nil
-}
-
-func (r *translationRepository) EntityName() string {
-	return "translation"
-}
-
-func (r *translationRepository) NewInstance() any {
-	return &translation{}
 }
 
 var loadTranslations = sync.OnceValues(func() (map[string]translation, int64) {
@@ -140,4 +132,4 @@ func countTranslatedTerms(obj map[string]any) int {
 	return count
 }
 
-var _ rest.Repository = (*translationRepository)(nil)
+var _ rest.Repository[translation] = (*translationRepository)(nil)

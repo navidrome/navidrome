@@ -191,6 +191,9 @@ type SimilarSongsByTrackRequest struct {
 	MBID string `json:"mbid,omitempty"`
 	// Count is the maximum number of similar songs to return.
 	Count int32 `json:"count"`
+	// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+	// lacks the users permission or access to that user.
+	Username string `json:"username,omitempty"`
 }
 
 // SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
@@ -205,6 +208,9 @@ type SimilarSongsByAlbumRequest struct {
 	MBID string `json:"mbid,omitempty"`
 	// Count is the maximum number of similar songs to return.
 	Count int32 `json:"count"`
+	// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+	// lacks the users permission or access to that user.
+	Username string `json:"username,omitempty"`
 }
 
 // SimilarSongsByArtistRequest is the request for GetSimilarSongsByArtist.
@@ -217,6 +223,9 @@ type SimilarSongsByArtistRequest struct {
 	MBID string `json:"mbid,omitempty"`
 	// Count is the maximum number of similar songs to return.
 	Count int32 `json:"count"`
+	// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+	// lacks the users permission or access to that user.
+	Username string `json:"username,omitempty"`
 }
 
 // SimilarSongsResponse is the response for GetSimilarSongsBy* functions.

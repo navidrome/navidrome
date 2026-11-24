@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react'
 import {
   Datagrid,
-  DateField,
   EditButton,
   Filter,
   NullableBooleanInput,
@@ -20,6 +19,7 @@ import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
+  DateField,
   ArtworkAvatar,
   DurationField,
   List,
@@ -37,6 +37,18 @@ import ChangePublicStatusButton from './ChangePublicStatusButton'
 const useStyles = makeStyles((theme) => ({
   button: {
     color: theme.palette.type === 'dark' ? 'white' : undefined,
+  },
+  // RA's layout root is min-width: fit-content; capping the card keeps the page width
+  content: {
+    [theme.breakpoints.down('xs')]: {
+      overflowX: 'auto',
+      maxWidth: '100vw',
+    },
+  },
+  name: {
+    [theme.breakpoints.down('xs')]: {
+      overflowWrap: 'anywhere',
+    },
   },
 }))
 
@@ -67,15 +79,15 @@ const PlaylistFilter = (props) => {
   )
 }
 
-const TogglePublicInput = ({ resource, source }) => {
+export const ToggleField = ({ resource, source }) => {
   const record = useRecordContext()
   const notify = useNotify()
-  const [togglePublic] = useUpdate(
+  const [toggle] = useUpdate(
     resource,
-    record.id,
+    record?.id,
     {
       ...record,
-      public: !record.public,
+      [source]: !record?.[source],
     },
     {
       undoable: false,
@@ -86,48 +98,25 @@ const TogglePublicInput = ({ resource, source }) => {
   )
 
   const handleClick = (e) => {
-    togglePublic()
+    toggle()
     e.stopPropagation()
   }
+
+  if (!record) return null
 
   return (
     <Switch
       checked={record[source]}
+      color="primary"
       onClick={handleClick}
       disabled={!isWritable(record.ownerId)}
     />
   )
 }
 
-const ToggleAutoImport = ({ resource, source }) => {
+export const ToggleAutoImport = (props) => {
   const record = useRecordContext()
-  const notify = useNotify()
-  const [ToggleAutoImport] = useUpdate(
-    resource,
-    record.id,
-    {
-      ...record,
-      sync: !record.sync,
-    },
-    {
-      undoable: false,
-      onFailure: (error) => {
-        notify('ra.page.error', 'warning')
-      },
-    },
-  )
-  const handleClick = (e) => {
-    ToggleAutoImport()
-    e.stopPropagation()
-  }
-
-  return record.path ? (
-    <Switch
-      checked={record[source]}
-      onClick={handleClick}
-      disabled={!isWritable(record.ownerId)}
-    />
-  ) : null
+  return record?.path ? <ToggleField {...props} /> : null
 }
 
 const PlaylistListBulkActions = (props) => {
@@ -157,6 +146,7 @@ export const PlaylistLove = ({ record, className }) => (
 PlaylistLove.defaultProps = { source: 'starred', sortable: false }
 
 const PlaylistList = (props) => {
+  const classes = useStyles()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('playlist')
@@ -169,9 +159,7 @@ const PlaylistList = (props) => {
       updatedAt: isDesktop && (
         <DateField source="updatedAt" sortByOrder={'DESC'} />
       ),
-      public: !isXsmall && (
-        <TogglePublicInput source="public" sortByOrder={'DESC'} />
-      ),
+      public: !isXsmall && <ToggleField source="public" sortByOrder={'DESC'} />,
       comment: <TextField source="comment" />,
       sync: !isXsmall && (
         <ToggleAutoImport source="sync" sortByOrder={'DESC'} />
@@ -190,6 +178,7 @@ const PlaylistList = (props) => {
   return (
     <List
       {...props}
+      classes={{ content: classes.content }}
       exporter={false}
       sort={{ field: 'name', order: 'ASC' }}
       filters={<PlaylistFilter />}
@@ -198,7 +187,7 @@ const PlaylistList = (props) => {
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <ArtworkAvatar source="id" variant="square" />
-        <TextField source="name" />
+        <TextField source="name" className={classes.name} />
         {columns}
         <Writable>
           <EditButton />

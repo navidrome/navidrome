@@ -10,14 +10,22 @@
         "playCount": "Oynatılma",
         "title": "Başlık",
         "artist": "Sanatçı",
+        "composer": "Besteci",
         "album": "Albüm",
         "path": "Dosya Yolu",
+        "libraryName": "Kütüphane",
         "genre": "Tür",
         "compilation": "Derleme",
         "year": "Yıl",
         "size": "Dosya Boyutu",
         "updatedAt": "Yüklendiği Tarih",
         "bitRate": "Bitrate",
+        "bitDepth": "Bit derinliği",
+        "sampleRate": "Örnekleme Oranı",
+        "albumGain": "Albüm Kazancı",
+        "trackGain": "Parça Kazancı",
+        "channels": "Kanal",
+        "disc": "Disk %{discNumber}",
         "discSubtitle": "Disk Altyazısı",
         "starred": "Favori",
         "comment": "Yorum",
@@ -25,7 +33,6 @@
         "quality": "Kalite",
         "bpm": "BPM",
         "playDate": "Son Oynatılma",
-        "channels": "Kanal",
         "createdAt": "Eklenme tarihi",
         "grouping": "Gruplama",
         "mood": "Mod",
@@ -33,24 +40,17 @@
         "tags": "Ek Etiketler",
         "mappedTags": "Eşlenen etiketler",
         "rawTags": "Ham etiketler",
-        "bitDepth": "Bit derinliği",
-        "sampleRate": "Örnekleme Oranı",
-        "missing": "Eksik",
-        "libraryName": "Kütüphane",
-        "composer": "Besteci",
-        "disc": "Disk %{discNumber}",
-        "albumGain": "Albüm Kazancı",
-        "trackGain": "Parça Kazancı"
+        "missing": "Eksik"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
         "playNow": "Şimdi Yürüt",
         "addToPlaylist": "Çalma listesine ekle",
+        "showInPlaylist": "Çalma Listesinde Göster",
         "shuffleAll": "Tümünü karıştır",
         "download": "İndir",
         "playNext": "Dinlenenden Sonra Oynat",
         "info": "Bilgiler",
-        "showInPlaylist": "Çalma Listesinde Göster",
         "instantMix": "Anında Karışım"
       }
     },
@@ -62,38 +62,40 @@
         "duration": "Süre",
         "songCount": "Şarkı",
         "playCount": "Oynatılma",
+        "size": "Boyut",
         "name": "Ad",
+        "libraryName": "Kütüphane",
         "genre": "Tür",
         "compilation": "Derleme",
         "year": "Yıl",
-        "updatedAt": "Güncellendi",
-        "comment": "Yorum",
-        "rating": "Derecelendirme",
-        "createdAt": "Eklenme tarihi",
-        "size": "Boyut",
+        "date": "Kayıt Tarihi",
         "originalDate": "Orijinal",
         "releaseDate": "Yayınlanma Tarihi",
         "releases": "Yayınlanan |||| Yayınlananlar",
         "released": "Yayınlandı",
+        "updatedAt": "Güncellendi",
+        "comment": "Yorum",
+        "rating": "Derecelendirme",
+        "createdAt": "Eklenme tarihi",
         "recordLabel": "Etiket",
         "catalogNum": "Katalog Numarası",
         "releaseType": "Tür",
         "grouping": "Gruplama",
         "media": "Medya",
         "mood": "Mod",
-        "date": "Kayıt Tarihi",
         "missing": "Eksik",
-        "libraryName": "Kütüphane"
+        "played": "Dinlendi"
       },
       "actions": {
         "playAll": "Oynat",
         "playNext": "Dinlenenden Sonra Oynat",
         "addToQueue": "Oynatma Kuyruğuna Ekle",
+        "share": "Paylaş",
         "shuffle": "Karıştır",
         "addToPlaylist": "Çalma Listesine Ekle",
         "download": "İndir",
         "info": "Bilgiler",
-        "share": "Paylaş"
+        "refresh": "Meta Verileri Yenile"
       },
       "lists": {
         "all": "Tümü",
@@ -111,10 +113,10 @@
         "name": "İsim",
         "albumCount": "Albüm Sayısı",
         "songCount": "Şarkı Sayısı",
+        "size": "Boyut",
         "playCount": "Oynatmalar",
         "rating": "Derecelendirme",
         "genre": "Tür",
-        "size": "Boyut",
         "role": "Rol",
         "missing": "Eksik"
       },
@@ -135,9 +137,9 @@
         "maincredit": "Albüm Sanatçısı veya Sanatçı |||| Albüm Sanatçısı veya Sanatçılar"
       },
       "actions": {
+        "topSongs": "En İyi Şarkılar",
         "shuffle": "Karıştır",
-        "radio": "Radyo",
-        "topSongs": "En İyi Şarkılar"
+        "radio": "Radyo"
       }
     },
     "user": {
@@ -146,6 +148,7 @@
         "userName": "Kullanıcı adı",
         "isAdmin": "Yönetici",
         "lastLoginAt": "Son Giriş Tarihi",
+        "lastAccessAt": "Son Erişim Tarihi",
         "updatedAt": "Güncelleme Tarihi",
         "name": "İsim",
         "password": "Şifre",
@@ -154,30 +157,33 @@
         "currentPassword": "Mevcut Şifre",
         "newPassword": "Yeni Şifre",
         "token": "Token",
-        "lastAccessAt": "Son Erişim Tarihi",
-        "libraries": "Kütüphaneler"
+        "libraries": "Kütüphaneler",
+        "scrobbleFilter": "Scrobble filtresi"
       },
       "helperTexts": {
         "name": "Adınızda yaptığımız değişikliğin geçerli olması için tekrar giriş yapmanız gerekmektedir",
-        "libraries": "Bu kullanıcı için belirli kütüphaneleri seçin veya varsayılan kütüphaneleri kullanmak için boş bırakın"
+        "libraries": "Bu kullanıcı için belirli kütüphaneleri seçin veya varsayılan kütüphaneleri kullanmak için boş bırakın",
+        "scrobbleFilter": "Bu akıllı çalma listesi kurallarıyla eşleşen şarkılar Last.fm'e, ListenBrainz'e veya scrobbler eklentilerine gönderilmez. Akıllı çalma listeleriyle aynı JSON sözdizimini ve davranışını kullanır. Örnek: {\"all\":[{\"lt\":{\"rating\":4}}]}. Tüm şarkıları scrobble etmek için boş bırakın. Yerel çalma sayıları etkilenmez."
       },
       "notifications": {
         "created": "Kullanıcı oluşturuldu",
         "updated": "Kullanıcı güncellendi",
         "deleted": "Kullanıcı silindi"
       },
+      "validation": {
+        "librariesRequired": "Yönetici olmayan kullanıcılar için en az bir kütüphane seçilmelidir",
+        "invalidScrobbleFilter": "Geçerli akıllı çalma listesi kuralları olmalıdır. Limit, offset ve yenileme gecikmesi desteklenmez."
+      },
       "message": {
         "listenBrainzToken": "ListenBrainz kullanıcı Token'ınızı girin.",
         "clickHereForToken": "Token almak için buraya tıklayın",
         "selectAllLibraries": "Tüm kütüphaneleri seç",
         "adminAutoLibraries": "Yönetici yetkili kullanıcılar tüm kütüphanelere otomatik olarak erişebilir"
-      },
-      "validation": {
-        "librariesRequired": "Yönetici olmayan kullanıcılar için en az bir kütüphane seçilmelidir"
       }
     },
     "player": {
       "name": "Cihaz |||| Cihazlar",
+      "menuName": "Cihazlar ve API anahtarları",
       "fields": {
         "name": "İsim",
         "transcodingId": "Kod Dönüştürme",
@@ -186,7 +192,29 @@
         "userName": "Kullanıcı adı",
         "lastSeen": "Son Görüldüğü Yer",
         "reportRealPath": "Gerçek Yolu Bildir",
-        "scrobbleEnabled": "Skroplamaları harici servislere gönder"
+        "scrobbleEnabled": "Skroplamaları harici servislere gönder",
+        "hasApiKey": "API Anahtarı"
+      },
+      "actions": {
+        "generateApiKey": "API anahtarı oluştur",
+        "regenerateApiKey": "Yeniden oluştur",
+        "revokeApiKey": "İptal et",
+        "copyApiKey": "Kopyala"
+      },
+      "message": {
+        "apiKeyActive": "Bu cihazın bir API anahtarı var. Bunu uygulamanızda API anahtarı olarak veya uygulamanız belirteç tabanlı kimlik doğrulama kullanmıyorsa parola olarak kullanın.",
+        "apiKeyNone": "API anahtarı yok. Bir uygulamayı bu cihaza bağlamak için bir anahtar oluşturun.",
+        "apiKeyNoneOther": "API anahtarı yok.",
+        "apiKeyPending": "Bu anahtarı şimdi kopyalayın. Kaydet'e tıkladığınızda kaydedilir ve bir daha gösterilmez.",
+        "apiKeyRevokePending": "Kaydettiğinizde API anahtarı kaldırılacak.",
+        "deleteWithKeyTitle": "Cihazı sil",
+        "deleteWithKeyContent": "Bu cihazın bir API anahtarı var. Bu anahtarı kullanan uygulamalar çalışmayı durduracak."
+      },
+      "notifications": {
+        "apiKeyCopied": "API anahtarı panoya kopyalandı"
+      },
+      "validation": {
+        "apiKeyFormat": "Geçersiz API anahtarı biçimi"
       }
     },
     "transcoding": {
@@ -196,6 +224,9 @@
         "targetFormat": "Dönüştürme Formatı",
         "defaultBitRate": "Varsayılan BitRate",
         "command": "Komut"
+      },
+      "choices": {
+        "noDefaultBitRate": "Yok"
       }
     },
     "playlist": {
@@ -210,15 +241,16 @@
         "songCount": "Şarkı",
         "comment": "Yorum",
         "sync": "Otomatik Aktar\n",
-        "path": "İçe Aktar"
+        "path": "İçe Aktar",
+        "starred": "Favori"
       },
       "actions": {
         "selectPlaylist": "Bir Çalma Listesi Seç:",
         "addNewPlaylist": "Oluştur  \"%{name}\"",
         "export": "Aktar",
+        "saveQueue": "Kuyruktakileri Çalma Listesine Kaydet",
         "makePublic": "Herkese Açık Yap",
         "makePrivate": "Özel Yap",
-        "saveQueue": "Kuyruktakileri Çalma Listesine Kaydet",
         "searchOrCreate": "Çalma listelerini arayın veya yenisini oluşturmak için yazın...",
         "pressEnterToCreate": "Yeni çalma listesi oluşturmak için Enter'a basın",
         "removeFromSelection": "Seçimden kaldır"
@@ -249,6 +281,7 @@
         "username": "Paylaşan",
         "url": "URL",
         "description": "Tanım",
+        "downloadable": "İndirmelere İzin Ver",
         "contents": "İçindekiler",
         "expiresAt": "Sona Erme Tarihi",
         "lastVisitedAt": "Son Ziyaret Tarihi",
@@ -256,17 +289,19 @@
         "format": "Format",
         "maxBitRate": "Maks. Bit Rate",
         "updatedAt": "Güncelleme Tarihi",
-        "createdAt": "Oluşturma Tarihi",
-        "downloadable": "İndirmelere İzin Ver"
-      }
+        "createdAt": "Oluşturma Tarihi"
+      },
+      "notifications": {},
+      "actions": {}
     },
     "missing": {
       "name": "Eksik Dosya |||| Eksik Dosyalar",
+      "empty": "Eksik Dosya Yok",
       "fields": {
         "path": "Yol",
         "size": "Boyut",
-        "updatedAt": "Kaybolma",
-        "libraryName": "Kütüphane"
+        "libraryName": "Kütüphane",
+        "updatedAt": "Kaybolma"
       },
       "actions": {
         "remove": "Kaldır",
@@ -274,8 +309,7 @@
       },
       "notifications": {
         "removed": "Eksik dosya(lar) kaldırıldı"
-      },
-      "empty": "Eksik Dosya Yok"
+      }
     },
     "library": {
       "name": "Kütüphane |||| Kütüphaneler",
@@ -297,28 +331,39 @@
         "totalDuration": "Süre",
         "defaultNewUsers": "Yeni Kullanıcılar için Varsayılan",
         "createdAt": "Oluşturuldu",
-        "updatedAt": "Güncellendi"
+        "updatedAt": "Güncellendi",
+        "pidAlbum": "Albüm gruplama",
+        "pidTrack": "Parça kimliği"
       },
       "sections": {
         "basic": "Temel Bilgiler",
-        "statistics": "İstatistikler"
+        "statistics": "İstatistikler",
+        "pid": "Kalıcı Kimlikler"
+      },
+      "pid": {
+        "global": "Genel ayarı kullan (%{value})",
+        "folder": "Klasör (klasör başına bir albüm)",
+        "custom": "Özel",
+        "spec": "PID belirtimi",
+        "help": "Bir öğeyi tanımlayan etiketler ve öznitelikler. Sözdizimi için belgelere bakın:",
+        "docs": "Kalıcı kimlikler"
       },
       "actions": {
         "scan": "Kütüphaneyi Tara",
-        "manageUsers": "Kullanıcı Erişimini Yönet",
-        "viewDetails": "Ayrıntıları Görüntüle",
         "quickScan": "Hızlı Tarama",
-        "fullScan": "Tam Tarama"
+        "fullScan": "Tam Tarama",
+        "manageUsers": "Kullanıcı Erişimini Yönet",
+        "viewDetails": "Ayrıntıları Görüntüle"
       },
       "notifications": {
         "created": "Kütüphane başarıyla oluşturuldu",
         "updated": "Kütüphane başarıyla güncellendi",
         "deleted": "Kütüphane başarıyla silindi",
         "scanStarted": "Kütüphane taraması başladı",
-        "scanCompleted": "Kütüphane taraması tamamlandı",
         "quickScanStarted": "Hızlı tarama başlatıldı",
         "fullScanStarted": "Tam tarama başlatıldı",
-        "scanError": "Tarama başlatılırken hata oluştu. Günlükleri kontrol edin."
+        "scanError": "Tarama başlatılırken hata oluştu. Günlükleri kontrol edin.",
+        "scanCompleted": "Kütüphane taraması tamamlandı"
       },
       "validation": {
         "nameRequired": "Kütüphane adı gereklidir",
@@ -331,7 +376,9 @@
       "messages": {
         "deleteConfirm": "Bu kütüphaneyi silmek istediğinizden emin misiniz? Bu işlem, ilgili tüm verileri ve kullanıcı erişimini kaldıracaktır.",
         "scanInProgress": "Tarama devam ediyor...",
-        "noLibrariesAssigned": "Bu kullanıcıya hiçbir kütüphane atanmadı"
+        "noLibrariesAssigned": "Bu kullanıcıya hiçbir kütüphane atanmadı",
+        "pidChangeTitle": "Kalıcı kimlikler değiştirilsin mi?",
+        "pidChangeConfirm": "Bu işlem, bu kitaplıktaki albüm ve parçaları yeniden gruplandırır. Kitaplığın tamamı şimdi yeniden taranır. Parça yıldızları, puanları ve çalma sayıları korunur. Eski bir albümün yeni bir albümle eşleştiği durumlarda, albüm yıldızları ve puanları yeni albümlere aktarılır."
       }
     },
     "plugin": {
@@ -390,7 +437,10 @@
         "invalidJson": "Yapılandırma geçerli bir JSON olmalı"
       },
       "messages": {
+        "idHelp": "Eklenti kimliği, dosya adından türetilir. Bu eklentiye Agents gibi yapılandırma seçeneklerinde referans verirken bu kimliği kullanın.",
         "configHelp": "Eklentiyi anahtar-değer çiftleriyle yapılandırın. Eklenti yapılandırma gerektirmiyorsa boş bırakın.",
+        "configValidationError": "Yapılandırma doğrulanamadı:",
+        "schemaRenderError": "Yapılandırma formu oluşturulamadı. Eklentinin şeması geçersiz olabilir.",
         "clickPermissions": "Ayrıntıları görmek için bir izne tıklayın",
         "noConfig": "Yapılandırma ayarlanmamış",
         "allUsersHelp": "Etkinleştirildiğinde eklenti, ileride oluşturulanlar dahil tüm kullanıcılara erişebilir.",
@@ -400,10 +450,8 @@
         "allLibrariesHelp": "Etkinleştirildiğinde eklenti, ileride oluşturulanlar dahil tüm kütüphanelere erişebilir.",
         "noLibraries": "Kütüphane seçilmedi",
         "librariesRequired": "Bu eklenti kütüphane bilgilerine erişim gerektiriyor. Eklentinin erişebileceği kütüphaneleri seçin veya 'Tüm Kütüphanelere İzin Ver' \nseçeneğini etkinleştirin.",
-        "requiredHosts": "Gerekli Sunucular",
-        "configValidationError": "Yapılandırma doğrulanamadı:",
-        "schemaRenderError": "Yapılandırma formu oluşturulamadı. Eklentinin şeması geçersiz olabilir.",
-        "allowWriteAccessHelp": "Etkinleştirildiğinde eklenti, kütüphane dizinlerindeki dosyaları değiştirebilir. Eklentiler varsayılan olarak salt okunur erişime sahiptir."
+        "allowWriteAccessHelp": "Etkinleştirildiğinde eklenti, kütüphane dizinlerindeki dosyaları değiştirebilir. Eklentiler varsayılan olarak salt okunur erişime sahiptir.",
+        "requiredHosts": "Gerekli Sunucular"
       },
       "placeholders": {
         "configKey": "anahtar",
@@ -433,7 +481,7 @@
       "minLength": "En az %{min} karakter olmalıdır",
       "maxLength": "En fazla %{max} karakter olmalıdır",
       "minValue": "En az %{min} olmalı",
-      "maxValue": "En az %{min} olmalıdır",
+      "maxValue": "En fazla %{max} olmalıdır",
       "number": "Sayısal bir değer olmalı",
       "email": "E-posta geçerli değil",
       "oneOf": "Şunlardan biri olmalı: %{options}",
@@ -446,6 +494,7 @@
       "add": "Ekle",
       "back": "Geri Dön",
       "bulk_actions": "1 öğe seçildi |||| %{smart_count} öğe seçildi",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "cancel": "Vazgeç",
       "clear_input_value": "Değeri Temizle",
       "clone": "Klonla",
@@ -469,7 +518,6 @@
       "close_menu": "Menüyü kapat",
       "unselect": "Seçimi kaldır",
       "skip": "Atla",
-      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "share": "Paylaş",
       "download": "İndir"
     },
@@ -557,53 +605,71 @@
     }
   },
   "message": {
-    "note": "NOT",
-    "transcodingDisabled": "Güvenlik nedenleriyle, kod dönüştürme yapılandırmasını web arayüzü üzerinden değiştirmek devre dışıdır. Kod dönüştürme seçeneklerini değiştirmek (düzenlemek veya eklemek) isterseniz, sunucuyu %{config} yapılandırma seçeneğiyle yeniden başlatın.",
-    "transcodingEnabled": "Navidrome yapılandırmanızda \" %{config} \" etkin ve bu da web arayüzünü kullanarak kod dönüştürme ayarlarından sistem komutlarını çalıştırmayı mümkün kılıyor. Güvenlik nedenleriyle bunu devre dışı bırakmanızı ve yalnızca Kod dönüştürme seçeneklerini yapılandırırken etkinleştirmenizi öneririz.",
-    "songsAddedToPlaylist": "Çalma listesine 1 şarkı eklendi |||| Çalma listesine %{smart_count} şarkı eklendi",
-    "noPlaylistsAvailable": "Mevcut değil",
-    "delete_user_title": "'%{name}' kullanıcısını sil",
-    "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listeleri ve tercihleri dahil) silmek istediğinden emin misin?",
-    "notifications_blocked": "Tarayıcınızın ayarlarında bu site için Bildirimleri engellediniz",
-    "notifications_not_available": "Bu tarayıcı masaüstü bildirimlerini desteklemiyor veya Navidrome'a ​​\"https://\" üzerinden erişmiyorsunuz",
-    "lastfmLinkSuccess": "Last.fm bağlantısı başarılı ve skroplama etkinleştirildi",
-    "lastfmLinkFailure": "Last.fm'e bağlanılamadı",
-    "lastfmUnlinkSuccess": "Last.fm bağlantısı kaldırıldı ve Skroplama devre dışı bırakıldı",
-    "lastfmUnlinkFailure": "Last.fm bağlantısı kaldırılamadı",
-    "openIn": {
-      "lastfm": "Last.fm'de aç",
-      "musicbrainz": "MusicBrainz'de aç"
-    },
-    "lastfmLink": "Devamını Oku...",
-    "listenBrainzLinkSuccess": "ListenBrainz bağlantısı başarılı ve skroplama %{user} tarafından etkinleştirildi",
-    "listenBrainzLinkFailure": "ListenBrainz'a bağlanılamadı: %{error}",
-    "listenBrainzUnlinkSuccess": "ListenBrainz bağlantısı kaldırıldı ve skroplama devre dışı bırakıldı",
-    "listenBrainzUnlinkFailure": "ListenBrainz bağlantısı kaldırılamadı",
-    "downloadOriginalFormat": "Orijinal formatta indir",
-    "shareOriginalFormat": "Orijinal Formatta Paylaş",
-    "shareDialogTitle": "%{resource}: '%{name}' öğesini paylaş",
-    "shareBatchDialogTitle": "Paylaş 1 %{resource} |||| Paylaş %{smart_count} %{resource}",
-    "shareSuccess": "URL panoya kopyalandı: %{url}",
-    "shareFailure": "%{url} panoya kopyalanırken hata oluştu",
-    "downloadDialogTitle": "%{resource}: '%{name}' (%{size}) dosyasını indirin",
-    "shareCopyToClipboard": "Panoya kopyala: Ctrl+C, Enter",
-    "remove_missing_title": "Eksik dosyaları kaldır",
-    "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
-    "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
-    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır.",
-    "noSimilarSongsFound": "Benzer şarkı bulunamadı",
-    "noTopSongsFound": "En iyi şarkı listesi boş",
-    "startingInstantMix": "Anında Karışım yükleniyor...",
     "uploadCover": "Kapak Görseli Yükle",
     "removeCover": "Kapak Görselini Kaldır",
     "coverUploaded": "Kapak görseli güncellendi",
     "coverRemoved": "Kapak görseli kaldırıldı",
     "coverUploadError": "Kapak görseli yüklenirken hata oluştu",
-    "coverRemoveError": "Kapak görseli kaldırılırken hata oluştu"
+    "coverRemoveError": "Kapak görseli kaldırılırken hata oluştu",
+    "metadataRefreshStarted": "Meta veriler arka planda yenileniyor",
+    "note": "NOT",
+    "transcodingDisabled": "Güvenlik nedenleriyle, kod dönüştürme yapılandırmasını web arayüzü üzerinden değiştirmek devre dışıdır. Kod dönüştürme seçeneklerini değiştirmek (düzenlemek veya eklemek) isterseniz, sunucuyu %{config} yapılandırma seçeneğiyle yeniden başlatın.",
+    "transcodingEnabled": "Navidrome yapılandırmanızda \" %{config} \" etkin ve bu da web arayüzünü kullanarak kod dönüştürme ayarlarından sistem komutlarını çalıştırmayı mümkün kılıyor. Güvenlik nedenleriyle bunu devre dışı bırakmanızı ve yalnızca Kod dönüştürme seçeneklerini yapılandırırken etkinleştirmenizi öneririz.",
+    "songsAddedToPlaylist": "Çalma listesine 1 şarkı eklendi |||| Çalma listesine %{smart_count} şarkı eklendi",
+    "noSimilarSongsFound": "Benzer şarkı bulunamadı",
+    "startingInstantMix": "Anında Karışım yükleniyor...",
+    "noTopSongsFound": "En iyi şarkı listesi boş",
+    "noPlaylistsAvailable": "Mevcut değil",
+    "delete_user_title": "'%{name}' kullanıcısını sil",
+    "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listeleri ve tercihleri dahil) silmek istediğinden emin misin?",
+    "remove_missing_title": "Eksik dosyaları kaldır",
+    "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
+    "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
+    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeler de dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
+    "notifications_blocked": "Tarayıcınızın ayarlarında bu site için Bildirimleri engellediniz",
+    "notifications_not_available": "Bu tarayıcı masaüstü bildirimlerini desteklemiyor veya Navidrome'a ​​\"https://\" üzerinden erişmiyorsunuz",
+    "quickConnectApproved": "%{device} üzerindeki %{app} uygulamasında oturum açıldı",
+    "quickConnectInvalidCode": "Kod geçersiz veya süresi dolmuş",
+    "quickConnectError": "Kod onaylanamadı",
+    "lastfmLinkSuccess": "Last.fm bağlantısı başarılı ve skroplama etkinleştirildi",
+    "lastfmLinkFailure": "Last.fm'e bağlanılamadı",
+    "lastfmUnlinkSuccess": "Last.fm bağlantısı kaldırıldı ve Skroplama devre dışı bırakıldı",
+    "lastfmUnlinkFailure": "Last.fm bağlantısı kaldırılamadı",
+    "listenBrainzLinkSuccess": "ListenBrainz bağlantısı başarılı ve %{user} kullanıcısı olarak skroplama etkinleştirildi",
+    "listenBrainzLinkFailure": "ListenBrainz'a bağlanılamadı: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz bağlantısı kaldırıldı ve skroplama devre dışı bırakıldı",
+    "listenBrainzUnlinkFailure": "ListenBrainz bağlantısı kaldırılamadı",
+    "openIn": {
+      "lastfm": "Last.fm'de aç",
+      "musicbrainz": "MusicBrainz'de aç"
+    },
+    "lastfmLink": "Devamını Oku...",
+    "shareOriginalFormat": "Orijinal Formatta Paylaş",
+    "shareDialogTitle": "%{resource}: '%{name}' öğesini paylaş",
+    "shareBatchDialogTitle": "Paylaş 1 %{resource} |||| Paylaş %{smart_count} %{resource}",
+    "shareCopyToClipboard": "Panoya kopyala: Ctrl+C, Enter",
+    "shareSuccess": "URL panoya kopyalandı: %{url}",
+    "shareFailure": "%{url} panoya kopyalanırken hata oluştu",
+    "downloadDialogTitle": "%{resource}: '%{name}' (%{size}) dosyasını indirin",
+    "downloadOriginalFormat": "Orijinal formatta indir"
   },
   "menu": {
     "library": "Kütüphane",
+    "librarySelector": {
+      "allLibraries": "Tüm Kütüphaneler (%{count})",
+      "multipleLibraries": "%{total} kütüphaneden %{selected} tanesi seçildi",
+      "selectLibraries": "Seçili Kütüphaneler",
+      "none": "Hiçbiri"
+    },
     "settings": "Ayarlar",
+    "quickConnect": {
+      "name": "Hızlı Bağlantı",
+      "code": "Kod",
+      "help": "Bir Jellyfin uygulamasının hesabınızda oturum açması için uygulamada gösterilen kodu girin",
+      "confirm": "%{device} cihazındaki %{app} %{version} uygulamasının hesabınızda oturum açmasına izin veriyor musunuz?",
+      "continue": "Devam et",
+      "approve": "Onayla"
+    },
     "version": "Versiyon",
     "theme": "Tema",
     "personal": {
@@ -611,8 +677,14 @@
       "options": {
         "theme": "Tema",
         "language": "Dil",
+        "dateFormat": "Tarih Formatı",
+        "dateFormats": {
+          "language": "Dille eşleştir",
+          "browser": "Tarayıcıyla eşleştir"
+        },
         "defaultView": "Varsayılan Görünüm",
         "desktop_notifications": "Masaüstü Bildirimleri",
+        "lastfmNotConfigured": "Last.fm API Anahtarı yapılandırılmadı\n",
         "lastfmScrobbling": "Last.fm'e Skropla",
         "listenBrainzScrobbling": "ListenBrainz'e Skropla",
         "replaygain": "Tekrar Kazanma Modu",
@@ -621,20 +693,14 @@
           "none": "Devre dışı",
           "album": "Albüm Kazancını Kullan",
           "track": "Parça Kazancını Kullan"
-        },
-        "lastfmNotConfigured": "Last.fm API Anahtarı yapılandırılmadı\n"
+        }
       }
     },
     "albumList": "Albümler",
-    "about": "Hakkında",
     "playlists": "Çalma Listeleri",
+    "onlyFavourites": "Yalnızca favorileri göster",
     "sharedPlaylists": "Paylaşılan Çalma Listeleri",
-    "librarySelector": {
-      "allLibraries": "Tüm Kitaplıklar (%{count})",
-      "multipleLibraries": "%{total} kütüphaneden %{selected} tanesi seçildi",
-      "selectLibraries": "Seçili Kütüphaneler",
-      "none": "Hiçbiri"
-    }
+    "about": "Hakkında"
   },
   "player": {
     "playListsText": "Oynatma Sırası",
@@ -682,11 +748,11 @@
       "currentValue": "Güncel Değer",
       "configurationFile": "Yapılandırma Dosyası",
       "exportToml": "Yapılandırmayı Dışa Aktar (TOML)",
+      "downloadToml": "Yapılandırmayı İndir (TOML)",
       "exportSuccess": "Yapılandırma TOML formatında dışa aktarıldı",
       "exportFailed": "Yapılandırma kopyalanamadı",
       "devFlagsHeader": "Geliştirme Bayrakları (değişime/kaldırılmaya tabidir)",
-      "devFlagsComment": "Bunlar deneysel ayarlardır ve gelecekteki sürümlerde kaldırılabilir",
-      "downloadToml": "Yapılandırmayı İndir (TOML)"
+      "devFlagsComment": "Bunlar deneysel ayarlardır ve gelecekteki sürümlerde kaldırılabilir"
     }
   },
   "activity": {
@@ -694,12 +760,17 @@
     "totalScanned": "Toplam Taranan Klasör Sayısı",
     "quickScan": "Hızlı Tarama",
     "fullScan": "Tam Tarama",
+    "selectiveScan": "Seçmeli",
     "serverUptime": "Sunucu Çalışma Süresi",
     "serverDown": "ÇEVRİMDIŞI",
     "scanType": "Tür",
     "status": "Tarama Hatası",
-    "elapsedTime": "Geçen Süre",
-    "selectiveScan": "Seçmeli"
+    "elapsedTime": "Geçen Süre"
+  },
+  "nowPlaying": {
+    "title": "Şu An Çalıyor",
+    "empty": "Çalan şarkı yok",
+    "minutesAgo": "%{smart_count} dakika önce"
   },
   "help": {
     "title": "Navidrome Kısayolları",
@@ -709,15 +780,10 @@
       "toggle_play": "Oynat / Duraklat",
       "prev_song": "Önceki Şarkı",
       "next_song": "Sonraki Şarkı",
+      "current_song": "Mevcut Şarkıya Git",
       "vol_up": "Sesi Arttır",
       "vol_down": "Sesi Azalt",
-      "toggle_love": "Bu şarkıyı favorilere ekle",
-      "current_song": "Mevcut Şarkıya Git"
+      "toggle_love": "Bu şarkıyı favorilere ekle"
     }
-  },
-  "nowPlaying": {
-    "title": "Şu An Çalıyor",
-    "empty": "Çalan şarkı yok",
-    "minutesAgo": "%{smart_count} dakika önce"
   }
 }

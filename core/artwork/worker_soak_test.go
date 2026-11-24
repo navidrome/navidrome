@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,38 +21,33 @@ import (
 const soakCycles = 2200
 
 var _ = Describe("Worker soak", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("does not leak goroutines, heap, or fds over many acquisition cycles", func() {
 		if testing.Short() {
 			Skip("skipping soak test in short mode")
 		}
-		DeferCleanup(configtest.SetupConfig())
 
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 
-		libRepo := &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		folderRepo := &fakeFolderRepo{result: []model.Folder{{
-			Path:       "tests/fixtures/artist/an-album",
-			ImageFiles: []string{"cover.jpg"},
-		}}}
+		ds := newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
+		fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
 		ffm := tests.NewMockFFmpeg("")
-		ag := agents.GetAgents(&tests.MockDataStore{}, nil)
-		artRepo := tests.CreateMockArtworkRepo()
-		albumRepo := tests.CreateMockAlbumRepo()
-		albumRepo.SetData(model.Albums{
-			{ID: "al-folder", Name: "Folder Album", FolderIDs: []string{"f1"}},
-			{ID: "al-embed", Name: "Embedded Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
-		})
-		ds := &tests.MockDataStore{
-			MockedFolder:  folderRepo,
-			MockedLibrary: libRepo,
-			MockedArtwork: artRepo,
-			MockedAlbum:   albumRepo,
-		}
+		ag := agents.GetAgents(ds, nil)
+		artRepo := ds.Artwork()
+		persistencetest.PutAlbums(ctx, ds,
+			model.Album{ID: "al-folder", Name: "Folder Album", FolderIDs: []string{fid}},
+			model.Album{ID: "al-embed", Name: "Embedded Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3"},
+		)
 		store := NewImageStore(GinkgoT().TempDir())
 		proc := &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
-		conf.Server.CoverArtPriority = "cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 
 		// Dangling refs mirror an entity deleted after being enqueued.
 		items := []model.ArtworkQueueItem{
@@ -95,14 +90,14 @@ var _ = Describe("Worker soak", func() {
 		start := time.Now()
 		for i := range soakCycles {
 			it := items[i%len(items)]
-			out, _, _ := proc.acquire(context.Background(), it)
+			out, _, _ := proc.acquire(ctx, it)
 
 			// Read-back exercises the surfaces a caller would use after acquisition.
 			if out == outcomeFound {
 				kind, _ := model.ParseKind(it.ItemKind)
-				ia, err := artRepo.GetItemArtwork(kind, it.ItemID, model.ImageTypePrimary)
+				ia, err := artRepo.GetItemArtwork(ctx, kind, it.ItemID, model.ImageTypePrimary)
 				Expect(err).ToNot(HaveOccurred(), "cycle %d: GetItemArtwork", i)
-				art, err := artRepo.GetImage(ia.Hash)
+				art, err := artRepo.GetImage(ctx, ia.Hash)
 				Expect(err).ToNot(HaveOccurred(), "cycle %d: GetImage", i)
 				rc, err := store.Open(ia.Hash, art.Mime)
 				switch {

@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -39,19 +38,21 @@ var _ = Describe("commonDir", func() {
 var _ = Describe("loadArtistFolder", func() {
 	var (
 		ctx       context.Context
-		ds        *tests.MockDataStore
-		repo      *fakeFolderRepo
+		ds        model.DataStore
 		albums    model.Albums
 		updatedAt time.Time
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
-		DeferCleanup(stubCoreAbsolutePath())
-
+		ctx = GinkgoT().Context()
 		updatedAt = time.Now().Truncate(time.Second).Add(5 * time.Minute)
-		repo = &fakeFolderRepo{result: []model.Folder{{ImagesUpdatedAt: updatedAt}}}
-		ds = &tests.MockDataStore{MockedFolder: repo}
+		ds = newTestDS(ctx)
+		persistencetest.SetLibraries(ctx, ds, filepath.FromSlash("/music"))
+		lib, err := ds.Library().Get(ctx, model.DefaultLibraryID)
+		Expect(err).ToNot(HaveOccurred())
+		artistFolder := model.NewFolder(*lib, "artist")
+		artistFolder.ImagesUpdatedAt = updatedAt
+		Expect(ds.Folder().Put(ctx, artistFolder)).To(Succeed())
 		albums = model.Albums{{LibraryID: 1, ID: "album1", Name: "Album 1"}}
 	})
 
@@ -69,7 +70,7 @@ var _ = Describe("loadArtistFolder", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
-		Expect(upd).To(Equal(updatedAt))
+		Expect(upd).To(BeTemporally("==", updatedAt))
 	})
 
 	It("climbs above the shared folder when two albums live in the same one", func() {
@@ -80,7 +81,7 @@ var _ = Describe("loadArtistFolder", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
-		Expect(upd).To(Equal(updatedAt))
+		Expect(upd).To(BeTemporally("==", updatedAt))
 	})
 
 	It("stops at the folder where distinct album roots already meet", func() {
@@ -91,11 +92,13 @@ var _ = Describe("loadArtistFolder", func() {
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(folder).To(Equal(filepath.FromSlash("/music/artist")))
-		Expect(upd).To(Equal(updatedAt))
+		Expect(upd).To(BeTemporally("==", updatedAt))
 	})
 
 	It("returns the error when the folder lookup fails", func() {
-		repo.err = errors.New("fake error")
+		ds = persistencetest.Stub(ds, persistencetest.Repos{Folder: func(r model.FolderRepository) model.FolderRepository {
+			return &failingFolderRepo{FolderRepository: r, err: errors.New("fake error")}
+		}})
 
 		folder, upd, err := loadArtistFolder(ctx, ds, albums, []string{
 			filepath.FromSlash("/music/artist/album1"),
@@ -108,10 +111,11 @@ var _ = Describe("loadArtistFolder", func() {
 	})
 })
 
-func stubCoreAbsolutePath() func() {
-	original := core.AbsolutePath
-	core.AbsolutePath = func(context.Context, model.DataStore, int, string) string {
-		return filepath.FromSlash("/music")
-	}
-	return func() { core.AbsolutePath = original }
+type failingFolderRepo struct {
+	model.FolderRepository
+	err error
+}
+
+func (f *failingFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
+	return nil, f.err
 }

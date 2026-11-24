@@ -6,175 +6,40 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/stretchr/testify/mock"
 )
 
-// --- Shared Mock Implementations ---
+var adminUser = model.User{ID: "admin-1", UserName: "admin-1", IsAdmin: true}
 
-// mockArtistRepo mocks model.ArtistRepository
-type mockArtistRepo struct {
-	mock.Mock
+// credited returns participants crediting the artists in the main artist role.
+func credited(artists ...model.Artist) model.Participants {
+	p := model.Participants{}
+	p.Add(model.RoleArtist, artists...)
+	return p
+}
+
+var errDBDown = errors.New("db down")
+
+// failingArtists serves an artist repository whose lookups fail with err.
+func failingArtists(ds model.DataStore, err error) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{Artist: func(r model.ArtistRepository) model.ArtistRepository {
+		return failingArtistRepo{r, err}
+	}})
+}
+
+type failingArtistRepo struct {
 	model.ArtistRepository
+	err error
 }
 
-func newMockArtistRepo() *mockArtistRepo {
-	return &mockArtistRepo{}
+func (r failingArtistRepo) Get(context.Context, string) (*model.Artist, error) {
+	return nil, r.err
 }
 
-// SetData sets up basic Get expectations.
-func (m *mockArtistRepo) SetData(artists model.Artists) {
-	for _, a := range artists {
-		artistCopy := a
-		m.On("Get", artistCopy.ID).Return(&artistCopy, nil)
-	}
-}
-
-// Get implements model.ArtistRepository.
-func (m *mockArtistRepo) Get(id string) (*model.Artist, error) {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.Artist), args.Error(1)
-}
-
-// GetAll implements model.ArtistRepository.
-func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	argsSlice := make([]any, len(options))
-	for i, v := range options {
-		argsSlice[i] = v
-	}
-	args := m.Called(argsSlice...)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.Artists), args.Error(1)
-}
-
-// SetError is a helper to set up a generic error for GetAll.
-func (m *mockArtistRepo) SetError(hasError bool) {
-	if hasError {
-		m.On("GetAll", mock.Anything).Return(nil, errors.New("mock repo error"))
-	}
-}
-
-// FindByName is a helper to set up a GetAll expectation for finding by name.
-func (m *mockArtistRepo) FindByName(name string, artist model.Artist) {
-	m.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-		return opt.Filters != nil
-	})).Return(model.Artists{artist}, nil).Once()
-}
-
-// mockMediaFileRepo mocks model.MediaFileRepository
-type mockMediaFileRepo struct {
-	mock.Mock
-	model.MediaFileRepository
-}
-
-func newMockMediaFileRepo() *mockMediaFileRepo {
-	return &mockMediaFileRepo{}
-}
-
-// SetData sets up basic Get expectations.
-func (m *mockMediaFileRepo) SetData(mediaFiles model.MediaFiles) {
-	for _, mf := range mediaFiles {
-		mfCopy := mf
-		m.On("Get", mfCopy.ID).Return(&mfCopy, nil)
-	}
-}
-
-// Get implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.MediaFile), args.Error(1)
-}
-
-// GetAllByTags implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
-	return m.GetAll(options...)
-}
-
-// GetAll implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	argsSlice := make([]any, len(options))
-	for i, v := range options {
-		argsSlice[i] = v
-	}
-	args := m.Called(argsSlice...)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.MediaFiles), args.Error(1)
-}
-
-// GetRandom implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
-	argsSlice := make([]any, len(options))
-	for i, v := range options {
-		argsSlice[i] = v
-	}
-	args := m.Called(argsSlice...)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.MediaFiles), args.Error(1)
-}
-
-// SetError is a helper to set up a generic error for GetAll.
-func (m *mockMediaFileRepo) SetError(hasError bool) {
-	if hasError {
-		m.On("GetAll", mock.Anything).Return(nil, errors.New("mock repo error"))
-	}
-}
-
-// FindByMBID is a helper to set up a GetAll expectation for finding by MBID.
-func (m *mockMediaFileRepo) FindByMBID(mbid string, mediaFile model.MediaFile) {
-	m.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-		return opt.Filters != nil
-	})).Return(model.MediaFiles{mediaFile}, nil).Once()
-}
-
-// FindByArtistAndTitle is a helper to set up a GetAll expectation for finding by artist/title.
-func (m *mockMediaFileRepo) FindByArtistAndTitle(artistID string, title string, mediaFile model.MediaFile) {
-	m.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
-		return opt.Filters != nil
-	})).Return(model.MediaFiles{mediaFile}, nil).Once()
-}
-
-// mockAlbumRepo mocks model.AlbumRepository
-type mockAlbumRepo struct {
-	mock.Mock
-	model.AlbumRepository
-}
-
-func newMockAlbumRepo() *mockAlbumRepo {
-	return &mockAlbumRepo{}
-}
-
-// Get implements model.AlbumRepository.
-func (m *mockAlbumRepo) Get(id string) (*model.Album, error) {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.Album), args.Error(1)
-}
-
-// GetAll implements model.AlbumRepository.
-func (m *mockAlbumRepo) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	argsSlice := make([]any, len(options))
-	for i, v := range options {
-		argsSlice[i] = v
-	}
-	args := m.Called(argsSlice...)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.Albums), args.Error(1)
+func (r failingArtistRepo) GetAll(context.Context, ...model.QueryOptions) (model.Artists, error) {
+	return nil, r.err
 }
 
 // mockSimilarArtistAgent mocks agents implementing ArtistTopSongsRetriever and ArtistSimilarRetriever

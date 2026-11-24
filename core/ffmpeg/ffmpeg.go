@@ -27,11 +27,12 @@ type TranscodeOptions struct {
 	Command    string // DB command template (used to detect custom vs default)
 	Format     string // Target format (mp3, opus, aac, flac)
 	FilePath   string
-	BitRate    int // kbps, 0 = codec default
-	SampleRate int // 0 = no constraint
-	Channels   int // 0 = no constraint
-	BitDepth   int // 0 = no constraint; valid values: 16, 24, 32
-	Offset     int // seconds
+	BitRate    int     // kbps, 0 = codec default
+	SampleRate int     // 0 = no constraint
+	Channels   int     // 0 = no constraint
+	BitDepth   int     // 0 = no constraint; valid values: 16, 24, 32
+	Offset     int     // seconds
+	Duration   float32 // seconds; 0 = unknown. Only used to repair a header ffmpeg piped out unfinished.
 }
 
 // AudioProbeResult contains authoritative audio stream properties from ffprobe.
@@ -48,7 +49,6 @@ type FFmpeg interface {
 	Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
 	ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error)
-	Probe(ctx context.Context, files []string) (string, error)
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
@@ -67,7 +67,6 @@ var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder �
 
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
-	probeCmd            = "ffmpeg %s -f ffmetadata"
 	probeAudioStreamCmd = "ffprobe -v error -select_streams a:0 -print_format json -show_streams -show_format %s"
 )
 
@@ -86,7 +85,11 @@ func (e *ffmpeg) Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadC
 	} else {
 		args = buildTemplateArgs(opts)
 	}
-	return e.start(ctx, args)
+	out, err := e.start(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return patchPipedHeader(out, opts.Duration-float32(opts.Offset)), nil
 }
 
 func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error) {
@@ -142,17 +145,6 @@ func fileExists(path string) error {
 		return fmt.Errorf("'%s' is a directory", path)
 	}
 	return nil
-}
-
-func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
-	if _, err := ffmpegCmd(); err != nil {
-		return "", err
-	}
-	args := createProbeCommand(probeCmd, files)
-	log.Trace(ctx, "Executing ffmpeg command", "args", args)
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
-	output, _ := cmd.CombinedOutput()
-	return string(output), nil
 }
 
 func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error) {
@@ -301,7 +293,7 @@ func parseProbeOutput(data []byte) (*AudioProbeResult, error) {
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("no audio stream found in ffprobe output")
+	return nil, errors.New("no audio stream found in ffprobe output")
 }
 
 func (e *ffmpeg) CmdPath() (string, error) {
@@ -498,7 +490,7 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 // buildTemplateArgs handles user-customized command templates, with dynamic injection
 // of sample rate, channels, and bit depth when requested by the transcode decision.
 // Values in opts have already been clamped to codec limits upstream (see
-// core/stream/codec.go codecMax* helpers), so injecting them unconditionally is safe —
+// core/stream/codec.go), so injecting them unconditionally is safe —
 // ffmpeg honors the last occurrence of a duplicate flag.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
@@ -560,7 +552,7 @@ func bitDepthToSampleFmt(bitDepth int) string {
 	}
 }
 
-// Path will always be an absolute path
+// createFFmpegCommand expects path to always be an absolute path
 func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 	var args []string
 	for _, s := range fixCmd(cmd) {
@@ -582,20 +574,6 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 		} else {
 			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
 			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
-			args = append(args, s)
-		}
-	}
-	return args
-}
-
-func createProbeCommand(cmd string, inputs []string) []string {
-	var args []string
-	for _, s := range fixCmd(cmd) {
-		if s == "%s" {
-			for _, inp := range inputs {
-				args = append(args, "-i", inp)
-			}
-		} else {
 			args = append(args, s)
 		}
 	}
@@ -625,8 +603,8 @@ func ffprobePath(ffmpegCmd string) string {
 
 func ffmpegCmd() (string, error) {
 	ffOnce.Do(func() {
-		if conf.Server.FFmpegPath != "" {
-			ffmpegPath = conf.Server.FFmpegPath
+		if conf.Server().FFmpegPath != "" {
+			ffmpegPath = conf.Server().FFmpegPath
 			ffmpegPath, ffmpegErr = exec.LookPath(ffmpegPath)
 		} else {
 			ffmpegPath, ffmpegErr = exec.LookPath("ffmpeg")
@@ -665,6 +643,7 @@ func (p *encoderProbe) has(cmdPath, encoder string) bool {
 		return true
 	case encoderProbeUnavailable:
 		return false
+	case encoderProbeUnknown:
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

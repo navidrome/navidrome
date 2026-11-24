@@ -7,12 +7,16 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,11 +26,10 @@ var _ = Describe("System", func() {
 	BeforeEach(func() { api = &Router{} })
 
 	It("returns public system info without auth", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.ServerName = ""
+		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Info/Public", nil)
 		api.getPublicSystemInfo(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -40,11 +43,10 @@ var _ = Describe("System", func() {
 	})
 
 	It("returns authenticated system info with the public fields plus library monitor support", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.ServerName = ""
+		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Info", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Info", nil)
 		api.getSystemInfo(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -61,10 +63,9 @@ var _ = Describe("System", func() {
 	})
 
 	It("advertises a LocalAddress with the request scheme, host and Jellyfin base path", func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Info/Public", nil)
 		r.Host = "music.example.com:4599"
 		api.getPublicSystemInfo(w, r)
 
@@ -76,11 +77,10 @@ var _ = Describe("System", func() {
 	})
 
 	It("responds to ping with the server name as plain text", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.ServerName = ""
+		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Ping", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Ping", nil)
 		api.ping(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -92,7 +92,7 @@ var _ = Describe("System", func() {
 	DescribeTable("reports the caller's network location on /System/Endpoint",
 		func(remoteAddr string, isLocal, isInNetwork bool) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+			r := httptest.NewRequest(http.MethodGet, "/System/Endpoint", nil)
 			r.RemoteAddr = remoteAddr
 			api.getEndpointInfo(w, r)
 
@@ -119,7 +119,7 @@ var _ = Describe("System", func() {
 
 	It("reports IsLocal when the caller shares the connection's local address", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Endpoint", nil)
 		r.RemoteAddr = "192.168.1.20:54321"
 		ctx := context.WithValue(r.Context(), http.LocalAddrContextKey,
 			&net.TCPAddr{IP: net.ParseIP("192.168.1.20"), Port: 4533})
@@ -132,7 +132,7 @@ var _ = Describe("System", func() {
 
 	It("does not report IsLocal for a different host on the same LAN", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+		r := httptest.NewRequest(http.MethodGet, "/System/Endpoint", nil)
 		r.RemoteAddr = "192.168.1.99:54321"
 		ctx := context.WithValue(r.Context(), http.LocalAddrContextKey,
 			&net.TCPAddr{IP: net.ParseIP("192.168.1.20"), Port: 4533})
@@ -144,24 +144,13 @@ var _ = Describe("System", func() {
 		Expect(info.IsInNetwork).To(BeTrue())
 	})
 
-	It("reports quick connect as disabled", func() {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/QuickConnect/Enabled", nil)
-		api.quickConnectEnabled(w, r)
-
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var enabled bool
-		Expect(json.Unmarshal(w.Body.Bytes(), &enabled)).To(Succeed())
-		Expect(enabled).To(BeFalse())
-	})
-
 	Context("serverID with a real DataStore", func() {
 		var ctx context.Context
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 
 		BeforeEach(func() {
-			ctx = context.Background()
-			ds = &tests.MockDataStore{}
+			ctx = GinkgoT().Context()
+			ds = persistence.New(db.Db())
 		})
 
 		It("persists the generated id so it can be read back by another Router sharing the same DataStore", func() {
@@ -173,6 +162,17 @@ var _ = Describe("System", func() {
 			Expect(second.serverID(ctx)).To(Equal(id))
 		})
 
+		It("resolves one id when a Router and a Discovery race on first boot", func() {
+			r, d := &Router{ds: ds}, NewDiscovery(ds)
+			ids := make([]string, 2)
+			var wg sync.WaitGroup
+			wg.Go(func() { ids[0] = r.serverID(ctx) })
+			wg.Go(func() { ids[1] = d.serverID(ctx) })
+			wg.Wait()
+			Expect(ids[0]).ToNot(BeEmpty())
+			Expect(ids[1]).To(Equal(ids[0]))
+		})
+
 		It("memoizes the id across repeated calls on the same Router", func() {
 			r := &Router{ds: ds}
 			id := r.serverID(ctx)
@@ -181,19 +181,19 @@ var _ = Describe("System", func() {
 		})
 
 		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
-			Expect(ds.Property(ctx).Put(consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
 
-			r := &Router{ds: ds}
-			props := ds.Property(ctx).(*tests.MockedPropertyRepo)
-			props.Error = errors.New("database is locked")
+			r := &Router{ds: persistencetest.Stub(ds, persistencetest.Repos{Property: func(r model.PropertyRepository) model.PropertyRepository {
+				return failingPropertyRepo{PropertyRepository: r, err: errors.New("database is locked")}
+			}})}
 			degraded := r.serverID(ctx)
 			Expect(degraded).ToNot(BeEmpty())
 			Expect(degraded).ToNot(Equal("6ba7b8109dad11d180b400c04fd430c8")) // temporary value, not the (unreadable) stored one
-			props.Error = nil
+			r.ds = ds
 
 			// Once the DB recovers, the stored id is intact and served again.
 			Expect(r.serverID(ctx)).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
-			stored, err := ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+			stored, err := ds.Property().Get(ctx, consts.JellyfinServerIDKey)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
 		})
@@ -204,7 +204,7 @@ var _ = Describe("System", func() {
 		})
 
 		It("strips dashes from an already-persisted id", func() {
-			Expect(ds.Property(ctx).Put(
+			Expect(ds.Property().Put(ctx,
 				consts.JellyfinServerIDKey, "1b4e28ba-2fa1-11d2-883f-0016d3cca427")).To(Succeed())
 			r := &Router{ds: ds}
 			Expect(r.serverID(ctx)).To(Equal("1b4e28ba2fa111d2883f0016d3cca427"))

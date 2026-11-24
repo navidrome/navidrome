@@ -6,26 +6,18 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/zeebo/xxh3"
 )
 
-// StaleAbsentAge is how long an absent state is trusted before a recheck retries it.
-const StaleAbsentAge = 30 * 24 * time.Hour
-
-// StaleAbsentRecheckBatch caps how many absent states each hourly tick re-queues per kind,
-// oldest first, so external agents see a flat drip instead of a daily burst.
-const StaleAbsentRecheckBatch = 100
-
-// RecheckKinds omits media files: they resolve embedded-only, at scan or on view.
-var RecheckKinds = []model.Kind{
+// ReprocessKinds omits media files: they resolve embedded-only, at scan or on view. Artists lead
+// so bulk enqueues give the most external-dependent kind a queue headstart.
+var ReprocessKinds = []model.Kind{
 	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
 }
 
@@ -34,14 +26,16 @@ var RecheckKinds = []model.Kind{
 func KeepsState(kind model.Kind) bool { return kind != model.KindDiscArtwork }
 
 // RefreshableKinds is every kind Refresh can clear and re-queue, so it holds exactly the kinds
-// KeepsState admits. Media files are absent from RecheckKinds but belong here: the worker
-// resolves them, it just never revisits them on its own.
-var RefreshableKinds = append(slices.Clone(RecheckKinds), model.KindMediaFileArtwork)
+// KeepsState admits. Media files are absent from ReprocessKinds but belong here: the worker
+// resolves them, it just never enumerates them in bulk.
+var RefreshableKinds = append(slices.Clone(ReprocessKinds), model.KindMediaFileArtwork)
 
-// hasRecheckPath reports whether a periodic job will revisit this kind, making an absent settle recoverable.
-func hasRecheckPath(prefix string) bool {
+// settlesAbsentOnGiveUp reports whether an exhausted retry budget records an absent state. Media
+// files are excluded because retrying one costs nothing: they resolve embedded-only, from a local
+// read, and only a view ever enqueues them.
+func settlesAbsentOnGiveUp(prefix string) bool {
 	kind, ok := model.ParseKind(prefix)
-	return ok && slices.Contains(RecheckKinds, kind)
+	return ok && KeepsState(kind) && kind != model.KindMediaFileArtwork
 }
 
 // artworkEpoch invalidates all resolution state when bumped; bump it whenever resolution semantics change.
@@ -56,12 +50,12 @@ type FingerprintInput struct {
 // FingerprintInputs is the single listing of what ConfigFingerprint hashes.
 func FingerprintInputs() []FingerprintInput {
 	return []FingerprintInput{
-		{"CoverArtPriority", conf.Server.CoverArtPriority},
-		{"ArtistArtPriority", conf.Server.ArtistArtPriority},
-		{"ArtistImageFolder", conf.Server.ArtistImageFolder},
-		{"Agents", conf.Server.Agents},
-		{"EnableExternalServices", strconv.FormatBool(conf.Server.EnableExternalServices)},
-		{"EnableM3UExternalAlbumArt", strconv.FormatBool(conf.Server.EnableM3UExternalAlbumArt)},
+		{"CoverArtPriority", conf.Server().CoverArtPriority},
+		{"ArtistArtPriority", conf.Server().ArtistArtPriority},
+		{"ArtistImageFolder", conf.Server().ArtistImageFolder},
+		{"Agents", conf.Server().Agents},
+		{"EnableExternalServices", strconv.FormatBool(conf.Server().EnableExternalServices)},
+		{"EnableM3UExternalAlbumArt", strconv.FormatBool(conf.Server().EnableM3UExternalAlbumArt)},
 	}
 }
 
@@ -72,94 +66,37 @@ func ConfigFingerprint() string {
 	return fmt.Sprintf("%016x", xxh3.Hash([]byte(raw)))
 }
 
-// backfillSummary is what a backfill enqueued. MaxExternalLookups is an upper estimate for one
-// attempt per item, not a bound: a local hit ends the walk, and a retry asks the agents again.
-type backfillSummary struct {
-	Ran                bool
-	PerKind            map[string]int64
-	Items              int64
-	MaxExternalLookups int64
-}
-
-// backfill enqueues artwork resolution for every entity when the config fingerprint changed.
-func backfill(ctx context.Context, ds model.DataStore, agentCount func() ImageAgentCount) (backfillSummary, error) {
-	start := time.Now()
-	ctx = auth.WithAdminUser(ctx, ds)
+// ReconcileConfigFingerprint warns when the artwork config changed since the library was last
+// resolved under it. Nothing re-resolves on its own; applying a change is an explicit reprocess.
+func ReconcileConfigFingerprint(ctx context.Context, ds model.DataStore) error {
 	current := ConfigFingerprint()
-	props := ds.Property(ctx)
-	stored, err := props.DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
+	stored, err := ds.Property().DefaultGet(ctx, consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
-		return backfillSummary{}, err
+		return err
 	}
-	if stored == current {
-		return backfillSummary{}, nil
-	}
-
-	// Artists first: few entities, most external-dependent, so they get a queue headstart.
-	kinds := []struct {
-		kind  model.Kind
-		fetch func() ([]string, error)
-	}{
-		{model.KindArtistArtwork, func() ([]string, error) { return ds.Artist(ctx).GetAllIDs() }},
-		{model.KindAlbumArtwork, func() ([]string, error) { return ds.Album(ctx).GetAllIDs() }},
-		{model.KindPlaylistArtwork, func() ([]string, error) { return ds.Playlist(ctx).GetAllIDs() }},
-		{model.KindRadioArtwork, func() ([]string, error) { return ds.Radio(ctx).GetAllIDs() }},
-	}
-	// Counted here, not by the caller: building the agent list constructs every enabled agent, and
-	// an unchanged fingerprint returns above without ever needing the number.
-	agents := agentCount()
-	summary := backfillSummary{Ran: true, PerKind: map[string]int64{}}
-	for _, k := range kinds {
-		ids, err := k.fetch()
-		if err != nil {
-			return backfillSummary{}, err
-		}
-		if err := enqueueBackfillKind(ctx, ds, k.kind, ids); err != nil {
-			return backfillSummary{}, err
-		}
-		n := int64(len(ids))
-		summary.PerKind[k.kind.Prefix()] = n
-		summary.Items += n
-		summary.MaxExternalLookups += n * ExternalLookupsPerItem(k.kind, agents)
-	}
-
-	if err := props.Put(consts.ArtConfFingerprintPropertyKey, current); err != nil {
-		return backfillSummary{}, err
-	}
-	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued", "items", summary.Items,
-		"byKind", summary.PerKind, "maxExternalLookups", summary.MaxExternalLookups,
-		"elapsed", time.Since(start))
-	return summary, nil
-}
-
-func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kind, ids []string) error {
-	if len(ids) == 0 {
-		return nil
-	}
-	items := slice.Map(ids, func(id string) model.ArtworkQueueItem {
-		return model.ArtworkQueueItem{
-			ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBackfill,
-		}
-	})
-	return ds.ArtworkQueue(ctx).Enqueue(items...)
-}
-
-func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
-	cutoff := time.Now().Add(-StaleAbsentAge)
-	queue := ds.ArtworkQueue(ctx)
-	for _, kind := range RecheckKinds {
-		if _, err := queue.EnqueueStaleAbsent(kind, cutoff, StaleAbsentRecheckBatch); err != nil {
-			return err
-		}
+	switch stored {
+	case current:
+	case "":
+		// An unset fingerprint counts as current; the alternative warns every upgrading install once.
+		return MarkConfigApplied(ctx, ds)
+	default:
+		log.Warn(ctx, "Artwork: Config changed since the last full reprocess. Stored artwork keeps "+
+			"the old resolution; run 'navidrome artwork reprocess --all' to apply the change",
+			"stored", stored, "current", current, "inputs", FingerprintInputs())
 	}
 	return nil
 }
 
+// MarkConfigApplied records the current fingerprint as the one the library is resolved under.
+func MarkConfigApplied(ctx context.Context, ds model.DataStore) error {
+	return ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())
+}
+
 // enqueueMissingAll is the safety net for entities a scan never enqueued (added between scans, or scanner off).
 func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
-	queue := ds.ArtworkQueue(ctx)
-	for _, kind := range RecheckKinds {
-		if _, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityRecheck); err != nil {
+	queue := ds.ArtworkQueue()
+	for _, kind := range ReprocessKinds {
+		if _, err := queue.EnqueueAllMissing(ctx, kind, model.ArtworkPriorityRecheck); err != nil {
 			return err
 		}
 	}
@@ -171,31 +108,31 @@ func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id string) (string, error) {
 	switch kind {
 	case model.KindArtistArtwork:
-		ar, err := ds.Artist(ctx).Get(id)
+		ar, err := ds.Artist().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return ar.Name, nil
 	case model.KindAlbumArtwork:
-		al, err := ds.Album(ctx).Get(id)
+		al, err := ds.Album().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return al.Name, nil
 	case model.KindPlaylistArtwork:
-		pls, err := ds.Playlist(ctx).Get(id)
+		pls, err := ds.Playlist().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return pls.Name, nil
 	case model.KindRadioArtwork:
-		rd, err := ds.Radio(ctx).Get(id)
+		rd, err := ds.Radio().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return rd.Name, nil
 	case model.KindMediaFileArtwork:
-		mf, err := ds.MediaFile(ctx).Get(id)
+		mf, err := ds.MediaFile().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
@@ -211,7 +148,7 @@ func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string
 	if err != nil {
 		return "", err
 	}
-	al, err := ds.Album(ctx).Get(albumID)
+	al, err := ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return "", err
 	}
@@ -225,11 +162,11 @@ func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string
 
 // Refresh drops an item's resolved artwork state and re-queues it at Bump priority.
 func Refresh(ctx context.Context, ds model.DataStore, kind model.Kind, id string) error {
-	if err := ds.Artwork(ctx).DeleteForItems(kind, []string{id}); err != nil {
+	if err := ds.Artwork().DeleteForItems(ctx, kind, []string{id}); err != nil {
 		return fmt.Errorf("clearing artwork state: %w", err)
 	}
 	item := model.ArtworkQueueItem{ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump}
-	if err := ds.ArtworkQueue(ctx).Enqueue(item); err != nil {
+	if err := ds.ArtworkQueue().Enqueue(ctx, item); err != nil {
 		return fmt.Errorf("enqueuing artwork refresh: %w", err)
 	}
 	return nil

@@ -88,6 +88,21 @@ describe('wrapperDataProvider', () => {
     })
   })
 
+  describe('create player', () => {
+    it('returns the server record, never the plaintext API key', async () => {
+      const data = { name: 'Phone', apiKey: 'nds_0123456789abcdefghijkl' }
+      const saved = { id: 'p1', name: 'Phone', hasApiKey: true, userId: 'u1' }
+      mockProvider.create.mockResolvedValue({ data: { ...data, id: 'p1' } })
+      mockProvider.getOne.mockResolvedValue({ data: saved })
+
+      const result = await wrapperDataProvider.create('player', { data })
+
+      expect(mockProvider.create).toHaveBeenCalledWith('player', { data })
+      expect(mockProvider.getOne).toHaveBeenCalledWith('player', { id: 'p1' })
+      expect(result.data).toEqual(saved)
+    })
+  })
+
   describe('refreshMetadata', () => {
     it('posts to the album metadata refresh endpoint', () => {
       mockHttpClient.mockResolvedValue({ json: {} })
@@ -118,6 +133,57 @@ describe('wrapperDataProvider', () => {
       await expect(
         wrapperDataProvider.refreshMetadata('album', 'al-1'),
       ).resolves.toEqual({ data: { id: 'al-1' } })
+    })
+  })
+
+  describe('image upload', () => {
+    it('posts the file as multipart form data under the image field', async () => {
+      const file = new File(['img'], 'cover.png', { type: 'image/png' })
+
+      await wrapperDataProvider.uploadImage('artist', 'ar-1', file)
+
+      const [url, options] = mockHttpClient.mock.calls[0]
+      expect(url).toBe('/api/artist/ar-1/image')
+      expect(options.method).toBe('POST')
+      expect(options.body).toBeInstanceOf(FormData)
+      expect(options.body.get('image')).toBe(file)
+    })
+  })
+
+  describe('playlist tracks', () => {
+    it('fetches the tracks of a playlist', async () => {
+      const tracks = [{ id: '1', mediaFileId: 'mf-1' }]
+      mockHttpClient.mockResolvedValue({ json: tracks })
+
+      const result = await wrapperDataProvider.getPlaylistTracks('pl-1')
+
+      expect(mockHttpClient).toHaveBeenCalledWith('/api/playlist/pl-1/tracks')
+      expect(result).toEqual({ data: tracks })
+    })
+
+    it('exports a playlist as M3U and returns the raw body', async () => {
+      mockHttpClient.mockResolvedValue({ body: '#EXTM3U\n', json: undefined })
+
+      const result = await wrapperDataProvider.exportPlaylist('pl-1')
+
+      const [url, options] = mockHttpClient.mock.calls[0]
+      expect(url).toBe('/api/playlist/pl-1/tracks')
+      expect(options.headers.get('Accept')).toBe('audio/x-mpegurl')
+      expect(result).toEqual({ data: '#EXTM3U\n' })
+    })
+  })
+
+  describe('scrobbler links', () => {
+    it('links ListenBrainz with the given token', async () => {
+      mockHttpClient.mockResolvedValue({ json: { user: 'sam' } })
+
+      const result = await wrapperDataProvider.linkListenBrainz('tok')
+
+      expect(mockHttpClient).toHaveBeenCalledWith('/api/listenbrainz/link', {
+        method: 'PUT',
+        body: JSON.stringify({ token: 'tok' }),
+      })
+      expect(result).toEqual({ data: { user: 'sam' } })
     })
   })
 })

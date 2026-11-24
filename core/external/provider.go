@@ -17,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
@@ -54,7 +54,7 @@ type auxAlbum struct {
 // Name returns the appropriate album name for external API calls
 // based on the DevPreserveUnicodeInExternalCalls configuration option
 func (a *auxAlbum) Name() string {
-	if conf.Server.DevPreserveUnicodeInExternalCalls {
+	if conf.Server().DevPreserveUnicodeInExternalCalls {
 		return a.Album.Name
 	}
 	return str.Clear(a.Album.Name)
@@ -67,7 +67,7 @@ type auxArtist struct {
 // Name returns the appropriate artist name for external API calls
 // based on the DevPreserveUnicodeInExternalCalls configuration option
 func (a *auxArtist) Name() string {
-	if conf.Server.DevPreserveUnicodeInExternalCalls {
+	if conf.Server().DevPreserveUnicodeInExternalCalls {
 		return a.Artist.Name
 	}
 	return str.Clear(a.Artist.Name)
@@ -87,10 +87,11 @@ type Agents interface {
 	agents.SimilarSongsByArtistRetriever
 }
 
-func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
+// NewProvider runs background info refreshes until ctx is done.
+func NewProvider(ctx context.Context, ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
 	e := &provider{ds: ds, ag: agents, matcher: m, broker: broker}
-	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
-	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
+	e.artistQueue = newRefreshQueue(ctx, e.populateArtistInfo)
+	e.albumQueue = newRefreshQueue(ctx, e.populateAlbumInfo)
 	return e
 }
 
@@ -125,7 +126,7 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 		return nil, err
 	}
 
-	updatedAt := V(album.ExternalInfoUpdatedAt)
+	updatedAt := gg.V(album.ExternalInfoUpdatedAt)
 	albumName := album.Name()
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", albumName)
@@ -133,10 +134,7 @@ func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	// If info is expired, trigger a populateAlbumInfo in the background
-	if time.Since(updatedAt) > conf.Server.DevAlbumInfoTimeToLive {
+	} else if time.Since(updatedAt) > conf.Server().DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", albumName)
 		e.albumQueue.enqueue(&album)
 	}
@@ -182,7 +180,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		}
 	}
 
-	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
+	err = e.ds.Album().UpdateExternalInfo(ctx, &album.Album)
 	if err != nil {
 		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", albumName,
 			"elapsed", time.Since(start), err)
@@ -232,7 +230,7 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 	}
 
 	// If we don't have any info, retrieves it now
-	updatedAt := V(artist.ExternalInfoUpdatedAt)
+	updatedAt := gg.V(artist.ExternalInfoUpdatedAt)
 	artistName := artist.Name()
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", artistName)
@@ -240,10 +238,7 @@ func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist,
 		if err != nil {
 			return auxArtist{}, err
 		}
-	}
-
-	// If info is expired, trigger a populateArtistInfo in the background
-	if time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
+	} else if time.Since(updatedAt) > conf.Server().DevArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artistName)
 		e.artistQueue.enqueue(&artist)
 	}
@@ -285,7 +280,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	if !throttled {
 		artist.ExternalInfoUpdatedAt = new(time.Now())
 	}
-	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
+	err := e.ds.Artist().UpdateExternalInfo(ctx, &artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artistName,
 			"elapsed", time.Since(start), err)
@@ -548,7 +543,7 @@ func (e *provider) loadArtistsByID(ctx context.Context, similar []agents.Artist)
 	if len(ids) == 0 {
 		return matches, nil
 	}
-	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	res, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"artist.id": ids},
 	})
 	if err != nil {
@@ -577,7 +572,7 @@ func (e *provider) loadArtistsByMBID(ctx context.Context, similar []agents.Artis
 	if len(mbids) == 0 {
 		return matches, nil
 	}
-	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	res, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"mbz_artist_id": mbids},
 	})
 	if err != nil {
@@ -612,7 +607,7 @@ func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artis
 	clauses := slice.Map(names, func(name string) squirrel.Sqlizer {
 		return squirrel.Like{"artist.name": name}
 	})
-	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	res, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Or(clauses),
 	})
 	if err != nil {
@@ -628,7 +623,7 @@ func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artis
 
 func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxArtist, error) {
 	if id != "" {
-		artist, err := e.ds.Artist(ctx).Get(id)
+		artist, err := e.ds.Artist().Get(ctx, id)
 		if err == nil {
 			return &auxArtist{Artist: *artist}, nil
 		}
@@ -644,7 +639,7 @@ func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxA
 		return nil, model.ErrNotFound
 	}
 
-	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	artists, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,
 	})
@@ -666,7 +661,7 @@ func (e *provider) loadSimilar(ctx context.Context, artist *auxArtist, count int
 		ids = append(ids, sa.ID)
 	}
 
-	similar, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	similar, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"artist.id": ids},
 	})
 	if err != nil {

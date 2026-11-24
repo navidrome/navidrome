@@ -12,9 +12,10 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
@@ -51,22 +52,40 @@ func (c *recordingCache) getKeys() []string {
 // Simulates a concurrent Enqueue between DequeueBatch and the worker's delete, so
 // DeleteIfUnchanged on the dequeued value no-ops.
 type reenqueueOnDequeue struct {
-	*tests.MockArtworkQueueRepo
+	model.ArtworkQueueRepository
 	done bool
 }
 
-func (r *reenqueueOnDequeue) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
-	items, err := r.MockArtworkQueueRepo.DequeueBatch(n, kinds...)
-	if !r.done && len(items) > 0 {
-		r.done = true
-		for k, it := range r.Data {
-			if it.ItemKind == items[0].ItemKind && it.ItemID == items[0].ItemID {
-				it.RetryAt = items[0].RetryAt.Add(time.Minute)
-				r.Data[k] = it
-			}
-		}
+func (r *reenqueueOnDequeue) DequeueBatch(ctx context.Context, n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
+	items, err := r.ArtworkQueueRepository.DequeueBatch(ctx, n, kinds...)
+	if err != nil || r.done || len(items) == 0 {
+		return items, err
 	}
+	r.done = true
+	_, err = db.Db().ExecContext(ctx, "UPDATE artwork_queue SET retry_at = ? WHERE item_kind = ? AND item_id = ?",
+		items[0].RetryAt.Add(time.Minute), items[0].ItemKind, items[0].ItemID)
 	return items, err
+}
+
+func withQueue(ds model.DataStore, queue model.ArtworkQueueRepository) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{
+		ArtworkQueue: func(model.ArtworkQueueRepository) model.ArtworkQueueRepository { return queue },
+	})
+}
+
+func withRacingQueue(ds model.DataStore) model.DataStore {
+	return withQueue(ds, &reenqueueOnDequeue{ArtworkQueueRepository: ds.ArtworkQueue()})
+}
+
+// cancelOnDequeue cancels the drain right after its batch is read, so nothing is dispatched.
+type cancelOnDequeue struct {
+	model.ArtworkQueueRepository
+	cancel context.CancelFunc
+}
+
+func (c *cancelOnDequeue) DequeueBatch(ctx context.Context, n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
+	defer c.cancel()
+	return c.ArtworkQueueRepository.DequeueBatch(ctx, n, kinds...)
 }
 
 type fakeEventBroker struct {
@@ -95,68 +114,45 @@ func (f *fakeEventBroker) getEvents() []events.Event {
 
 var _ events.Broker = (*fakeEventBroker)(nil)
 
-// expireQueued ages a row past the retry budget, so the next drain settles it instead of retrying.
-func expireQueued(q *tests.MockArtworkQueueRepo, id string) {
-	GinkgoHelper()
-	for k, v := range q.Data {
-		if v.ItemID == id {
-			v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-			q.Data[k] = v
-		}
-	}
+type panickingAlbumRepo struct {
+	model.AlbumRepository
+	panicID string
 }
 
-func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQueueItem {
-	for _, it := range q.Data {
-		if it.ItemKind == kind && it.ItemID == id {
-			return &it
-		}
+func (r *panickingAlbumRepo) Get(ctx context.Context, id string) (*model.Album, error) {
+	if id == r.panicID {
+		panic("boom") //nolint:forbidigo
 	}
-	return nil
+	return r.AlbumRepository.Get(ctx, id)
 }
 
 var _ = Describe("Worker", func() {
 	var (
-		ctx        context.Context
-		ds         *tests.MockDataStore
-		folderRepo *fakeFolderRepo
-		libRepo    *tests.MockLibraryRepo
-		ffm        *tests.MockFFmpeg
-		ag         *agents.Agents
-		store      *ImageStore
-		artRepo    *tests.MockArtworkRepo
-		queueRepo  *tests.MockArtworkQueueRepo
-		broker     *fakeEventBroker
-		imgCache   *recordingCache
-		repoRoot   string
-		w          *Worker
+		ctx      context.Context
+		ds       model.DataStore
+		ffm      *tests.MockFFmpeg
+		ag       *agents.Agents
+		store    *ImageStore
+		broker   *fakeEventBroker
+		imgCache *recordingCache
+		w        *Worker
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		ctx = context.Background()
-		var err error
-		repoRoot, err = os.Getwd()
+		ctx = GinkgoT().Context()
+		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
-		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
+		conf.Update(func(c *conf.Options) { c.CacheFolder = conf.NewDir(GinkgoT().TempDir()) })
 
-		folderRepo = &fakeFolderRepo{}
-		libRepo = &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
 		ffm = tests.NewMockFFmpeg("")
-		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
-		artRepo = tests.CreateMockArtworkRepo()
-		queueRepo = tests.CreateMockArtworkQueueRepo()
-		ds = &tests.MockDataStore{
-			MockedFolder:       folderRepo,
-			MockedLibrary:      libRepo,
-			MockedArtwork:      artRepo,
-			MockedArtworkQueue: queueRepo,
-		}
-		ds.MockedAlbum = tests.CreateMockAlbumRepo()
+		ag = agents.GetAgents(ds, nil)
 		store = NewImageStore(GinkgoT().TempDir())
-		conf.Server.CoverArtPriority = "cover.jpg, embedded"
-		conf.Server.DevArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.jpg, embedded"
+			c.DevArtworkExternalMaxRPS = 1000
+		}) // keep the limiter out of the way of behavior tests
 		broker = &fakeEventBroker{}
 		imgCache = &recordingCache{FileCache: cache.NewFileCache("WorkerTest", "100MB", "images", 0,
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
@@ -169,14 +165,9 @@ var _ = Describe("Worker", func() {
 
 	Describe("drain", func() {
 		It("processes a seeded queue item and removes it from the queue", func() {
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}},
-			})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "al1", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
 
@@ -184,22 +175,17 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"))
 
-			count, err := queueRepo.Count()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(count).To(BeZero(), "a found item must be deleted from the queue")
+			Expect(queueCount(ctx, ds)).To(BeZero(), "a found item must be deleted from the queue")
 		})
 
 		It("processes an mf queue item, writing state and storing embedded bytes", func() {
-			conf.Server.EnableMediaFileCoverArt = true
-			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
-			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: "mf1", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
-			})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Path: fixtureAlbumDir + "/test.mp3", HasCoverArt: true})
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 				ItemKind: "mf", ItemID: "mf1", Priority: model.ArtworkPriorityBump,
 			})).To(Succeed())
 
@@ -207,12 +193,12 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			ia, err := artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("embedded"))
 			Expect(ia.Hash).ToNot(BeEmpty())
 
-			art, err := artRepo.GetImage(ia.Hash)
+			art, err := ds.Artwork().GetImage(ctx, ia.Hash)
 			Expect(err).ToNot(HaveOccurred())
 			r, err := store.Open(ia.Hash, art.Mime)
 			Expect(err).ToNot(HaveOccurred())
@@ -221,69 +207,91 @@ var _ = Describe("Worker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).ToNot(BeEmpty(), "embedded bytes must be written to the store")
 
-			count, err := queueRepo.Count()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(count).To(BeZero())
+			Expect(queueCount(ctx, ds)).To(BeZero())
 		})
 
 		It("reschedules a failed item via MarkFailed with a backed-off retry_at", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al4", Name: "Album"}})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al4", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			it := findQueued(queueRepo, "al", "al4")
+			it := queued(ctx, ds, "al", "al4")
 			Expect(it).ToNot(BeNil())
 			Expect(it.Attempts).To(Equal(1))
 			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
 
-			_, err = artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
+			_, err = ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
 		})
 
+		It("fails an item that panics, without stopping the rest of the batch", func() {
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds,
+				model.Album{ID: "alboom", Name: "Album", FolderIDs: []string{fid}},
+				model.Album{ID: "alok", Name: "Album", FolderIDs: []string{fid}},
+			)
+			panicky := persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+				return &panickingAlbumRepo{AlbumRepository: r, panicID: "alboom"}
+			}})
+			w = NewWorker(panicky, store, ag, ffm, broker, imgCache)
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alboom"})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alok"})).To(Succeed())
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(2))
+
+			it := queued(ctx, ds, "al", "alboom")
+			Expect(it).ToNot(BeNil(), "a panicking item must be rescheduled, not dropped")
+			Expect(it.Attempts).To(Equal(1))
+			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
+			Expect(it.Trace).To(ContainSubstring("boom"))
+
+			Expect(queued(ctx, ds, "al", "alok")).To(BeNil())
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "alok", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Source).To(Equal("folder"))
+		})
+
 		It("reschedules past the provider's requested delay when it exceeds the backoff", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al9", Name: "Album"})
 			// Well above backoff(0)'s jittered ceiling, so only the hint can produce this retry_at.
 			const askedFor = 90 * time.Minute
 			imageAgents(&fakeImageAgent{name: "throttledAgent", err: &agents.RetryLaterError{RetryIn: askedFor}})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			it := findQueued(queueRepo, "al", "al9")
+			it := queued(ctx, ds, "al", "al9")
 			Expect(it).ToNot(BeNil())
 			Expect(it.RetryAt).To(BeTemporally("~", time.Now().Add(askedFor), time.Minute))
 		})
 
 		It("reschedules a found-stale item via MarkFailed while keeping its served state", func() {
-			conf.Server.CoverArtPriority = "external, cover.jpg"
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "alstale", Name: "Album", FolderIDs: []string{"f1"}},
-			})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alstale", Name: "Album", FolderIDs: []string{fid}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			it := findQueued(queueRepo, "al", "alstale")
+			it := queued(ctx, ds, "al", "alstale")
 			Expect(it).ToNot(BeNil(), "a found-stale row must survive for a higher-priority retry")
 			Expect(it.Attempts).To(Equal(1))
 			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
 
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alstale", model.ImageTypePrimary)
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "alstale", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"), "the fallback art is served meanwhile")
 
@@ -293,17 +301,10 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("keeps a row re-enqueued between dequeue and delete", func() {
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al7", Name: "Album", FolderIDs: []string{"f1"}},
-			})
-			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
-			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al7", Name: "Album", FolderIDs: []string{fid}})
+			w = NewWorker(withRacingQueue(ds), store, ag, ffm, broker, imgCache)
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "al7", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
 
@@ -312,85 +313,83 @@ var _ = Describe("Worker", func() {
 			Expect(n).To(Equal(1))
 
 			// The concurrent re-enqueue changed retry_at, so the found-path delete was a no-op.
-			Expect(findQueued(queueRepo, "al", "al7")).ToNot(BeNil())
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al7", model.ImageTypePrimary)
+			Expect(queued(ctx, ds, "al", "al7")).ToNot(BeNil())
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al7", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Source).To(Equal("folder"))
 		})
 
 		It("keeps a fresh re-enqueue ahead of a stale failure backoff", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al8", Name: "Album"}})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al8", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
-			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
-			ds.MockedArtworkQueue = racing
-			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al8"})).To(Succeed())
-			dequeued := findQueued(queueRepo, "al", "al8").RetryAt
+			w = NewWorker(withRacingQueue(ds), store, ag, ffm, broker, imgCache)
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al8"})).To(Succeed())
+			dequeued := queued(ctx, ds, "al", "al8").RetryAt
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
 			// The re-enqueue reset retry_at; the failure path must not stomp it nor bump attempts.
-			it := findQueued(queueRepo, "al", "al8")
+			it := queued(ctx, ds, "al", "al8")
 			Expect(it).ToNot(BeNil())
 			Expect(it.Attempts).To(BeZero())
 			Expect(it.RetryAt).To(BeTemporally("==", dequeued.Add(time.Minute)))
 		})
 
 		It("gives up and settles absent once the retry budget is exhausted", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al9", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
 			// Age the row past the retry budget.
-			expireQueued(queueRepo, "al9")
+			expireQueued("al", "al9")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			Expect(findQueued(queueRepo, "al", "al9")).To(BeNil())
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al9", model.ImageTypePrimary)
+			Expect(queued(ctx, ds, "al", "al9")).To(BeNil())
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al9", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(BeEmpty())
 		})
 
 		It("keeps already-served art when the retry budget is exhausted", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al10", Name: "Album"}})
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al10", Name: "Album"})
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al10", ImageType: model.ImageTypePrimary,
 				Hash: "cafebabe", Source: "external:lastfm",
 			})).To(Succeed())
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al10"})).To(Succeed())
-			expireQueued(queueRepo, "al10")
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al10"})).To(Succeed())
+			expireQueued("al", "al10")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			Expect(findQueued(queueRepo, "al", "al10")).To(BeNil())
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al10", model.ImageTypePrimary)
+			Expect(queued(ctx, ds, "al", "al10")).To(BeNil())
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al10", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
 		It("records on the queue row why the last attempt failed", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al11", Name: "Album"}})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al11", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al11"})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al11"})).To(Succeed())
 
 			_, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 
-			it := findQueued(queueRepo, "al", "al11")
+			it := queued(ctx, ds, "al", "al11")
 			Expect(it).ToNot(BeNil())
 			Expect(DecodeTrace(it.Trace, "")).To(ContainElement(SatisfyAll(
 				HaveField("Candidate", "external:failAgent"),
@@ -402,62 +401,59 @@ var _ = Describe("Worker", func() {
 		// The give-up path settles absent before recording, so the row exists by the time the
 		// failure is written. Recording first would silently lose it for every unresolved item.
 		It("keeps the failure for an item that never resolved at all", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al13", Name: "Album"}})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al13", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al13"})).To(Succeed())
-			expireQueued(queueRepo, "al13")
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al13"})).To(Succeed())
+			expireQueued("al", "al13")
 
 			_, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al13", model.ImageTypePrimary)
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al13", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred(), "settling absent must create the row the failure is written to")
 			Expect(ia.Hash).To(BeEmpty())
 			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty())
 		})
 
 		It("keeps the failure on the state row after the queue row is deleted", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al12", Name: "Album"}})
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al12", Name: "Album"})
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al12", ImageType: model.ImageTypePrimary,
 				Hash: "cafebabe", Source: "external:lastfm",
 			})).To(Succeed())
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al12"})).To(Succeed())
-			expireQueued(queueRepo, "al12")
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al12"})).To(Succeed())
+			expireQueued("al", "al12")
 
 			_, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(findQueued(queueRepo, "al", "al12")).To(BeNil())
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al12", model.ImageTypePrimary)
+			Expect(queued(ctx, ds, "al", "al12")).To(BeNil())
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al12", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty(),
 				"the queue row is gone, so this is the only remaining record of the failure")
 			Expect(ia.Hash).To(Equal("cafebabe"), "recording the failure must not disturb the served art")
 		})
 
-		// Media files are excluded from RecheckKinds, so an absent row here would never be
-		// revisited: a transient read error would look permanent.
-		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
-			conf.Server.EnableMediaFileCoverArt = true
-			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
-			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-				{ID: "mfX", LibraryID: 0, Path: "tests/fixtures/artist/an-album/gone.mp3", HasCoverArt: true},
-			})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mfX"})).To(Succeed())
-			expireQueued(queueRepo, "mfX")
+		// Only a view enqueues a media file, and an absent row is exactly what stops a view from
+		// doing so: a transient read error would look permanent.
+		It("does not settle absent on exhaustion for a media file", func() {
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mfX", Path: fixtureAlbumDir + "/gone.mp3", HasCoverArt: true})
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mfX"})).To(Succeed())
+			expireQueued("mf", "mfX")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			Expect(findQueued(queueRepo, "mf", "mfX")).To(BeNil(), "the row must stop retrying")
-			_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mfX", model.ImageTypePrimary)
+			Expect(queued(ctx, ds, "mf", "mfX")).To(BeNil(), "the row must stop retrying")
+			_, err = ds.Artwork().GetItemArtwork(ctx, model.KindMediaFileArtwork, "mfX", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound),
 				"no row leaves the track unresolved, so a later view can still recover it")
 			// Known gap: with no row and no absent settle, there is nowhere to keep the failure.
@@ -465,21 +461,15 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("resolves a private playlist under an admin context instead of failing forever", func() {
-			ds.MockedUser = adminUserRepo()
-			vds := &visibilityPlaylistDS{
-				MockDataStore: ds,
-				private:       model.Playlist{ID: "plPriv", OwnerID: "admin"},
-				tracks:        &tests.MockPlaylistTrackRepo{},
-			}
-			w = NewWorker(vds, store, ag, ffm, broker, imgCache)
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plPriv"})).To(Succeed())
+			putPlaylist(ctx, ds, model.Playlist{ID: "plPriv", Name: "Private", Public: false})
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plPriv"})).To(Succeed())
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(n).To(Equal(1))
 
-			Expect(findQueued(queueRepo, "pl", "plPriv")).To(BeNil())
-			ia, err := artRepo.GetItemArtwork(model.KindPlaylistArtwork, "plPriv", model.ImageTypePrimary)
+			Expect(queued(ctx, ds, "pl", "plPriv")).To(BeNil())
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindPlaylistArtwork, "plPriv", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(BeEmpty())
 		})
@@ -491,17 +481,14 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("broadcasts a single refresh event for the found items in a batch", func() {
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "al1", Name: "Album 1", FolderIDs: []string{"f1"}},
-				{ID: "al2", Name: "Album 2", FolderIDs: []string{"f1"}},
-			})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1", Priority: model.ArtworkPriorityScan})).To(Succeed())
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2", Priority: model.ArtworkPriorityScan})).To(Succeed())
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds,
+				model.Album{ID: "al1", Name: "Album 1", FolderIDs: []string{fid}},
+				model.Album{ID: "al2", Name: "Album 2", FolderIDs: []string{fid}},
+			)
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1", Priority: model.ArtworkPriorityScan})).To(Succeed())
 
 			n, err := w.drain(ctx, 3)
 			Expect(err).ToNot(HaveOccurred())
@@ -545,10 +532,9 @@ var _ = Describe("Worker", func() {
 		)
 
 		It("broadcasts a refresh when an item resolves to absent (removed cover)", func() {
-			conf.Server.CoverArtPriority = "cover.*" // local-only; no folder image → absent
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al3", Name: "Artless"}})
-			folderRepo.result = nil
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3", Priority: model.ArtworkPriorityScan})).To(Succeed())
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" }) // local-only; no folder image → absent
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al3", Name: "Artless"})
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3", Priority: model.ArtworkPriorityScan})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -558,16 +544,16 @@ var _ = Describe("Worker", func() {
 			Expect(evts).To(HaveLen(1), "a removed cover must live-refresh clients so they drop it")
 			Expect(evts[0].(*events.RefreshResource).Data(evts[0])).To(ContainSubstring("al3"))
 
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
+			ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(BeEmpty(), "the outcome was absent, not found")
 		})
 
 		It("does not broadcast when no item is found", func() {
-			conf.Server.CoverArtPriority = "external"
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album"}})
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alx", Name: "Album"})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})).To(Succeed())
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})).To(Succeed())
 
 			n, err := w.drain(ctx, 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -693,21 +679,16 @@ var _ = Describe("Worker", func() {
 
 	Describe("precache", func() {
 		BeforeEach(func() {
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
-				{ID: "alpc", Name: "Album", FolderIDs: []string{"f1"}},
-			})
-			conf.Server.UICoverArtSize = 300
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alpc", Name: "Album", FolderIDs: []string{fid}})
+			conf.Update(func(c *conf.Options) { c.UICoverArtSize = 300 })
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "alpc", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
 		})
 
 		It("warms the resize cache at the UI cover size after a found acquisition", func() {
-			conf.Server.EnableArtworkPrecache = true
+			conf.Update(func(c *conf.Options) { c.EnableArtworkPrecache = true })
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -718,7 +699,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("skips warming when precache is disabled", func() {
-			conf.Server.EnableArtworkPrecache = false
+			conf.Update(func(c *conf.Options) { c.EnableArtworkPrecache = false })
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -729,7 +710,7 @@ var _ = Describe("Worker", func() {
 
 		// It warms from the bytes acquisition already held, so no state row or store file is needed.
 		It("warms from the acquired bytes without reading them back", func() {
-			conf.Server.EnableArtworkPrecache = true
+			conf.Update(func(c *conf.Options) { c.EnableArtworkPrecache = true })
 			ia := &model.ItemArtwork{
 				ItemKind: "al", ItemID: "unpersisted", ImageType: model.ImageTypePrimary,
 				Hash: "abcdef0123456789", UpdatedAt: time.Now(),
@@ -769,14 +750,12 @@ var _ = Describe("Worker", func() {
 		// Artists resolve through a rate-limited agent that holds its slot while waiting, so one
 		// shared pool would park every album behind them.
 		It("resolves albums while artists are stuck on a slow agent", func() {
-			conf.Server.CoverArtPriority = "cover.jpg"
-			conf.Server.ArtistArtPriority = "external"
-			folderRepo.result = []model.Folder{{
-				Path:       "tests/fixtures/artist/an-album",
-				ImageFiles: []string{"cover.jpg"},
-			}}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album", FolderIDs: []string{"f1"}}})
-			ds.MockedArtist = tests.CreateMockArtistRepo()
+			conf.Update(func(c *conf.Options) {
+				c.CoverArtPriority = "cover.jpg"
+				c.ArtistArtPriority = "external"
+			})
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "alx", Name: "Album", FolderIDs: []string{fid}})
 
 			// Every artist lookup blocks until released, standing in for the rate limiter.
 			block := make(chan struct{})
@@ -784,23 +763,23 @@ var _ = Describe("Worker", func() {
 			for i := range 8 {
 				artists = append(artists, model.Artist{ID: fmt.Sprintf("arx%d", i), Name: "A"})
 			}
-			ds.MockedArtist.(*tests.MockArtistRepo).SetData(artists)
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, artists...)
 			imageAgents(&fakeImageAgent{name: "slowAgent", block: block})
 
 			// Artists first, exactly as Backfill orders them.
 			for _, a := range artists {
-				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 					ItemKind: "ar", ItemID: a.ID, Priority: model.ArtworkPriorityBackfill,
 				})).To(Succeed())
 			}
-			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "alx", Priority: model.ArtworkPriorityBackfill,
 			})).To(Succeed())
 
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan struct{})
 			go func() { defer close(done); _ = w.Run(runCtx) }()
-			// Join Run: a leaked pool goroutine would race the config snapshot Ginkgo restores.
+			// Join Run so no pool goroutine outlives the spec.
 			DeferCleanup(func() {
 				cancel()
 				close(block) // unpark the blocked lookups so the pools can unwind
@@ -808,12 +787,12 @@ var _ = Describe("Worker", func() {
 			})
 
 			Eventually(func() bool {
-				ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alx", model.ImageTypePrimary)
+				ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, "alx", model.ImageTypePrimary)
 				return err == nil && ia.Hash != ""
 			}, 5*time.Second, 50*time.Millisecond).Should(BeTrue(),
 				"a blocked external pool must not hold up local artwork")
 
-			_, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "arx0", model.ImageTypePrimary)
+			_, err := ds.Artwork().GetItemArtwork(ctx, model.KindArtistArtwork, "arx0", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound), "artists are still blocked, as intended")
 		})
 	})
@@ -825,27 +804,52 @@ var _ = Describe("Worker", func() {
 			for i := range 8 {
 				id := fmt.Sprintf("alc%d", i)
 				albums = append(albums, model.Album{ID: id, Name: "Album"})
-				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 					ItemKind: "al", ItemID: id, Priority: model.ArtworkPriorityScan,
 				})).To(Succeed())
 			}
-			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(albums)
-			cancelledCtx, cancel := context.WithCancel(ctx)
-			cancel()
+			persistencetest.PutAlbums(ctx, ds, albums...)
+			drainCtx, cancel := context.WithCancel(ctx)
+			w = NewWorker(withQueue(ds, &cancelOnDequeue{ArtworkQueueRepository: ds.ArtworkQueue(), cancel: cancel}),
+				store, ag, ffm, broker, imgCache)
 
-			_, err := w.drain(cancelledCtx, 1)
+			n, err := w.drain(drainCtx, 1)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(8), "the whole batch was read before the cancellation")
 
 			for i := range 8 {
 				id := fmt.Sprintf("alc%d", i)
-				Expect(findQueued(queueRepo, "al", id)).ToNot(BeNil(), "row "+id+" must survive a cancelled drain")
+				Expect(queued(ctx, ds, "al", id)).ToNot(BeNil(), "row "+id+" must survive a cancelled drain")
 			}
+		})
+
+		It("stops dispatching and leaves the rest queued when paused mid-batch", func() {
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			albums := model.Albums{}
+			for i := range 8 {
+				id := fmt.Sprintf("alp%d", i)
+				albums = append(albums, model.Album{ID: id, Name: "Album", FolderIDs: []string{fid}})
+				Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
+					ItemKind: "al", ItemID: id, Priority: model.ArtworkPriorityScan,
+				})).To(Succeed())
+			}
+			persistencetest.PutAlbums(ctx, ds, albums...)
+			// Pauses as soon as the first item has left the queue.
+			w.PauseWhile(func() bool {
+				n, _ := ds.ArtworkQueue().Count(ctx)
+				return n < 8
+			})
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(queueCount(ctx, ds)).To(Equal(int64(7)), "only the item dispatched before the pause may leave the queue")
 		})
 
 		It("dequeues past the worker pool so one drain covers many items", func() {
 			for i := range 16 {
-				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: fmt.Sprintf("alb%d", i), Name: "Album"}})
-				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: fmt.Sprintf("alb%d", i), Name: "Album"})
+				Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
 					ItemKind: "al", ItemID: fmt.Sprintf("alb%d", i), Priority: model.ArtworkPriorityScan,
 				})).To(Succeed())
 			}
@@ -872,14 +876,31 @@ var _ = Describe("Worker", func() {
 			Eventually(done, time.Second).Should(Receive(BeNil()))
 		})
 
+		It("does not drain the queue while paused", func() {
+			fid := putFolder(ctx, ds, fixtureAlbumDir, "cover.jpg")
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
+			Expect(ds.ArtworkQueue().Enqueue(ctx, model.ArtworkQueueItem{
+				ItemKind: "al", ItemID: "al1", Priority: model.ArtworkPriorityScan,
+			})).To(Succeed())
+			w.PauseWhile(func() bool { return true })
+
+			runCtx, cancel := context.WithCancel(ctx)
+			done := make(chan error, 1)
+			go func() { done <- w.Run(runCtx) }()
+			DeferCleanup(func() {
+				cancel()
+				Eventually(done, 2*time.Second).Should(Receive(BeNil()))
+			})
+
+			Consistently(func() any { return queued(ctx, ds, "al", "al1") }, 300*time.Millisecond).ShouldNot(BeNil())
+		})
+
 		It("does not leak goroutines after Run exits", func() {
-			DeferCleanup(configtest.SetupConfig())
 
 			ignore := goleak.IgnoreCurrent()
 			DeferCleanup(func() { goleak.VerifyNone(GinkgoT(), ignore) })
 
-			localDS := &tests.MockDataStore{MockedArtworkQueue: tests.CreateMockArtworkQueueRepo()}
-			lw := NewWorker(localDS, NewImageStore(GinkgoT().TempDir()), agents.GetAgents(localDS, nil), tests.NewMockFFmpeg(""), &fakeEventBroker{}, imgCache)
+			lw := NewWorker(ds, NewImageStore(GinkgoT().TempDir()), ag, tests.NewMockFFmpeg(""), &fakeEventBroker{}, imgCache)
 
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan error, 1)

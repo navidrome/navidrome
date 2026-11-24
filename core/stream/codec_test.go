@@ -67,6 +67,22 @@ var _ = Describe("Codec", func() {
 		})
 	})
 
+	DescribeTable("codecSampleRate",
+		func(codec string, in, expected int) {
+			Expect(codecSampleRate(codec, in)).To(Equal(expected))
+		},
+		Entry("mp3 keeps a supported rate", "mp3", 44100, 44100),
+		Entry("mp3 moves 32728 up to 44100", "mp3", 32728, 44100),
+		Entry("mp3 moves 7000 up to 8000", "mp3", 7000, 8000),
+		Entry("mp3 caps 96000 at 48000", "mp3", 96000, 48000),
+		Entry("mp3 is case-insensitive", "MP3", 32728, 44100),
+		Entry("aac moves 32728 up to 44100", "aac", 32728, 44100),
+		Entry("aac moves 50000 up to 64000", "aac", 50000, 64000),
+		Entry("aac caps 352800 at 96000", "aac", 352800, 96000),
+		Entry("unknown rate stays 0", "mp3", 0, 0),
+		Entry("codec with no fixed set keeps the rate", "flac", 32728, 32728),
+	)
+
 	Describe("codecMaxChannels", func() {
 		It("returns 2 for mp3", func() {
 			Expect(codecMaxChannels("mp3")).To(Equal(2))

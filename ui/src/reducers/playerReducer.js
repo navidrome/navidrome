@@ -98,7 +98,11 @@ const mapToAudioLists = (item) => {
   }
 }
 
-const reduceClearQueue = () => ({ ...initialState, clear: true })
+const reduceClearQueue = (state) => ({
+  ...initialState,
+  mode: state.mode,
+  clear: true,
+})
 
 const reducePlayTracks = (state, { data, id }) => {
   let playIndex = 0
@@ -113,6 +117,7 @@ const reducePlayTracks = (state, { data, id }) => {
     queue,
     playIndex,
     clear: true,
+    autoPlay: true,
   }
 }
 
@@ -122,6 +127,7 @@ const reduceSetTrack = (state, { data }) => {
     queue: [mapToAudioLists(data)],
     playIndex: 0,
     clear: true,
+    autoPlay: true,
   }
 }
 
@@ -153,6 +159,7 @@ const reducePlayNext = (state, { data }) => {
     ...state,
     queue: newQueue,
     clear: true,
+    autoPlay: true,
   }
 }
 
@@ -201,6 +208,11 @@ const reduceCurrent = (state, { data }) => {
   }
 }
 
+const withNewIdentity = ({ __PLAYER_KEY__, ...item }) => ({
+  ...item,
+  uuid: uuidv4(),
+})
+
 const reduceMode = (state, { data: { mode } }) => {
   return {
     ...state,
@@ -212,7 +224,7 @@ export const playerReducer = (previousState = initialState, payload) => {
   const { type } = payload
   switch (type) {
     case PLAYER_CLEAR_QUEUE:
-      return reduceClearQueue()
+      return reduceClearQueue(previousState)
     case PLAYER_PLAY_TRACKS:
       return reducePlayTracks(previousState, payload)
     case PLAYER_SET_TRACK:
@@ -231,10 +243,17 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceMode(previousState, payload)
     case PLAYER_REFRESH_QUEUE: {
       const resolvedUrls = payload.data || {}
+      // Give each track a new identity (new uuid, no __PLAYER_KEY__).
+      // Otherwise the music player sees the current track in the new list,
+      // keeps the source it loaded at mount (empty after a reload, as the
+      // persisted musicSrc function does not survive JSON) and play does
+      // nothing. Skip it when a track already started (the refresh came back
+      // late), or the player restarts that track from 0.
+      const renew = !previousState.current?.uuid
       return {
         ...previousState,
         queue: previousState.queue.map((item) => ({
-          ...item,
+          ...(renew ? withNewIdentity(item) : item),
           musicSrc: item.isRadio
             ? item.musicSrc
             : resolvedUrls[item.trackId] || subsonic.streamUrl(item.trackId),

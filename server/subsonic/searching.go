@@ -42,7 +42,7 @@ func (api *Router) getSearchParams(r *http.Request) (*searchParams, error) {
 	return sp, nil
 }
 
-type searchFunc[T any] func(q string, options ...model.QueryOptions) (T, error)
+type searchFunc[T any] func(ctx context.Context, q string, options ...model.QueryOptions) (T, error)
 
 func callSearch[T any](ctx context.Context, s searchFunc[T], q string, options model.QueryOptions, result *T) func() error {
 	return func() error {
@@ -52,7 +52,7 @@ func callSearch[T any](ctx context.Context, s searchFunc[T], q string, options m
 		typ := strings.TrimPrefix(reflect.TypeOf(*result).String(), "model.")
 		var err error
 		start := time.Now()
-		*result, err = s(q, options)
+		*result, err = s(ctx, q, options)
 		if err != nil {
 			log.Error(ctx, "Error searching "+typ, "query", q, "elapsed", time.Since(start), err)
 		} else {
@@ -79,9 +79,9 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 
 	// Run searches in parallel
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(callSearch(ctx, api.ds.MediaFile(ctx).Search, q, songOpts, &mediaFiles))
-	g.Go(callSearch(ctx, api.ds.Album(ctx).Search, q, albumOpts, &albums))
-	g.Go(callSearch(ctx, api.ds.Artist(ctx).Search, q, artistOpts, &artists))
+	g.Go(callSearch(ctx, api.ds.MediaFile().Search, q, songOpts, &mediaFiles))
+	g.Go(callSearch(ctx, api.ds.Album().Search, q, albumOpts, &albums))
+	g.Go(callSearch(ctx, api.ds.Artist().Search, q, artistOpts, &artists))
 	err := g.Wait()
 	if err == nil {
 		log.Debug(ctx, fmt.Sprintf("Search resulted in %d songs, %d albums and %d artists",

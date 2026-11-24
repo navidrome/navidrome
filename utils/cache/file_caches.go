@@ -292,13 +292,13 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		size = consts.DefaultCacheSize
 	}
 	if size == 0 {
-		log.Warn(fmt.Sprintf("%s cache disabled", name))
+		log.Warn(name + " cache disabled")
 		return nil, nil, nil
 	}
 
 	lru := NewFileHaunter(name, maxItems, size, consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder = filepath.Join(conf.Server.CacheFolder.MustPath(), cacheFolder)
+	cacheFolder = filepath.Join(conf.Server().CacheFolder.MustPath(), cacheFolder)
 
 	var fs *spreadFS
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))

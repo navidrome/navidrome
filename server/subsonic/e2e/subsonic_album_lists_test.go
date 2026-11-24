@@ -142,7 +142,7 @@ var _ = Describe("Album List Endpoints", func() {
 			setupTestDB()
 
 			// Star an album so the starred filter returns results
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Abbey Road"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -166,7 +166,7 @@ var _ = Describe("Album List Endpoints", func() {
 			setupTestDB()
 
 			// Rate an album so the highest filter returns results
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Kind of Blue"},
 			})
 			Expect(err).ToNot(HaveOccurred())

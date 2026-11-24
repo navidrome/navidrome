@@ -3,7 +3,6 @@ import React, { cloneElement } from 'react'
 import {
   CreateButton,
   Datagrid,
-  DateField,
   EditButton,
   Filter,
   sanitizeListRestProps,
@@ -15,6 +14,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import {
+  DateField,
   List,
   defaultRowsPerPageOptions,
   getStoredPerPage,

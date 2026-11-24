@@ -11,13 +11,9 @@ import (
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,7 +28,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 	var (
 		manager   *Manager
 		tmpDir    string
-		dataStore *tests.MockDataStore
+		dataStore model.DataStore
 	)
 
 	p := func(val int64) *int64 {
@@ -53,13 +49,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "scrobble-retriever-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
-
-		db.Init(ctx)
-		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
-		})
-		dataStore = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+		dataStore = newTestDataStore()
 
 		// Copy test plugin to temp dir
 		srcPath := filepath.Join(testdataDir, "test-scrobble-retriever"+PackageExtension)
@@ -70,42 +60,44 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
-		userRepo := dataStore.User(ctx)
+		userRepo := dataStore.User()
 		// Add test users
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(ctx, &model.User{
 			ID:       "user1",
 			UserName: "testuser",
 			IsAdmin:  false,
 		})
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(ctx, &model.User{
 			ID:       "admin1",
 			UserName: "adminuser",
 			IsAdmin:  true,
 		})
 
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "1", LibraryID: 1})
-		Expect(err).To(BeNil())
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "2", LibraryID: 1})
-		Expect(err).To(BeNil())
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "3", LibraryID: 1})
-		Expect(err).To(BeNil())
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "1", LibraryID: 1})
+		Expect(err).ToNot(HaveOccurred())
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "2", LibraryID: 1})
+		Expect(err).ToNot(HaveOccurred())
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "3", LibraryID: 1})
+		Expect(err).ToNot(HaveOccurred())
 
 		scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
 
-		scrobbleRepo := dataStore.Scrobble(scrobbleCtx)
-		err = scrobbleRepo.RecordScrobble("1", time.Unix(0, 0))
-		Expect(err).To(BeNil())
-		err = scrobbleRepo.RecordScrobble("2", time.Unix(1, 0))
-		Expect(err).To(BeNil())
-		err = scrobbleRepo.RecordScrobble("3", time.Unix(2, 0))
-		Expect(err).To(BeNil())
-		err = scrobbleRepo.RecordScrobble("1", time.Unix(2, 0))
-		Expect(err).To(BeNil())
+		scrobbleRepo := dataStore.Scrobble()
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(0, 0))
+		Expect(err).ToNot(HaveOccurred())
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "2", time.Unix(1, 0))
+		Expect(err).ToNot(HaveOccurred())
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(2, 0))
+		Expect(err).ToNot(HaveOccurred())
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(2, 0))
+		Expect(err).ToNot(HaveOccurred())
 
 		// Create and configure manager
 		manager = &Manager{
@@ -115,7 +107,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		router := &fakeSubsonicRouter{}
 		manager.SetSubsonicRouter(router)
 
-		// Pre-enable the plugin in the mock repo so it loads on startup
+		// Pre-enable the plugin in the DB so it loads on startup
 		// Compute SHA256 of the plugin file to match what syncPlugins will compute
 		pluginPath := filepath.Join(tmpDir, "test-scrobble-retriever"+PackageExtension)
 		wasmData, err := os.ReadFile(pluginPath)
@@ -123,18 +115,13 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		hash := sha256.Sum256(wasmData)
 		hashHex := hex.EncodeToString(hash[:])
 
-		dataStore.MockedPlugin = tests.CreateMockPluginRepo()
-
-		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
-		mockPluginRepo.Permitted = true
-		enabledPlugin := model.Plugin{
+		newTestDataStore(model.Plugin{
 			ID:      "test-scrobble-retriever",
 			Path:    pluginPath,
 			SHA256:  hashHex,
 			Enabled: true,
 			Users:   `["user1","admin1"]`,
-		}
-		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
+		})
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())
@@ -300,11 +287,11 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		BeforeAll(func() {
 			scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
 
-			scrobbleRepo := dataStore.Scrobble(scrobbleCtx)
+			scrobbleRepo := dataStore.Scrobble()
 
 			for i := range 5 {
-				err := scrobbleRepo.RecordScrobble("3", time.Unix(100, 0))
-				Expect(err).To(BeNil())
+				err := scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(100, 0))
+				Expect(err).ToNot(HaveOccurred())
 
 				scrobble := host.ScrobbleRef{ID: 5 + int64(i), MediaFileID: "3", SubmissionTime: 100}
 				duplicates[i] = scrobble

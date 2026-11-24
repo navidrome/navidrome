@@ -5,32 +5,36 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Transcode endpoints", func() {
 	var (
-		router     *Router
-		ds         *tests.MockDataStore
-		mockTD     *mockTranscodeDecision
-		w          *httptest.ResponseRecorder
-		mockMFRepo *tests.MockMediaFileRepo
+		ctx    context.Context
+		router *Router
+		ds     model.DataStore
+		mockTD *mockTranscodeDecision
+		w      *httptest.ResponseRecorder
 	)
 
 	BeforeEach(func() {
-		mockMFRepo = &tests.MockMediaFileRepo{}
-		ds = &tests.MockDataStore{MockedMediaFile: mockMFRepo}
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 		mockTD = &mockTranscodeDecision{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
 		w = httptest.NewRecorder()
@@ -66,7 +70,6 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns ErrorDataNotFound when media file does not exist", func() {
-			// mockMFRepo has no data set, so Get() returns model.ErrNotFound
 			r := newJSONPostRequest("mediaId=nonexistent&mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
@@ -74,7 +77,11 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns error when media file retrieval fails", func() {
-			mockMFRepo.SetError(true)
+			router = New(persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+				return failingMediaFileGetRepo{r}
+			}}),
+				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Suffix: "flac"})
 			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
 			Expect(err).To(HaveOccurred())
@@ -82,7 +89,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("enriches the decision error with the reason, without leaking the file path", func() {
-			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1", Suffix: "flac"}}...)
 			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w",
 				&ffmpeg.ProbeError{Path: "/music/secret/foo.flac", Reason: "the file: Invalid data found when processing input"})
 			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
@@ -97,7 +104,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns ErrorDataNotFound when the source file is missing on disk", func() {
-			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1", Suffix: "flac"}}...)
 			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w",
 				&ffmpeg.ProbeError{Path: "/music/gone.flac", Reason: "file not found", NotFound: true})
 			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
@@ -110,7 +117,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("keeps ErrorGeneric when ffprobe is missing, even though the cause wraps fs.ErrNotExist", func() {
-			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Suffix: "flac"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1", Suffix: "flac"}}...)
 			pe := &ffmpeg.ProbeError{Path: "/music/song.flac", Reason: "could not read file"}
 			mockTD.decisionErr = fmt.Errorf("probing media file song-1: %w (%w)", pe, fs.ErrNotExist)
 			Expect(errors.Is(mockTD.decisionErr, fs.ErrNotExist)).To(BeTrue())
@@ -199,9 +206,9 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns a valid decision response", func() {
-			mockMFRepo.SetData(model.MediaFiles{
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{
 				{ID: "song-1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100},
-			})
+			}...)
 			mockTD.decision = &stream.TranscodeDecision{
 				MediaID:       "song-1",
 				CanDirectPlay: true,
@@ -227,9 +234,9 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("filters AAC from transcoding profiles", func() {
-			mockMFRepo.SetData(model.MediaFiles{
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{
 				{ID: "song-1", Suffix: "opus", Codec: "opus", BitRate: 128, Channels: 2, SampleRate: 48000},
-			})
+			}...)
 			mockTD.decision = &stream.TranscodeDecision{MediaID: "song-1", CanDirectPlay: true}
 			mockTD.token = "token"
 
@@ -250,9 +257,9 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("includes transcode stream when transcoding", func() {
-			mockMFRepo.SetData(model.MediaFiles{
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{
 				{ID: "song-2", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: new(24)},
-			})
+			}...)
 			mockTD.decision = &stream.TranscodeDecision{
 				MediaID:          "song-2",
 				CanDirectPlay:    false,
@@ -288,9 +295,9 @@ var _ = Describe("Transcode endpoints", func() {
 			}
 
 			BeforeEach(func() {
-				mockMFRepo.SetData(model.MediaFiles{
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{
 					{ID: "song-1", Suffix: "flac", Codec: "FLAC", BitRate: 900, Channels: 2, SampleRate: 44100},
-				})
+				}...)
 				mockTD.decision = &stream.TranscodeDecision{MediaID: "song-1", CanDirectPlay: true}
 				mockTD.token = "token"
 			})
@@ -362,14 +369,14 @@ var _ = Describe("Transcode endpoints", func() {
 			}
 
 			BeforeEach(func() {
-				mockMFRepo.SetData(model.MediaFiles{
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{
 					{ID: "song-1", Suffix: "flac", Codec: "FLAC", BitRate: 900, Channels: 2, SampleRate: 44100},
-				})
+				}...)
 				mockTD.decision = &stream.TranscodeDecision{MediaID: "song-1", CanTranscode: true}
 				mockTD.token = "token"
 			})
 
-			It("forces a supported format and clears direct play", func() {
+			It("forces a supported format and narrows direct play to it", func() {
 				body := `{"directPlayProfiles":[{"containers":["flac"],"audioCodecs":["flac"],"protocols":["http"]}],
 					"transcodingProfiles":[{"container":"ogg","audioCodec":"opus","protocol":"http"},
 						{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
@@ -380,7 +387,11 @@ var _ = Describe("Transcode endpoints", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockTD.capturedClient.TranscodingProfiles).To(HaveLen(1))
 				Expect(mockTD.capturedClient.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
-				Expect(mockTD.capturedClient.DirectPlayProfiles).To(BeEmpty())
+				Expect(mockTD.capturedClient.DirectPlayProfiles).To(ConsistOf(stream.DirectPlayProfile{
+					Containers:  []string{"ogg"},
+					AudioCodecs: []string{"opus"},
+					Protocols:   []string{"http"},
+				}))
 			})
 
 			It("falls back to negotiation when the forced format is unsupported", func() {
@@ -416,6 +427,43 @@ var _ = Describe("Transcode endpoints", func() {
 				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(128))
 				Expect(mockTD.capturedClient.MaxTranscodingAudioBitrate).To(Equal(128))
 			})
+
+			withForcedBitRate := func(r *http.Request, format string, defaultBitRate, playerMaxBitRate int) *http.Request {
+				ctx := request.WithTranscoding(r.Context(), model.Transcoding{TargetFormat: format, DefaultBitRate: defaultBitRate})
+				ctx = request.WithPlayer(ctx, model.Player{Client: "NavidromeUI", MaxBitRate: playerMaxBitRate})
+				return r.WithContext(ctx)
+			}
+
+			It("applies the transcoding default bitrate when the player sets no maxBitRate", func() {
+				body := `{"transcodingProfiles":[{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedBitRate(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "mp3", 192, 0)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(192))
+				Expect(mockTD.capturedClient.MaxTranscodingAudioBitrate).To(Equal(192))
+			})
+
+			It("prefers the player maxBitRate over the transcoding default bitrate", func() {
+				body := `{"transcodingProfiles":[{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedBitRate(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "mp3", 192, 320)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(320))
+			})
+
+			It("ignores the transcoding default bitrate when the forced format is unsupported", func() {
+				body := `{"transcodingProfiles":[{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedBitRate(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "opus", 192, 0)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(BeZero())
+			})
 		})
 	})
 
@@ -437,7 +485,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns 410 for invalid or mismatched token", func() {
-			mockMFRepo.SetData(model.MediaFiles{{ID: "123"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "123"}}...)
 			mockTD.resolveErr = stream.ErrTokenInvalid
 			r := newGetRequest("mediaId=123", "mediaType=song", "transcodeParams=bad-token")
 			resp, err := router.GetTranscodeStream(w, r)
@@ -447,7 +495,6 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns 404 when media file not found", func() {
-			// mockMFRepo has no data, so Get() returns ErrNotFound
 			r := newGetRequest("mediaId=gone-id", "mediaType=song", "transcodeParams=valid-token")
 			resp, err := router.GetTranscodeStream(w, r)
 			Expect(err).ToNot(HaveOccurred())
@@ -456,7 +503,7 @@ var _ = Describe("Transcode endpoints", func() {
 		})
 
 		It("returns 410 when media file has changed (stale token)", func() {
-			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1"}}...)
 			mockTD.resolveErr = stream.ErrTokenStale
 			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=stale-token")
 			resp, err := router.GetTranscodeStream(w, r)
@@ -468,7 +515,7 @@ var _ = Describe("Transcode endpoints", func() {
 		It("builds correct StreamRequest for direct play", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
-			mockMFRepo.SetData(model.MediaFiles{{ID: "song-1"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1"}}...)
 			mockTD.resolvedReq = stream.Request{}
 
 			r := newGetRequest("mediaId=song-1", "mediaType=song", "transcodeParams=valid-token")
@@ -485,7 +532,7 @@ var _ = Describe("Transcode endpoints", func() {
 		It("builds correct StreamRequest for transcoding", func() {
 			fakeStreamer := &fakeMediaStreamer{}
 			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
-			mockMFRepo.SetData(model.MediaFiles{{ID: "song-2"}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-2"}}...)
 			mockTD.resolvedReq = stream.Request{
 				Format:     "mp3",
 				BitRate:    256,
@@ -504,6 +551,60 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(fakeStreamer.captured.BitDepth).To(Equal(16))
 			Expect(fakeStreamer.captured.Channels).To(Equal(2))
 			Expect(fakeStreamer.captured.Offset).To(Equal(10))
+		})
+
+		Describe("serving the stream", func() {
+			transcoded := []byte("transcoded audio")
+
+			serve := func(method string, newStream func(*model.MediaFile) *stream.Stream, params ...string) {
+				router = New(ds, nil, &fakeMediaStreamer{newStream: newStream}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1", Title: "Song", Duration: 10}}...)
+				mockTD.resolvedReq = stream.Request{Format: "mp3", BitRate: 128}
+				r := newGetRequest(append([]string{"mediaId=song-1", "mediaType=song", "transcodeParams=valid-token"}, params...)...)
+				r.Method = method
+				_, _ = router.GetTranscodeStream(w, r)
+			}
+			inProgress := func(mf *model.MediaFile) *stream.Stream {
+				return stream.NewStream(mf, "mp3", 128, io.NopCloser(bytes.NewReader(transcoded)))
+			}
+			completed := func(mf *model.MediaFile) *stream.Stream {
+				rs := bytes.NewReader(transcoded)
+				s := stream.NewStream(mf, "mp3", 128, io.NopCloser(rs))
+				s.Seeker = rs
+				return s
+			}
+
+			It("returns 200 on HEAD for a transcode that is not cached yet", func() {
+				serve(http.MethodHead, inProgress)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).To(Equal("audio/mpeg"))
+				Expect(w.Body.Len()).To(BeZero())
+			})
+
+			It("declares the estimated length on HEAD for a transcode not cached yet, when asked", func() {
+				serve(http.MethodHead, inProgress, "estimateContentLength=true")
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Length")).ToNot(BeEmpty())
+			})
+
+			// Guards the seekable path, which must keep answering HEAD with 200 and the real length.
+			It("returns 200 with the real length on HEAD for a transcode completed in the cache", func() {
+				serve(http.MethodHead, completed)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Length")).To(Equal(strconv.Itoa(len(transcoded))))
+				Expect(w.Header().Get("Accept-Ranges")).To(Equal("bytes"))
+			})
+
+			It("still returns 500 on GET when the transcoder produces no output", func() {
+				serve(http.MethodGet, func(mf *model.MediaFile) *stream.Stream {
+					return stream.NewStream(mf, "mp3", 128, io.NopCloser(bytes.NewReader(nil)))
+				})
+
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
+			})
 		})
 	})
 
@@ -553,7 +654,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 // newJSONPostRequest creates an HTTP POST request with JSON body and query params
 func newJSONPostRequest(queryParams string, jsonBody string) *http.Request {
-	r := httptest.NewRequest("POST", "/getTranscodeDecision?"+queryParams, bytes.NewBufferString(jsonBody))
+	r := httptest.NewRequest(http.MethodPost, "/getTranscodeDecision?"+queryParams, bytes.NewBufferString(jsonBody))
 	r.Header.Set("Content-Type", "application/json")
 	return r
 }
@@ -584,6 +685,10 @@ func (m *mockTranscodeDecision) ResolveRequest(_ context.Context, _ *model.Media
 	return stream.Request{Format: "raw"}
 }
 
+func (m *mockTranscodeDecision) ResolveClientRequest(context.Context, *model.MediaFile, *stream.ClientInfo, int) stream.Request {
+	return stream.Request{Format: "raw"}
+}
+
 func (m *mockTranscodeDecision) CreateTranscodeParams(_ *stream.TranscodeDecision) (string, error) {
 	return m.token, m.tokenErr
 }
@@ -597,15 +702,26 @@ func (m *mockTranscodeDecision) ResolveRequestFromToken(_ context.Context, _ str
 	return req, nil
 }
 
-// fakeMediaStreamer captures the StreamRequest and returns a sentinel error,
-// allowing tests to verify parameter passing without constructing a real Stream.
+// fakeMediaStreamer captures the StreamRequest. Without newStream it returns a sentinel error,
+// allowing tests to verify parameter passing without constructing a real Stream. With newStream
+// it hands the handler a real Stream, so tests can check what Serve writes.
 var errStreamCaptured = errors.New("stream request captured")
 
 type fakeMediaStreamer struct {
-	captured *stream.Request
+	captured  *stream.Request
+	newStream func(*model.MediaFile) *stream.Stream
 }
 
-func (f *fakeMediaStreamer) NewStream(_ context.Context, _ *model.MediaFile, req stream.Request) (*stream.Stream, error) {
+func (f *fakeMediaStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	f.captured = &req
+	if f.newStream != nil {
+		return f.newStream(mf), nil
+	}
 	return nil, errStreamCaptured
+}
+
+type failingMediaFileGetRepo struct{ model.MediaFileRepository }
+
+func (failingMediaFileGetRepo) Get(context.Context, string) (*model.MediaFile, error) {
+	return nil, errors.New("db error")
 }

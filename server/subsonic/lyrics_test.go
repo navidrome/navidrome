@@ -1,15 +1,15 @@
 package subsonic
 
 import (
+	"context"
 	"encoding/json"
-	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -17,15 +17,14 @@ import (
 var _ = Describe("GetLyricsBySongId", func() {
 	var router *Router
 	var ds model.DataStore
-	mockRepo := &mockedMediaFile{MockMediaFileRepo: tests.MockMediaFileRepo{}}
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{
-			MockedMediaFile: mockRepo,
-		}
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		useRepoRootAsLibrary(ctx, ds)
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LyricsPriority = "embedded,.lrc"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.lrc" })
 	})
 
 	const syncedLyrics = "[00:18.80]We're no strangers to love\n[00:22.801]You know the rules and so do I"
@@ -109,14 +108,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:     "1",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: string(lyricsJson),
-			},
-		})
+		putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJson))
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
@@ -164,14 +156,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 			synced,
 		})
 		Expect(err).ToNot(HaveOccurred())
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:     "1",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: string(lyricsJson),
-			},
-		})
+		putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJson))
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
@@ -200,21 +185,10 @@ var _ = Describe("GetLyricsBySongId", func() {
 	})
 
 	It("should return multilingual TTML sidecar lyrics", func() {
-		conf.Server.LyricsPriority = ".ttml,embedded"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".ttml,embedded" })
 		r := newGetRequest("id=1")
 
-		fixturesDir, err := filepath.Abs("tests/fixtures")
-		Expect(err).ToNot(HaveOccurred())
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:          "1",
-				LibraryPath: fixturesDir,
-				Path:        "test.mp3",
-				Artist:      "Rick Astley",
-				Title:       "Never Gonna Give You Up",
-				Lyrics:      "[]",
-			},
-		})
+		putRickAstleySong(ctx, ds, "tests/fixtures/test.mp3", "[]")
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
@@ -256,21 +230,10 @@ var _ = Describe("GetLyricsBySongId", func() {
 	})
 
 	It("should return metadata-linked translation and pronunciation tracks from TTML", func() {
-		conf.Server.LyricsPriority = ".ttml,embedded"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".ttml,embedded" })
 		r := newGetRequest("id=1&enhanced=true")
 
-		fixturesDir, err := filepath.Abs("tests/fixtures")
-		Expect(err).ToNot(HaveOccurred())
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:          "1",
-				LibraryPath: fixturesDir,
-				Path:        "test-metadata.mp3",
-				Artist:      "Rick Astley",
-				Title:       "Never Gonna Give You Up",
-				Lyrics:      "[]",
-			},
-		})
+		putRickAstleySong(ctx, ds, "tests/fixtures/test-metadata.mp3", "[]")
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
@@ -397,14 +360,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:     "1",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: string(lyricsJson),
-			},
-		})
+		putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJson))
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
@@ -597,14 +553,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:     "1",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: string(lyricsJSON),
-			},
-		})
+		putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
@@ -700,14 +649,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:     "1",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: string(lyricsJSON),
-			},
-		})
+		putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
@@ -786,14 +728,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		mockRepo.SetData(model.MediaFiles{
-			{
-				ID:     "1",
-				Artist: "Rick Astley",
-				Title:  "Never Gonna Give You Up",
-				Lyrics: string(lyricsJSON),
-			},
-		})
+		putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())

@@ -23,8 +23,8 @@ var _ = Describe("buildExtismManifest", func() {
 		Expect(buildExtismManifest(pkg, nil).AllowedPaths).To(BeEmpty())
 	})
 
-	It("carries the hosts the plugin is allowed to reach", func() {
-		Expect(buildExtismManifest(pkg, nil).AllowedHosts).To(Equal([]string{"example.com"}))
+	It("never sets AllowedHosts, so plugin HTTP can't bypass the host service's SSRF guard", func() {
+		Expect(buildExtismManifest(pkg, nil).AllowedHosts).To(BeEmpty())
 	})
 })
 
@@ -87,7 +87,7 @@ var _ = Describe("parsePluginConfig", func() {
 	It("handles empty object", func() {
 		result, err := parsePluginConfig(`{}`)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(result).To(HaveLen(0))
+		Expect(result).To(BeEmpty())
 		Expect(result).ToNot(BeNil())
 	})
 })

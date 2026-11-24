@@ -93,7 +93,8 @@
         "addToPlaylist": "Toevoegen aan afspeellijst",
         "download": "Downloaden",
         "info": "Meer info",
-        "share": "Delen"
+        "share": "Delen",
+        "refresh": "Metadata verversen"
       },
       "lists": {
         "all": "Alle",
@@ -155,11 +156,13 @@
         "newPassword": "Nieuw wachtwoord",
         "token": "Token",
         "lastAccessAt": "Meest recente toegang",
-        "libraries": "Bibliotheken"
+        "libraries": "Bibliotheken",
+        "scrobbleFilter": "Scrobble filter"
       },
       "helperTexts": {
         "name": "Naamswijziging wordt pas zichtbaar bij de volgende login",
-        "libraries": "Selecteer specifieke bibliotheken voor deze gebruiker, of laat leeg om de standaardbiblliotheken te gebruiken"
+        "libraries": "Selecteer specifieke bibliotheken voor deze gebruiker, of laat leeg om de standaardbiblliotheken te gebruiken",
+        "scrobbleFilter": "Nummers binnen deze slimme afspeellijst regels worden niet gestuurd naar Last.fm, ListenBrainz of scrobbler plugins. Gebruikt dezelfde JSON syntaxis en gedrag als slimme afspeellijsten. Voorbeeld:  {\"all\":[{\"lt\":{\"rating\":4}}]}. Leeglaten om alles te scrobblen. Lokale afspeelaantallen vallen hierbuiten."
       },
       "notifications": {
         "created": "Aangemaakt door gebruiker",
@@ -173,7 +176,8 @@
         "adminAutoLibraries": "Admin gebruikers hebben automatisch toegang tot alle bibliotheken"
       },
       "validation": {
-        "librariesRequired": "Minstens één bibliotheek moet geselecteerd worden voor niet-admin gebruikers"
+        "librariesRequired": "Minstens één bibliotheek moet geselecteerd worden voor niet-admin gebruikers",
+        "invalidScrobbleFilter": "Moeten geldige slimme afspeellijst regels zijn. Geen ondersteuning voor Limit, Offset en Refresh Delay"
       }
     },
     "player": {
@@ -196,6 +200,9 @@
         "targetFormat": "Doelformaat",
         "defaultBitRate": "Standaard bitrate",
         "command": "Commando"
+      },
+      "choices": {
+        "noDefaultBitRate": "Geen"
       }
     },
     "playlist": {
@@ -210,7 +217,8 @@
         "songCount": "Nummers",
         "comment": "Commentaar",
         "sync": "Auto-importeren",
-        "path": "Importeer vanuit"
+        "path": "Importeer vanuit",
+        "starred": "Favoriet"
       },
       "actions": {
         "selectPlaylist": "Selecteer een afspeellijst:",
@@ -403,7 +411,8 @@
         "requiredHosts": "Benodigde hosts",
         "configValidationError": "Configuratiecheck mislukt",
         "schemaRenderError": "Kan het configuratieformulier niet verwerken. Het plugin schema is wellicht ongeldig.",
-        "allowWriteAccessHelp": "Met dit ingeschakeld, kan de plug-in bestanden bewerken in de bibliotheekmappen. Standaard kunnen plug-ins alleen lezen."
+        "allowWriteAccessHelp": "Met dit ingeschakeld, kan de plug-in bestanden bewerken in de bibliotheekmappen. Standaard kunnen plug-ins alleen lezen.",
+        "idHelp": "De plugin ID, afgeleid van zijn bestandsnaam. Gebruik dit als gerefereerd wordt aan deze plugin in de configuratie opties, zoals Agenten."
       },
       "placeholders": {
         "configKey": "Sleutel",
@@ -599,7 +608,11 @@
     "coverUploaded": "Albumhoes bijgewerkt",
     "coverRemoved": "Albumhoes verwijderd",
     "coverUploadError": "Fout bij het toevoegen albumhoes",
-    "coverRemoveError": "Fout bij verwijderen albumhoes"
+    "coverRemoveError": "Fout bij verwijderen albumhoes",
+    "metadataRefreshStarted": "Metadata verversen op de achtergrond",
+    "quickConnectApproved": "",
+    "quickConnectInvalidCode": "",
+    "quickConnectError": ""
   },
   "menu": {
     "library": "Bibliotheek",
@@ -634,6 +647,15 @@
       "multipleLibraries": "%{selected} van %{total} bibliotheken",
       "selectLibraries": "Selecteer bibliotheken",
       "none": "Geen"
+    },
+    "onlyFavourites": "Toon alleen favorieten",
+    "quickConnect": {
+      "name": "",
+      "code": "",
+      "help": "",
+      "confirm": "",
+      "continue": "",
+      "approve": ""
     }
   },
   "player": {

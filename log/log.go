@@ -1,6 +1,7 @@
 package log
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -9,9 +10,10 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -25,14 +27,16 @@ var redacted = &Hook{
 	AcceptedLevels: logrus.AllLevels,
 	RedactionList: []string{
 		// Keys from the config
-		"(ApiKey:\")[\\w]*",
-		"(Secret:\")[\\w]*",
+		"(ApiKey:[\\s]*\")[\\w]*",
+		"(Secret:[\\s]*\")[\\w]*",
 		"(PasswordEncryptionKey:[\\s]*\")[^\"]*",
 		"(UserHeader:[\\s]*\")[^\"]*",
 		"(TrustedSources:[\\s]*\")[^\"]*",
 		"(MetricsPath:[\\s]*\")[^\"]*",
 		"(DevAutoCreateAdminPassword:[\\s]*\")[^\"]*",
 		"(DevAutoLoginUsername:[\\s]*\")[^\"]*",
+		// Prometheus.Password. Any character is allowed, so skip escaped quotes in the value
+		`(Password:[\s]*")(?:[^"\\]|\\.)*`,
 
 		// UI appConfig
 		"(subsonicToken:)[\\w]+(\\s)",
@@ -76,18 +80,19 @@ type levelPath struct {
 }
 
 var (
-	currentLevel  Level
-	loggerMu      sync.RWMutex
-	defaultLogger = logrus.New()
-	logSourceLine = false
-	rootPath      string
-	logLevels     []levelPath
+	currentLevel         atomic.Uint32
+	hasLogLevelOverrides atomic.Bool
+	loggerMu             sync.RWMutex
+	defaultLogger        = logrus.New()
+	logSourceLine        = false
+	rootPath             string
+	logLevels            []levelPath
 )
 
 // SetLevel sets the global log level used by the simple logger.
 func SetLevel(l Level) {
 	loggerMu.Lock()
-	currentLevel = l
+	currentLevel.Store(uint32(l))
 	defaultLogger.Level = logrus.TraceLevel
 	loggerMu.Unlock()
 	logrus.SetLevel(logrus.Level(l))
@@ -126,9 +131,10 @@ func SetLogLevels(levels map[string]string) {
 	for k, v := range levels {
 		logLevels = append(logLevels, levelPath{path: k, level: ParseLogLevel(v)})
 	}
-	sort.Slice(logLevels, func(i, j int) bool {
-		return logLevels[i].path > logLevels[j].path
+	slices.SortFunc(logLevels, func(a, b levelPath) int {
+		return cmp.Compare(b.path, a.path)
 	})
+	hasLogLevelOverrides.Store(len(logLevels) != 0)
 }
 
 func SetLogSourceLine(enabled bool) {
@@ -193,9 +199,7 @@ func SetDefaultLogger(l *logrus.Logger) *logrus.Logger {
 }
 
 func CurrentLevel() Level {
-	loggerMu.RLock()
-	defer loggerMu.RUnlock()
-	return currentLevel
+	return Level(currentLevel.Load())
 }
 
 // IsGreaterOrEqualTo returns true if the caller's current log level is equal or greater than the provided level.
@@ -248,17 +252,17 @@ func Writer() io.Writer {
 }
 
 func shouldLog(requiredLevel Level, skip int) bool {
-	loggerMu.RLock()
-	level := currentLevel
-	levels := logLevels
-	loggerMu.RUnlock()
-
+	level := Level(currentLevel.Load())
 	if level >= requiredLevel {
 		return true
 	}
-	if len(levels) == 0 {
+	if !hasLogLevelOverrides.Load() {
 		return false
 	}
+
+	loggerMu.RLock()
+	levels := logLevels
+	loggerMu.RUnlock()
 
 	_, file, _, ok := runtime.Caller(skip)
 	if !ok {

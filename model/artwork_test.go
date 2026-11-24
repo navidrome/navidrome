@@ -19,9 +19,9 @@ func jsonOf(v any) map[string]any {
 
 var _ = Describe("ItemImage JSON", func() {
 	It("exposes the artwork state a client needs to render a placeholder", func() {
-		al := model.Album{ID: "al-1", Name: "Album"}
-		al.ImageHash = "0123456789abcdef"
-		al.ThumbHash = "1QcSHQRn"
+		al := model.Album{ID: "al-1", Name: "Album",
+			ImageHash: "0123456789abcdef",
+			ThumbHash: "1QcSHQRn"}
 		al.ImageWidth, al.ImageHeight = 1200, 800
 
 		Expect(jsonOf(al)).To(SatisfyAll(
@@ -33,8 +33,8 @@ var _ = Describe("ItemImage JSON", func() {
 	})
 
 	It("keeps the blurhash off the native API, where nothing consumes it", func() {
-		al := model.Album{ID: "al-1", Name: "Album"}
-		al.BlurHash = "LEHV6nWB2yk8"
+		al := model.Album{ID: "al-1", Name: "Album",
+			BlurHash: "LEHV6nWB2yk8"}
 		Expect(jsonOf(al)).ToNot(HaveKey("blurHash"))
 	})
 
@@ -48,8 +48,8 @@ var _ = Describe("ItemImage JSON", func() {
 	})
 
 	It("exposes known-absent artwork so clients can skip the request", func() {
-		ar := model.Artist{ID: "ar-1", Name: "Artist"}
-		ar.ImageAbsent = true
+		ar := model.Artist{ID: "ar-1", Name: "Artist",
+			ImageAbsent: true}
 		Expect(jsonOf(ar)).To(HaveKeyWithValue("imageAbsent", true))
 	})
 

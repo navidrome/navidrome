@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"image"
@@ -19,7 +20,6 @@ import (
 
 	_ "github.com/navidrome/navidrome/adapters/gotaglib"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -30,6 +30,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
@@ -50,7 +51,7 @@ const (
 
 var (
 	rctx    context.Context
-	rds     *tests.MockDataStore
+	rds     model.DataStore
 	rstore  *artwork.ImageStore
 	rsvc    artwork.Artwork
 	rworker *artwork.Worker
@@ -67,43 +68,48 @@ var userTables []string
 var _ = BeforeSuite(func() {
 	suiteDBTempDir = GinkgoT().TempDir()
 
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
+		c.DataFolder = conf.NewDir(GinkgoT().TempDir())
+	})
 	db.Db().SetMaxOpenConns(1)
-	db.Init(request.WithUser(context.Background(), model.User{ID: "admin-1", IsAdmin: true}))
+	db.Init(request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", IsAdmin: true}))
 
-	userTables = harness.ResettableTables()
+	var err error
+	userTables, err = persistencetest.Tables()
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
-	db.Close(context.Background())
+	db.Close(GinkgoT().Context())
 })
 
 func setupResolutionHarness() {
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 
 	tempDir := GinkgoT().TempDir()
-	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = conf.NewDir(tempDir)
-	conf.Server.MusicFolder = fakeLibPath
-	conf.Server.DevExternalScanner = false
-	conf.Server.ImageCacheSize = "0"
-	conf.Server.EnableExternalServices = false
-	conf.Server.EnableMediaFileCoverArt = true
-	conf.Server.DevArtworkWorkerConcurrency = 1
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
+		c.DataFolder = conf.NewDir(tempDir)
+		c.MusicFolder = fakeLibPath
+		c.DevExternalScanner = false
+		c.ImageCacheSize = "0"
+		c.EnableExternalServices = false
+		c.EnableMediaFileCoverArt = true
+		c.DevArtworkWorkerConcurrency = 1
+	})
 
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
 	harness.TruncateDB(userTables)
 
-	rds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	rds = persistence.New(db.Db())
 
 	adminUser := model.User{ID: "admin-1", UserName: "admin", Name: "Admin", IsAdmin: true, NewPassword: "password"}
-	Expect(rds.User(rctx).Put(&adminUser)).To(Succeed())
+	Expect(rds.User().Put(rctx, &adminUser)).To(Succeed())
 
 	lib := model.Library{ID: 1, Name: "Music", Path: fakeLibPath}
-	Expect(rds.Library(rctx).Put(&lib)).To(Succeed())
-	Expect(rds.User(rctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(rds.Library().Put(rctx, &lib)).To(Succeed())
+	Expect(rds.User().SetUserLibraries(rctx, adminUser.ID, []int{lib.ID})).To(Succeed())
 
 	loadEmbeddedFixture()
 
@@ -115,7 +121,7 @@ func setupResolutionHarness() {
 	// size=0 requests stream originals, so this reader is never called (serving_test covers resizing).
 	imgCache := cache.NewFileCache("ArtworkResolutionE2E", "100MB", "images", 0,
 		func(context.Context, cache.Item) (io.Reader, error) {
-			return nil, fmt.Errorf("resize not exercised in e2e")
+			return nil, errors.New("resize not exercised in e2e")
 		})
 	Eventually(func() bool { return imgCache.Available(rctx) }, 10*time.Second).Should(BeTrue())
 
@@ -140,13 +146,13 @@ func scan() {
 func acquire(kind model.Kind, id string) model.ItemArtwork {
 	GinkgoHelper()
 	// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
-	Expect(rds.ArtworkQueue(rctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
+	Expect(rds.ArtworkQueue().EnqueuePreservingBackoff(rctx, model.ArtworkQueueItem{
 		ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary,
 		Priority: model.ArtworkPriorityBump,
 	})).To(Succeed())
 	var ia *model.ItemArtwork
 	runResolutionWorkerUntil(func() bool {
-		got, err := rds.Artwork(rctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+		got, err := rds.Artwork().GetItemArtwork(rctx, kind, id, model.ImageTypePrimary)
 		if err != nil {
 			return false
 		}
@@ -211,7 +217,7 @@ func expectAlbumFolderCover(al model.Album, suffix string) {
 // A drain settles every ready item, so byte-level folder assertions must precede any acquire.
 func requireNoStateRow(kind model.Kind, id string) {
 	GinkgoHelper()
-	_, err := rds.Artwork(rctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+	_, err := rds.Artwork().GetItemArtwork(rctx, kind, id, model.ImageTypePrimary)
 	Expect(err).To(MatchError(model.ErrNotFound),
 		"assert %s %q before acquiring any other entity in this spec", kind, id)
 }
@@ -266,7 +272,7 @@ func gridQuadrants(data []byte) [4]color.RGBA {
 // Store-backed sources only (embedded/generated); file-backed ones assert on ia.SourcePath.
 func storedBytes(ia model.ItemArtwork) []byte {
 	GinkgoHelper()
-	art, err := rds.Artwork(rctx).GetImage(ia.Hash)
+	art, err := rds.Artwork().GetImage(rctx, ia.Hash)
 	Expect(err).ToNot(HaveOccurred())
 	r, err := rstore.Open(ia.Hash, art.Mime)
 	Expect(err).ToNot(HaveOccurred())
@@ -322,19 +328,14 @@ func loadEmbeddedFixture() {
 }
 
 func extractEmbeddedArt(mp3 []byte) []byte {
+	GinkgoHelper()
 	tf, err := taglib.OpenStream(bytes.NewReader(mp3))
-	if err != nil {
-		panic("embedded-art fixture: taglib.OpenStream failed: " + err.Error())
-	}
+	Expect(err).ToNot(HaveOccurred(), "embedded-art fixture: taglib.OpenStream failed")
 	defer tf.Close()
-	images := tf.Properties().Images
-	if len(images) == 0 {
-		panic("embedded-art fixture has no embedded images")
-	}
+	Expect(tf.Properties().Images).ToNot(BeEmpty(), "embedded-art fixture has no embedded images")
 	data, err := tf.Image(0)
-	if err != nil || len(data) == 0 {
-		panic("embedded-art fixture: could not read image 0")
-	}
+	Expect(err).ToNot(HaveOccurred(), "embedded-art fixture: could not read image 0")
+	Expect(data).ToNot(BeEmpty(), "embedded-art fixture: image 0 is empty")
 	return data
 }
 
@@ -345,7 +346,7 @@ func replaceWithRealMP3(relPath string) {
 
 func firstAlbum() model.Album {
 	GinkgoHelper()
-	albums, err := rds.Album(rctx).GetAll(model.QueryOptions{})
+	albums, err := rds.Album().GetAll(rctx, model.QueryOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(albums).To(HaveLen(1), "expected exactly one album, got %d", len(albums))
 	return albums[0]
@@ -353,7 +354,7 @@ func firstAlbum() model.Album {
 
 func albumByName(name string) model.Album {
 	GinkgoHelper()
-	albums, err := rds.Album(rctx).GetAll(model.QueryOptions{})
+	albums, err := rds.Album().GetAll(rctx, model.QueryOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	for _, al := range albums {
 		if al.Name == name {

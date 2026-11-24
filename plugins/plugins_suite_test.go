@@ -14,8 +14,11 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,19 +34,74 @@ var (
 	testdataDir   string // Path to testdata folder with test plugin .ndp packages
 	tmpPluginsDir string // Temp directory for plugin tests that modify files
 	testManager   *Manager
+	// testManagerPlugins are testManager's DB rows, for Ordered specs that need them after a reset
+	testManagerPlugins model.Plugins
 )
 
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
 
-	// Set globally so tests using configtest.SetupConfig inherit it. The cache
+	// Set globally so every spec's config snapshot inherits it. The cache
 	// persists between runs; entries are content-addressed, so a stale one only misses.
-	conf.Server.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
-	conf.Server.Plugins.CacheSize = "1GB" // the default evicts the cache mid-run
+	conf.Update(func(c *conf.Options) {
+		c.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
+		c.Plugins.CacheSize = "1GB"
+	}) // the default evicts the cache mid-run
 
 	log.SetLevel(log.LevelFatal)
+	persistencetest.Init(t)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
+}
+
+var _ = configtest.RestoreAfterEachSpec()
+var _ = persistencetest.ResetBeforeEachSpec()
+
+// newTestDataStore stores the plugin rows in the real database and returns a DataStore over it.
+func newTestDataStore(plugins ...model.Plugin) model.DataStore {
+	GinkgoHelper()
+	ds := persistence.New(db.Db())
+	ctx := adminContext(GinkgoT().Context())
+	for i := range plugins {
+		Expect(ds.Plugin().Put(ctx, &plugins[i])).To(Succeed())
+	}
+	return ds
+}
+
+// putUsers stores users, giving non-admins access to the libraries marked for new users.
+func putUsers(ds model.DataStore, users ...model.User) {
+	GinkgoHelper()
+	ctx := GinkgoT().Context()
+	for i := range users {
+		Expect(ds.User().Put(ctx, &users[i])).To(Succeed())
+	}
+}
+
+// putLibraries stores libs, including library 1's path and the stats columns Put does not write.
+func putLibraries(ds model.DataStore, libs ...model.Library) {
+	GinkgoHelper()
+	ctx := adminContext(GinkgoT().Context())
+	for i := range libs {
+		lib := libs[i]
+		if lib.ID == model.DefaultLibraryID {
+			// Library().Put refuses to change library 1's path; StoreMusicFolder is the only way.
+			restore := conf.SnapshotConfig()
+			conf.Update(func(c *conf.Options) { c.MusicFolder = lib.Path })
+			Expect(ds.Library().StoreMusicFolder(ctx)).To(Succeed())
+			restore()
+		}
+		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
+		_, err := db.Db().Exec(`UPDATE library SET total_songs = ?, total_albums = ?, total_artists = ?,
+			total_size = ?, total_duration = ? WHERE id = ?`,
+			lib.TotalSongs, lib.TotalAlbums, lib.TotalArtists, lib.TotalSize, lib.TotalDuration, lib.ID)
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
+
+// stubLocalhostDNS resolves "localhost." without real DNS: the trailing dot never matches /etc/hosts.
+func stubLocalhostDNS() {
+	dialResolver = tests.StubResolver(map[string]string{"localhost.": "127.0.0.1"})
+	DeferCleanup(func() { dialResolver = nil })
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
@@ -100,16 +158,14 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	}
 
 	// Setup config
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 
-	// Setup mock DataStore with pre-enabled plugins
-	mockPluginRepo := tests.CreateMockPluginRepo()
-	mockPluginRepo.Permitted = true
-	mockPluginRepo.SetData(enabledPlugins)
-	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+	dataStore := newTestDataStore(enabledPlugins...)
 
 	// Create and start manager
 	manager := &Manager{
@@ -140,6 +196,9 @@ var _ = SynchronizedBeforeSuite(func() {
 
 	// Create shared manager for most tests
 	testManager, tmpPluginsDir = createTestManager(nil)
+	var err error
+	testManagerPlugins, err = testManager.ds.Plugin().GetAll(adminContext(GinkgoT().Context()))
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -155,3 +214,23 @@ var _ = AfterSuite(func() {
 type noopMetricsRecorder struct{}
 
 func (noopMetricsRecorder) RecordPluginRequest(context.Context, string, string, bool, int64) {}
+
+// failingUsers makes the user lookups host services run fail with err.
+func failingUsers(ds model.DataStore, err error) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+		return failingUserRepo{UserRepository: r, err: err}
+	}})
+}
+
+type failingUserRepo struct {
+	model.UserRepository
+	err error
+}
+
+func (r failingUserRepo) GetAll(context.Context, ...model.QueryOptions) (model.Users, error) {
+	return nil, r.err
+}
+
+func (r failingUserRepo) FindByUsername(context.Context, string) (*model.User, error) {
+	return nil, r.err
+}

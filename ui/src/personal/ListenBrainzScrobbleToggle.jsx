@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNotify, useTranslate } from 'react-admin'
+import { useDirectDataProvider } from '../dataProvider'
 import { FormControl, FormControlLabel, Switch } from '@material-ui/core'
-import { httpClient } from '../dataProvider'
 import { ListenBrainzTokenDialog } from '../dialogs'
 import { useDispatch } from 'react-redux'
 import { openListenBrainzTokenDialog } from '../actions'
@@ -9,12 +9,14 @@ import { openListenBrainzTokenDialog } from '../actions'
 export const ListenBrainzScrobbleToggle = () => {
   const dispatch = useDispatch()
   const notify = useNotify()
+  const dataProvider = useDirectDataProvider()
   const translate = useTranslate()
   const [linked, setLinked] = useState(null)
 
   const toggleScrobble = () => {
     if (linked) {
-      httpClient('/api/listenbrainz/link', { method: 'DELETE' })
+      dataProvider
+        .unlinkListenBrainz()
         .then(() => {
           setLinked(false)
           notify('message.listenBrainzUnlinkSuccess', 'success')
@@ -26,14 +28,15 @@ export const ListenBrainzScrobbleToggle = () => {
   }
 
   useEffect(() => {
-    httpClient('/api/listenbrainz/link')
+    dataProvider
+      .getListenBrainzLink()
       .then((response) => {
-        setLinked(response.json.status === true)
+        setLinked(response.data.status === true)
       })
       .catch(() => {
         setLinked(false)
       })
-  }, [])
+  }, [dataProvider])
 
   return (
     <>

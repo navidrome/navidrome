@@ -8,9 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -30,23 +28,22 @@ var _ = Describe("loadPluginWithConfig", func() {
 		Expect(os.WriteFile(dest, data, 0600)).To(Succeed())
 		hash := sha256.Sum256(data)
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(pluginsDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.DataFolder = conf.NewDir(dataDir)
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(pluginsDir)
+			c.Plugins.AutoReload = false
+			c.DataFolder = conf.NewDir(dataDir)
+		})
 
-		repo := tests.CreateMockPluginRepo()
-		repo.Permitted = true
-		repo.SetData(model.Plugins{{
+		ds := newTestDataStore(model.Plugin{
 			ID:      "test-taskqueue",
 			Path:    dest,
 			SHA256:  hex.EncodeToString(hash[:]),
 			Enabled: false,
-		}})
+		})
 		manager = &Manager{
 			plugins:        make(map[string]*plugin),
-			ds:             &tests.MockDataStore{MockedPlugin: repo},
+			ds:             ds,
 			metrics:        noopMetricsRecorder{},
 			subsonicRouter: http.NotFoundHandler(),
 		}

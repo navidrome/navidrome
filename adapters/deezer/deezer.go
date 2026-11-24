@@ -34,7 +34,7 @@ type deezerAgent struct {
 func deezerConstructor(dataStore model.DataStore) agents.Interface {
 	agent := &deezerAgent{
 		dataStore: dataStore,
-		languages: conf.Server.Deezer.Languages,
+		languages: conf.Server().Deezer.Languages,
 	}
 	httpClient := httpclient.New(consts.DefaultHttpClientTimeOut)
 	cachedHttpClient := cache.NewHTTPClient(httpClient, consts.DefaultHttpClientTimeOut)
@@ -91,9 +91,6 @@ func isPlaceholderPicture(url string) bool {
 
 func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
 	artists, err := s.client.searchArtists(ctx, name, deezerArtistSearchLimit)
-	if errors.Is(err, ErrNotFound) || len(artists) == 0 {
-		return nil, agents.ErrNotFound
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +192,7 @@ func (s *deezerAgent) GetArtistBiography(ctx context.Context, _, name, _ string)
 
 func init() {
 	conf.AddHook(func() {
-		if conf.Server.Deezer.Enabled {
+		if conf.Server().Deezer.Enabled {
 			agents.Register(deezerAgentName, deezerConstructor)
 		}
 	})

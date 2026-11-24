@@ -31,6 +31,10 @@ func ResetMock() {
 {{- if .Doc}}
 // {{.Name}} {{firstSentence .Doc}}
 {{- end}}
+{{- if .Deprecated}}
+//
+// Deprecated: {{.Deprecated}}
+{{- end}}
 func {{.Name}}({{paramList .Params}}){{returnList .Returns}} {
 {{- if .Returns}}
 	args := PDKMock.Called({{argList .Params}})

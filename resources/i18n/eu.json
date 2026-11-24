@@ -93,7 +93,8 @@
         "addToPlaylist": "Gehitu zerrendara",
         "download": "Deskargatu",
         "info": "Erakutsi informazioa",
-        "share": "Partekatu"
+        "share": "Partekatu",
+        "refresh": "Freskatu metadatuak"
       },
       "lists": {
         "all": "Guztiak",
@@ -155,11 +156,13 @@
         "newPassword": "Pasahitz berria",
         "token": "Tokena",
         "lastAccessAt": "Azken sarbidea",
-        "libraries": "Liburutegiak"
+        "libraries": "Liburutegiak",
+        "scrobbleFilter": "Erabiltzailearen ohituren iragazkia"
       },
       "helperTexts": {
         "name": "Aldaketak saioa hasten duzun hurrengoan islatuko dira",
-        "libraries": "Hautatu erabiltzaile honentzat liburutegi jakinak, edo utzi hutsik defektuzko liburutegiak erabiltzeko"
+        "libraries": "Hautatu erabiltzaile honentzat liburutegi jakinak, edo utzi hutsik defektuzko liburutegiak erabiltzeko",
+        "scrobbleFilter": "Erreprodukzio-zerrenda adimenduaren arauekin bat datozen abestiak ez dira Last.fm, ListenBrainz edo erabiltzailearen ohiturak aztertzen dituzten pluginetara bidaltzen. Erreprodukzio-zerrenda adimenduen JSON sintaxi eta portaera bera erabiltzen du. Adibidea: {\"all\":[{\"lt\":{\"rating\":4}}]}. Utzi hutsik erabiltzailearen ohitura guztiak aztertzeko. Ez dio eragiten lokalean erreproduzitutako zenbaketari."
       },
       "notifications": {
         "created": "Erabiltzailea sortu da",
@@ -167,7 +170,8 @@
         "deleted": "Erabiltzailea ezabatu da"
       },
       "validation": {
-        "librariesRequired": "Gutxienez liburutegi bat hautatu behar da administratzaile ez diren erabiltzaileentzat"
+        "librariesRequired": "Gutxienez liburutegi bat hautatu behar da administratzaile ez diren erabiltzaileentzat",
+        "invalidScrobbleFilter": "Erreprodukzio-zerrenda adimendunaren baliozko arauak izan behar dute. Muga, konpentsazioa eta freskatze-atzerapena ez dira onartzen."
       },
       "message": {
         "listenBrainzToken": "Idatzi zure ListenBrainz erabiltzailearen tokena",
@@ -196,6 +200,9 @@
         "targetFormat": "Helburuko formatua",
         "defaultBitRate": "Bit tasa, defektuz",
         "command": "Komandoa"
+      },
+      "choices": {
+        "noDefaultBitRate": "Bat ere ez"
       }
     },
     "playlist": {
@@ -210,7 +217,8 @@
         "songCount": "abesti",
         "comment": "Iruzkina",
         "sync": "Automatikoki inportatuak",
-        "path": "Inportatze-data:"
+        "path": "Inportatze-data:",
+        "starred": "Gogokoa"
       },
       "actions": {
         "selectPlaylist": "Hautatu zerrenda:",
@@ -392,6 +400,7 @@
         "invalidJson": "Konfigurazioa baliozko JSON-a izan behar da"
       },
       "messages": {
+        "idHelp": "Pluginaren IDa, fitxategi-izenetik eratorria. Erabili konfigurazioaren aukeretan pluginari erreferentzia egitean, agenteak esaterako.",
         "configHelp": "Konfiguratu plugina gako-balio bikoteak erabiliz. Utzi hutsik pluginak konfiguraziorik behar ez badu.",
         "configValidationError": "Huts egin du konfigurazioaren balidazioak:",
         "schemaRenderError": "Ezin izan da konfigurazioaren formularioa bihurtu. Litekeena da pluginaren eskema baliozkoa ez izatea.",
@@ -565,6 +574,7 @@
     "coverRemoved": "Diskoaren azala kendu da",
     "coverUploadError": "Errorea diskoaren azala igotzean",
     "coverRemoveError": "Errorea diskoaren azala kentzean",
+    "metadataRefreshStarted": "Metadata atzeko planoan freskatzen ari da",
     "note": "OHARRA",
     "transcodingDisabled": "Segurtasun arrazoiak direla-eta, transkodeketaren ezarpenak web-interfazearen bidez aldatzea ezgaituta dago. Transkodeketa-aukerak aldatu (editatu edo gehitu) nahi badituzu, berrabiarazi zerbitzaria konfigurazio-aukeraren %{config}-arekin.",
     "transcodingEnabled": "Navidrome %{config}-ekin martxan dago eta, beraz, web-interfazeko transkodeketa-ataletik sistema-komandoak exekuta daitezke. Segurtasun arrazoiak tarteko, ezgaitzea gomendatzen dugu, eta transkodeketa-aukerak konfiguratzen ari zarenean bakarrik gaitzea.",
@@ -635,6 +645,7 @@
     },
     "albumList": "Albumak",
     "playlists": "Zerrendak",
+    "onlyFavourites": "Erakutsi gogokoak bakarrik",
     "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak",
     "about": "Honi buruz"
   },

@@ -1,0 +1,13 @@
+type: object
+description: Pagination metadata carried by every list response.
+required: [total, offset, limit]
+properties:
+  total:
+    type: integer
+    description: Total number of items matching the request, ignoring pagination.
+  offset:
+    type: integer
+    description: Zero-based index of the first returned item.
+  limit:
+    type: integer
+    description: Maximum number of items in this page.

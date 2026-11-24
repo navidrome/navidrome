@@ -37,8 +37,8 @@ type Router struct {
 func NewRouter(ds model.DataStore) *Router {
 	r := &Router{
 		ds:          ds,
-		apiKey:      conf.Server.LastFM.ApiKey,
-		secret:      conf.Server.LastFM.Secret,
+		apiKey:      conf.Server().LastFM.ApiKey,
+		secret:      conf.Server().LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	r.Handler = r.routes()
@@ -122,7 +122,7 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("An error occurred while authorizing with Last.fm. \n\nRequest ID: " + middleware.GetReqID(ctx))) //nolint:gosec
+		_, _ = w.Write([]byte("An error occurred while authorizing with Last.fm. \n\nRequest ID: " + middleware.GetReqID(ctx)))
 		return
 	}
 
@@ -132,7 +132,7 @@ func (s *Router) callback(w http.ResponseWriter, r *http.Request) {
 func (s *Router) fetchSessionKey(ctx context.Context, uid, token string) error {
 	sessionKey, err := s.client.getSession(ctx, token)
 	if err != nil {
-		log.Error(ctx, "Could not fetch LastFM session key", "userId", uid, "token", token,
+		log.Error(ctx, "Could not fetch LastFM session key", "userId", uid,
 			"requestId", middleware.GetReqID(ctx), err)
 		return err
 	}

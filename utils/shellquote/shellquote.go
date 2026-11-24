@@ -33,8 +33,8 @@ func Split(input string) ([]string, error) {
 
 		switch parseState {
 		case stateUnquoted:
-			switch {
-			case ch == '\\':
+			switch ch {
+			case '\\':
 				if i+1 >= len(input) {
 					return nil, ErrUnterminatedEscape
 				}
@@ -46,13 +46,13 @@ func Split(input string) ([]string, error) {
 				i++
 				word.WriteByte(input[i])
 				inWord = true
-			case ch == '\'':
+			case '\'':
 				parseState = stateSingleQuoted
 				inWord = true
-			case ch == '"':
+			case '"':
 				parseState = stateDoubleQuoted
 				inWord = true
-			case ch == ' ' || ch == '\t' || ch == '\n':
+			case ' ', '\t', '\n':
 				if inWord {
 					words = append(words, word.String())
 					word.Reset()
@@ -71,10 +71,10 @@ func Split(input string) ([]string, error) {
 			}
 
 		case stateDoubleQuoted:
-			switch {
-			case ch == '"':
+			switch ch {
+			case '"':
 				parseState = stateUnquoted
-			case ch == '\\':
+			case '\\':
 				if i+1 >= len(input) {
 					return nil, ErrUnterminatedEscape
 				}
@@ -105,6 +105,7 @@ func Split(input string) ([]string, error) {
 		return nil, ErrUnterminatedSingleQuote
 	case stateDoubleQuoted:
 		return nil, ErrUnterminatedDoubleQuote
+	case stateUnquoted:
 	}
 
 	if inWord {

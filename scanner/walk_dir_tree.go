@@ -43,16 +43,25 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				continue
 			}
 
-			// Create checker and push patterns from root to this folder
+			// A full walk never descends into symlinked folders when following is disabled, so a
+			// target reached through one (e.g. a watcher event for a new link) is skipped too.
+			if !conf.Server().Scanner.FollowSymlinks && isSymlinkedPath(job.fs, folderPath) {
+				log.Debug(ctx, "Scanner: Skipping symlinked target folder, following is disabled", "path", folderPath)
+				continue
+			}
+
+			// walkFolder pushes the target folder's own patterns, so only its parents are pushed here
 			checker := newIgnoreChecker(job.fs)
-			err = checker.PushAllParents(ctx, folderPath)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error pushing ignore patterns for target folder", "path", folderPath, err)
+			if checker.PushParents(ctx, folderPath) {
+				log.Debug(ctx, "Scanner: Skipping target folder ignored by its parents", "path", folderPath)
 				continue
 			}
 
 			// Recursively walk this folder and all its children
 			err = walkFolder(ctx, job, folderPath, checker, results)
+			if utils.IsCtxDone(ctx) {
+				return
+			}
 			if err != nil {
 				log.Error(ctx, "Scanner: Error walking target folder", "path", folderPath, err)
 				continue
@@ -87,9 +96,12 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 	folder.path = dir
 	folder.elapsed.Start()
 
-	results <- folder
-
-	return nil
+	select {
+	case results <- folder:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
@@ -208,7 +220,7 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 		return false, nil
 	}
 	// If symlinks are disabled, return false for symlinks
-	if !conf.Server.Scanner.FollowSymlinks {
+	if !conf.Server().Scanner.FollowSymlinks {
 		return false, nil
 	}
 	// Does this symlink point to a directory?
@@ -217,6 +229,18 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 		return false, err
 	}
 	return fileInfo.IsDir(), nil
+}
+
+// isSymlinkedPath returns true if folderPath, or any of its parent folders, is a symbolic link.
+// It needs fsys to implement fs.ReadLinkFS, otherwise links are followed and never detected.
+func isSymlinkedPath(fsys fs.FS, folderPath string) bool {
+	for p := path.Clean(folderPath); p != "." && p != "/"; p = path.Dir(p) {
+		info, err := fs.Lstat(fsys, p)
+		if err == nil && info.Mode()&fs.ModeSymlink != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 const maxSymlinkHops = 40
@@ -230,7 +254,7 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 		return entry.Name(), true
 	}
 	linkPath := path.Join(dirPath, entry.Name())
-	if !conf.Server.Scanner.FollowSymlinks {
+	if !conf.Server().Scanner.FollowSymlinks {
 		log.Trace(ctx, "Scanner: Skipping symlink, following is disabled", "path", linkPath)
 		return "", false
 	}
@@ -249,7 +273,7 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 		return resolved, true
 	}
 	cur := linkPath
-	for hop := 0; hop < maxSymlinkHops; hop++ {
+	for hop := range maxSymlinkHops {
 		target, err := fs.ReadLink(fsys, cur)
 		if err != nil {
 			if hop == 0 {
@@ -286,11 +310,12 @@ func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
 	return true
 }
 
-// List of special directories to ignore
+// ignoredDirs lists special directories to ignore
 var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
 	"@Recycle",
+	"@eaDir",
 	"@Recently-Snapshot",
 	".git",
 	".streams",
@@ -307,7 +332,7 @@ func isIgnoredEntry(name string, isDir bool) bool {
 	if isDir && isDirIgnored(name) {
 		return true
 	}
-	return isDotEntry(name) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
+	return isDotEntry(name) && (!isDir || conf.Server().Scanner.IgnoreDotFolders)
 }
 
 // isDirIgnored returns true if the directory name is in the explicit ignoredDirs

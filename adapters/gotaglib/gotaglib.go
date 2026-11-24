@@ -246,7 +246,7 @@ func parseASFAttributes(rawAttrs map[string][]string, tags map[string][]string) 
 	}
 }
 
-// These are the only roles we support, based on Picard's tag map:
+// tiplMapping lists the only roles we support, based on Picard's tag map:
 // https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html
 var tiplMapping = map[string]string{
 	"arranger": "arranger",

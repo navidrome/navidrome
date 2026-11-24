@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -145,28 +144,25 @@ var _ = Describe("TagConf", func() {
 	})
 
 	Describe("artistSplitExceptionsRx", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("returns nil when no exceptions are configured", func() {
-			conf.Server.Scanner.ArtistSplitExceptions = nil
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = nil })
 			Expect(artistSplitExceptionsRx()).To(BeNil())
 		})
 
 		It("compiles the configured exceptions", func() {
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"} })
 			rx := artistSplitExceptionsRx()
 			Expect(rx).ToNot(BeNil())
 			Expect(rx.MatchString("iron and wine")).To(BeTrue())
 		})
 
 		It("caches the compiled regex until the configuration changes", func() {
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"} })
 			first := artistSplitExceptionsRx()
 			Expect(artistSplitExceptionsRx()).To(BeIdenticalTo(first))
 
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"AC/DC"} })
 			second := artistSplitExceptionsRx()
 			Expect(second).ToNot(BeIdenticalTo(first))
 			Expect(second.MatchString("AC/DC")).To(BeTrue())
@@ -175,8 +171,7 @@ var _ = Describe("TagConf", func() {
 
 	Describe("WithParticipantExceptions", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"} })
 		})
 
 		It("attaches the exceptions regex to participant tags", func() {
@@ -190,5 +185,24 @@ var _ = Describe("TagConf", func() {
 				Expect(TagConf{}.WithParticipantExceptions(tag).ExceptionsRx).To(BeNil(), string(tag))
 			}
 		})
+	})
+})
+
+var _ = Describe("CanonicalTagName", func() {
+	DescribeTable("resolves tag names and aliases",
+		func(name string, expected TagName) {
+			tagName, ok := CanonicalTagName(name)
+			Expect(ok).To(BeTrue())
+			Expect(tagName).To(Equal(expected))
+		},
+		Entry("tag name", "album", TagAlbum),
+		Entry("alias", "talb", TagAlbum),
+		Entry("mixed case alias", "TALB", TagAlbum),
+		Entry("tag name that is also an alias of another tag", "musicbrainz_trackid", TagMusicBrainzTrackID),
+	)
+
+	It("does not resolve an unknown name", func() {
+		_, ok := CanonicalTagName("nosuchtag")
+		Expect(ok).To(BeFalse())
 	})
 })

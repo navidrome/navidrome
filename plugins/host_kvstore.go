@@ -54,7 +54,7 @@ func newKVStoreService(ctx context.Context, pluginName string, perm *KVStorePerm
 	}
 
 	// Create plugin data directory
-	dataDir := filepath.Join(conf.Server.DataFolder.String(), "plugins", pluginName)
+	dataDir := filepath.Join(conf.Server().DataFolder.String(), "plugins", pluginName)
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("creating plugin data directory: %w", err)
 	}
@@ -136,7 +136,7 @@ func (s *kvstoreServiceImpl) checkStorageLimit(ctx context.Context, delta int64)
 // A ttlSeconds of 0 means no expiration.
 func (s *kvstoreServiceImpl) setValue(ctx context.Context, key string, value []byte, ttlSeconds int64) error {
 	if len(key) == 0 {
-		return fmt.Errorf("key cannot be empty")
+		return errors.New("key cannot be empty")
 	}
 	if len(key) > maxKeyLength {
 		return fmt.Errorf("key exceeds maximum length of %d bytes", maxKeyLength)
@@ -187,7 +187,7 @@ func (s *kvstoreServiceImpl) Set(ctx context.Context, key string, value []byte) 
 // SetWithTTL stores a byte value with the given key and a time-to-live.
 func (s *kvstoreServiceImpl) SetWithTTL(ctx context.Context, key string, value []byte, ttlSeconds int64) error {
 	if ttlSeconds <= 0 {
-		return fmt.Errorf("ttlSeconds must be greater than 0")
+		return errors.New("ttlSeconds must be greater than 0")
 	}
 	return s.setValue(ctx, key, value, ttlSeconds)
 }
@@ -277,7 +277,7 @@ func (s *kvstoreServiceImpl) GetStorageUsed(ctx context.Context) (int64, error) 
 // DeleteByPrefix removes all keys matching the given prefix.
 func (s *kvstoreServiceImpl) DeleteByPrefix(ctx context.Context, prefix string) (int64, error) {
 	if prefix == "" {
-		return 0, fmt.Errorf("prefix cannot be empty")
+		return 0, errors.New("prefix cannot be empty")
 	}
 
 	escapedPrefix := strings.ReplaceAll(prefix, "%", "\\%")

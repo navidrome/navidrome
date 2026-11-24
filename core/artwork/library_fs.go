@@ -30,7 +30,7 @@ func (v libraryView) Abs(rel string) string {
 // loadLibraryView resolves the MusicFS and absolute root path in a single
 // library lookup.
 func loadLibraryView(ctx context.Context, ds model.DataStore, libID int) (libraryView, error) {
-	lib, err := ds.Library(ctx).Get(libID)
+	lib, err := ds.Library().Get(ctx, libID)
 	if err != nil {
 		return libraryView{}, err
 	}

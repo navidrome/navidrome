@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -42,33 +44,31 @@ func (m *mockArchiver) ZipShare(_ context.Context, _ *model.Share, w io.Writer) 
 }
 
 var _ = Describe("handleDownloads", func() {
-	var ds *tests.MockDataStore
-	var shareRepo *tests.MockShareRepo
+	var ctx context.Context
+	var ds model.DataStore
 	var archiver *mockArchiver
 	var pub *Router
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
-		shareRepo = &tests.MockShareRepo{}
-		ds.MockedShare = shareRepo
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 		archiver = &mockArchiver{}
 		pub = &Router{ds: ds, archiver: archiver, share: core.NewShare(ds)}
 	})
 
-	shareIs := func(s *model.Share) {
-		shareRepo.ID = s.ID
-		shareRepo.Entity = s
+	shareIs := func(s model.Share) {
+		putShare(ctx, ds, s)
 	}
 
 	makeRequest := func(id string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest("GET", "/public/d/"+id+"?%3Aid="+id, nil)
+		r := httptest.NewRequest(http.MethodGet, "/public/d/"+id+"?%3Aid="+id, nil)
 		w := httptest.NewRecorder()
 		pub.handleDownloads(w, r)
 		return w
 	}
 
 	It("sets a Content-Disposition filename from the share description", func() {
-		shareIs(&model.Share{ID: "abc123", Description: "My Mixtape", Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Description: "My Mixtape", Downloadable: true})
 
 		w := makeRequest("abc123")
 
@@ -80,7 +80,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("falls back to the share ID when there is no description", func() {
-		shareIs(&model.Share{ID: "abc123", Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Downloadable: true})
 
 		w := makeRequest("abc123")
 
@@ -88,15 +88,35 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("sanitizes characters that are unsafe in a filename", func() {
-		shareIs(&model.Share{ID: "abc123", Description: `AC/DC: Live, 1979`, Downloadable: true})
+		shareIs(model.Share{ID: "abc123", Description: `AC/DC: Live, 1979`, Downloadable: true})
 
 		w := makeRequest("abc123")
 
 		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="AC_DC_ Live_ 1979.zip"`))
 	})
 
+	It("sanitizes the UTF-8 filename* as well", func() {
+		shareIs(model.Share{ID: "abc123", Description: "Sigur Rós/Live", Downloadable: true})
+
+		w := makeRequest("abc123")
+
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="Sigur Ros_Live.zip"; filename*=utf-8''Sigur%20R%C3%B3s_Live.zip`))
+	})
+
+	It("does not let the share description inject a second filename parameter", func() {
+		shareIs(model.Share{ID: "abc123", Description: `mix"; filename="evil.html`, Downloadable: true})
+
+		w := makeRequest("abc123")
+
+		disposition := w.Header().Get("Content-Disposition")
+		Expect(disposition).ToNot(ContainSubstring(`filename="evil.html`))
+		_, params, err := mime.ParseMediaType(disposition)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(params["filename"]).To(Equal(`mix_; filename=_evil.html.zip`))
+	})
+
 	It("returns 403 without invoking the archiver when the share is not downloadable", func() {
-		shareIs(&model.Share{ID: "abc123", Description: "No Download", Downloadable: false})
+		shareIs(model.Share{ID: "abc123", Description: "No Download", Downloadable: false})
 
 		w := makeRequest("abc123")
 
@@ -106,7 +126,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("returns 404 when the share does not exist", func() {
-		shareIs(&model.Share{ID: "other", Downloadable: true})
+		shareIs(model.Share{ID: "other", Downloadable: true})
 
 		w := makeRequest("missing")
 
@@ -115,7 +135,7 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("returns 410 when the share has expired", func() {
-		shareIs(&model.Share{ID: "abc123", Downloadable: true, ExpiresAt: new(time.Now().Add(-time.Hour))})
+		shareIs(model.Share{ID: "abc123", Downloadable: true, ExpiresAt: new(time.Now().Add(-time.Hour))})
 
 		w := makeRequest("abc123")
 
@@ -124,7 +144,8 @@ var _ = Describe("handleDownloads", func() {
 	})
 
 	It("returns 500 when the share lookup fails", func() {
-		shareRepo.Error = errors.New("db error")
+		ds = withShareGetError(ds, errors.New("db error"))
+		pub = &Router{ds: ds, archiver: archiver, share: core.NewShare(ds)}
 
 		w := makeRequest("abc123")
 

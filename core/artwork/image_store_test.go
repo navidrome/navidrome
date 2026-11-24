@@ -19,9 +19,9 @@ var _ = Describe("ImageStore", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		root = GinkgoT().TempDir()
 		store = NewImageStore(root)
-		ctx = context.Background()
 	})
 
 	It("hashes deterministically", func() {
@@ -46,6 +46,17 @@ var _ = Describe("ImageStore", func() {
 		defer rc.Close()
 		got, _ := io.ReadAll(rc)
 		Expect(got).To(Equal(data))
+	})
+
+	It("writes group-readable image files", func() {
+		tests.SkipOnWindows("uses Unix file permission bits")
+		data := []byte("jpeg-bytes")
+		h, _ := hashImage(bytes.NewReader(data))
+		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
+
+		info, err := os.Stat(store.path(h, "image/jpeg"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(info.Mode().Perm()).To(Equal(os.FileMode(0640)))
 	})
 
 	It("is idempotent on duplicate writes and preserves the original content", func() {

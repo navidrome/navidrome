@@ -22,6 +22,7 @@ const defaultConfig = {
   defaultUIVolume: 100,
   uiSearchDebounceMs: 200,
   uiCoverArtSize: 600,
+  uiAppendRemixers: true,
   enableUserEditing: true,
   enableArtworkUpload: true,
   enableSharing: true,
@@ -32,12 +33,15 @@ const defaultConfig = {
   listenBrainzEnabled: true,
   enableExternalServices: true,
   enableCoverAnimation: true,
+  pidAlbum: 'musicbrainz_albumid|albumartistid,album,albumversion,releasedate', // See consts.DefaultAlbumPID
+  pidTrack: 'musicbrainz_trackid|albumid,discnumber,tracknumber,title', // See consts.DefaultTrackPID
   enableNowPlaying: true,
   playbackReportIntervalMs: 60000,
   devShowArtistPage: true,
   devUIShowConfig: true,
   devNewEventStream: false,
   enableReplayGain: true,
+  enableQuickConnect: false,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
   separator: '/',

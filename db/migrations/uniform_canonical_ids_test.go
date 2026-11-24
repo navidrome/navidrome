@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 
@@ -15,7 +14,6 @@ import (
 var _ = Describe("upUniformCanonicalIds", func() {
 	var db *sql.DB
 	var tx *sql.Tx
-	ctx := context.Background()
 
 	const (
 		hashID    = "5cLJPkLA5DK2BADhoeotPk" // canonical, kept
@@ -98,7 +96,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		var err error
 		tx, err = db.Begin()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(upUniformCanonicalIds(ctx, tx)).To(Succeed())
+		Expect(upUniformCanonicalIds(GinkgoT().Context(), tx)).To(Succeed())
 		Expect(tx.Commit()).To(Succeed())
 	})
 
@@ -198,9 +196,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 
 	Context("with a legacy PID configuration", func() {
 		BeforeEach(func() {
-			prev := conf.Server.PID.Album
-			conf.Server.PID.Album = "album_legacy"
-			DeferCleanup(func() { conf.Server.PID.Album = prev })
+			conf.Update(func(c *conf.Options) { c.PID.Album = "album_legacy" })
 		})
 
 		It("forces a full rescan so composite pids are rewritten", func() {

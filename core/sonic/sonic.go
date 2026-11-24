@@ -100,7 +100,7 @@ func (s *Sonic) GetSonicSimilarTracks(ctx context.Context, id string, count int)
 		return nil, err
 	}
 
-	mf, err := s.ds.MediaFile(ctx).Get(id)
+	mf, err := s.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("getting media file %s: %w", id, err)
 	}
@@ -120,11 +120,11 @@ func (s *Sonic) FindSonicPath(ctx context.Context, startID, endID string, count 
 		return nil, err
 	}
 
-	startMF, err := s.ds.MediaFile(ctx).Get(startID)
+	startMF, err := s.ds.MediaFile().Get(ctx, startID)
 	if err != nil {
 		return nil, fmt.Errorf("getting start media file %s: %w", startID, err)
 	}
-	endMF, err := s.ds.MediaFile(ctx).Get(endID)
+	endMF, err := s.ds.MediaFile().Get(ctx, endID)
 	if err != nil {
 		return nil, fmt.Errorf("getting end media file %s: %w", endID, err)
 	}

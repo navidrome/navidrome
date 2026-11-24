@@ -57,7 +57,8 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)
-	opts := model.QueryOptions{Offset: p.IntOr("startindex", 0), Max: p.IntOr("limit", 0)}
+	offset, limit := pageParams(p)
+	opts := model.QueryOptions{Offset: offset, Max: limit}
 	res, err := api.listGenres(ctx, opts)
 	if err != nil {
 		api.internalError(w, r, err)
@@ -77,14 +78,14 @@ func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	opts := model.QueryOptions{Sort: "tag_value", Filters: libraryScopeFilter(scope)}
-	labels, err := api.ds.Tag(ctx).GetAll(model.TagRecordLabel, opts)
+	labels, err := api.ds.Tag().GetAll(ctx, model.TagRecordLabel, opts)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
 	}
 	items := slice.Map(labels, dto.StudioToBaseItem)
-	offset, max := p.IntOr("startindex", 0), p.IntOr("limit", 0)
-	api.ok(w, r, result(paginate(items, offset, max), len(items), offset))
+	offset, limit := pageParams(p)
+	api.ok(w, r, result(paginate(items, offset, limit), len(items), offset))
 }
 
 // getQueryFiltersLegacy handles GET /Items/Filters. Genres and Years are scoped to ParentId's
@@ -97,12 +98,12 @@ func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	genreOpts := model.QueryOptions{Sort: "name", Filters: libraryScopeFilter(scope)}
-	genres, err := api.ds.Genre(ctx).GetAll(genreOpts)
+	genres, err := api.ds.Genre().GetAll(ctx, genreOpts)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
 	}
-	years, err := api.ds.Album(ctx).GetYears(scope...)
+	years, err := api.ds.Album().GetYears(ctx, scope...)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -13,18 +14,35 @@ import (
 // getUserViews returns one CollectionFolder view per accessible library, so clients browse each
 // library as its own top-level view rather than one aggregate.
 func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
-	u, _ := request.UserFrom(r.Context())
-	views := make([]dto.BaseItemDto, 0, len(u.Libraries))
-	for _, lib := range u.Libraries {
-		views = append(views, libraryView(lib))
+	views, err := api.userViews(r.Context())
+	if err != nil {
+		api.internalError(w, r, err)
+		return
 	}
 	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})
+}
+
+func (api *Router) userViews(ctx context.Context) ([]dto.BaseItemDto, error) {
+	u, _ := request.UserFrom(ctx)
+	// u.Libraries comes from a projection without counts or stats, and clients hide a library that
+	// looks empty, so the rows are re-read in full here.
+	libs, err := api.ds.Library().GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]dto.BaseItemDto, 0, len(libs))
+	for _, lib := range libs {
+		if u.HasLibraryAccess(lib.ID) {
+			views = append(views, dto.LibraryToBaseItem(lib))
+		}
+	}
+	return views, nil
 }
 
 func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u, _ := request.UserFrom(ctx)
-	api.ok(w, r, userToDto(&u, api.serverName(), api.serverID(ctx)))
+	api.ok(w, r, userToDto(&u, serverName(), api.serverID(ctx)))
 }
 
 // getPublicUsers advertises the users named in Jellyfin.ExposedPublicUsers for a client login
@@ -35,7 +53,7 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 	serverID := api.serverID(ctx)
 	seen := make(map[string]bool)
 	users := []dto.UserDto{}
-	for name := range strings.SplitSeq(conf.Server.Jellyfin.ExposedPublicUsers, ",") {
+	for name := range strings.SplitSeq(conf.Server().Jellyfin.ExposedPublicUsers, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
@@ -45,7 +63,7 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		seen[key] = true
-		usr, err := api.ds.User(ctx).FindByUsername(name)
+		usr, err := api.ds.User().FindByUsername(ctx, name)
 		if err != nil {
 			log.Warn(ctx, "Jellyfin API: configured public user not found", "username", name, err)
 			continue

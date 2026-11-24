@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/navidrome/navidrome/core/playback/mpv"
@@ -23,7 +24,7 @@ type Track interface {
 }
 
 type playbackDevice struct {
-	serviceCtx           context.Context
+	serviceCtx           context.Context //nolint:containedctx // playback service lifecycle ctx
 	ParentPlaybackServer PlaybackServer
 	Default              bool
 	User                 string
@@ -92,12 +93,16 @@ func (pd *playbackDevice) Status(ctx context.Context) (DeviceStatus, error) {
 func (pd *playbackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Set action", "ids", ids, "device", pd)
 
-	_, err := pd.Clear(ctx)
+	items, err := pd.loadMediaFiles(ctx, ids)
 	if err != nil {
+		return DeviceStatus{}, err
+	}
+	if _, err = pd.Clear(ctx); err != nil {
 		log.Error(ctx, "error setting tracks", ids)
 		return pd.getStatus(), err
 	}
-	return pd.Add(ctx, ids)
+	pd.PlaybackQueue.Add(items)
+	return pd.getStatus(), nil
 }
 
 func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
@@ -178,23 +183,30 @@ func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 
 func (pd *playbackDevice) Add(ctx context.Context, ids []string) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Add action", "ids", ids, "device", pd)
-	if len(ids) < 1 {
-		return pd.getStatus(), nil
-	}
-
-	items := model.MediaFiles{}
-
-	for _, id := range ids {
-		mf, err := pd.ParentPlaybackServer.GetMediaFile(id)
-		if err != nil {
-			return DeviceStatus{}, err
-		}
-		log.Debug(ctx, "Found mediafile: "+mf.Path)
-		items = append(items, *mf)
+	items, err := pd.loadMediaFiles(ctx, ids)
+	if err != nil {
+		return DeviceStatus{}, err
 	}
 	pd.PlaybackQueue.Add(items)
 
 	return pd.getStatus(), nil
+}
+
+// loadMediaFiles must use the caller's ctx, so the repository applies that user's library access.
+func (pd *playbackDevice) loadMediaFiles(ctx context.Context, ids []string) (model.MediaFiles, error) {
+	items := make(model.MediaFiles, 0, len(ids))
+	for _, id := range ids {
+		mf, err := pd.ParentPlaybackServer.GetMediaFile(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		log.Debug(ctx, "Found mediafile: "+mf.Path)
+		// The queue is shared by all jukebox users, so drop the loading user's own play data.
+		mf.Annotations = model.Annotations{AverageRating: mf.AverageRating}
+		mf.Bookmarkable = model.Bookmarkable{}
+		items = append(items, *mf)
+	}
+	return items, nil
 }
 
 func (pd *playbackDevice) Clear(ctx context.Context) (DeviceStatus, error) {
@@ -222,7 +234,7 @@ func (pd *playbackDevice) Remove(ctx context.Context, index int) (DeviceStatus, 
 	if index > -1 && index < pd.PlaybackQueue.Size() {
 		pd.PlaybackQueue.Remove(index)
 	} else {
-		log.Error(ctx, "Index to remove out of range: "+fmt.Sprint(index))
+		log.Error(ctx, "Index to remove out of range: "+strconv.Itoa(index))
 	}
 	return pd.getStatus(), nil
 }

@@ -2,11 +2,14 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var ErrAlreadyScanning = errors.New("already scanning")
 
 // ScanTarget represents a specific folder within a library to be scanned.
 // NOTE: This struct is used as a map key, so it should only contain comparable types.
@@ -74,7 +77,7 @@ func ParseTargets(libFolders []string) ([]ScanTarget, error) {
 	}
 
 	if len(targets) == 0 {
-		return nil, fmt.Errorf("no valid targets found")
+		return nil, errors.New("no valid targets found")
 	}
 
 	return targets, nil

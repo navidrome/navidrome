@@ -18,6 +18,10 @@ var _ = Describe("File Types()", func() {
 			Expect(model.IsAudioFile("test.flac")).To(BeTrue())
 		})
 
+		It("returns true for a WebM file", func() {
+			Expect(model.IsAudioFile("test.webm")).To(BeTrue())
+		})
+
 		It("returns false for a non-audio file", func() {
 			Expect(model.IsAudioFile("test.jpg")).To(BeFalse())
 		})

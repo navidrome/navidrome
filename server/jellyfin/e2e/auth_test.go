@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
@@ -33,7 +32,7 @@ var _ = Describe("Authentication", func() {
 			Expect(res.ServerId).To(MatchRegexp("^[0-9a-f]{32}$"))
 
 			// The returned token must actually authenticate a protected request.
-			r := httptest.NewRequest("GET", "/Users/Me", nil)
+			r := httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)
 			pw := httptest.NewRecorder()
 			router.ServeHTTP(pw, r)
@@ -80,19 +79,19 @@ var _ = Describe("Authentication", func() {
 			var res dto.AuthenticationResult
 			parseInto(w, &res)
 
-			r := httptest.NewRequest("GET", "/Users/Me", nil)
+			r := httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)
 			pw := httptest.NewRecorder()
 			router.ServeHTTP(pw, r)
 			Expect(pw.Code).To(Equal(http.StatusOK))
 
 			// A real password change through the repository, which is what revokes in production.
-			admin, err := ds.User(ctx).Get(testID("admin-1"))
+			admin, err := ds.User().Get(ctx, testID("admin-1"))
 			Expect(err).ToNot(HaveOccurred())
 			admin.NewPassword = "rotated"
-			Expect(ds.User(ctx).Put(admin)).To(Succeed())
+			Expect(ds.User().Put(ctx, admin)).To(Succeed())
 
-			r = httptest.NewRequest("GET", "/Users/Me", nil)
+			r = httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)
 			pw = httptest.NewRecorder()
 			router.ServeHTTP(pw, r)
@@ -110,14 +109,12 @@ var _ = Describe("Authentication", func() {
 		}
 
 		It("returns an empty list when no users are exposed", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Jellyfin.ExposedPublicUsers = ""
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "" })
 			Expect(publicUsers()).To(BeEmpty())
 		})
 
 		It("lists the configured users to an unauthenticated caller, without policy", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Jellyfin.ExposedPublicUsers = "regular"
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "regular" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(1))
 			Expect(users[0].Name).To(Equal("regular"))
@@ -147,7 +144,7 @@ var _ = Describe("Authentication", func() {
 		})
 
 		It("rejects a protected request with a bogus token", func() {
-			r := httptest.NewRequest("GET", "/Users/Me", nil)
+			r := httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", "not-a-valid-jwt")
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, r)

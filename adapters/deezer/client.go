@@ -13,15 +13,26 @@ import (
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 )
 
 const apiBaseURL = "https://api.deezer.com"
 const authBaseURL = "https://auth.deezer.com"
 
-var (
-	ErrNotFound = errors.New("deezer: not found")
-)
+// errCodeQuota is Deezer's "Quota limit exceeded"; it arrives in the body, with HTTP 200
+// and no rate-limit headers, so the body code is the only signal.
+const errCodeQuota = 4
+
+type deezerError struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
+
+func (e *deezerError) Error() string {
+	return fmt.Sprintf("deezer error(%d): %s", e.Code, e.Message)
+}
 
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
@@ -43,7 +54,7 @@ func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]A
 	params.Add("q", name)
 	params.Add("order", "RANKING")
 	params.Add("limit", strconv.Itoa(limit))
-	req, err := http.NewRequestWithContext(ctx, "GET", apiBaseURL+"/search/artist", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiBaseURL+"/search/artist", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +67,7 @@ func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]A
 	}
 
 	if len(results.Data) == 0 {
-		return nil, ErrNotFound
+		return nil, agents.ErrNotFound
 	}
 	return results.Data, nil
 }
@@ -74,24 +85,35 @@ func (c *client) makeRequest(req *http.Request, response any) error {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
-		return c.parseError(data)
+	// Checked before the status: a throttled request still answers 200, and decoding its body
+	// into a result type yields an empty one, which reads as "nothing found".
+	if err := parseBodyError(data); err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("deezer http status: (%d)", resp.StatusCode)
 	}
 
 	return json.Unmarshal(data, response)
 }
 
-func (c *client) parseError(data []byte) error {
-	var deezerError Error
-	err := json.Unmarshal(data, &deezerError)
-	if err != nil {
-		return err
+// parseBodyError returns the error Deezer reported in the body, or nil when it reported none.
+func parseBodyError(data []byte) error {
+	var body errorResponse
+	// Discarded: a payload that is not an error object leaves Error nil, which is the "none" answer.
+	_ = json.Unmarshal(data, &body)
+	switch {
+	case body.Error == nil:
+		return nil
+	case body.Error.Code == errCodeQuota:
+		return errors.Join(body.Error, agents.ErrRetryLater)
+	default:
+		return body.Error
 	}
-	return fmt.Errorf("deezer error(%d): %s", deezerError.Error.Code, deezerError.Error.Message)
 }
 
 func (c *client) getRelatedArtists(ctx context.Context, artistID int) ([]Artist, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/artist/%d/related", apiBaseURL, artistID), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/artist/%d/related", apiBaseURL, artistID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +130,7 @@ func (c *client) getRelatedArtists(ctx context.Context, artistID int) ([]Artist,
 func (c *client) getTopTracks(ctx context.Context, artistID int, limit int) ([]Track, error) {
 	params := url.Values{}
 	params.Add("limit", strconv.Itoa(limit))
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/artist/%d/top", apiBaseURL, artistID), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/artist/%d/top", apiBaseURL, artistID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +174,7 @@ func (c *client) getArtistBio(ctx context.Context, artistID int, lang string) (s
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", pipeAPIURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, pipeAPIURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -168,7 +190,7 @@ func (c *client) getArtistBio(ctx context.Context, artistID int, lang string) (s
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("deezer: failed to fetch biography: %s", resp.Status)
 	}
 

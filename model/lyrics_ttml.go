@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -525,10 +526,7 @@ func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []Cue) {
 
 	leftTrimBytes := len(rawLine) - len(strings.TrimLeftFunc(rawLine, unicode.IsSpace))
 	rightTrimBytes := len(rawLine) - len(strings.TrimRightFunc(rawLine, unicode.IsSpace))
-	trimmedEnd := len(rawLine) - rightTrimBytes
-	if trimmedEnd < leftTrimBytes {
-		trimmedEnd = leftTrimBytes
-	}
+	trimmedEnd := max(len(rawLine)-rightTrimBytes, leftTrimBytes)
 
 	trimmed := strings.TrimSpace(rawLine)
 	cues := make([]Cue, 0, len(line))
@@ -836,17 +834,11 @@ func isBackgroundAgentID(agentID string) bool {
 }
 
 func contextHasRole(roles string, role string) bool {
-	lowerRole := strings.ToLower(role)
-	for _, candidate := range strings.Fields(strings.ToLower(roles)) {
-		if candidate == lowerRole {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Fields(strings.ToLower(roles)), strings.ToLower(role))
 }
 
 func appendTTMLRoles(existing string, roles string) string {
-	for _, role := range strings.Fields(roles) {
+	for role := range strings.FieldsSeq(roles) {
 		if contextHasRole(existing, role) {
 			continue
 		}

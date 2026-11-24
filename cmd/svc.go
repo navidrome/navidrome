@@ -44,7 +44,7 @@ var svcCmd = &cobra.Command{
 }
 
 type svcControl struct {
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // service lifecycle ctx, cancelled by Stop
 	cancel context.CancelFunc
 	done   chan struct{}
 }
@@ -53,8 +53,13 @@ func (p *svcControl) Start(service.Service) error {
 	p.done = make(chan struct{})
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 	go func() {
-		runNavidrome(p.ctx)
+		err := runNavidrome(p.ctx)
 		close(p.done)
+		// service.Run() only returns when it gets a stop request, so exit here to let the
+		// service manager see the failure and restart the service
+		if err != nil {
+			log.Fatal("Fatal error in Navidrome. Aborting", err)
+		}
 	}()
 	return nil
 }
@@ -74,15 +79,15 @@ func (p *svcControl) Stop(service.Service) error {
 var svcInstance = sync.OnceValue(func() service.Service {
 	options := make(service.KeyValue)
 	options["Restart"] = "on-failure"
-	options["SuccessExitStatus"] = "1 2 8 SIGKILL"
+	options["SuccessExitStatus"] = "SIGKILL"
 	options["UserService"] = false
-	options["LogDirectory"] = conf.Server.DataFolder.String()
+	options["LogDirectory"] = conf.Server().DataFolder.String()
 	options["SystemdScript"] = systemdScript
-	if conf.Server.LogFile != "" {
+	if conf.Server().LogFile != "" {
 		options["LogOutput"] = false
 	} else {
 		options["LogOutput"] = true
-		options["LogDirectory"] = conf.Server.DataFolder.String()
+		options["LogDirectory"] = conf.Server().DataFolder.String()
 	}
 	svcConfig := &service.Config{
 		UserName:    installUser,
@@ -96,8 +101,8 @@ var svcInstance = sync.OnceValue(func() service.Service {
 		Option:           options,
 	}
 	arguments := []string{"service", "execute"}
-	if conf.Server.ConfigFile != "" {
-		arguments = append(arguments, "-c", conf.Server.ConfigFile)
+	if conf.Server().ConfigFile != "" {
+		arguments = append(arguments, "-c", conf.Server().ConfigFile)
 	}
 	svcConfig.Arguments = arguments
 
@@ -130,19 +135,21 @@ func buildInstallCmd() *cobra.Command {
 		var err error
 		println("Installing service with:")
 		println("  working directory: " + executablePath())
-		println("  music folder:      " + conf.Server.MusicFolder)
-		println("  data folder:       " + conf.Server.DataFolder.String())
-		if conf.Server.LogFile != "" {
-			println("  log file:          " + conf.Server.LogFile)
+		println("  music folder:      " + conf.Server().MusicFolder)
+		println("  data folder:       " + conf.Server().DataFolder.String())
+		if conf.Server().LogFile != "" {
+			println("  log file:          " + conf.Server().LogFile)
 		} else {
-			println("  logs folder:       " + conf.Server.DataFolder.String())
+			println("  logs folder:       " + conf.Server().DataFolder.String())
 		}
 		if cfgFile != "" {
-			conf.Server.ConfigFile, err = filepath.Abs(cfgFile)
+			var absPath string
+			absPath, err = filepath.Abs(cfgFile)
 			if err != nil {
 				log.Fatal(err)
 			}
-			println("  config file:       " + conf.Server.ConfigFile)
+			conf.Update(func(c *conf.Options) { c.ConfigFile = absPath })
+			println("  config file:       " + absPath)
 		}
 		err = svcInstance().Install()
 		if err != nil {

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -287,25 +286,25 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				album := AlbumID3{
 					Id: "1", Name: "album", Artist: "artist", Duration: 292, Genre: "rock",
-				}
-				album.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{
-					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
-					UserRating:    4,
-					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
-					DiscTitles:          Array[DiscTitle]{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
-					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
-					ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
-					ReleaseTypes:        []string{"album", "live"},
-					RecordLabels:        []RecordLabel{{Name: "label1"}, {Name: "label2"}},
-					Moods:               []string{"happy", "sad"},
-					DisplayArtist:       "artist1 & artist2",
-					Artists: []ArtistID3Ref{
-						{Id: "1", Name: "artist1"},
-						{Id: "2", Name: "artist2"},
-					},
-					ExplicitStatus: "clean",
-					Version:        "Deluxe Edition",
-				}
+
+					OpenSubsonicAlbumID3: &OpenSubsonicAlbumID3{
+						Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
+						UserRating:    4,
+						MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
+						DiscTitles:          Array[DiscTitle]{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
+						OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
+						ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
+						ReleaseTypes:        []string{"album", "live"},
+						RecordLabels:        []RecordLabel{{Name: "label1"}, {Name: "label2"}},
+						Moods:               []string{"happy", "sad"},
+						DisplayArtist:       "artist1 & artist2",
+						Artists: []ArtistID3Ref{
+							{Id: "1", Name: "artist1"},
+							{Id: "2", Name: "artist2"},
+						},
+						ExplicitStatus: "clean",
+						Version:        "Deluxe Edition",
+					}}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
@@ -546,12 +545,12 @@ var _ = Describe("Responses", func() {
 					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
-					OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{
+					OpenSubsonicPlaylist: &OpenSubsonicPlaylist{
 						Readonly:   true,
 						ValidUntil: &timestamp,
 					},
 				}
-				pls[1] = Playlist{Id: "333", Name: "ccc", OpenSubsonicPlaylist: &responses.OpenSubsonicPlaylist{}}
+				pls[1] = Playlist{Id: "333", Name: "ccc", OpenSubsonicPlaylist: &OpenSubsonicPlaylist{}}
 				pls[2] = Playlist{Id: "222", Name: "bbb"}
 				response.Playlists.Playlist = pls
 			})
@@ -1015,6 +1014,20 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("TokenInfo", func() {
+		BeforeEach(func() {
+			response.OpenSubsonic = true
+			response.TokenInfo = &TokenInfo{Username: "deluan"}
+		})
+
+		It("should match .XML", func() {
+			Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+		It("should match .JSON", func() {
+			Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+	})
+
 	Describe("InternetRadioStations", func() {
 		BeforeEach(func() {
 			response.InternetRadioStations = &InternetRadioStations{}
@@ -1131,7 +1144,7 @@ var _ = Describe("Responses", func() {
 		Describe("with data", func() {
 			BeforeEach(func() {
 				response.NowPlaying.Entry = []NowPlayingEntry{{
-					Child:        Child{Id: "1", Title: "Song", IsDir: false},
+					Id: "1", Title: "Song", IsDir: false,
 					UserName:     "testuser",
 					MinutesAgo:   2,
 					PlayerId:     1,

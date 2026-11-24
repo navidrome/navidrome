@@ -47,7 +47,7 @@ func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.Data
 // If setJSON is true, the 'f=json' query parameter is added.
 func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string, setJSON bool) (*httptest.ResponseRecorder, error) {
 	if s.router == nil {
-		return nil, fmt.Errorf("SubsonicAPI router not available")
+		return nil, errors.New("SubsonicAPI router not available")
 	}
 
 	// Parse the input URL
@@ -62,7 +62,7 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 	// Validate that 'u' (username) parameter is present
 	username := query.Get("u")
 	if username == "" {
-		return nil, fmt.Errorf("missing required parameter 'u' (username)")
+		return nil, errors.New("missing required parameter 'u' (username)")
 	}
 
 	if err := s.checkPermissions(ctx, username); err != nil {
@@ -91,7 +91,7 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 	// SubsonicAPI call doesn't inherit routing information from the parent handler,
 	// which would cause Chi to invoke the wrong handler. Authentication context is
 	// explicitly added in the next step via request.WithInternalAuth.
-	httpReq, err := http.NewRequest("GET", finalURL.String(), nil)
+	httpReq, err := http.NewRequest(http.MethodGet, finalURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -133,12 +133,12 @@ func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username 
 	}
 
 	// Must have at least one allowed user ID configured
-	if len(s.users.userIDSet) == 0 {
+	if !s.users.configured() {
 		return fmt.Errorf("no users configured for plugin %s", s.pluginID)
 	}
 
 	// Look up the user by username to get their ID
-	usr, err := s.ds.User(ctx).FindByUsername(username)
+	usr, err := s.ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return fmt.Errorf("username %s not found", username)

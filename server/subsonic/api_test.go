@@ -28,7 +28,7 @@ var _ = Describe("sendResponse", func() {
 
 	BeforeEach(func() {
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest("GET", "/somepath", nil)
+		r = httptest.NewRequest(http.MethodGet, "/somepath", nil)
 		payload = &responses.Subsonic{
 			Status:  responses.StatusOK,
 			Version: "1.16.1",
@@ -159,7 +159,7 @@ var _ = Describe("sendResponse", func() {
 
 	It("responds with HTTP 429 and Retry-After when the transcode limiter rejects", func() {
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest("GET", "/rest/stream", nil)
+		r = httptest.NewRequest(http.MethodGet, "/rest/stream", nil)
 
 		sendError(w, r, fmt.Errorf("rejected: %w", stream.ErrTooManyTranscodes))
 
@@ -178,7 +178,7 @@ var _ = Describe("sendResponse", func() {
 	It("updates status pointer when an error occurs", func() {
 		pointer := int32(0)
 
-		ctx := context.WithValue(r.Context(), subsonicErrorPointer, &pointer) //nolint:govet
+		ctx := context.WithValue(r.Context(), subsonicErrorPointer, &pointer)
 		r = r.WithContext(ctx)
 
 		payload.Status = responses.StatusFailed

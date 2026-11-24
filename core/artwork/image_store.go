@@ -27,7 +27,7 @@ func NewImageStore(rootDir string) *ImageStore {
 }
 
 func GetImageStore() *ImageStore {
-	return NewImageStore(filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, consts.HashedArtworkFolder))
+	return NewImageStore(filepath.Join(conf.Server().DataFolder.String(), consts.ArtworkFolder, consts.HashedArtworkFolder))
 }
 
 // extForMime must stay stable across OSes: extensions are baked into stored paths and re-derived on Open.
@@ -96,6 +96,9 @@ func (s *ImageStore) Write(hash, mimeType string, r io.Reader) error {
 		return err
 	}
 	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0640); err != nil {
 		return err
 	}
 	return os.Rename(tmp.Name(), dst)

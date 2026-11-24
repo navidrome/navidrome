@@ -3,6 +3,7 @@ package plugins
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -40,7 +41,7 @@ func (s *matcherServiceImpl) MatchSongs(ctx context.Context, songs []types.SongR
 
 	// Fail closed when the plugin has no library scope, rather than matching nothing.
 	if !s.libs.configured() {
-		return nil, fmt.Errorf("matcher: no libraries configured for this plugin")
+		return nil, errors.New("matcher: no libraries configured for this plugin")
 	}
 
 	// Set the user context explicitly so the match never inherits the request user

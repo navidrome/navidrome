@@ -1,0 +1,8 @@
+name: offset
+in: query
+description: Zero-based index of the first item to return.
+required: false
+schema:
+  type: integer
+  minimum: 0
+  default: 0

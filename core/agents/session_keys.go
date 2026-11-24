@@ -13,13 +13,13 @@ type SessionKeys struct {
 }
 
 func (sk *SessionKeys) Put(ctx context.Context, userId, sessionKey string) error {
-	return sk.DataStore.UserProps(ctx).Put(userId, sk.KeyName, sessionKey)
+	return sk.DataStore.UserProps().Put(ctx, userId, sk.KeyName, sessionKey)
 }
 
 func (sk *SessionKeys) Get(ctx context.Context, userId string) (string, error) {
-	return sk.DataStore.UserProps(ctx).Get(userId, sk.KeyName)
+	return sk.DataStore.UserProps().Get(ctx, userId, sk.KeyName)
 }
 
 func (sk *SessionKeys) Delete(ctx context.Context, userId string) error {
-	return sk.DataStore.UserProps(ctx).Delete(userId, sk.KeyName)
+	return sk.DataStore.UserProps().Delete(ctx, userId, sk.KeyName)
 }

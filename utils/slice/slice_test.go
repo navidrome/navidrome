@@ -63,6 +63,18 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("GroupOrdered", func() {
+		It("returns nil for an empty input", func() {
+			Expect(slice.GroupOrdered([]int{}, func(v int) int { return v })).To(BeNil())
+		})
+
+		It("keeps groups in first-seen order and items in input order", func() {
+			keyFunc := func(v int) int { return v % 3 }
+			result := slice.GroupOrdered([]int{2, 1, 4, 3, 5, 6, 8}, keyFunc)
+			Expect(result).To(Equal([][]int{{2, 5, 8}, {1, 4}, {3, 6}}))
+		})
+	})
+
 	Describe("ToMap", func() {
 		It("returns empty map for an empty input", func() {
 			transformFunc := func(v int) (int, string) { return v, strconv.Itoa(v) }
