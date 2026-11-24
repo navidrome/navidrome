@@ -3,6 +3,7 @@ package lyrics
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/model"
@@ -87,17 +88,24 @@ var _ = Describe("sources", func() {
 			Expect(lyrics).To(BeEmpty())
 		})
 
-		It("should match listed files case-insensitively", func() {
-			name, ok := findFile([]string{"Song.LRC", "song.lrc"}, "song.lrc")
-			Expect(ok).To(BeTrue())
-			Expect(name).To(Equal("song.lrc"))
+		It("should open the expected file name when the listed one differs in case", func() {
+			lyrics, err := fromExternalFile(ctx, mf("test.mp3"), []string{"TEST.LRC"}, ".lrc")
 
-			name, ok = findFile([]string{"Song.LRC"}, "song.lrc")
-			Expect(ok).To(BeTrue())
-			Expect(name).To(Equal("Song.LRC"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).ToNot(BeEmpty())
+		})
 
-			_, ok = findFile([]string{"Song.LRC"}, "song.txt")
-			Expect(ok).To(BeFalse())
+		It("should not use another track's sidecar on case-sensitive filesystems", func() {
+			dir := GinkgoT().TempDir()
+			Expect(os.WriteFile(filepath.Join(dir, "Song.lrc"), []byte("[00:01.00]Other track"), 0600)).To(Succeed())
+			if _, err := os.Stat(filepath.Join(dir, "song.lrc")); err == nil {
+				Skip("filesystem is case-insensitive")
+			}
+
+			lyrics, err := fromExternalFile(ctx, &model.MediaFile{LibraryPath: dir, Path: "song.mp3"}, []string{"Song.lrc"}, ".lrc")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeEmpty())
 		})
 
 		It("should return nil when a listed file was deleted since the scan", func() {
