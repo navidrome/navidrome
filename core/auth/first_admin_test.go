@@ -3,11 +3,9 @@ package auth_test
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
@@ -16,23 +14,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("CreateFirstAdmin", Ordered, func() {
+var _ = Describe("CreateFirstAdmin", func() {
 	var ctx context.Context
 	var ds model.DataStore
 
-	BeforeAll(func() {
-		DeferCleanup(conf.SnapshotConfig())
-		conf.Update(func(c *conf.Options) {
-			c.DbPath = filepath.Join(GinkgoT().TempDir(), "first-admin.db") + "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000"
-		})
-		DeferCleanup(db.Init(GinkgoT().Context()))
-		ds = persistence.New(db.Db())
-	})
-
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		_, err := db.Db().ExecContext(ctx, "delete from user")
-		Expect(err).ToNot(HaveOccurred())
+		ds = persistence.New(db.Db())
 	})
 
 	create := func(name string) (*model.User, error) {
