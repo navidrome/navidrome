@@ -377,7 +377,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 		albumArtist: l.getArtistForScrobble(track, model.RoleAlbumArtist, track.AlbumArtist),
 	})
 	if err != nil {
-		log.Warn(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
+		log.Debug(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
 		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
