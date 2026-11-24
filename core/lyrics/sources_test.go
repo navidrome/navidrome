@@ -158,8 +158,7 @@ var _ = Describe("sources", func() {
 		})
 	})
 
-	// Issue #4148: the sidecar's file name can be in another Unicode normalization
-	// form than the track's. See openSidecar.
+	// The sidecar's file name can be in another Unicode form than the track's. See openSidecar.
 	Describe("fromExternalFile with mismatched Unicode normalization", func() {
 		const scheme = "fake-lyrics-norm"
 		// "ガ" (katakana KA plus a dakuten) has distinct NFC and NFD forms.

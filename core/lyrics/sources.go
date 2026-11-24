@@ -76,7 +76,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 // exact path is missing, it retries with the NFD and NFC forms of the file name: the
 // sidecar can be in another Unicode form than the stored track path (macOS often
 // writes NFD, Linux and Windows keep NFC). The folders are kept as stored, because
-// the scanner read them from disk. Issue #4148.
+// the scanner read them from disk.
 func openSidecar(fsys fs.FS, relPath string) (fs.File, string, error) {
 	f, err := fsys.Open(relPath)
 	if !errors.Is(err, fs.ErrNotExist) {

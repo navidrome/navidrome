@@ -257,7 +257,7 @@ var _ = Describe("Lyrics", func() {
 		}))
 	})
 
-	It("resolves an external sidecar whose Unicode normalization differs from the track path (issue #4148)", func() {
+	It("resolves an external sidecar whose Unicode normalization differs from the track path", func() {
 		// An in-memory FS keeps the NFC/NFD mismatch byte-exact. The host filesystem
 		// may normalize names on lookup and hide the bug. See openSidecar.
 		const scheme = "fake-lyrics-e2e"
