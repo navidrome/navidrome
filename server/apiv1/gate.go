@@ -350,11 +350,11 @@ func joinField(path, name string) string {
 var missingProperty = regexp.MustCompile(`property "([^"]+)" is missing`)
 
 // sanitizeValidation keeps only field paths and fixed messages: kin-openapi errors can embed the submitted value.
-// It walks wrappers by concrete type, not errors.As, because MultiError.As would skip the RequestError that names the parameter.
 func sanitizeValidation(err error) []ValidationError {
 	var out []ValidationError
 	var walk func(err error, param string)
 	walk = func(err error, param string) {
+		// Not errors.As: it would skip past the RequestError that names the field. default unwraps the other wrappers.
 		switch e := err.(type) { //nolint:errorlint
 		case openapi3.MultiError:
 			for _, child := range e {

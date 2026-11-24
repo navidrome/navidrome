@@ -109,9 +109,7 @@ var _ = Describe("Router", func() {
 	It("tags internal errors with a referenceId that is also on the request's log lines", func() {
 		logs := captureLogs()
 		w := httptest.NewRecorder()
-		h := referenceIDMiddleware(problemRecoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			panic("kaboom") //nolint:forbidigo
-		})))
+		h := referenceIDMiddleware(panicking("kaboom"))
 		h.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/boom", nil))
 		p := decodeProblem(w)
 		Expect(p.ReferenceId).ToNot(BeNil())
