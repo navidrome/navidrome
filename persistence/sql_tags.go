@@ -12,7 +12,7 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-// Format of a tag in the DB
+// dbTag is the format of a tag in the DB
 type dbTag struct {
 	ID    string `json:"id"`
 	Value string `json:"value"`
@@ -36,7 +36,7 @@ func unmarshalTags(data string) (model.Tags, error) {
 	return res, nil
 }
 
-func marshalTags(tags model.Tags) string {
+func marshalTags(tags model.Tags) (string, error) {
 	dbTags := dbTags{}
 	for name, values := range tags {
 		for _, value := range values {
@@ -44,8 +44,11 @@ func marshalTags(tags model.Tags) string {
 			dbTags[name] = append(dbTags[name], dbTag{ID: t.ID, Value: value})
 		}
 	}
-	res, _ := json.Marshal(dbTags)
-	return string(res)
+	res, err := json.Marshal(dbTags)
+	if err != nil {
+		return "", fmt.Errorf("marshalling tags: %w", err)
+	}
+	return string(res), nil
 }
 
 // indexedTagNames are the tag types materialized into the <table>_tags join tables, so filtering by
@@ -167,9 +170,9 @@ func (r *baseTagRepository) applyLibraryFiltering(ctx context.Context, sq Select
 	// Add library_tag join
 	sq = sq.LeftJoin("library_tag on library_tag.tag_id = tag.id")
 
-	// For authenticated users, also join with user_library to filter by accessible libraries
+	// Non-admins only see tags from libraries they are assigned to
 	user := loggedUser(ctx)
-	if user.ID != invalidUserId {
+	if user.ID != invalidUserId && !user.IsAdmin {
 		sq = sq.Join("user_library on user_library.library_id = library_tag.library_id AND user_library.user_id = ?", user.ID)
 	}
 

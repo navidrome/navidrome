@@ -9,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -18,16 +17,16 @@ var _ = Describe("Uploader", func() {
 	var ctx context.Context
 	var svc Uploader
 	var tmpDir string
-	var artRepo *tests.MockArtworkRepo
-	var queueRepo *tests.MockArtworkQueueRepo
+	var artRepo model.ArtworkRepository
+	var queueRepo model.ArtworkQueueRepository
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		tmpDir = GinkgoT().TempDir()
 		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
-		artRepo = tests.CreateMockArtworkRepo()
-		queueRepo = tests.CreateMockArtworkQueueRepo()
-		ds := &tests.MockDataStore{MockedArtwork: artRepo, MockedArtworkQueue: queueRepo}
+		ds := newTestDS(ctx)
+		artRepo = ds.Artwork()
+		queueRepo = ds.ArtworkQueue()
 		svc = NewUploader(ds)
 	})
 
@@ -109,7 +108,7 @@ var _ = Describe("Uploader", func() {
 		})
 
 		It("is a no-op for an unknown entity type", func() {
-			svc.EnqueueArtwork(context.Background(), "unknown", "x-1")
+			svc.EnqueueArtwork(ctx, "unknown", "x-1")
 			Expect(queueRepo.DequeueBatch(ctx, 1000)).To(BeEmpty())
 		})
 	})

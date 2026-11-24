@@ -257,9 +257,12 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 
 	targetIsLossless := isLosslessFormat(targetFormat)
 
-	// Reject lossy to lossless conversion
-	if !src.IsLossless && targetIsLossless {
-		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
+	lossyToLossless := !src.IsLossless && targetIsLossless
+	// Lossless output from a lossy source is far larger than the source, so no bitrate cap can be honored
+	lossyToLosslessAllowed := clientInfo.AllowLossyToLossless && clientInfo.MaxAudioBitrate == 0
+	if lossyToLossless && !lossyToLosslessAllowed {
+		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "sourceCodec", src.Codec,
+			"targetFormat", targetFormat, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		return nil, ""
 	}
 
@@ -274,7 +277,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 		Codec:      targetCodec,
 		SampleRate: targetSampleRate(src.SampleRate, src.Codec, capDSD),
 		Channels:   src.Channels,
-		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
+		BitDepth:   targetBitDepth(src, targetIsLossless),
 		IsLossless: targetIsLossless,
 	}
 
@@ -282,9 +285,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	if fixedRate := codecFixedOutputSampleRate(ts.Codec); fixedRate > 0 {
 		ts.SampleRate = fixedRate
 	}
-	if maxRate := codecMaxSampleRate(ts.Codec); maxRate > 0 && ts.SampleRate > maxRate {
-		ts.SampleRate = maxRate
-	}
+	ts.SampleRate = codecSampleRate(ts.Codec, ts.SampleRate)
 	if maxCh := codecMaxChannels(ts.Codec); maxCh > 0 && ts.Channels > maxCh {
 		ts.Channels = maxCh
 	}
@@ -386,7 +387,7 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *Details, targe
 				return false
 			}
 		}
-	} else {
+	} else if !targetIsLossless {
 		ts.Bitrate = src.Bitrate
 	}
 
@@ -411,6 +412,19 @@ func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrat
 			}
 			if result == adjustCannotFit {
 				log.Trace(ctx, "Skipping transcoding profile: codec limitation cannot be satisfied",
+					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name,
+					"comparison", lim.Comparison, "values", lim.Values)
+				return false
+			}
+		}
+	}
+	// A later limitation can lower a value below a bound an earlier one
+	// accepted, so check the final values against every limitation once more.
+	for codecProfile := range audioCodecProfiles(clientInfo, targetCodec) {
+		for _, lim := range codecProfile.Limitations {
+			check := *ts
+			if applyLimitation(sourceBitrate, &lim, &check) != adjustNone {
+				log.Trace(ctx, "Skipping transcoding profile: codec limitations conflict",
 					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name,
 					"comparison", lim.Comparison, "values", lim.Values)
 				return false

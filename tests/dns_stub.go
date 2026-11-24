@@ -23,7 +23,8 @@ func StubResolver(records map[string]string) *net.Resolver {
 	}
 }
 
-// net.Pipe is not a PacketConn, so the resolver sends one query framed with a 2-byte length prefix.
+// serveStubDNS answers one query. net.Pipe is not a PacketConn, so the resolver sends it framed with a
+// 2-byte length prefix.
 func serveStubDNS(conn net.Conn, records map[string]string) {
 	defer conn.Close()
 	var size [2]byte

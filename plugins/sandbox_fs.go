@@ -118,24 +118,19 @@ type mount struct {
 }
 
 // buildMounts lists the libraries the plugin may reach through the filesystem.
-func buildMounts(ctx context.Context, libraries model.Libraries, allowedLibraryIDs []int, allLibraries, allowWriteAccess bool) []mount {
-	allowedLibrarySet := make(map[int]struct{}, len(allowedLibraryIDs))
-	for _, id := range allowedLibraryIDs {
-		allowedLibrarySet[id] = struct{}{}
-	}
+func buildMounts(ctx context.Context, libraries model.Libraries, access libraryAccess, allowWriteAccess bool) []mount {
 	var mounts []mount
 	for _, lib := range libraries {
-		_, allowed := allowedLibrarySet[lib.ID]
-		if allLibraries || allowed {
+		if access.contains(lib.ID) {
 			m := mount{hostPath: lib.Path, guestPath: toPluginMountPoint(int32(lib.ID)), readOnly: !allowWriteAccess}
 			mounts = append(mounts, m)
 			log.Trace(ctx, "Added library to plugin mounts", "libraryID", lib.ID, "mountPoint", m.guestPath, "readOnly", m.readOnly, "hostPath", m.hostPath)
 		}
 	}
 	if allowWriteAccess {
-		log.Info(ctx, "Granting read-write filesystem access to libraries", "libraryCount", len(mounts), "allLibraries", allLibraries)
+		log.Info(ctx, "Granting read-write filesystem access to libraries", "libraryCount", len(mounts), "allLibraries", access.allLibraries)
 	} else {
-		log.Debug(ctx, "Granting read-only filesystem access to libraries", "libraryCount", len(mounts), "allLibraries", allLibraries)
+		log.Debug(ctx, "Granting read-only filesystem access to libraries", "libraryCount", len(mounts), "allLibraries", access.allLibraries)
 	}
 	return mounts
 }

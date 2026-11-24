@@ -19,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -498,7 +497,7 @@ var _ = Describe("TaskQueueService", func() {
 
 		It("stores error message on failure", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
-				return "", fmt.Errorf("something went wrong")
+				return "", errors.New("something went wrong")
 			}
 
 			err := service.CreateQueue(ctx, "msg-fail", host.QueueConfig{
@@ -524,7 +523,7 @@ var _ = Describe("TaskQueueService", func() {
 
 		It("uses explicit message over error message on failure", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
-				return "partial progress made", fmt.Errorf("timeout exceeded")
+				return "partial progress made", errors.New("timeout exceeded")
 			}
 
 			err := service.CreateQueue(ctx, "msg-fail-with-msg", host.QueueConfig{
@@ -555,7 +554,7 @@ var _ = Describe("TaskQueueService", func() {
 
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return "", fmt.Errorf("task failed")
+				return "", errors.New("task failed")
 			}
 
 			err := service.CreateQueue(ctx, "retry-test", host.QueueConfig{
@@ -587,7 +586,7 @@ var _ = Describe("TaskQueueService", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, attempt int32) (string, error) {
 				callCount.Add(1)
 				if attempt == 1 {
-					return "", fmt.Errorf("temporary error")
+					return "", errors.New("temporary error")
 				}
 				return "success", nil
 			}
@@ -619,7 +618,7 @@ var _ = Describe("TaskQueueService", func() {
 
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return "", fmt.Errorf("always fail")
+				return "", errors.New("always fail")
 			}
 
 			err := service.CreateQueue(ctx, "backoff-overflow", host.QueueConfig{
@@ -847,16 +846,12 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			c.DataFolder = conf.NewDir(tmpDir)
 		})
 
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-taskqueue",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+		})
 
 		// Create and start manager
 		manager = &Manager{

@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sync/atomic"
 	"testing/fstest"
 	"time"
@@ -21,10 +19,10 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
@@ -46,42 +44,21 @@ func createFS(files fstest.MapFS) storagetest.FakeFS {
 	return fs
 }
 
-var _ = Describe("Scanner", Ordered, func() {
+var _ = Describe("Scanner", func() {
 	var ctx context.Context
 	var lib model.Library
-	var ds *tests.MockDataStore
-	var mfRepo *mockMediaFileRepo
+	var ds model.DataStore
+	var spy *scannerSpy
 	var s model.Scanner
 
-	BeforeAll(func() {
-		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		// The DB stays open until the suite ends, and Windows can't delete an open file
-		tmpDir, err := os.MkdirTemp("", "scanner-test")
-		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
-		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL") })
-		log.Warn("Using DB at " + conf.Server().DbPath)
-		//conf.Server.DbPath = ":memory:"
-		db.Db().SetMaxOpenConns(1)
-	})
-
 	BeforeEach(func() {
-		DeferCleanup(conf.SnapshotConfig())
-		conf.Update(func(c *conf.Options) {
-			c.MusicFolder = "fake:///music" // Set to match test library path
-			c.DevExternalScanner = false
-		})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
+		conf.Update(func(c *conf.Options) { c.DevExternalScanner = false })
 
-		db.Init(ctx)
-		DeferCleanup(func() {
-			Expect(tests.ClearDB()).To(Succeed())
+		spy = &scannerSpy{}
+		ds = persistencetest.Overlay(persistence.New(db.Db()), func(ds model.DataStore) model.DataStore {
+			return &scannerSpyDS{DataStore: ds, spy: spy}
 		})
-
-		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-		mfRepo = &mockMediaFileRepo{
-			MediaFileRepository: ds.RealDS.MediaFile(),
-		}
-		ds.MockedMediaFile = mfRepo
 
 		// Create the admin user in the database to match the context
 		adminUser := model.User{
@@ -92,6 +69,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			NewPassword: "password",
 		}
 		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		persistencetest.SetLibraries(ctx, ds, "fake:///music")
 
 		s = scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
@@ -638,7 +616,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			fsys.Move("The Beatles/Revolver/01 - Taxman.mp3", "The Beatles/Help!/01 - Taxman.mp3")
 
 			By("Interrupting the scan with an error before the move is processed")
-			mfRepo.GetMissingAndMatchingError = errors.New("I/O read error")
+			spy.getMissingAndMatchingErr = errors.New("I/O read error")
 			Expect(runScanner(ctx, false)).To(MatchError(ContainSubstring("I/O read error")))
 
 			By("Checking the both instances of the file are in the lib")
@@ -647,7 +625,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			})).To(Equal(int64(2)))
 
 			By("Rescanning the library without error")
-			mfRepo.GetMissingAndMatchingError = nil
+			spy.getMissingAndMatchingErr = nil
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the old file is not in the library")
@@ -766,7 +744,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				{LibraryID: lib.ID, FolderPath: "The Beatles"},
 			}
 			_, err := s.ScanFolders(ctx, false, targets)
-			Expect(err).To(Succeed())
+			Expect(err).ToNot(HaveOccurred())
 
 			By("Checking all Revolver tracks are marked as missing")
 			mf, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
@@ -803,6 +781,8 @@ var _ = Describe("Scanner", Ordered, func() {
 			// must then mark it missing (see markOrphansMissing).
 			DeferCleanup(conf.SnapshotConfig())
 			conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingAlways })
+			// GC would delete the orphan outright, hiding whether RefreshStats marked it missing
+			spy.skipGC = true
 
 			By("Starting from a library where Pink Floyd has its own single album")
 			floyd := template(_t{"artist": "Pink Floyd", "album": "The Wall", "year": 1979})
@@ -1156,20 +1136,10 @@ var _ = Describe("Scanner", Ordered, func() {
 	})
 
 	Describe("RefreshStats", func() {
-		var refreshStatsCalls []bool
 		var fsys storagetest.FakeFS
 		var help func(...map[string]any) *fstest.MapFile
 
 		BeforeEach(func() {
-			refreshStatsCalls = nil
-
-			// Create a mock artist repository that tracks RefreshStats calls
-			originalArtistRepo := ds.RealDS.Artist()
-			ds.MockedArtist = &testArtistRepo{
-				ArtistRepository: originalArtistRepo,
-				callTracker:      &refreshStatsCalls,
-			}
-
 			// Create a simple filesystem for testing
 			help = template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
 			fsys = createFS(fstest.MapFS{
@@ -1180,8 +1150,8 @@ var _ = Describe("Scanner", Ordered, func() {
 		It("should call RefreshStats with allArtists=true for full scans", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			Expect(refreshStatsCalls).To(HaveLen(1))
-			Expect(refreshStatsCalls[0]).To(BeTrue(), "RefreshStats should be called with allArtists=true for full scans")
+			Expect(spy.refreshStatsCalls).To(HaveLen(1))
+			Expect(spy.refreshStatsCalls[0]).To(BeTrue(), "RefreshStats should be called with allArtists=true for full scans")
 		})
 
 		It("should call RefreshStats with allArtists=false for incremental scans", func() {
@@ -1189,7 +1159,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			// Reset the tracker to only track the incremental scan
-			refreshStatsCalls = nil
+			spy.refreshStatsCalls = nil
 
 			// Add a new file to trigger changes detection
 			fsys.Add("The Beatles/Help!/02 - The Night Before.mp3", help(track(2, "The Night Before")))
@@ -1197,14 +1167,12 @@ var _ = Describe("Scanner", Ordered, func() {
 			// Do an incremental scan
 			Expect(runScanner(ctx, false)).To(Succeed())
 
-			Expect(refreshStatsCalls).To(HaveLen(1))
-			Expect(refreshStatsCalls[0]).To(BeFalse(), "RefreshStats should be called with allArtists=false for incremental scans")
+			Expect(spy.refreshStatsCalls).To(HaveLen(1))
+			Expect(spy.refreshStatsCalls[0]).To(BeFalse(), "RefreshStats should be called with allArtists=false for incremental scans")
 		})
 
 		It("should update artist stats during quick scans when new albums are added", func() {
 			tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
-			// Don't use the mocked artist repo for this test - we need the real one
-			ds.MockedArtist = nil
 
 			By("Initial scan with one album")
 			Expect(runScanner(ctx, true)).To(Succeed())
@@ -1252,14 +1220,14 @@ var _ = Describe("Scanner", Ordered, func() {
 	Context("when the database is busy", func() {
 		var busyDS *busyPersistDS
 		BeforeEach(func() {
-			// One album across many folders: the suite's single DB connection deadlocks phase 3 on many albums
+			// Many folders, so a scan that gives up early leaves some of them unvisited
 			album := template(_t{"albumartist": "Artist", "album": "Album"})
 			files := fstest.MapFS{}
 			for i := range 30 {
 				files[fmt.Sprintf("Artist/Part %02d/%02d - Song.mp3", i, i+1)] = album(track(i+1, fmt.Sprintf("Song %02d", i+1)))
 			}
 			createFS(files)
-			busyDS = &busyPersistDS{MockDataStore: ds}
+			busyDS = &busyPersistDS{DataStore: ds}
 			s = scanner.New(ctx, busyDS, events.NoopBroker(),
 				playlists.NewPlaylists(busyDS, artwork.NewUploader(busyDS)), metrics.NewNoopInstance())
 		})
@@ -1269,7 +1237,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			Expect(runScanner(ctx, true)).To(MatchError(ContainSubstring("database is locked")))
 
-			Expect(mfRepo.cursorCalls.Load()).To(BeNumerically("<", 30))
+			Expect(spy.cursorCalls.Load()).To(BeNumerically("<", 30))
 		})
 
 		It("does not mark unvisited folders missing when the scan gives up", func() {
@@ -1286,7 +1254,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 // busyPersistDS fails the scanner's folder saves with SQLITE_BUSY, as if WithTxRetry ran out of retries.
 type busyPersistDS struct {
-	*tests.MockDataStore
+	model.DataStore
 	failures atomic.Int32
 }
 
@@ -1294,7 +1262,7 @@ func (b *busyPersistDS) WithTxRetry(ctx context.Context, block func(context.Cont
 	if len(label) > 0 && label[0] == "scanner: persist changes" && b.failures.Add(-1) >= 0 {
 		return sqlite3.Error{Code: sqlite3.ErrBusy}
 	}
-	return b.MockDataStore.WithTxRetry(ctx, block, label...)
+	return b.DataStore.WithTxRetry(ctx, block, label...)
 }
 
 func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {
@@ -1310,30 +1278,57 @@ func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*mo
 	}
 }
 
-type mockMediaFileRepo struct {
-	model.MediaFileRepository
-	GetMissingAndMatchingError error
-	cursorCalls                atomic.Int32
+// scannerSpy fails GetMissingAndMatching or skips GC on demand, and records cursor reads and artist stats refreshes.
+type scannerSpy struct {
+	getMissingAndMatchingErr error
+	cursorCalls              atomic.Int32
+	refreshStatsCalls        []bool
+	skipGC                   bool
 }
 
-func (m *mockMediaFileRepo) GetCursor(ctx context.Context, options ...model.QueryOptions) (model.MediaFileCursor, error) {
-	m.cursorCalls.Add(1)
+type scannerSpyDS struct {
+	model.DataStore
+	spy *scannerSpy
+}
+
+func (d *scannerSpyDS) MediaFile() model.MediaFileRepository {
+	return &spyMediaFileRepo{MediaFileRepository: d.DataStore.MediaFile(), spy: d.spy}
+}
+
+func (d *scannerSpyDS) GC(ctx context.Context, libraryIDs ...int) error {
+	if d.spy.skipGC {
+		return nil
+	}
+	return d.DataStore.GC(ctx, libraryIDs...)
+}
+
+func (d *scannerSpyDS) Artist() model.ArtistRepository {
+	return &spyArtistRepo{ArtistRepository: d.DataStore.Artist(), spy: d.spy}
+}
+
+type spyMediaFileRepo struct {
+	model.MediaFileRepository
+	spy *scannerSpy
+}
+
+func (m *spyMediaFileRepo) GetCursor(ctx context.Context, options ...model.QueryOptions) (model.MediaFileCursor, error) {
+	m.spy.cursorCalls.Add(1)
 	return m.MediaFileRepository.GetCursor(ctx, options...)
 }
 
-func (m *mockMediaFileRepo) GetMissingAndMatching(ctx context.Context, libId int) (model.MediaFileCursor, error) {
-	if m.GetMissingAndMatchingError != nil {
-		return nil, m.GetMissingAndMatchingError
+func (m *spyMediaFileRepo) GetMissingAndMatching(ctx context.Context, libId int) (model.MediaFileCursor, error) {
+	if m.spy.getMissingAndMatchingErr != nil {
+		return nil, m.spy.getMissingAndMatchingErr
 	}
 	return m.MediaFileRepository.GetMissingAndMatching(ctx, libId)
 }
 
-type testArtistRepo struct {
+type spyArtistRepo struct {
 	model.ArtistRepository
-	callTracker *[]bool
+	spy *scannerSpy
 }
 
-func (m *testArtistRepo) RefreshStats(ctx context.Context, allArtists bool) (int64, error) {
-	*m.callTracker = append(*m.callTracker, allArtists)
+func (m *spyArtistRepo) RefreshStats(ctx context.Context, allArtists bool) (int64, error) {
+	m.spy.refreshStatsCalls = append(m.spy.refreshStatsCalls, allArtists)
 	return m.ArtistRepository.RefreshStats(ctx, allArtists)
 }

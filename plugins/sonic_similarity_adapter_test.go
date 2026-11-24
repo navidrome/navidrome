@@ -3,7 +3,7 @@ package plugins
 import (
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -114,12 +114,12 @@ var _ = Describe("mediaFileToSongRef multi-artist", func() {
 	It("fills Artists (with IDs) from role=artist participants", func() {
 		mf := &model.MediaFile{ID: "x", Title: "Collab", Participants: model.Participants{
 			model.RoleArtist: model.ParticipantList{
-				{Artist: model.Artist{ID: "ar-drake", Name: "Drake", MbzArtistID: "m-drake"}},
-				{Artist: model.Artist{ID: "ar-future", Name: "Future", MbzArtistID: "m-future"}},
+				{ID: "ar-drake", Name: "Drake", MbzArtistID: "m-drake"},
+				{ID: "ar-future", Name: "Future", MbzArtistID: "m-future"},
 			},
 		}}
 		ref := mediaFileToSongRef(mf)
-		Expect(ref.Artists).To(Equal([]capabilities.ArtistRef{
+		Expect(ref.Artists).To(Equal([]types.ArtistRef{
 			{ID: "ar-drake", Name: "Drake", MBID: "m-drake", Role: "artist"},
 			{ID: "ar-future", Name: "Future", MBID: "m-future", Role: "artist"},
 		}))

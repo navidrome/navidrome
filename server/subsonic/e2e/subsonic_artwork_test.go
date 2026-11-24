@@ -34,7 +34,6 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/tests/harness"
 	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
@@ -102,7 +101,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		})
 
 		goldenDB.Restore()
-		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
 
 		// Re-scanning already-populated data deadlocks the parallel album-refresh phase at the
@@ -232,7 +231,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest("GET", "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Body.Bytes()).To(Equal(readArtworkFixture("cover.jpg")))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("public, max-age=31536000, immutable"))
@@ -244,7 +243,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest("GET", "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 })

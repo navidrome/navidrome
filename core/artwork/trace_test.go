@@ -12,7 +12,9 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -81,13 +83,19 @@ var _ = Describe("encodeSteps/DecodeTrace", func() {
 })
 
 var _ = Describe("chainTrace", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("returns nil when no trace is attached", func() {
-		Expect(traceFrom(context.Background())).To(BeNil())
+		Expect(traceFrom(ctx)).To(BeNil())
 	})
 
 	It("collects steps in order", func() {
 		t := &ChainTrace{}
-		ctx := withTrace(context.Background(), t)
+		ctx = withTrace(ctx, t)
 
 		traceFrom(ctx).add(TraceStep{Candidate: "cover.*", Outcome: OutcomeMiss})
 		traceFrom(ctx).add(TraceStep{Candidate: "embedded", Outcome: OutcomeHit, Detail: "/music/a.flac"})
@@ -170,7 +178,7 @@ var _ = Describe("external agent tracing", func() {
 	)
 	BeforeEach(func() {
 		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ctx = withTrace(GinkgoT().Context(), t)
 		body = io.NopCloser(strings.NewReader("x"))
 	})
 
@@ -201,38 +209,28 @@ var _ = Describe("external agent tracing", func() {
 
 var _ = Describe("resolveAlbum tracing", func() {
 	var (
-		ctx        context.Context
-		ds         *tests.MockDataStore
-		albumRepo  *tests.MockAlbumRepo
-		folderRepo *fakeFolderRepo
-		ffm        *tests.MockFFmpeg
-		ag         *agents.Agents
-		t          *ChainTrace
+		ctx context.Context
+		ds  model.DataStore
+		ffm *tests.MockFFmpeg
+		ag  *agents.Agents
+		t   *ChainTrace
 	)
 
 	BeforeEach(func() {
+		t = &ChainTrace{}
+		ctx = withTrace(GinkgoT().Context(), t)
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
-		libRepo := &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		albumRepo = tests.CreateMockAlbumRepo()
-		folderRepo = &fakeFolderRepo{}
-		ds = &tests.MockDataStore{
-			MockedAlbum:   albumRepo,
-			MockedFolder:  folderRepo,
-			MockedLibrary: libRepo,
-		}
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
 		ffm = tests.NewMockFFmpeg("")
-		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
-		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ag = agents.GetAgents(ds, nil)
 	})
 
 	It("records a pattern skipped because the album folder holds no images", func() {
-		albumRepo.SetData(model.Albums{
-			{ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
-		})
+		fid := putFolder(ctx, ds, fixtureAlbumDir)
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{fid}})
 
 		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 		Expect(err).ToNot(HaveOccurred())
@@ -247,13 +245,8 @@ var _ = Describe("resolveAlbum tracing", func() {
 	})
 
 	It("records an evaluated pattern that matched nothing as a miss, not a skip", func() {
-		folderRepo.result = []model.Folder{{
-			Path:       "tests/fixtures/artist/an-album",
-			ImageFiles: []string{"artist.png"},
-		}}
-		albumRepo.SetData(model.Albums{
-			{ID: "al3", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
-		})
+		fid := putFolder(ctx, ds, fixtureAlbumDir, "artist.png")
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al3", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{fid}})
 
 		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 		Expect(err).ToNot(HaveOccurred())
@@ -265,7 +258,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 
 	It("ignores an empty priority token", func() {
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg," })
-		albumRepo.SetData(model.Albums{{ID: "al2", Name: "Album", FolderIDs: []string{"f1"}}})
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al2", Name: "Album", FolderIDs: []string{putFolder(ctx, ds, fixtureAlbumDir)}})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(err).ToNot(HaveOccurred())
@@ -277,15 +270,11 @@ var _ = Describe("resolveAlbum tracing", func() {
 
 var _ = Describe("resolveArtist tracing", func() {
 	var (
-		ctx        context.Context
-		ds         *tests.MockDataStore
-		artistRepo *tests.MockArtistRepo
-		albumRepo  *tests.MockAlbumRepo
-		folderRepo *fakeFolderRepo
-		ffm        *tests.MockFFmpeg
-		ag         *agents.Agents
-		t          *ChainTrace
-		repoRoot   string
+		ctx context.Context
+		ds  model.DataStore
+		ffm *tests.MockFFmpeg
+		ag  *agents.Agents
+		t   *ChainTrace
 	)
 
 	uploadPath := func(file string) string {
@@ -296,33 +285,23 @@ var _ = Describe("resolveArtist tracing", func() {
 	}
 
 	BeforeEach(func() {
+		t = &ChainTrace{}
+		ctx = withTrace(GinkgoT().Context(), t)
 		conf.Update(func(c *conf.Options) {
 			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
 			c.ArtistArtPriority = "album/artist.*"
 		})
-		var err error
-		repoRoot, err = os.Getwd()
+		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
-		libRepo := &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		artistRepo = tests.CreateMockArtistRepo()
-		albumRepo = tests.CreateMockAlbumRepo()
-		folderRepo = &fakeFolderRepo{}
-		ds = &tests.MockDataStore{
-			MockedArtist:  artistRepo,
-			MockedAlbum:   albumRepo,
-			MockedFolder:  folderRepo,
-			MockedLibrary: libRepo,
-		}
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
 		ffm = tests.NewMockFFmpeg("")
-		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
-		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
+		ag = agents.GetAgents(ds, nil)
 	})
 
 	It("records the upload short-circuit as a hit", func() {
 		path := uploadPath("ar1_test.jpg")
-		artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"}})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist", UploadedImage: "ar1_test.jpg"})
 
 		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"})
 		Expect(err).ToNot(HaveOccurred())
@@ -332,7 +311,7 @@ var _ = Describe("resolveArtist tracing", func() {
 	})
 
 	It("records an upload miss before walking the chain", func() {
-		artistRepo.SetData(model.Artists{{ID: "ar2", Name: "Artist"}})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar2", Name: "Artist"})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar2"})
 		Expect(err).ToNot(HaveOccurred())
@@ -340,13 +319,9 @@ var _ = Describe("resolveArtist tracing", func() {
 	})
 
 	It("labels each step with the configured priority token", func() {
-		folderRepo.result = []model.Folder{{
-			LibraryPath: testFileLibPath(repoRoot),
-			Path:        "tests/fixtures/artist/an-album",
-			ImageFiles:  []string{"artist.png"},
-		}}
-		artistRepo.SetData(model.Artists{{ID: "ar4", Name: "Artist"}})
-		albumRepo.All = model.Albums{{ID: "al9", Name: "Album", LibraryID: 0, FolderIDs: []string{"f1"}}}
+		fid := putFolder(ctx, ds, fixtureAlbumDir, "artist.png")
+		putArtistAlbums(ctx, ds, model.Artist{ID: "ar4", Name: "Artist"},
+			model.Album{ID: "al9", Name: "Album", FolderIDs: []string{fid}})
 
 		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"})
 		Expect(err).ToNot(HaveOccurred())
@@ -360,7 +335,7 @@ var _ = Describe("resolveArtist tracing", func() {
 	})
 
 	It("records a configured pattern that could not be evaluated", func() {
-		artistRepo.SetData(model.Artists{{ID: "ar5", Name: "Artist"}})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar5", Name: "Artist"})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"})
 		Expect(err).ToNot(HaveOccurred())
@@ -372,8 +347,8 @@ var _ = Describe("resolveArtist tracing", func() {
 
 	It("records why an artist folder pattern was skipped", func() {
 		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*" })
-		artistRepo.SetData(model.Artists{{ID: "ar6", Name: "Artist"}})
-		albumRepo.All = model.Albums{{ID: "al10", Name: "Album", LibraryID: 0, FolderIDs: []string{"f1"}}}
+		putArtistAlbums(ctx, ds, model.Artist{ID: "ar6", Name: "Artist"},
+			model.Album{ID: "al10", Name: "Album", FolderIDs: []string{"f1"}})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar6"})
 		Expect(err).ToNot(HaveOccurred())
@@ -390,7 +365,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		path := uploadPath("ar3_test.jpg")
 		Expect(os.Chmod(path, 0o000)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(path, 0o600) })
-		artistRepo.SetData(model.Artists{{ID: "ar3", Name: "Artist", UploadedImage: "ar3_test.jpg"}})
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar3", Name: "Artist", UploadedImage: "ar3_test.jpg"})
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"})
 		Expect(err).ToNot(HaveOccurred())
@@ -402,16 +377,23 @@ var _ = Describe("resolveArtist tracing", func() {
 
 var _ = Describe("NewTracingResolver", func() {
 	var (
-		ds          *tests.MockDataStore
-		albumRepo   *tests.MockAlbumRepo
-		artistRepo  *tests.MockArtistRepo
-		artworkRepo *tests.MockArtworkRepo
-		queueRepo   *tests.MockArtworkQueueRepo
-		ffm         *tests.MockFFmpeg
-		t           *ChainTrace
+		ctx context.Context
+		ds  model.DataStore
+		ffm *tests.MockFFmpeg
+		t   *ChainTrace
 	)
 
+	// Explain must leave both tables as it found them.
+	expectNothingPersisted := func() {
+		GinkgoHelper()
+		var rows int
+		Expect(db.Db().QueryRow("SELECT count(*) FROM item_artwork").Scan(&rows)).To(Succeed())
+		Expect(rows).To(BeZero(), "explain is read-only; a diagnostic walk must never become the stored answer")
+		Expect(queueCount(ctx, ds)).To(BeZero())
+	}
+
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) {
 			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
 			c.CoverArtPriority = "external, embedded"
@@ -419,20 +401,8 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
-		libRepo := &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		albumRepo = tests.CreateMockAlbumRepo()
-		artistRepo = tests.CreateMockArtistRepo()
-		artworkRepo = tests.CreateMockArtworkRepo()
-		queueRepo = tests.CreateMockArtworkQueueRepo()
-		ds = &tests.MockDataStore{
-			MockedAlbum:        albumRepo,
-			MockedArtist:       artistRepo,
-			MockedFolder:       &fakeFolderRepo{},
-			MockedLibrary:      libRepo,
-			MockedArtwork:      artworkRepo,
-			MockedArtworkQueue: queueRepo,
-		}
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
 		ffm = tests.NewMockFFmpeg("")
 		t = &ChainTrace{}
 	})
@@ -443,14 +413,14 @@ var _ = Describe("NewTracingResolver", func() {
 		BeforeEach(func() {
 			// Misses, so the chain falls through to the local tier and both are traced.
 			fake = &fakeImageAgent{name: "probe", err: agents.ErrNotFound}
-			albumRepo.SetData(model.Albums{{
-				ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
-			}})
-			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{
+				ID: "al1", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/test.mp3", FolderIDs: []string{putFolder(ctx, ds, fixtureAlbumDir)},
+			})
+			persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "ar1", Name: "Artist"})
 		})
 
 		It("asks the agents and records what each answered", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -459,7 +429,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("records the local chain steps too", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			last := t.Steps()[len(t.Steps())-1]
@@ -468,32 +438,29 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("never persists artwork state", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(artworkRepo.ItemData).To(BeEmpty(),
-				"explain is read-only; a diagnostic walk must never become the stored answer")
-			Expect(queueRepo.Data).To(BeEmpty())
+			expectNothingPersisted()
 		})
 
 		It("resolves an artist without persisting anything", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindArtistArtwork, "ar1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(BeEmpty())
 			Expect(fake.artistCalls).To(Equal(1))
-			Expect(artworkRepo.ItemData).To(BeEmpty())
-			Expect(queueRepo.Data).To(BeEmpty())
+			expectNothingPersisted()
 		})
 
 		It("closes the reader it does not hand back", func() {
 			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "embedded" })
 			ffm = tests.NewMockFFmpeg("fake image bytes")
-			albumRepo.SetData(model.Albums{{
-				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
-			}})
+			persistencetest.PutAlbums(ctx, ds, model.Album{
+				ID: "al2", Name: "Album", EmbedArtPath: fixtureAlbumDir + "/no-such-file.mp3", FolderIDs: []string{putFolder(ctx, ds, fixtureAlbumDir)},
+			})
 
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "al2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -508,15 +475,12 @@ var _ = Describe("NewTracingResolver", func() {
 				c.CoverArtPriority = "external, cover.*"
 				c.EnableMediaFileCoverArt = true
 			})
-			mfRepo := tests.CreateMockMediaFileRepo()
-			mfRepo.SetData(model.MediaFiles{{ID: "mf1", LibraryID: 0, HasCoverArt: true,
-				Path: "tests/fixtures/artist/an-album/test.mp3"}})
-			ds.MockedMediaFile = mfRepo
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3"})
 			offline := NewTracingResolver(ds, imageAgents(fake), ffm, t, false)
 
-			_, err := offline.Resolve(context.Background(), model.KindDiscArtwork, "al1:1")
+			_, err := offline.Resolve(ctx, model.KindDiscArtwork, "al1:1")
 			Expect(err).ToNot(HaveOccurred())
-			_, err = offline.Resolve(context.Background(), model.KindMediaFileArtwork, "mf1")
+			_, err = offline.Resolve(ctx, model.KindMediaFileArtwork, "mf1")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fake.albumCalls).To(BeZero())
@@ -524,7 +488,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("propagates a lookup error", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(ctx, model.KindAlbumArtwork, "nope")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
@@ -532,37 +496,33 @@ var _ = Describe("NewTracingResolver", func() {
 
 var _ = Describe("resolveDisc tracing", func() {
 	var (
-		ctx        context.Context
-		ds         *tests.MockDataStore
-		albumRepo  *tests.MockAlbumRepo
-		folderRepo *fakeFolderRepo
-		ffm        *tests.MockFFmpeg
-		t          *ChainTrace
+		ctx context.Context
+		ds  model.DataStore
+		ffm *tests.MockFFmpeg
+		t   *ChainTrace
 	)
 
+	// putDiscAlbum stores al1 with its disc-2 track in the fixture folder, listing images there.
+	putDiscAlbum := func(images ...string) {
+		GinkgoHelper()
+		fid := putFolder(ctx, ds, fixtureAlbumDir, images...)
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "al1", Name: "Album", FolderIDs: []string{fid}})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", AlbumID: "al1", DiscNumber: 2, FolderID: fid, Path: fixtureAlbumDir + "/test.mp3"})
+	}
+
 	BeforeEach(func() {
+		t = &ChainTrace{}
+		ctx = withTrace(GinkgoT().Context(), t)
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
-		libRepo := &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		albumRepo = tests.CreateMockAlbumRepo()
-		albumRepo.SetData(model.Albums{{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}}})
-		folderRepo = &fakeFolderRepo{}
-		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{{ID: "mf1", AlbumID: "al1", DiscNumber: 2, Path: "tests/fixtures/artist/an-album/test.mp3"}})
-		ds = &tests.MockDataStore{
-			MockedAlbum:     albumRepo,
-			MockedMediaFile: mfRepo,
-			MockedFolder:    folderRepo,
-			MockedLibrary:   libRepo,
-		}
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
 		ffm = tests.NewMockFFmpeg("")
-		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
 	})
 
 	It("accounts for every configured entry, including the ones that map to no source", func() {
 		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "external, discsubtitle, cover.jpg" })
+		putDiscAlbum()
 
 		res, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, model.DiscArtworkID("al1", 2))
 
@@ -577,10 +537,7 @@ var _ = Describe("resolveDisc tracing", func() {
 
 	It("records the entry that won and stops there", func() {
 		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "disc*.*, cover.jpg, embedded" })
-		folderRepo.result = []model.Folder{{
-			Path:       "tests/fixtures/artist/an-album",
-			ImageFiles: []string{"cover.jpg"},
-		}}
+		putDiscAlbum("cover.jpg")
 
 		res, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, model.DiscArtworkID("al1", 2))
 
@@ -599,6 +556,7 @@ var _ = Describe("resolveDisc tracing", func() {
 
 	It("reports an unparseable disc id rather than explaining another disc", func() {
 		conf.Update(func(c *conf.Options) { c.DiscArtPriority = "cover.jpg" })
+		putDiscAlbum()
 		_, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, "al1")
 		Expect(err).To(HaveOccurred())
 	})
@@ -606,27 +564,22 @@ var _ = Describe("resolveDisc tracing", func() {
 
 var _ = Describe("resolveMediaFile tracing", func() {
 	var (
-		ctx    context.Context
-		ds     *tests.MockDataStore
-		mfRepo *tests.MockMediaFileRepo
-		ffm    *tests.MockFFmpeg
-		t      *ChainTrace
+		ctx context.Context
+		ds  model.DataStore
+		ffm *tests.MockFFmpeg
+		t   *ChainTrace
 	)
 
 	BeforeEach(func() {
+		t = &ChainTrace{}
+		ctx = withTrace(GinkgoT().Context(), t)
 		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
-		libRepo := &tests.MockLibraryRepo{}
-		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
-		mfRepo = tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{{
-			ID: "mf1", Title: "Song", HasCoverArt: true, Path: "tests/fixtures/artist/an-album/test.mp3",
-		}})
-		ds = &tests.MockDataStore{MockedMediaFile: mfRepo, MockedLibrary: libRepo}
+		ds = newTestDS(ctx)
+		useLibrary(ctx, ds, repoRoot)
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Title: "Song", HasCoverArt: true, Path: fixtureAlbumDir + "/test.mp3"})
 		ffm = tests.NewMockFFmpeg("")
-		t = &ChainTrace{}
-		ctx = withTrace(context.Background(), t)
 	})
 
 	It("separates a disabled setting from a track with nothing embedded", func() {
@@ -641,7 +594,7 @@ var _ = Describe("resolveMediaFile tracing", func() {
 	})
 
 	It("records a track with no embedded art as a miss", func() {
-		mfRepo.SetData(model.MediaFiles{{ID: "mf2", Title: "Song", HasCoverArt: false}})
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf2", Title: "Song", Path: "song.mp3", HasCoverArt: false})
 
 		_, err := newResolver(ds, nil, ffm, nil).resolveMediaFile(ctx, "mf2")
 

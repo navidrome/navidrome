@@ -28,8 +28,10 @@ func TestLog(t *testing.T) {
 var _ = Describe("Logger", func() {
 	var l *logrus.Logger
 	var hook *test.Hook
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		l, hook = test.NewNullLogger()
 		SetLevel(LevelTrace)
 		SetDefaultLogger(l)
@@ -49,7 +51,7 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("Empty context", func() {
-			Error(context.TODO(), "Simple Message")
+			Error(ctx, "Simple Message")
 			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
 			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
@@ -77,8 +79,8 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("can get data from the request's context", func() {
-			ctx := NewContext(context.TODO(), "foo", "bar")
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			ctx = NewContext(ctx, "foo", "bar")
+			req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
 
 			Error(req, "Simple Message", "key1", "value1")
 
@@ -227,17 +229,16 @@ var _ = Describe("Logger", func() {
 	Describe("extractLogger", func() {
 		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns an error if the context is a string", func() {
 			_, err := extractLogger("any msg")
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns the logger from context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
-			ctx := context.Background()
 			ctx = context.WithValue(ctx, loggerCtxKey, logger)
 
 			Expect(extractLogger(ctx)).To(Equal(logger))
@@ -245,9 +246,8 @@ var _ = Describe("Logger", func() {
 
 		It("returns the logger from request's context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
-			ctx := context.Background()
 			ctx = context.WithValue(ctx, loggerCtxKey, logger)
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
 
 			Expect(extractLogger(req)).To(Equal(logger))
 		})
@@ -357,14 +357,14 @@ var _ = Describe("Logger", func() {
 			}
 			cfg := configOptions{
 				Address: "0.0.0.0",
-				LastFM: lastfmOptions{ //nolint:gosec
+				LastFM: lastfmOptions{
 					Enabled:   true,
 					ApiKey:    "0123456789abcdef0123456789abcdef",
 					Secret:    "fedcba9876543210fedcba9876543210",
 					Language:  "en",
 					Languages: []string{"en"},
 				},
-				Prometheus: prometheusOptions{ //nolint:gosec
+				Prometheus: prometheusOptions{
 					Enabled:     true,
 					MetricsPath: "/metrics",
 					Password:    `prom"pass-tail`,

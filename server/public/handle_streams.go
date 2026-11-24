@@ -11,7 +11,7 @@ import (
 	streampkg "github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -31,7 +31,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		checkShareError(ctx, w, err, info.shareID)
 		return
 	}
-	if expiresAt := V(share.ExpiresAt); !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
+	if expiresAt := gg.V(share.ExpiresAt); !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
 		checkShareError(ctx, w, model.ErrExpired, info.shareID)
 		return
 	}

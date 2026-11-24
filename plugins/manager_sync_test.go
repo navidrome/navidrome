@@ -7,7 +7,6 @@ import (
 
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -15,15 +14,15 @@ import (
 var _ = Describe("syncPlugins", func() {
 	var ctx context.Context
 	var m *Manager
-	var repo *tests.MockPluginRepo
+	var repo model.PluginRepository
 	var folder string
 
 	BeforeEach(func() {
-		ctx = GinkgoT().Context()
+		ctx = adminContext(GinkgoT().Context())
 		folder = GinkgoT().TempDir()
-		repo = tests.CreateMockPluginRepo()
-		repo.SetData(model.Plugins{})
-		m = &Manager{ds: &tests.MockDataStore{MockedPlugin: repo}}
+		ds := newTestDataStore()
+		repo = ds.Plugin()
+		m = &Manager{ds: ds}
 	})
 
 	writePackage := func(name string) {
@@ -36,7 +35,7 @@ var _ = Describe("syncPlugins", func() {
 	It("registers a plugin with a usable ID", func() {
 		writePackage("my-plugin" + PackageExtension)
 
-		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
+		Expect(m.syncPlugins(ctx, folder)).To(Succeed())
 
 		_, err := repo.Get(ctx, "my-plugin")
 		Expect(err).ToNot(HaveOccurred())
@@ -46,7 +45,7 @@ var _ = Describe("syncPlugins", func() {
 		writePackage("." + PackageExtension)
 		writePackage(".." + PackageExtension)
 
-		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
+		Expect(m.syncPlugins(ctx, folder)).To(Succeed())
 
 		all, err := repo.GetAll(ctx)
 		Expect(err).ToNot(HaveOccurred())
@@ -56,25 +55,28 @@ var _ = Describe("syncPlugins", func() {
 
 var _ = Describe("removePluginFromDB", func() {
 	var ctx context.Context
+	var ds model.DataStore
 
 	BeforeEach(func() {
-		ctx = GinkgoT().Context()
+		ctx = adminContext(GinkgoT().Context())
+		ds = newTestDataStore()
+		putUsers(ds, model.User{ID: "user1", UserName: "user1"})
+		for _, id := range []string{"track1", "track2"} {
+			Expect(ds.MediaFile().Put(ctx, &model.MediaFile{ID: id, Path: id + ".mp3", LibraryID: model.DefaultLibraryID})).To(Succeed())
+		}
 	})
 
 	It("discards buffered scrobbles for the removed plugin", func() {
-		buffer := tests.CreateMockedScrobbleBufferRepo()
+		buffer := ds.ScrobbleBuffer()
 		Expect(buffer.Enqueue(ctx, "my-plugin", "user1", "track1", time.Now())).To(Succeed())
 		Expect(buffer.Enqueue(ctx, "other-plugin", "user1", "track2", time.Now())).To(Succeed())
 
-		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "my-plugin", Enabled: false}
-		repo.SetData(model.Plugins{plugin})
+		repo := newTestDataStore(plugin).Plugin()
 
 		// No broker: sendPluginRefreshEvent is nil-safe, and testBroker is
 		// defined in manager_test.go, which is excluded on Windows.
-		m := &Manager{
-			ds: &tests.MockDataStore{MockedScrobbleBuffer: buffer},
-		}
+		m := &Manager{ds: ds}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
 		_, err := repo.Get(ctx, "my-plugin")
@@ -90,16 +92,13 @@ var _ = Describe("removePluginFromDB", func() {
 
 	It("keeps buffered scrobbles of a builtin scrobbler sharing the removed plugin's name", func() {
 		scrobbler.Register("builtin-svc", func(model.DataStore) scrobbler.Scrobbler { return nil })
-		buffer := tests.CreateMockedScrobbleBufferRepo()
+		buffer := ds.ScrobbleBuffer()
 		Expect(buffer.Enqueue(ctx, "builtin-svc", "user1", "track1", time.Now())).To(Succeed())
 
-		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "builtin-svc", Enabled: false}
-		repo.SetData(model.Plugins{plugin})
+		repo := newTestDataStore(plugin).Plugin()
 
-		m := &Manager{
-			ds: &tests.MockDataStore{MockedScrobbleBuffer: buffer},
-		}
+		m := &Manager{ds: ds}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
 		remaining, err := buffer.Length(ctx)

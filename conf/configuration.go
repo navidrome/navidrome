@@ -3,6 +3,7 @@ package conf
 import (
 	"cmp"
 	"encoding"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -101,6 +102,7 @@ type Options struct {
 	DefaultUIVolume                 int
 	UISearchDebounceMs              int
 	UICoverArtSize                  int
+	UIAppendRemixers                bool // Whether to show remixers after the track artists in the UI
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
@@ -142,6 +144,7 @@ type Options struct {
 	DevUIShowConfig                   bool
 	DevNewEventStream                 bool
 	DevOffsetOptimize                 int
+	DevMaxPlaylistTracksPerRequest    int
 	DevArtworkMaxRequests             int
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
@@ -176,6 +179,7 @@ type scannerOptions struct {
 	GroupAlbumReleases    bool     // Deprecated: Use PID.Album instead
 	FollowSymlinks        bool     // Whether to follow symlinks when scanning directories
 	IgnoreDotFolders      bool     // Whether to ignore folders whose name starts with a dot when scanning
+	RespectNoMedia        bool     // Whether to skip folders (and their subfolders) containing a .nomedia file
 	PurgeMissing          string   // Values: "never", "always", "full"
 }
 
@@ -206,10 +210,11 @@ type TagConf struct {
 
 type lastfmOptions struct {
 	Enabled                 bool
-	ApiKey                  string //nolint:gosec
-	Secret                  string //nolint:gosec
+	ApiKey                  string
+	Secret                  string
 	Language                string
 	ScrobbleFirstArtistOnly bool
+	MinScrobbleDuration     time.Duration
 
 	// Computed values
 	Languages []string `conf:"-"` // Computed from Language, split by comma
@@ -251,7 +256,7 @@ type httpHeaderOptions struct {
 type prometheusOptions struct {
 	Enabled     bool
 	MetricsPath string
-	Password    string //nolint:gosec
+	Password    string
 }
 
 type AudioDeviceDefinition []string
@@ -390,7 +395,7 @@ func Load(noConfigDump bool) {
 	out := os.Stderr
 	if s.LogFile != "" {
 		if mkErr := os.MkdirAll(filepath.Dir(s.LogFile), os.ModePerm); mkErr != nil {
-			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+			logFatal("Error creating log file directory: " + mkErr.Error())
 		}
 		out, err = os.OpenFile(s.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
@@ -423,6 +428,8 @@ func Load(noConfigDump bool) {
 	durationNonNegativeOrDefault(&s.DevAlbumInfoTimeToLive, consts.AlbumInfoTimeToLive)
 	durationNonNegativeOrDefault(&s.DevInsightsInitialDelay, consts.InsightsInitialDelay)
 	durationNonNegativeOrDefault(&s.DevPluginCompilationTimeout, consts.DefaultPluginCompilationTimeout)
+
+	durationNonNegativeOrDefault(&s.LastFM.MinScrobbleDuration, consts.DefaultMinScrobbleDuration)
 
 	// Log deprecated, removed and unknown options
 	for _, o := range deprecatedOptions {
@@ -724,7 +731,7 @@ func asWrittenInConfigFile(keys []string) []string {
 	})
 }
 
-// Matches keys and section headers in all supported config formats.
+// configFileKeyRx matches keys and section headers in all supported config formats.
 var configFileKeyRx = regexp.MustCompile(`(?m)^\s*\[?\s*"?([\w.]+)"?\s*[]=:]`)
 
 // configKeys maps every accepted option name, lowercased, to its canonical spelling,
@@ -859,7 +866,7 @@ func (s *Options) validateEnforceNonRootUser() error {
 	}
 
 	if getEUID() == 0 {
-		return fmt.Errorf("EnforceNonRootUser is enabled but Navidrome is running as root")
+		return errors.New("EnforceNonRootUser is enabled but Navidrome is running as root")
 	}
 
 	return nil
@@ -1015,6 +1022,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)
 	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
+	viper.SetDefault("uiappendremixers", true)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
@@ -1054,6 +1062,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
 	viper.SetDefault("scanner.ignoredotfolders", true)
+	viper.SetDefault("scanner.respectnomedia", false)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.appendalbumversion", true)
@@ -1071,6 +1080,7 @@ func setViperDefaults() {
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
+	viper.SetDefault("lastfm.minscrobbleduration", consts.DefaultMinScrobbleDuration)
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)
@@ -1111,6 +1121,7 @@ func setViperDefaults() {
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devapiv1", false)
 	viper.SetDefault("devoffsetoptimize", 50000)
+	viper.SetDefault("devmaxplaylisttracksperrequest", 50000)
 	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
 	// scrobbles and the UI. See MaxOpenConns.
 	viper.SetDefault("jellyfin.maxconcurrentstreams", max(2, MaxOpenConns()/2))

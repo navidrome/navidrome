@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -19,13 +20,16 @@ type playbackReport struct {
 	IsPaused      bool   `json:"IsPaused"`
 }
 
+// maxPlaybackReportBody fits a report carrying a long NowPlayingQueue.
+const maxPlaybackReportBody = 4 << 20
+
 // decodeReport reads the playback report body. ItemId falls back to a query param (some clients send
 // it there) and is decoded here since it flows straight into scrobbler lookups by media file id.
 // These endpoints always answer 204 (see reportPlaybackStart), so a malformed id isn't a request
 // failure; it just can't identify a track, same as an absent one.
 func (api *Router) decodeReport(r *http.Request) playbackReport {
 	var body playbackReport
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = json.NewDecoder(io.LimitReader(r.Body, maxPlaybackReportBody)).Decode(&body)
 	if body.ItemId == "" {
 		body.ItemId = r.URL.Query().Get("itemid")
 	}
@@ -35,6 +39,16 @@ func (api *Router) decodeReport(r *http.Request) playbackReport {
 		body.ItemId = ""
 	}
 	return body
+}
+
+// isStation reports whether id names an internet radio station. Stations have no media file, so
+// their reports would only fail in the scrobbler.
+func (api *Router) isStation(ctx context.Context, id string) bool {
+	if id == "" {
+		return false
+	}
+	ok, err := api.ds.Radio().Exists(ctx, id)
+	return err == nil && ok
 }
 
 // clientIdentity returns the scrobbler cache key/display name for the caller's
@@ -51,6 +65,10 @@ func clientIdentity(ctx context.Context) (id, name string) {
 func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := api.decodeReport(r)
+	if api.isStation(ctx, body.ItemId) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	clientId, clientName := clientIdentity(ctx)
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:      body.ItemId,
@@ -71,6 +89,10 @@ func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := api.decodeReport(r)
+	if api.isStation(ctx, body.ItemId) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	state := scrobbler.StatePlaying
 	if body.IsPaused {
 		state = scrobbler.StatePaused
@@ -98,6 +120,10 @@ func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request
 func (api *Router) reportPlaybackStopped(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := api.decodeReport(r)
+	if api.isStation(ctx, body.ItemId) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	clientId, clientName := clientIdentity(ctx)
 
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{

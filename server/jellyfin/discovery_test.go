@@ -28,9 +28,11 @@ func (c *failingConn) Close() error {
 }
 
 var _ = Describe("Discovery", func() {
+	var ctx context.Context
 	var d *Discovery
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) {
 			c.Jellyfin.ServerName = "Test Server"
 			c.Address = "0.0.0.0"
@@ -48,7 +50,7 @@ var _ = Describe("Discovery", func() {
 		func(setup func(), expected string) {
 			setup()
 			remote := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 50000}
-			Expect(discoveryAddress(context.Background(), remote)).To(Equal(expected))
+			Expect(discoveryAddress(ctx, remote)).To(Equal(expected))
 		},
 		Entry("uses the BaseURL host and scheme when set", func() {
 			conf.Update(func(c *conf.Options) {
@@ -97,7 +99,7 @@ var _ = Describe("Discovery", func() {
 
 	It("closes the connection when the read loop fails", func() {
 		fake := &failingConn{}
-		d.ServeOn(context.Background(), fake)
+		d.ServeOn(ctx, fake)
 		Expect(fake.closed).To(BeTrue())
 	})
 
@@ -117,12 +119,12 @@ var _ = Describe("Discovery", func() {
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(client.Close)
 
-			var ctx context.Context
-			ctx, cancel = context.WithCancel(context.Background())
+			var serveCtx context.Context
+			serveCtx, cancel = context.WithCancel(ctx)
 			done = make(chan struct{})
 			go func() {
 				defer close(done)
-				d.ServeOn(ctx, server)
+				d.ServeOn(serveCtx, server)
 			}()
 			DeferCleanup(func() {
 				cancel()
@@ -149,7 +151,7 @@ var _ = Describe("Discovery", func() {
 			var info discoveryInfo
 			Expect(json.Unmarshal(res, &info)).To(Succeed())
 			Expect(info.Address).To(Equal("http://127.0.0.1:4533/jellyfin"))
-			Expect(info.Id).To(Equal(d.serverID(context.Background())))
+			Expect(info.Id).To(Equal(d.serverID(ctx)))
 			Expect(info.Name).To(Equal("Test Server"))
 			Expect(string(res)).To(ContainSubstring(`"EndpointAddress":null`))
 		})

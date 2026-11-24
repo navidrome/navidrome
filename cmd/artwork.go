@@ -342,7 +342,7 @@ func selectedKinds(kinds, sources []string, all bool) ([]model.Kind, error) {
 		return artwork.ReprocessKinds, nil
 	}
 	if len(kinds) == 0 {
-		return nil, fmt.Errorf("no selector given: pass --kind, --source or --all")
+		return nil, errors.New("no selector given: pass --kind, --source or --all")
 	}
 	return parseAll(kinds, func(s string) (model.Kind, error) {
 		return parseArtworkKind(s, artwork.ReprocessKinds)
@@ -428,7 +428,7 @@ func promptConfirm(in io.Reader, verb string) confirmFunc {
 	return func(out io.Writer, total, external int64) bool {
 		var cost string
 		if external > 0 {
-			cost = fmt.Sprintf(" %s", externalLookupLine(external))
+			cost = " " + externalLookupLine(external)
 		}
 		fmt.Fprintf(out, "\nThis will %s %d items.%s Continue? [y/N] ", verb, total, cost)
 		var answer string
@@ -559,7 +559,7 @@ func cancelSelection(kinds, priorities []string, all bool) ([]model.Kind, []int,
 		return nil, nil, nil
 	}
 	if len(kinds) == 0 && len(priorities) == 0 {
-		return nil, nil, fmt.Errorf("no selector given: pass --kind, --priority or --all")
+		return nil, nil, errors.New("no selector given: pass --kind, --priority or --all")
 	}
 	// RefreshableKinds, not ReprocessKinds: media files are queued, so --kind must reach them.
 	outKinds, err := parseAll(kinds, func(s string) (model.Kind, error) {

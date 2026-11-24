@@ -35,7 +35,7 @@ func (p *dbPlaylist) PostScan() error {
 
 func (p dbPlaylist) PostMapArgs(args map[string]any) error {
 	var err error
-	if p.Playlist.IsSmartPlaylist() {
+	if p.IsSmartPlaylist() {
 		args["rules"], err = json.Marshal(p.Playlist.Rules)
 		if err != nil {
 			return fmt.Errorf("invalid criteria expression: %w", err)

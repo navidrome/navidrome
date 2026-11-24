@@ -29,7 +29,7 @@ func IndexWithShare(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.H
 	return serveIndex(ds, fs, shareInfo)
 }
 
-// Injects the config in the `index.html` template
+// serveIndex injects the config in the `index.html` template
 func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := ds.User().CountAll(r.Context())
@@ -57,6 +57,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"defaultUIVolume":           conf.Server().DefaultUIVolume,
 			"uiSearchDebounceMs":        conf.Server().UISearchDebounceMs,
 			"uiCoverArtSize":            conf.Server().UICoverArtSize,
+			"uiAppendRemixers":          conf.Server().UIAppendRemixers,
 			"enableCoverAnimation":      conf.Server().EnableCoverAnimation,
 			"pidAlbum":                  conf.Server().PID.Album,
 			"pidTrack":                  conf.Server().PID.Track,

@@ -8,8 +8,11 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,11 +21,13 @@ import (
 func TestAuth(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
+	persistencetest.Init(t)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Auth Test Suite")
 }
 
 var _ = configtest.RestoreAfterEachSpec()
+var _ = persistencetest.ResetBeforeEachSpec()
 
 const (
 	oneDay = 24 * time.Hour
@@ -35,10 +40,7 @@ var _ = BeforeSuite(func() {
 var _ = Describe("Auth", func() {
 
 	BeforeEach(func() {
-		ds := &tests.MockDataStore{
-			MockedProperty: &tests.MockedPropertyRepo{},
-		}
-		auth.Init(ds)
+		auth.Init(persistence.New(db.Db()))
 	})
 
 	Describe("Validate", func() {
@@ -88,7 +90,7 @@ var _ = Describe("Auth", func() {
 			Expect(claims.Issuer).To(Equal(consts.JWTIssuer))
 			Expect(claims.Subject).To(Equal("johndoe"))
 			Expect(claims.UserID).To(Equal("123"))
-			Expect(claims.IsAdmin).To(Equal(true))
+			Expect(claims.IsAdmin).To(BeTrue())
 			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
 		})
 	})

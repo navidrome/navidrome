@@ -21,7 +21,7 @@ var _ = Describe("Auto discovery", func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(client.Close)
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(GinkgoT().Context())
 		done := make(chan struct{})
 		go func() {
 			defer close(done)

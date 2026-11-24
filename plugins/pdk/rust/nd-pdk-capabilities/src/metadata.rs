@@ -180,6 +180,10 @@ pub struct SimilarSongsByAlbumRequest {
     /// Count is the maximum number of similar songs to return.
     #[serde(default)]
     pub count: i32,
+    /// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+    /// lacks the users permission or access to that user.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub username: String,
 }
 /// SimilarSongsByArtistRequest is the request for GetSimilarSongsByArtist.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -197,6 +201,10 @@ pub struct SimilarSongsByArtistRequest {
     /// Count is the maximum number of similar songs to return.
     #[serde(default)]
     pub count: i32,
+    /// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+    /// lacks the users permission or access to that user.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub username: String,
 }
 /// SimilarSongsByTrackRequest is the request for GetSimilarSongsByTrack.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -217,6 +225,10 @@ pub struct SimilarSongsByTrackRequest {
     /// Count is the maximum number of similar songs to return.
     #[serde(default)]
     pub count: i32,
+    /// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+    /// lacks the users permission or access to that user.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub username: String,
 }
 /// SimilarSongsResponse is the response for GetSimilarSongsBy* functions.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

@@ -38,11 +38,11 @@ var _ = Describe("Albums", func() {
 			})
 			It("marshals correctly", func() {
 				data, err := json.Marshal(albums)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				var albums2 Albums
 				err = json.Unmarshal(data, &albums2)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(albums2).To(Equal(albums))
 			})
 		})

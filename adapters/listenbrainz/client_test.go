@@ -22,7 +22,9 @@ import (
 var _ = Describe("client", func() {
 	var httpClient *tests.FakeHttpClient
 	var client *client
+	var ctx context.Context
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		httpClient = &tests.FakeHttpClient{}
 		client = newClient("BASE_URL/", httpClient)
 	})
@@ -46,12 +48,12 @@ var _ = Describe("client", func() {
 		BeforeEach(func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token valid.", "user_name": "ListenBrainzUser", "valid": true}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 		})
 
 		It("formats the request properly", func() {
-			_, err := client.validateToken(context.Background(), "LB-TOKEN")
+			_, err := client.validateToken(ctx, "LB-TOKEN")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/validate-token"))
@@ -60,9 +62,9 @@ var _ = Describe("client", func() {
 		})
 
 		It("parses and returns the response", func() {
-			res, err := client.validateToken(context.Background(), "LB-TOKEN")
+			res, err := client.validateToken(ctx, "LB-TOKEN")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.Valid).To(Equal(true))
+			Expect(res.Valid).To(BeTrue())
 			Expect(res.UserName).To(Equal("ListenBrainzUser"))
 		})
 	})
@@ -72,7 +74,7 @@ var _ = Describe("client", func() {
 		BeforeEach(func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 			li = listenInfo{
 				TrackMetadata: trackMetadata{
@@ -93,7 +95,7 @@ var _ = Describe("client", func() {
 
 		Describe("updateNowPlaying", func() {
 			It("formats the request properly", func() {
-				Expect(client.updateNowPlaying(context.Background(), "LB-TOKEN", li)).To(Succeed())
+				Expect(client.updateNowPlaying(ctx, "LB-TOKEN", li)).To(Succeed())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
 				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
@@ -111,7 +113,7 @@ var _ = Describe("client", func() {
 			})
 
 			It("formats the request properly", func() {
-				Expect(client.scrobble(context.Background(), "LB-TOKEN", li)).To(Succeed())
+				Expect(client.scrobble(ctx, "LB-TOKEN", li)).To(Succeed())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
 				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
@@ -129,9 +131,9 @@ var _ = Describe("client", func() {
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400,"error": "artist mbid 1 is not valid."}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
-			_, err := client.getArtistUrl(context.Background(), "1")
+			_, err := client.getArtistUrl(ctx, "1")
 			Expect(err.Error()).To(Equal("ListenBrainz error(400): artist mbid 1 is not valid."))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "artist_mbids=1"))
@@ -141,9 +143,9 @@ var _ = Describe("client", func() {
 		It("handles a malformed request without meaningful body", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(``)),
-				StatusCode: 501,
+				StatusCode: http.StatusNotImplemented,
 			}
-			_, err := client.getArtistUrl(context.Background(), "1")
+			_, err := client.getArtistUrl(ctx, "1")
 			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (501)"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "artist_mbids=1"))
@@ -152,8 +154,8 @@ var _ = Describe("client", func() {
 
 		It("It returns not found when the artist has no official homepage", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.no_homepage.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			_, err := client.getArtistUrl(context.Background(), "7c2cc610-f998-43ef-a08f-dae3344b8973")
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			_, err := client.getArtistUrl(ctx, "7c2cc610-f998-43ef-a08f-dae3344b8973")
 			Expect(err.Error()).To(Equal("listenbrainz: not found"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "artist_mbids=7c2cc610-f998-43ef-a08f-dae3344b8973"))
@@ -162,8 +164,8 @@ var _ = Describe("client", func() {
 
 		It("It returns data when the artist has a homepage", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.homepage.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			url, err := client.getArtistUrl(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56")
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			url, err := client.getArtistUrl(ctx, "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(url).To(Equal("http://projectmili.com/"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
@@ -178,9 +180,9 @@ var _ = Describe("client", func() {
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code":400,"error":"artist_mbid: '1' is not a valid uuid"}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
-			_, err := client.getArtistTopSongs(context.Background(), "1", 50)
+			_, err := client.getArtistTopSongs(ctx, "1", 50)
 			Expect(err.Error()).To(Equal("ListenBrainz error(400): artist_mbid: '1' is not a valid uuid"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
@@ -190,9 +192,9 @@ var _ = Describe("client", func() {
 		It("handles a malformed request without standard body", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(``)),
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 			}
-			_, err := client.getArtistTopSongs(context.Background(), "1", 1)
+			_, err := client.getArtistTopSongs(ctx, "1", 1)
 			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (500)"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + "1"))
@@ -201,8 +203,8 @@ var _ = Describe("client", func() {
 
 		It("It returns all tracks when given the opportunity", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			data, err := client.getArtistTopSongs(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 5)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			data, err := client.getArtistTopSongs(ctx, "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 5)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]trackInfo{
 				{
@@ -231,8 +233,8 @@ var _ = Describe("client", func() {
 
 		It("It returns a subset of tracks when allowed", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			data, err := client.getArtistTopSongs(context.Background(), "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			data, err := client.getArtistTopSongs(ctx, "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]trackInfo{
 				{
@@ -267,9 +269,9 @@ var _ = Describe("client", func() {
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
-			_, err := client.getSimilarArtists(context.Background(), "1", 2)
+			_, err := client.getSimilarArtists(ctx, "1", 2)
 			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (400)"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl("1")))
@@ -278,8 +280,8 @@ var _ = Describe("client", func() {
 
 		It("handles real data properly", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			resp, err := client.getSimilarArtists(context.Background(), mbid, 2)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			resp, err := client.getSimilarArtists(ctx, mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
@@ -292,8 +294,8 @@ var _ = Describe("client", func() {
 
 		It("truncates data when requested", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			resp, err := client.getSimilarArtists(context.Background(), "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			resp, err := client.getSimilarArtists(ctx, "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
@@ -308,8 +310,8 @@ var _ = Describe("client", func() {
 			conf.Update(func(c *conf.Options) { c.ListenBrainz.ArtistAlgorithm = algorithm })
 
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			resp, err := client.getSimilarArtists(context.Background(), mbid, 2)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			resp, err := client.getSimilarArtists(ctx, mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
@@ -337,9 +339,9 @@ var _ = Describe("client", func() {
 		It("handles a malformed request with status code", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
-			_, err := client.getSimilarRecordings(context.Background(), "1", 2)
+			_, err := client.getSimilarRecordings(ctx, "1", 2)
 			Expect(err.Error()).To(Equal("ListenBrainz: HTTP Error, Status: (400)"))
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl("1")))
@@ -348,8 +350,8 @@ var _ = Describe("client", func() {
 
 		It("handles real data properly", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			resp, err := client.getSimilarRecordings(context.Background(), mbid, 2)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			resp, err := client.getSimilarRecordings(ctx, mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
@@ -376,8 +378,8 @@ var _ = Describe("client", func() {
 
 		It("truncates data when requested", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			resp, err := client.getSimilarRecordings(context.Background(), mbid, 1)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			resp, err := client.getSimilarRecordings(ctx, mbid, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
@@ -396,9 +398,9 @@ var _ = Describe("client", func() {
 
 		It("properly sorts by score and truncates duplicates", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings-real-out-of-order.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			// There are actually 5 items. The dedup should happen FIRST
-			resp, err := client.getSimilarRecordings(context.Background(), mbid, 4)
+			resp, err := client.getSimilarRecordings(ctx, mbid, 4)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
@@ -444,8 +446,8 @@ var _ = Describe("client", func() {
 			conf.Update(func(c *conf.Options) { c.ListenBrainz.TrackAlgorithm = algorithm })
 
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
-			resp, err := client.getSimilarRecordings(context.Background(), mbid, 1)
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
+			resp, err := client.getSimilarRecordings(ctx, mbid, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(getUrl(mbid)))
@@ -466,11 +468,11 @@ var _ = Describe("client", func() {
 	Describe("rate limiting", func() {
 		It("returns RetryLaterError with the header delay on 429", func() {
 			httpClient.Res = http.Response{
-				StatusCode: 429,
+				StatusCode: http.StatusTooManyRequests,
 				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"3"}},
 				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"You have exceeded your rate limit."}`)),
 			}
-			_, err := client.validateToken(context.Background(), "token")
+			_, err := client.validateToken(ctx, "token")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 			retry, ok := errors.AsType[*agents.RetryLaterError](err)
 			Expect(ok).To(BeTrue())
@@ -479,10 +481,10 @@ var _ = Describe("client", func() {
 
 		It("returns RetryLaterError with zero delay when no header is present", func() {
 			httpClient.Res = http.Response{
-				StatusCode: 429,
+				StatusCode: http.StatusTooManyRequests,
 				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"rate limited"}`)),
 			}
-			_, err := client.validateToken(context.Background(), "token")
+			_, err := client.validateToken(ctx, "token")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 			retry, _ := errors.AsType[*agents.RetryLaterError](err)
 			Expect(retry.RetryIn).To(BeZero())
@@ -491,11 +493,11 @@ var _ = Describe("client", func() {
 		DescribeTable("caps absurd header values at one hour",
 			func(header string) {
 				httpClient.Res = http.Response{
-					StatusCode: 429,
+					StatusCode: http.StatusTooManyRequests,
 					Header:     http.Header{"X-Ratelimit-Reset-In": []string{header}},
 					Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"rate limited"}`)),
 				}
-				_, err := client.validateToken(context.Background(), "token")
+				_, err := client.validateToken(ctx, "token")
 				retry, _ := errors.AsType[*agents.RetryLaterError](err)
 				Expect(retry.RetryIn).To(Equal(time.Hour))
 			},
@@ -507,11 +509,11 @@ var _ = Describe("client", func() {
 
 		It("maps a body-level 429 sent with a non-429 status", func() {
 			httpClient.Res = http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"7"}},
 				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"You have exceeded your rate limit."}`)),
 			}
-			_, err := client.validateToken(context.Background(), "token")
+			_, err := client.validateToken(ctx, "token")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 			retry, ok := errors.AsType[*agents.RetryLaterError](err)
 			Expect(ok).To(BeTrue())
@@ -520,11 +522,11 @@ var _ = Describe("client", func() {
 
 		It("returns RetryLaterError on a 429 from makeGenericRequest", func() {
 			httpClient.Res = http.Response{
-				StatusCode: 429,
+				StatusCode: http.StatusTooManyRequests,
 				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"5"}},
 				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"rate limited"}`)),
 			}
-			_, err := client.getArtistUrl(context.Background(), "1")
+			_, err := client.getArtistUrl(ctx, "1")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 			retry, ok := errors.AsType[*agents.RetryLaterError](err)
 			Expect(ok).To(BeTrue())

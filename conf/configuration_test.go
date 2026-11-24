@@ -34,10 +34,7 @@ var _ = Describe("Configuration", func() {
 		viper.SetDefault("loglevel", "error")
 		conf.ResetConf()
 
-		// Panic instead of exiting on fatal errors to allow testing error conditions
-		DeferCleanup(conf.SetLogFatal(func(args ...any) {
-			panic(fmt.Sprint(args...))
-		}))
+		DeferCleanup(conf.PanicOnLogFatal())
 	})
 
 	Describe("ParseLanguages", func() {
@@ -112,7 +109,7 @@ var _ = Describe("Configuration", func() {
 
 		It("rejects a URL that cannot be parsed", func() {
 			fn := conf.ValidateURL("TestOption", "://invalid")
-			Expect(fn()).To(HaveOccurred())
+			Expect(fn()).ToNot(Succeed())
 		})
 
 		It("rejects a URL without a host", func() {
@@ -401,6 +398,31 @@ var _ = Describe("Configuration", func() {
 			viper.SetDefault("maximagesize", "30MB")
 			conf.Load(true)
 			Expect(conf.Server().MaxImageSize).To(Equal("30MB"))
+		})
+	})
+
+	Describe("MinScrobbleDuration", func() {
+		It("defaults to 30 seconds", func() {
+			conf.Load(true)
+			Expect(conf.Server().LastFM.MinScrobbleDuration).To(Equal(consts.DefaultMinScrobbleDuration))
+		})
+
+		It("sets negative values to default", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "-10s")
+			conf.Load(true)
+			Expect(conf.Server().LastFM.MinScrobbleDuration).To(Equal(consts.DefaultMinScrobbleDuration))
+		})
+
+		It("disables with zero value", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "0s")
+			conf.Load(true)
+			Expect(conf.Server().LastFM.MinScrobbleDuration).To(Equal(time.Duration(0)))
+		})
+
+		It("preserves positive values", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "45s")
+			conf.Load(true)
+			Expect(conf.Server().LastFM.MinScrobbleDuration).To(Equal(45 * time.Second))
 		})
 	})
 

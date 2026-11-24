@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/capabilities"
 	"github.com/navidrome/navidrome/plugins/types"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -67,6 +68,14 @@ func agentErr(err error) error {
 type MetadataAgent struct {
 	name   string
 	plugin *plugin
+}
+
+func (a *MetadataAgent) username(ctx context.Context) string {
+	user, ok := request.UserFrom(ctx)
+	if !ok || !a.plugin.hasUserAccess(user.ID) {
+		return ""
+	}
+	return user.UserName
 }
 
 // AgentName returns the plugin name
@@ -227,17 +236,17 @@ func callSimilarSongsPluginFunction[T any](ctx context.Context, plugin *plugin, 
 
 // GetSimilarSongsByTrack retrieves songs similar to a specific track
 func (a *MetadataAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
-	return callSimilarSongsPluginFunction[capabilities.SimilarSongsByTrackRequest](ctx, a.plugin, FuncGetSimilarSongsByTrack, capabilities.SimilarSongsByTrackRequest{ID: id, Name: name, Artist: artist, MBID: mbid, Count: int32(count)})
+	return callSimilarSongsPluginFunction[capabilities.SimilarSongsByTrackRequest](ctx, a.plugin, FuncGetSimilarSongsByTrack, capabilities.SimilarSongsByTrackRequest{ID: id, Name: name, Artist: artist, MBID: mbid, Count: int32(count), Username: a.username(ctx)})
 }
 
 // GetSimilarSongsByAlbum retrieves songs similar to tracks on an album
 func (a *MetadataAgent) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error) {
-	return callSimilarSongsPluginFunction[capabilities.SimilarSongsByAlbumRequest](ctx, a.plugin, FuncGetSimilarSongsByAlbum, capabilities.SimilarSongsByAlbumRequest{ID: id, Name: name, Artist: artist, MBID: mbid, Count: int32(count)})
+	return callSimilarSongsPluginFunction[capabilities.SimilarSongsByAlbumRequest](ctx, a.plugin, FuncGetSimilarSongsByAlbum, capabilities.SimilarSongsByAlbumRequest{ID: id, Name: name, Artist: artist, MBID: mbid, Count: int32(count), Username: a.username(ctx)})
 }
 
 // GetSimilarSongsByArtist retrieves songs similar to an artist's catalog
 func (a *MetadataAgent) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid string, count int) ([]agents.Song, error) {
-	return callSimilarSongsPluginFunction[capabilities.SimilarSongsByArtistRequest](ctx, a.plugin, FuncGetSimilarSongsByArtist, capabilities.SimilarSongsByArtistRequest{ID: id, Name: name, MBID: mbid, Count: int32(count)})
+	return callSimilarSongsPluginFunction[capabilities.SimilarSongsByArtistRequest](ctx, a.plugin, FuncGetSimilarSongsByArtist, capabilities.SimilarSongsByArtistRequest{ID: id, Name: name, MBID: mbid, Count: int32(count), Username: a.username(ctx)})
 }
 
 // songRefToAgentSong converts a single SongRef to agents.Song. SongRef keeps the single

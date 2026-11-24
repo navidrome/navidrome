@@ -23,8 +23,8 @@ var similarWait = 10 * time.Second
 const (
 	defaultSimilarLimit = 20
 	maxSimilarLimit     = 100
-	// A mix is a playback queue, not a "related items" list: Finamp's Radio Mix asks for 250, so the
-	// Similar ceiling would truncate it. Real Jellyfin builds mixes from a 200-track genre query.
+	// maxInstantMixLimit is above the Similar ceiling: a mix is a playback queue, not a "related items"
+	// list, and Finamp's Radio Mix asks for 250. Real Jellyfin builds mixes from a 200-track genre query.
 	maxInstantMixLimit = 500
 )
 

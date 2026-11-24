@@ -125,7 +125,7 @@ func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*
 	}
 
 	// Execute request
-	resp, err := s.client.Do(httpReq) //nolint:gosec // URL is validated against requiredHosts
+	resp, err := s.client.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}

@@ -9,21 +9,21 @@ import (
 
 	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("GET /server", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
-	var users *tests.MockedUserRepo
+	var ds model.DataStore
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		users = tests.CreateMockUserRepo()
-		ds = &tests.MockDataStore{MockedUser: users}
+		ds = persistence.New(db.Db())
 	})
 
 	get := func() (*httptest.ResponseRecorder, ServerInfo) {
@@ -48,13 +48,15 @@ var _ = Describe("GET /server", func() {
 	})
 
 	It("reports setupRequired=false once a user exists", func() {
-		Expect(users.Put(ctx, &model.User{ID: "u1", UserName: "admin", IsAdmin: true})).To(Succeed())
+		Expect(ds.User().Put(ctx, &model.User{ID: "u1", UserName: "admin", IsAdmin: true})).To(Succeed())
 		_, info := get()
 		Expect(info.SetupRequired).To(BeFalse())
 	})
 
 	It("returns a 500 problem when the user count fails", func() {
-		users.Error = errors.New("db down")
+		ds = persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+			return &countErrorUserRepo{UserRepository: r, err: errors.New("db down")}
+		}})
 		w, _ := get()
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInternal))
@@ -89,3 +91,12 @@ var _ = Describe("GET /capabilities", func() {
 		Expect(caps.Password.Version).To(Equal(1))
 	})
 })
+
+type countErrorUserRepo struct {
+	model.UserRepository
+	err error
+}
+
+func (r *countErrorUserRepo) CountAll(context.Context, ...model.QueryOptions) (int64, error) {
+	return 0, r.err
+}

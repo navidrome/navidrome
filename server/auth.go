@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"slices"
@@ -408,7 +407,7 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 		return false
 	}
 
-	testedIP, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
+	testedIP, _, err := net.ParseCIDR(ip + "/32")
 	if err != nil {
 		return false
 	}

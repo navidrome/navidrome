@@ -116,19 +116,11 @@ func isImageHash(s string) bool {
 		return false
 	}
 	for _, c := range s {
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			return false
 		}
 	}
 	return true
-}
-
-func MustParseArtworkID(id string) ArtworkID {
-	artID, err := ParseArtworkID(id)
-	if err != nil {
-		panic(artID)
-	}
-	return artID
 }
 
 func DiscArtworkID(albumID string, discNumber int) string {

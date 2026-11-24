@@ -83,7 +83,7 @@ var _ = Describe("Search Endpoints", func() {
 				resp2 := doReq("search2", "query", "Beatles", "songOffset", "1", "songCount", "500")
 
 				Expect(resp2.SearchResult2).ToNot(BeNil())
-				Expect(len(resp2.SearchResult2.Song)).To(Equal(len(allSongs) - 1))
+				Expect(resp2.SearchResult2.Song).To(HaveLen(len(allSongs) - 1))
 			}
 		})
 

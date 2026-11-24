@@ -103,13 +103,13 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		return
 	}
 	body := bytes.NewReader(data)
-	req, err := http.NewRequestWithContext(ctx, "POST", consts.InsightsEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, consts.InsightsEndpoint, body)
 	if err != nil {
 		log.Trace(ctx, "Could not create Insights request", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := hc.Do(req) //nolint:gosec
+	resp, err := hc.Do(req)
 	if err != nil {
 		log.Trace(ctx, "Could not send Insights data", err)
 		return

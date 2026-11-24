@@ -4,18 +4,20 @@ import (
 	"context"
 	"testing/fstest"
 
+	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("IgnoreChecker", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("loadPatternsFromFolder", func() {
 		var ic *IgnoreChecker
-		var ctx context.Context
-
-		BeforeEach(func() {
-			ctx = context.Background()
-		})
 
 		Context("when .ndignore file does not exist", func() {
 			It("should return empty patterns", func() {
@@ -36,6 +38,26 @@ var _ = Describe("IgnoreChecker", func() {
 				Expect(patterns).To(Equal([]string{"**/*"}))
 			})
 		})
+
+		DescribeTable("when .nomedia file exists",
+			func(respectNoMedia bool, files fstest.MapFS, expected []string) {
+				conf.Update(func(c *conf.Options) { c.Scanner.RespectNoMedia = respectNoMedia })
+				ic = newIgnoreChecker(files)
+				patterns := ic.loadPatternsFromFolder(ctx, ".")
+				Expect(patterns).To(Equal(expected))
+			},
+			Entry("empty", true, fstest.MapFS{".nomedia": &fstest.MapFile{}}, []string{"**/*"}),
+			Entry("with content", true, fstest.MapFS{".nomedia": &fstest.MapFile{Data: []byte("*.txt")}}, []string{"**/*"}),
+			Entry("alongside .ndignore", true, fstest.MapFS{
+				".nomedia":  &fstest.MapFile{},
+				".ndignore": &fstest.MapFile{Data: []byte("*.txt")},
+			}, []string{"**/*"}),
+			Entry("disabled", false, fstest.MapFS{".nomedia": &fstest.MapFile{}}, []string(nil)),
+			Entry("disabled, alongside .ndignore", false, fstest.MapFS{
+				".nomedia":  &fstest.MapFile{},
+				".ndignore": &fstest.MapFile{Data: []byte("*.txt")},
+			}, []string{"*.txt"}),
+		)
 
 		DescribeTable("parsing .ndignore content",
 			func(content string, expectedPatterns []string) {
@@ -66,10 +88,8 @@ var _ = Describe("IgnoreChecker", func() {
 	Describe("Push and Pop", func() {
 		var ic *IgnoreChecker
 		var fsys fstest.MapFS
-		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = context.Background()
 			fsys = fstest.MapFS{
 				".ndignore":         &fstest.MapFile{Data: []byte("*.txt")},
 				"folder1/.ndignore": &fstest.MapFile{Data: []byte("*.mp3")},
@@ -82,7 +102,7 @@ var _ = Describe("IgnoreChecker", func() {
 			It("should add patterns to stack", func() {
 				err := ic.Push(ctx, ".")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(1))
+				Expect(ic.patternStack).To(HaveLen(1))
 				Expect(ic.currentPatterns).To(ContainElement("*.txt"))
 			})
 
@@ -97,14 +117,14 @@ var _ = Describe("IgnoreChecker", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = ic.Push(ctx, "folder1")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(2))
+				Expect(ic.patternStack).To(HaveLen(2))
 				Expect(ic.currentPatterns).To(ConsistOf("*.txt", "*.mp3"))
 			})
 
 			It("should handle push when no .ndignore exists", func() {
 				err := ic.Push(ctx, "nonexistent")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(1))
+				Expect(ic.patternStack).To(HaveLen(1))
 				Expect(ic.currentPatterns).To(BeEmpty())
 			})
 		})
@@ -116,7 +136,7 @@ var _ = Describe("IgnoreChecker", func() {
 				err = ic.Push(ctx, "folder1")
 				Expect(err).ToNot(HaveOccurred())
 				ic.Pop()
-				Expect(len(ic.patternStack)).To(Equal(1))
+				Expect(ic.patternStack).To(HaveLen(1))
 				Expect(ic.currentPatterns).To(Equal([]string{"*.txt"}))
 			})
 
@@ -173,10 +193,8 @@ var _ = Describe("IgnoreChecker", func() {
 
 	Describe("PushAllParents", func() {
 		var ic *IgnoreChecker
-		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = context.Background()
 			fsys := fstest.MapFS{
 				".ndignore":                         &fstest.MapFile{Data: []byte("root.txt")},
 				"folder1/.ndignore":                 &fstest.MapFile{Data: []byte("level1.txt")},
@@ -190,7 +208,7 @@ var _ = Describe("IgnoreChecker", func() {
 			func(targetPath string, expectedStackDepth int, expectedPatterns []string) {
 				err := ic.PushAllParents(ctx, targetPath)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(expectedStackDepth))
+				Expect(ic.patternStack).To(HaveLen(expectedStackDepth))
 				Expect(ic.currentPatterns).To(ConsistOf(expectedPatterns))
 			},
 			Entry("root path", ".", 1, []string{"root.txt"}),
@@ -210,7 +228,7 @@ var _ = Describe("IgnoreChecker", func() {
 		It("should handle paths with dot", func() {
 			err := ic.PushAllParents(ctx, "./folder1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(ic.patternStack)).To(Equal(2))
+			Expect(ic.patternStack).To(HaveLen(2))
 		})
 
 		Context("when some parent folders have no .ndignore", func() {
@@ -225,7 +243,7 @@ var _ = Describe("IgnoreChecker", func() {
 			It("should still push all parent levels", func() {
 				err := ic.PushAllParents(ctx, "folder1/folder2")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(3)) // root, folder1 (empty), folder2
+				Expect(ic.patternStack).To(HaveLen(3)) // root, folder1 (empty), folder2
 				Expect(ic.currentPatterns).To(ConsistOf("root.txt", "level2.txt"))
 			})
 		})
@@ -233,11 +251,6 @@ var _ = Describe("IgnoreChecker", func() {
 
 	Describe("ShouldIgnore", func() {
 		var ic *IgnoreChecker
-		var ctx context.Context
-
-		BeforeEach(func() {
-			ctx = context.Background()
-		})
 
 		Context("with no patterns loaded", func() {
 			It("should not ignore any path", func() {

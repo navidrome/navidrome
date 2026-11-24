@@ -1,15 +1,28 @@
+import { createRef, forwardRef, useImperativeHandle } from 'react'
 import { render, act } from '@testing-library/react'
 import SharePlayer, { DOWNLOAD_FEEDBACK_MS } from './SharePlayer'
 
 let playerProps
 let renderCount
+let setAudioVolume
+let audio
 
 vi.mock('navidrome-music-player', () => ({
-  default: (props) => {
+  default: forwardRef(function MockPlayer(props, ref) {
     playerProps = props
     renderCount++
+    useImperativeHandle(ref, () => ({ setAudioVolume, audio }))
     return <div data-testid="player" />
+  }),
+}))
+
+// jsdom resolves the sortablejs build that has no Swap plugin.
+vi.mock('sortablejs', () => ({
+  default: class {
+    static mount() {}
+    destroy() {}
   },
+  Swap: class {},
 }))
 
 vi.mock('../config', () => ({
@@ -34,6 +47,8 @@ describe('SharePlayer', () => {
     vi.useFakeTimers()
     playerProps = null
     renderCount = 0
+    setAudioVolume = vi.fn()
+    audio = document.createElement('audio')
     // Downloading for real would navigate the jsdom window.
     clickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
@@ -44,6 +59,26 @@ describe('SharePlayer', () => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
     vi.restoreAllMocks()
+  })
+
+  it('sets the volume through the player, so the player keeps it after a pause', () => {
+    render(<SharePlayer />)
+
+    act(() => {
+      playerProps.extendsContent.props.onVolumeChange(0.5)
+    })
+
+    expect(setAudioVolume).toHaveBeenCalledWith(0.5)
+  })
+
+  it('mutes the player audio element', () => {
+    render(<SharePlayer />)
+
+    act(() => {
+      playerProps.extendsContent.props.onMutedChange(true)
+    })
+
+    expect(audio.muted).toBe(true)
   })
 
   it('downloads via an anchor so the service worker does not intercept it', () => {
@@ -135,5 +170,38 @@ describe('SharePlayer', () => {
     })
 
     expect(errorSpy).not.toHaveBeenCalled()
+  })
+})
+
+// SharePlayer depends on this internal player method. This test fails if a
+// player upgrade removes or changes it.
+describe('navidrome-music-player setAudioVolume', () => {
+  let RealPlayer
+
+  beforeEach(async () => {
+    ;({ default: RealPlayer } = await vi.importActual(
+      'navidrome-music-player/es/index.js',
+    ))
+    window.matchMedia ??= () => ({
+      matches: true,
+      addListener: () => {},
+      removeListener: () => {},
+    })
+  })
+
+  it('keeps the volume the player restores after a fade', () => {
+    const ref = createRef()
+    render(
+      <RealPlayer
+        ref={ref}
+        audioLists={[{ name: 'One', musicSrc: '/s/1' }]}
+        mobileMediaQuery=""
+      />,
+    )
+
+    act(() => ref.current.setAudioVolume(0.5))
+
+    expect(ref.current.state.soundValue).toBe(0.5)
+    expect(ref.current.audio.volume).toBe(0.25)
   })
 })

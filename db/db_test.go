@@ -42,7 +42,7 @@ var _ = Describe("IsSchemaEmpty", func() {
 	var database *sql.DB
 	var ctx context.Context
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		path := "file::memory:"
 		database, _ = sql.Open(db.Dialect, path)
 	})

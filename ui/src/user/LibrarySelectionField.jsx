@@ -48,7 +48,11 @@ export const LibrarySelectionField = () => {
         </Typography>
       )}
       <Typography variant="caption" color="textSecondary">
-        {translate('resources.user.helperTexts.libraries')}
+        {translate(
+          isNewUser
+            ? 'resources.user.helperTexts.libraries'
+            : 'resources.user.helperTexts.librariesEdit',
+        )}
       </Typography>
     </FormControl>
   )

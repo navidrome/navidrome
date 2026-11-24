@@ -58,7 +58,7 @@ var _ = Describe("PluginRepository", func() {
 				_ = repo.Put(ctx, plugin)
 
 				err := repo.Delete(ctx, plugin.ID)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				_, err = repo.Get(ctx, plugin.ID)
 				Expect(err).To(MatchError(model.ErrNotFound))
@@ -71,7 +71,7 @@ var _ = Describe("PluginRepository", func() {
 				_ = repo.Put(ctx, plugin)
 
 				res, err := repo.Get(ctx, plugin.ID)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(res.ID).To(Equal(plugin.ID))
 				Expect(res.Path).To(Equal(plugin.Path))
 				Expect(res.Manifest).To(Equal(plugin.Manifest))
@@ -89,7 +89,7 @@ var _ = Describe("PluginRepository", func() {
 				_ = repo.Put(ctx, &model.Plugin{ID: "plugin-b", Path: "/plugins/b.wasm", Manifest: "{}", SHA256: "hash2"})
 
 				all, err := repo.GetAll(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(all).To(HaveLen(2))
 			})
 
@@ -99,11 +99,11 @@ var _ = Describe("PluginRepository", func() {
 				_ = repo.Put(ctx, &model.Plugin{ID: "plugin-3", Path: "/plugins/3.wasm", Manifest: "{}", SHA256: "h3"})
 
 				page1, err := repo.GetAll(ctx, model.QueryOptions{Max: 2, Offset: 0, Sort: "id"})
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(page1).To(HaveLen(2))
 
 				page2, err := repo.GetAll(ctx, model.QueryOptions{Max: 2, Offset: 2, Sort: "id"})
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(page2).To(HaveLen(1))
 			})
 		})
@@ -120,10 +120,10 @@ var _ = Describe("PluginRepository", func() {
 				}
 
 				err := repo.Put(ctx, plugin)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				saved, err := repo.Get(ctx, plugin.ID)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(saved.Path).To(Equal(plugin.Path))
 				Expect(saved.Manifest).To(Equal(plugin.Manifest))
 				Expect(saved.Config).To(Equal(plugin.Config))
@@ -146,10 +146,10 @@ var _ = Describe("PluginRepository", func() {
 				plugin.Config = `{"new":"config"}`
 				plugin.SHA256 = "updated"
 				err := repo.Put(ctx, plugin)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				saved, err := repo.Get(ctx, plugin.ID)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(saved.Enabled).To(BeTrue())
 				Expect(saved.Config).To(Equal(`{"new":"config"}`))
 				Expect(saved.SHA256).To(Equal("updated"))
@@ -164,10 +164,10 @@ var _ = Describe("PluginRepository", func() {
 					LastError: "failed to load: missing export",
 				}
 				err := repo.Put(ctx, plugin)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				saved, err := repo.Get(ctx, plugin.ID)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(saved.LastError).To(Equal("failed to load: missing export"))
 			})
 
@@ -190,10 +190,10 @@ var _ = Describe("PluginRepository", func() {
 				_ = repo.Put(ctx, &model.Plugin{ID: "err-plugin-2", Path: "/plugins/e2.wasm", Manifest: "{}", SHA256: "h3", LastError: "missing export"})
 
 				err := repo.ClearErrors(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
 				all, err := repo.GetAll(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				for _, p := range all {
 					Expect(p.LastError).To(BeEmpty(), "plugin %s should have no error", p.ID)
 				}
@@ -203,17 +203,17 @@ var _ = Describe("PluginRepository", func() {
 				_ = repo.Put(ctx, &model.Plugin{ID: "clean-plugin", Path: "/plugins/c.wasm", Manifest: "{}", SHA256: "h1"})
 
 				err := repo.ClearErrors(ctx)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("does not need the write lock when no plugins have errors", func() {
 				_ = repo.Put(ctx, &model.Plugin{ID: "clean-plugin", Path: "/plugins/c.wasm", Manifest: "{}", SHA256: "h1"})
-				conn, err := db.Db().Conn(GinkgoT().Context())
+				conn, err := db.Db().Conn(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(conn.Close)
-				_, err = conn.ExecContext(GinkgoT().Context(), "BEGIN IMMEDIATE")
+				_, err = conn.ExecContext(ctx, "BEGIN IMMEDIATE")
 				Expect(err).ToNot(HaveOccurred())
-				DeferCleanup(func() { _, _ = conn.ExecContext(context.Background(), "ROLLBACK") })
+				DeferCleanup(func() { _, _ = conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK") })
 
 				Expect(repo.ClearErrors(ctx)).To(Succeed())
 			})

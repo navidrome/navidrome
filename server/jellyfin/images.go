@@ -72,7 +72,7 @@ func hashFromTag(r *http.Request) string {
 		return ""
 	}
 	for _, c := range tag {
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			return ""
 		}
 	}
@@ -80,7 +80,7 @@ func hashFromTag(r *http.Request) string {
 }
 
 // resolveArtworkID maps a Jellyfin item id to a Navidrome ArtworkID, probing
-// album -> artist -> media file -> playlist.
+// album -> artist -> media file -> radio station -> playlist.
 func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
 	if al, err := api.ds.Album().Get(ctx, itemId); err == nil {
 		return al.CoverArtID().String()
@@ -90,6 +90,9 @@ func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
 	}
 	if mf, err := api.ds.MediaFile().Get(ctx, itemId); err == nil {
 		return mf.CoverArtID().String()
+	}
+	if rd, err := api.ds.Radio().Get(ctx, itemId); err == nil {
+		return rd.CoverArtID().String()
 	}
 	if pl, err := api.ds.Playlist().Get(ctx, itemId); err == nil {
 		return pl.CoverArtID().String()

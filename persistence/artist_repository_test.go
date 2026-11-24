@@ -361,7 +361,7 @@ var _ = Describe("ArtistRepository", func() {
 			It("does not change the shared sort mappings", func() {
 				original := repo.(*artistRepository).sortMappings["song_count"]
 				var wg sync.WaitGroup
-				for i := 0; i < 20; i++ {
+				for i := range 20 {
 					role := "artist"
 					if i%2 == 1 {
 						role = "composer"
@@ -457,7 +457,7 @@ var _ = Describe("ArtistRepository", func() {
 					// Set SortArtistName to "Foo" for Beatles
 					artistBeatles.SortArtistName = "Foo"
 					er := repo.Put(ctx, &artistBeatles)
-					Expect(er).To(BeNil())
+					Expect(er).ToNot(HaveOccurred())
 
 					idx, err := repo.GetIndex(ctx, false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
@@ -478,7 +478,7 @@ var _ = Describe("ArtistRepository", func() {
 					// Restore the original value
 					artistBeatles.SortArtistName = ""
 					er = repo.Put(ctx, &artistBeatles)
-					Expect(er).To(BeNil())
+					Expect(er).ToNot(HaveOccurred())
 				})
 
 				// BFR Empty SortArtistName is not saved in the DB anymore
@@ -509,7 +509,7 @@ var _ = Describe("ArtistRepository", func() {
 					// Set SortArtistName to "Foo" for Beatles
 					artistBeatles.SortArtistName = "Foo"
 					er := repo.Put(ctx, &artistBeatles)
-					Expect(er).To(BeNil())
+					Expect(er).ToNot(HaveOccurred())
 
 					idx, err := repo.GetIndex(ctx, false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
@@ -530,7 +530,7 @@ var _ = Describe("ArtistRepository", func() {
 					// Restore the original value
 					artistBeatles.SortArtistName = ""
 					er = repo.Put(ctx, &artistBeatles)
-					Expect(er).To(BeNil())
+					Expect(er).ToNot(HaveOccurred())
 				})
 
 				It("returns the index when SortArtistName is empty", func() {
@@ -619,7 +619,7 @@ var _ = Describe("ArtistRepository", func() {
 				It("returns empty index when no artists have the specified role", func() {
 					idx, err := repo.GetIndex(ctx, false, []int{1}, model.RoleDirector)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(idx).To(HaveLen(0))
+					Expect(idx).To(BeEmpty())
 				})
 			})
 
@@ -639,7 +639,7 @@ var _ = Describe("ArtistRepository", func() {
 					// With non-existent library ID, admin users see no content because no artists are associated with that library
 					idx, err = repo.GetIndex(ctx, false, []int{999})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(idx).To(HaveLen(0)) // Even admin users need valid library associations
+					Expect(idx).To(BeEmpty()) // Even admin users need valid library associations
 				})
 			})
 		})
@@ -1181,7 +1181,7 @@ var _ = Describe("ArtistRepository", func() {
 			It("GetIndex returns empty index for users without library access", func() {
 				idx, err := restrictedRepo.GetIndex(restrictedCtx, false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(idx).To(HaveLen(0))
+				Expect(idx).To(BeEmpty())
 			})
 		})
 
@@ -1253,7 +1253,7 @@ var _ = Describe("ArtistRepository", func() {
 				// With non-existent library ID, should see nothing (non-admin user)
 				idx, err = restrictedRepo.GetIndex(restrictedCtx, false, []int{999})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(idx).To(HaveLen(0))
+				Expect(idx).To(BeEmpty())
 			})
 
 			It("takes the unfiltered fast-path when the user can access every library", func() {

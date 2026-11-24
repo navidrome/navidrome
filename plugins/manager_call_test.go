@@ -138,7 +138,7 @@ var _ = Describe("callPluginFunction metrics", Ordered, func() {
 			Expect(err).To(MatchError(errNotImplemented))
 
 			calls := partialRecorder.getCalls()
-			Expect(calls).To(HaveLen(0))
+			Expect(calls).To(BeEmpty())
 		})
 	})
 })

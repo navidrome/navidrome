@@ -74,8 +74,13 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
 	args["search_normalized"] = str.NormalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
-	args["tags"] = marshalTags(m.MediaFile.Tags)
-	args["participants"] = marshalParticipants(m.MediaFile.Participants)
+	var err error
+	if args["tags"], err = marshalTags(m.MediaFile.Tags); err != nil {
+		return err
+	}
+	if args["participants"], err = marshalParticipants(m.MediaFile.Participants); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -545,7 +550,18 @@ func (r *mediaFileRepository) FindRecentFilesByMBZTrackID(ctx context.Context, m
 // FindRecentFilesByProperties finds recently added files by intrinsic properties in other libraries
 // It uses a lightweight query without annotation/bookmark joins since those are not needed for matching
 func (r *mediaFileRepository) FindRecentFilesByProperties(ctx context.Context, missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
-	sel := r.newSelect(ctx).Columns("media_file.*", "library.path as library_path", "library.name as library_name").
+	var res dbMediaFiles
+	err := r.queryAll(ctx, recentFilesByPropertiesQuery(missing, since), &res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
+func recentFilesByPropertiesQuery(missing model.MediaFile, since time.Time) SelectBuilder {
+	// Many files share mbz_release_track_id = '', so the planner's pick of that index scans them all
+	return Select("media_file.*", "library.path as library_path", "library.name as library_name").
+		From("media_file INDEXED BY media_file_title").
 		LeftJoin("library on media_file.library_id = library.id").
 		Where(And{
 			NotEq{"media_file.library_id": missing.LibraryID},
@@ -559,13 +575,6 @@ func (r *mediaFileRepository) FindRecentFilesByProperties(ctx context.Context, m
 			Gt{"media_file.created_at": since},
 			Eq{"media_file.missing": false},
 		}).OrderBy("media_file.created_at DESC")
-
-	var res dbMediaFiles
-	err := r.queryAll(ctx, sel, &res)
-	if err != nil {
-		return nil, err
-	}
-	return res.toModels(), nil
 }
 
 var mediaFileSearchConfig = searchConfig{

@@ -7,13 +7,16 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/deluan/rest"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
 	"github.com/navidrome/navidrome/core"
 	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,9 +26,7 @@ import (
 // These tests require the local storage adapter and the taglib extractor to be registered.
 var _ = Describe("Library Service", func() {
 	var service core.Library
-	var ds *tests.MockDataStore
-	var libraryRepo *tests.MockLibraryRepo
-	var userRepo *tests.MockedUserRepo
+	var ds model.DataStore
 	var ctx context.Context
 	var tempDir string
 	var scanner *tests.MockScanner
@@ -33,13 +34,21 @@ var _ = Describe("Library Service", func() {
 	var broker *mockEventBroker
 	var pluginManager *mockPluginUnloader
 
-	BeforeEach(func() {
+	putLibrary := func(lib model.Library) {
+		GinkgoHelper()
+		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
+	}
 
-		ds = &tests.MockDataStore{}
-		libraryRepo = &tests.MockLibraryRepo{}
-		userRepo = tests.CreateMockUserRepo()
-		ds.MockedLibrary = libraryRepo
-		ds.MockedUser = userRepo
+	storedLibrary := func(id int) *model.Library {
+		GinkgoHelper()
+		lib, err := ds.Library().Get(ctx, id)
+		Expect(err).NotTo(HaveOccurred())
+		return lib
+	}
+
+	BeforeEach(func() {
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "admin", IsAdmin: true})
+		ds = persistence.New(db.Db())
 
 		// Create a mock scanner that tracks calls
 		scanner = tests.NewMockScanner()
@@ -52,7 +61,6 @@ var _ = Describe("Library Service", func() {
 		// Create a mock plugin unloader
 		pluginManager = &mockPluginUnloader{}
 		service = core.NewLibrary(ds, scanner, watcherManager, broker, pluginManager)
-		ctx = context.Background()
 
 		// Create a temporary directory for testing valid paths
 		var err error
@@ -73,13 +81,13 @@ var _ = Describe("Library Service", func() {
 
 		Describe("Create", func() {
 			It("creates a new library successfully", func() {
-				library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+				library := &model.Library{ID: 2, Name: "New Library", Path: tempDir}
 
 				_, err := repo.Save(ctx, library)
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(libraryRepo.Data[1].Name).To(Equal("New Library"))
-				Expect(libraryRepo.Data[1].Path).To(Equal(tempDir))
+				Expect(storedLibrary(2).Name).To(Equal("New Library"))
+				Expect(storedLibrary(2).Path).To(Equal(tempDir))
 			})
 
 			It("fails when library name is empty", func() {
@@ -114,14 +122,7 @@ var _ = Describe("Library Service", func() {
 			Context("Database constraint violations", func() {
 				BeforeEach(func() {
 					// Set up an existing library that will cause constraint violations
-					libraryRepo.SetData(model.Libraries{
-						{ID: 1, Name: "Existing Library", Path: tempDir},
-					})
-				})
-
-				AfterEach(func() {
-					// Reset custom PutFn after each test
-					libraryRepo.PutFn = nil
+					putLibrary(model.Library{ID: 2, Name: "Existing Library", Path: tempDir})
 				})
 
 				It("handles name uniqueness constraint violation from database", func() {
@@ -130,13 +131,7 @@ var _ = Describe("Library Service", func() {
 					Expect(err).NotTo(HaveOccurred())
 					DeferCleanup(func() { os.RemoveAll(otherTempDir) })
 
-					// Try to create another library with the same name
-					library := &model.Library{ID: 2, Name: "Existing Library", Path: otherTempDir}
-
-					// Mock the repository to return a UNIQUE constraint error
-					libraryRepo.PutFn = func(library *model.Library) error {
-						return errors.New("UNIQUE constraint failed: library.name")
-					}
+					library := &model.Library{ID: 3, Name: "Existing Library", Path: otherTempDir}
 
 					_, err = repo.Save(ctx, library)
 
@@ -147,13 +142,7 @@ var _ = Describe("Library Service", func() {
 				})
 
 				It("handles path uniqueness constraint violation from database", func() {
-					// Try to create another library with the same path
-					library := &model.Library{ID: 2, Name: "Different Library", Path: tempDir}
-
-					// Mock the repository to return a UNIQUE constraint error
-					libraryRepo.PutFn = func(library *model.Library) error {
-						return errors.New("UNIQUE constraint failed: library.path")
-					}
+					library := &model.Library{ID: 3, Name: "Different Library", Path: tempDir}
 
 					_, err := repo.Save(ctx, library)
 
@@ -167,9 +156,7 @@ var _ = Describe("Library Service", func() {
 
 		Describe("Update", func() {
 			BeforeEach(func() {
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Original Library", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 			})
 
 			It("updates an existing library successfully", func() {
@@ -177,22 +164,24 @@ var _ = Describe("Library Service", func() {
 				Expect(err).NotTo(HaveOccurred())
 				DeferCleanup(func() { os.RemoveAll(newTempDir) })
 
-				library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
+				library := &model.Library{ID: 2, Name: "Updated Library", Path: newTempDir}
 
-				err = repo.Update(ctx, "1", *library)
+				err = repo.Update(ctx, "2", *library)
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(libraryRepo.Data[1].Name).To(Equal("Updated Library"))
-				Expect(libraryRepo.Data[1].Path).To(Equal(newTempDir))
+				Expect(storedLibrary(2).Name).To(Equal("Updated Library"))
+				Expect(storedLibrary(2).Path).To(Equal(newTempDir))
 			})
 
 			It("forwards the columns sent by the client to the repository", func() {
-				library := &model.Library{ID: 1, Name: "Updated Library", Path: tempDir}
+				putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir, PIDAlbum: "folder"})
+				library := &model.Library{ID: 2, Name: "Updated Library", Path: tempDir}
 
-				err := repo.Update(ctx, "1", *library, "name", "path")
+				err := repo.Update(ctx, "2", *library, "name", "path")
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(libraryRepo.PutCols).To(Equal([]string{"name", "path"}))
+				Expect(storedLibrary(2).Name).To(Equal("Updated Library"))
+				Expect(storedLibrary(2).PIDAlbum).To(Equal("folder"))
 			})
 
 			It("fails when library doesn't exist", func() {
@@ -210,9 +199,9 @@ var _ = Describe("Library Service", func() {
 			})
 
 			It("fails when library name is empty", func() {
-				library := &model.Library{ID: 1, Path: tempDir}
+				library := &model.Library{ID: 2, Path: tempDir}
 
-				err := repo.Update(ctx, "1", *library)
+				err := repo.Update(ctx, "2", *library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("ra.validation.required"))
@@ -220,48 +209,39 @@ var _ = Describe("Library Service", func() {
 
 			It("cleans and normalizes the path on update", func() {
 				unnormalizedPath := tempDir + "//../" + filepath.Base(tempDir)
-				library := &model.Library{ID: 1, Name: "Updated Library", Path: unnormalizedPath}
+				library := &model.Library{ID: 2, Name: "Updated Library", Path: unnormalizedPath}
 
-				err := repo.Update(ctx, "1", *library)
+				err := repo.Update(ctx, "2", *library)
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(libraryRepo.Data[1].Path).To(Equal(filepath.Clean(unnormalizedPath)))
+				Expect(storedLibrary(2).Path).To(Equal(filepath.Clean(unnormalizedPath)))
 			})
 
 			It("allows updating library with same name (no change)", func() {
 				// Set up a library
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Test Library", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Test Library", Path: tempDir})
 
 				// Update the library keeping the same name (should be allowed)
-				library := &model.Library{ID: 1, Name: "Test Library", Path: tempDir}
+				library := &model.Library{ID: 2, Name: "Test Library", Path: tempDir}
 
-				err := repo.Update(ctx, "1", *library)
+				err := repo.Update(ctx, "2", *library)
 
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("allows updating library with same path (no change)", func() {
 				// Set up a library
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Test Library", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Test Library", Path: tempDir})
 
 				// Update the library keeping the same path (should be allowed)
-				library := &model.Library{ID: 1, Name: "Test Library", Path: tempDir}
+				library := &model.Library{ID: 2, Name: "Test Library", Path: tempDir}
 
-				err := repo.Update(ctx, "1", *library)
+				err := repo.Update(ctx, "2", *library)
 
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			Context("Database constraint violations during update", func() {
-				BeforeEach(func() {
-					// Reset any custom PutFn from previous tests
-					libraryRepo.PutFn = nil
-				})
-
 				It("handles name uniqueness constraint violation during update", func() {
 					// Create additional temp directory for the test
 					otherTempDir, err := os.MkdirTemp("", "navidrome-other-")
@@ -269,20 +249,12 @@ var _ = Describe("Library Service", func() {
 					DeferCleanup(func() { os.RemoveAll(otherTempDir) })
 
 					// Set up two libraries
-					libraryRepo.SetData(model.Libraries{
-						{ID: 1, Name: "Library One", Path: tempDir},
-						{ID: 2, Name: "Library Two", Path: otherTempDir},
-					})
+					putLibrary(model.Library{ID: 2, Name: "Library One", Path: tempDir})
+					putLibrary(model.Library{ID: 3, Name: "Library Two", Path: otherTempDir})
 
-					// Mock database constraint violation
-					libraryRepo.PutFn = func(library *model.Library) error {
-						return errors.New("UNIQUE constraint failed: library.name")
-					}
+					library := &model.Library{ID: 3, Name: "Library One", Path: otherTempDir}
 
-					// Try to update library 2 to have the same name as library 1
-					library := &model.Library{ID: 2, Name: "Library One", Path: otherTempDir}
-
-					err = repo.Update(ctx, "2", *library)
+					err = repo.Update(ctx, "3", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -297,20 +269,12 @@ var _ = Describe("Library Service", func() {
 					DeferCleanup(func() { os.RemoveAll(otherTempDir) })
 
 					// Set up two libraries
-					libraryRepo.SetData(model.Libraries{
-						{ID: 1, Name: "Library One", Path: tempDir},
-						{ID: 2, Name: "Library Two", Path: otherTempDir},
-					})
+					putLibrary(model.Library{ID: 2, Name: "Library One", Path: tempDir})
+					putLibrary(model.Library{ID: 3, Name: "Library Two", Path: otherTempDir})
 
-					// Mock database constraint violation
-					libraryRepo.PutFn = func(library *model.Library) error {
-						return errors.New("UNIQUE constraint failed: library.path")
-					}
+					library := &model.Library{ID: 3, Name: "Library Two", Path: tempDir}
 
-					// Try to update library 2 to have the same path as library 1
-					library := &model.Library{ID: 2, Name: "Library Two", Path: tempDir}
-
-					err = repo.Update(ctx, "2", *library)
+					err = repo.Update(ctx, "3", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -414,15 +378,13 @@ var _ = Describe("Library Service", func() {
 
 			Context("Update operation", func() {
 				BeforeEach(func() {
-					libraryRepo.SetData(model.Libraries{
-						{ID: 1, Name: "Test Library", Path: tempDir},
-					})
+					putLibrary(model.Library{ID: 2, Name: "Test Library", Path: tempDir})
 				})
 
 				It("fails when updated path is not absolute", func() {
-					library := &model.Library{ID: 1, Name: "Test", Path: "relative/path"}
+					library := &model.Library{ID: 2, Name: "Test", Path: "relative/path"}
 
-					err := repo.Update(ctx, "1", *library)
+					err := repo.Update(ctx, "2", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -432,23 +394,21 @@ var _ = Describe("Library Service", func() {
 
 				It("allows updating library with same name (no change)", func() {
 					// Set up a library
-					libraryRepo.SetData(model.Libraries{
-						{ID: 1, Name: "Test Library", Path: tempDir},
-					})
+					putLibrary(model.Library{ID: 2, Name: "Test Library", Path: tempDir})
 
 					// Update the library keeping the same name (should be allowed)
-					library := &model.Library{ID: 1, Name: "Test Library", Path: tempDir}
+					library := &model.Library{ID: 2, Name: "Test Library", Path: tempDir}
 
-					err := repo.Update(ctx, "1", *library)
+					err := repo.Update(ctx, "2", *library)
 
 					Expect(err).NotTo(HaveOccurred())
 				})
 
 				It("fails when updated path does not exist", func() {
 					nonExistentPath := filepath.Join(tempDir, "nonexistent")
-					library := &model.Library{ID: 1, Name: "Test", Path: nonExistentPath}
+					library := &model.Library{ID: 2, Name: "Test", Path: nonExistentPath}
 
-					err := repo.Update(ctx, "1", *library)
+					err := repo.Update(ctx, "2", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -461,9 +421,9 @@ var _ = Describe("Library Service", func() {
 					err := os.WriteFile(testFile, []byte("test"), 0600)
 					Expect(err).NotTo(HaveOccurred())
 
-					library := &model.Library{ID: 1, Name: "Test", Path: testFile}
+					library := &model.Library{ID: 2, Name: "Test", Path: testFile}
 
-					err = repo.Update(ctx, "1", *library)
+					err = repo.Update(ctx, "2", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -473,9 +433,9 @@ var _ = Describe("Library Service", func() {
 
 				It("handles multiple validation errors on update", func() {
 					// Try to update with empty name and invalid path
-					library := &model.Library{ID: 1, Name: "", Path: "relative/path"}
+					library := &model.Library{ID: 2, Name: "", Path: "relative/path"}
 
-					err := repo.Update(ctx, "1", *library)
+					err := repo.Update(ctx, "2", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -490,16 +450,15 @@ var _ = Describe("Library Service", func() {
 
 		Describe("Delete", func() {
 			BeforeEach(func() {
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Library to Delete", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Library to Delete", Path: tempDir})
 			})
 
 			It("deletes an existing library successfully", func() {
-				err := repo.Delete(ctx, "1")
+				err := repo.Delete(ctx, "2")
 
 				Expect(err).NotTo(HaveOccurred())
-				Expect(libraryRepo.Data).To(HaveLen(0))
+				_, err = ds.Library().Get(ctx, 2)
+				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 
 			It("fails when library doesn't exist", func() {
@@ -518,22 +477,15 @@ var _ = Describe("Library Service", func() {
 			regularUser = &model.User{ID: "user1", UserName: "regular", IsAdmin: false}
 			adminUser = &model.User{ID: "admin1", UserName: "admin", IsAdmin: true}
 
-			userRepo.Data = map[string]*model.User{
-				"regular": regularUser,
-				"admin":   adminUser,
-			}
-			libraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Library 1", Path: "/music1"},
-				{ID: 2, Name: "Library 2", Path: "/music2"},
-				{ID: 3, Name: "Library 3", Path: "/music3"},
-			})
+			Expect(ds.User().Put(ctx, regularUser)).To(Succeed())
+			Expect(ds.User().Put(ctx, adminUser)).To(Succeed())
+			putLibrary(model.Library{ID: 2, Name: "Library 2", Path: "/music2"})
+			putLibrary(model.Library{ID: 3, Name: "Library 3", Path: "/music3"})
 		})
 
 		Describe("GetUserLibraries", func() {
 			It("returns user's libraries", func() {
-				userRepo.UserLibraries = map[string][]int{
-					"user1": {1},
-				}
+				Expect(ds.User().SetUserLibraries(ctx, "user1", []int{1})).To(Succeed())
 
 				result, err := service.GetUserLibraries(ctx, "user1")
 
@@ -555,7 +507,8 @@ var _ = Describe("Library Service", func() {
 				err := service.SetUserLibraries(ctx, "user1", []int{1, 2})
 
 				Expect(err).NotTo(HaveOccurred())
-				libraries := userRepo.UserLibraries["user1"]
+				libraries, err := ds.User().GetUserLibraries(ctx, "user1")
+				Expect(err).NotTo(HaveOccurred())
 				Expect(libraries).To(HaveLen(2))
 			})
 
@@ -610,10 +563,8 @@ var _ = Describe("Library Service", func() {
 
 			Context("regular user", func() {
 				BeforeEach(func() {
+					Expect(ds.User().SetUserLibraries(ctx, "user1", []int{1})).To(Succeed())
 					ctx = request.WithUser(ctx, *regularUser)
-					userRepo.UserLibraries = map[string][]int{
-						"user1": {1},
-					}
 				})
 
 				It("allows access to user's libraries", func() {
@@ -632,7 +583,7 @@ var _ = Describe("Library Service", func() {
 
 			Context("no user in context", func() {
 				It("fails with user not found error", func() {
-					err := service.ValidateLibraryAccess(ctx, "user1", 1)
+					err := service.ValidateLibraryAccess(GinkgoT().Context(), "user1", 1)
 
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("user not found in context"))
@@ -650,7 +601,7 @@ var _ = Describe("Library Service", func() {
 		})
 
 		It("triggers scan when creating a new library", func() {
-			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+			library := &model.Library{ID: 2, Name: "New Library", Path: tempDir}
 
 			_, err := repo.Save(ctx, library)
 			Expect(err).NotTo(HaveOccurred())
@@ -658,7 +609,7 @@ var _ = Describe("Library Service", func() {
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify scan was called with correct parameters
 			calls := scanner.GetScanAllCalls()
@@ -667,9 +618,7 @@ var _ = Describe("Library Service", func() {
 
 		It("triggers scan when updating library path", func() {
 			// First create a library
-			libraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Original Library", Path: tempDir},
-			})
+			putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 
 			// Create a new temporary directory for the update
 			newTempDir, err := os.MkdirTemp("", "navidrome-library-update-")
@@ -677,14 +626,14 @@ var _ = Describe("Library Service", func() {
 			DeferCleanup(func() { os.RemoveAll(newTempDir) })
 
 			// Update the library with a new path
-			library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
-			err = repo.Update(ctx, "1", *library)
+			library := &model.Library{ID: 2, Name: "Updated Library", Path: newTempDir}
+			err = repo.Update(ctx, "2", *library)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify scan was called with correct parameters
 			calls := scanner.GetScanAllCalls()
@@ -693,61 +642,59 @@ var _ = Describe("Library Service", func() {
 
 		It("does not trigger scan when updating library without path change", func() {
 			// First create a library
-			libraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Original Library", Path: tempDir},
-			})
+			putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 
 			// Update the library name only (same path)
-			library := &model.Library{ID: 1, Name: "Updated Name", Path: tempDir}
-			err := repo.Update(ctx, "1", *library)
+			library := &model.Library{ID: 2, Name: "Updated Name", Path: tempDir}
+			err := repo.Update(ctx, "2", *library)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait a bit to ensure no scan was triggered
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("triggers scan when updating the library PID config", func() {
-			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir}})
+			putLibrary(model.Library{ID: 2, Name: "Library", Path: tempDir})
 
-			library := model.Library{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
-			Expect(repo.Update(ctx, "1", library)).To(Succeed())
+			library := model.Library{ID: 2, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
+			Expect(repo.Update(ctx, "2", library)).To(Succeed())
 
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 			// A quick scan: the scanner itself rescans this library in full
 			Expect(scanner.GetScanAllCalls()[0].FullScan).To(BeFalse())
 		})
 
 		It("does not trigger scan when the PID fields were not sent", func() {
-			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}})
+			putLibrary(model.Library{ID: 2, Name: "Library", Path: tempDir, PIDAlbum: "folder"})
 
 			// The REST layer decodes a missing pidAlbum as "". Only the sent fields count.
-			library := model.Library{ID: 1, Name: "Renamed", Path: tempDir}
-			Expect(repo.Update(ctx, "1", library, "name", "path")).To(Succeed())
+			library := model.Library{ID: 2, Name: "Renamed", Path: tempDir}
+			Expect(repo.Update(ctx, "2", library, "name", "path")).To(Succeed())
 
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("waits for a running scan before triggering a new one", func() {
-			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir}})
+			putLibrary(model.Library{ID: 2, Name: "Library", Path: tempDir})
 			scanner.SetScanning(true)
 
-			library := model.Library{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
-			Expect(repo.Update(ctx, "1", library)).To(Succeed())
+			library := model.Library{ID: 2, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
+			Expect(repo.Update(ctx, "2", library)).To(Succeed())
 
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "200ms", "20ms").Should(Equal(0))
+			}, 200*time.Millisecond, 20*time.Millisecond).Should(Equal(0))
 
 			scanner.SetScanning(false)
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "3s", "20ms").Should(Equal(1))
+			}, 3*time.Second, 20*time.Millisecond).Should(Equal(1))
 		})
 
 		It("does not trigger scan when library creation fails", func() {
@@ -760,40 +707,36 @@ var _ = Describe("Library Service", func() {
 			// Ensure no scan was triggered since creation failed
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("does not trigger scan when library update fails", func() {
 			// First create a library
-			libraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Original Library", Path: tempDir},
-			})
+			putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 
 			// Try to update with invalid data (empty name)
-			library := &model.Library{ID: 1, Name: "", Path: tempDir}
-			err := repo.Update(ctx, "1", *library)
+			library := &model.Library{ID: 2, Name: "", Path: tempDir}
+			err := repo.Update(ctx, "2", *library)
 			Expect(err).To(HaveOccurred())
 
 			// Ensure no scan was triggered since update failed
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		It("triggers scan when deleting a library", func() {
 			// First create a library
-			libraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Library to Delete", Path: tempDir},
-			})
+			putLibrary(model.Library{ID: 2, Name: "Library to Delete", Path: tempDir})
 
 			// Delete the library
-			err := repo.Delete(ctx, "1")
+			err := repo.Delete(ctx, "2")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "1s", "10ms").Should(Equal(1))
+			}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
 			// Verify scan was called with correct parameters
 			calls := scanner.GetScanAllCalls()
@@ -808,12 +751,12 @@ var _ = Describe("Library Service", func() {
 			// Ensure no scan was triggered since deletion failed
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
-			}, "100ms", "10ms").Should(Equal(0))
+			}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 		})
 
 		Context("Watcher Integration", func() {
 			It("starts watcher when creating a new library", func() {
-				library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+				library := &model.Library{ID: 2, Name: "New Library", Path: tempDir}
 
 				_, err := repo.Save(ctx, library)
 				Expect(err).NotTo(HaveOccurred())
@@ -821,21 +764,19 @@ var _ = Describe("Library Service", func() {
 				// Verify watcher was started
 				Eventually(func() int {
 					return watcherManager.lenStarted()
-				}, "1s", "10ms").Should(Equal(1))
+				}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
-				Expect(watcherManager.StartedWatchers[0].ID).To(Equal(1))
+				Expect(watcherManager.StartedWatchers[0].ID).To(Equal(2))
 				Expect(watcherManager.StartedWatchers[0].Name).To(Equal("New Library"))
 				Expect(watcherManager.StartedWatchers[0].Path).To(Equal(tempDir))
 			})
 
 			It("restarts watcher when library path is updated", func() {
 				// First create a library
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Original Library", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 
 				// Simulate that this library already has a watcher
-				watcherManager.simulateExistingLibrary(model.Library{ID: 1, Name: "Original Library", Path: tempDir})
+				watcherManager.simulateExistingLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 
 				// Create a new temp directory for the update
 				newTempDir, err := os.MkdirTemp("", "navidrome-library-update-")
@@ -843,58 +784,52 @@ var _ = Describe("Library Service", func() {
 				DeferCleanup(func() { os.RemoveAll(newTempDir) })
 
 				// Update library with new path
-				library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
-				err = repo.Update(ctx, "1", *library)
+				library := &model.Library{ID: 2, Name: "Updated Library", Path: newTempDir}
+				err = repo.Update(ctx, "2", *library)
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify watcher was restarted
 				Eventually(func() int {
 					return watcherManager.lenRestarted()
-				}, "1s", "10ms").Should(Equal(1))
+				}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
-				Expect(watcherManager.RestartedWatchers[0].ID).To(Equal(1))
+				Expect(watcherManager.RestartedWatchers[0].ID).To(Equal(2))
 				Expect(watcherManager.RestartedWatchers[0].Path).To(Equal(newTempDir))
 			})
 
 			It("does not restart watcher when only library name is updated", func() {
 				// First create a library
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Original Library", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 
 				// Update library with same path but different name
-				library := &model.Library{ID: 1, Name: "Updated Name", Path: tempDir}
-				err := repo.Update(ctx, "1", *library)
+				library := &model.Library{ID: 2, Name: "Updated Name", Path: tempDir}
+				err := repo.Update(ctx, "2", *library)
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify watcher was NOT restarted (since path didn't change)
 				Consistently(func() int {
 					return watcherManager.lenRestarted()
-				}, "100ms", "10ms").Should(Equal(0))
+				}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 			})
 
 			It("stops watcher when library is deleted", func() {
 				// Set up a library
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Test Library", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Test Library", Path: tempDir})
 
-				err := repo.Delete(ctx, "1")
+				err := repo.Delete(ctx, "2")
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify watcher was stopped
 				Eventually(func() int {
 					return watcherManager.lenStopped()
-				}, "1s", "10ms").Should(Equal(1))
+				}, time.Second, 10*time.Millisecond).Should(Equal(1))
 
-				Expect(watcherManager.StoppedWatchers[0]).To(Equal(1))
+				Expect(watcherManager.StoppedWatchers[0]).To(Equal(2))
 			})
 
 			It("does not stop watcher when library deletion fails", func() {
 				// Set up a library
-				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Test Library", Path: tempDir},
-				})
+				putLibrary(model.Library{ID: 2, Name: "Test Library", Path: tempDir})
 
 				// Mock deletion to fail by trying to delete non-existent library
 				err := repo.Delete(ctx, "999")
@@ -903,7 +838,7 @@ var _ = Describe("Library Service", func() {
 				// Verify watcher was NOT stopped since deletion failed
 				Consistently(func() int {
 					return watcherManager.lenStopped()
-				}, "100ms", "10ms").Should(Equal(0))
+				}, 100*time.Millisecond, 10*time.Millisecond).Should(Equal(0))
 			})
 		})
 	})
@@ -919,7 +854,7 @@ var _ = Describe("Library Service", func() {
 		})
 
 		It("sends refresh event when creating a library", func() {
-			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+			library := &model.Library{ID: 2, Name: "New Library", Path: tempDir}
 
 			_, err := repo.Save(ctx, library)
 
@@ -929,12 +864,10 @@ var _ = Describe("Library Service", func() {
 
 		It("sends refresh event when updating a library", func() {
 			// First create a library
-			libraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Original Library", Path: tempDir},
-			})
+			putLibrary(model.Library{ID: 2, Name: "Original Library", Path: tempDir})
 
-			library := &model.Library{ID: 1, Name: "Updated Library", Path: tempDir}
-			err := repo.Update(ctx, "1", *library)
+			library := &model.Library{ID: 2, Name: "Updated Library", Path: tempDir}
+			err := repo.Update(ctx, "2", *library)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(broker.Events).To(HaveLen(1))
@@ -942,9 +875,7 @@ var _ = Describe("Library Service", func() {
 
 		It("sends refresh event when deleting a library", func() {
 			// First create a library
-			libraryRepo.SetData(model.Libraries{
-				{ID: 2, Name: "Library to Delete", Path: tempDir},
-			})
+			putLibrary(model.Library{ID: 2, Name: "Library to Delete", Path: tempDir})
 
 			err := repo.Delete(ctx, "2")
 
@@ -964,9 +895,7 @@ var _ = Describe("Library Service", func() {
 		})
 
 		It("calls UnloadDisabledPlugins after successful library deletion", func() {
-			libraryRepo.SetData(model.Libraries{
-				{ID: 2, Name: "Library to Delete", Path: tempDir},
-			})
+			putLibrary(model.Library{ID: 2, Name: "Library to Delete", Path: tempDir})
 
 			err := repo.Delete(ctx, "2")
 			Expect(err).NotTo(HaveOccurred())

@@ -14,7 +14,9 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -29,8 +31,8 @@ var _ = Describe("lastfmAgent", func() {
 	var ds model.DataStore
 	var ctx context.Context
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 		conf.Update(func(c *conf.Options) {
 			c.LastFM.Enabled = true
 			c.LastFM.ApiKey = "123"
@@ -47,24 +49,21 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(agent.languages).To(Equal([]string{"pt", "en"}))
 			})
 		})
-		When("Agent is disabled", func() {
-			It("returns nil", func() {
-				conf.Update(func(c *conf.Options) { c.LastFM.Enabled = false })
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
+	})
+
+	Describe("lastFMEnabled", func() {
+		It("is true when enabled with an api key and secret", func() {
+			Expect(lastFMEnabled()).To(BeTrue())
 		})
-		When("ApiKey is empty", func() {
-			It("returns nil", func() {
-				conf.Update(func(c *conf.Options) { c.LastFM.ApiKey = "" })
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
-		})
-		When("Secret is empty", func() {
-			It("returns nil", func() {
-				conf.Update(func(c *conf.Options) { c.LastFM.Secret = "" })
-				Expect(lastFMConstructor(ds)).To(BeNil())
-			})
-		})
+		DescribeTable("is false when the configuration is incomplete",
+			func(change func(*conf.Options)) {
+				conf.Update(change)
+				Expect(lastFMEnabled()).To(BeFalse())
+			},
+			Entry("disabled", func(c *conf.Options) { c.LastFM.Enabled = false }),
+			Entry("no api key", func(c *conf.Options) { c.LastFM.ApiKey = "" }),
+			Entry("no secret", func(c *conf.Options) { c.LastFM.Secret = "" }),
+		)
 	})
 
 	Describe("GetArtistBiography", func() {
@@ -79,7 +78,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns the biography", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetArtistBiography(ctx, "123", "U2", "")).To(Equal("U2 é uma das mais importantes bandas de rock de todos os tempos. Formada em 1976 em Dublin, composta por Bono (vocalista  e guitarrista), The Edge (guitarrista, pianista e backing vocal), Adam Clayton (baixista), Larry Mullen, Jr. (baterista e percussionista).\n\nDesde a década de 80, U2 é uma das bandas mais populares no mundo. Seus shows são únicos e um verdadeiro festival de efeitos especiais, além de serem um dos que mais arrecadam anualmente."))
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("U2"))
@@ -94,7 +93,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.fm call returns an error", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: http.StatusOK}
 			_, err := agent.GetArtistBiography(ctx, "123", "U2", "")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -104,7 +103,7 @@ var _ = Describe("lastfmAgent", func() {
 		It("returns ErrRetryLater on error 29 (rate limit exceeded)", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"error":29,"message":"Rate limit exceeded"}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 			_, err := agent.GetArtistBiography(ctx, "123", "U2", "")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
@@ -127,7 +126,7 @@ var _ = Describe("lastfmAgent", func() {
 
 				// Portuguese biography available
 				f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-				httpClient.responses["pt"] = http.Response{Body: f, StatusCode: 200}
+				httpClient.responses["pt"] = http.Response{Body: f, StatusCode: http.StatusOK}
 
 				bio, err := agent.GetArtistBiography(ctx, "123", "U2", "")
 
@@ -144,10 +143,10 @@ var _ = Describe("lastfmAgent", func() {
 
 				// Japanese returns empty/ignored biography (actual Last.fm response with just "Read more" link)
 				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
-				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: http.StatusOK}
 				// English returns full biography
 				fEn, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.en.json")
-				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: 200}
+				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: http.StatusOK}
 
 				bio, err := agent.GetArtistBiography(ctx, "123", "Legião Urbana", "")
 
@@ -165,10 +164,10 @@ var _ = Describe("lastfmAgent", func() {
 
 				// Both languages return empty/ignored biography (using actual Last.fm response format)
 				fJa, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
-				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: http.StatusOK}
 				// Second language also returns empty
 				fXx, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.empty.json")
-				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: 200}
+				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: http.StatusOK}
 
 				_, err := agent.GetArtistBiography(ctx, "123", "Legião Urbana", "")
 
@@ -192,10 +191,10 @@ var _ = Describe("lastfmAgent", func() {
 
 				// Japanese returns album without wiki/description (actual Last.fm response)
 				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
-				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: http.StatusOK}
 				// English returns album with description
 				fEn, _ := os.Open("tests/fixtures/lastfm.album.getinfo.en.json")
-				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: 200}
+				httpClient.responses["en"] = http.Response{Body: fEn, StatusCode: http.StatusOK}
 
 				albumInfo, err := agent.GetAlbumInfo(ctx, "Dois", "Legião Urbana", "")
 
@@ -214,9 +213,9 @@ var _ = Describe("lastfmAgent", func() {
 
 				// Both languages return album without description
 				fJa, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
-				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: 200}
+				httpClient.responses["ja"] = http.Response{Body: fJa, StatusCode: http.StatusOK}
 				fXx, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty.json")
-				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: 200}
+				httpClient.responses["xx"] = http.Response{Body: fXx, StatusCode: http.StatusOK}
 
 				albumInfo, err := agent.GetAlbumInfo(ctx, "Dois", "Legião Urbana", "")
 
@@ -240,7 +239,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns similar artists", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetSimilarArtists(ctx, "123", "U2", "", 2)).To(Equal([]agents.Artist{
 				{Name: "Passengers", MBID: "e110c11f-1c94-4471-a350-c38f46b29389"},
 				{Name: "INXS", MBID: "481bf5f9-2e7c-4c44-b08a-05b32bc7c00d"},
@@ -258,7 +257,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.fm call returns an error", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: http.StatusOK}
 			_, err := agent.GetSimilarArtists(ctx, "123", "U2", "", 2)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -278,7 +277,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns top songs", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetArtistTopSongs(ctx, "123", "U2", "", 2)).To(Equal([]agents.Song{
 				{Name: "Beautiful Day", MBID: "f7f264d0-a89b-4682-9cd7-a4e7c37637af"},
 				{Name: "With or Without You", MBID: "6b9a509f-6907-4a6e-9345-2f12da09ba4b"},
@@ -296,7 +295,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.fm call returns an error", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: http.StatusOK}
 			_, err := agent.GetArtistTopSongs(ctx, "123", "U2", "", 2)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -316,7 +315,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns similar songs", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetSimilarSongsByTrack(ctx, "123", "Just Can't Get Enough", "Depeche Mode", "", 5)).To(Equal([]agents.Song{
 				{Name: "Dreaming of Me", MBID: "027b553e-7c74-3ed4-a95e-1d4fea51f174", Artists: []agents.Artist{{Name: "Depeche Mode", MBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"}}},
 				{Name: "Everything Counts", MBID: "5a5a3ca4-bdb8-4641-a674-9b54b9b319a6", Artists: []agents.Artist{{Name: "Depeche Mode", MBID: "8538e728-ca0b-4321-b7e5-cff6565dd4c0"}}},
@@ -331,7 +330,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns ErrNotFound when no similar songs found", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.unknown.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "UnknownTrack", "UnknownArtist", "", 3)
 			Expect(err).To(MatchError(agents.ErrNotFound))
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -345,7 +344,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.fm call returns an error", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: http.StatusOK}
 			_, err := agent.GetSimilarSongsByTrack(ctx, "123", "Believe", "Cher", "", 3)
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -357,7 +356,8 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		var track *model.MediaFile
 		BeforeEach(func() {
-			_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
+			Expect(ds.User().Put(ctx, &model.User{ID: "user-1", UserName: "user-1"})).To(Succeed())
+			Expect(ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")).To(Succeed())
 			httpClient = &tests.FakeHttpClient{}
 			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
@@ -373,12 +373,12 @@ var _ = Describe("lastfmAgent", func() {
 				MbzRecordingID: "mbz-123",
 				Participants: map[model.Role]model.ParticipantList{
 					model.RoleArtist: []model.Participant{
-						{Artist: model.Artist{ID: "ar-1", Name: "First Artist"}},
-						{Artist: model.Artist{ID: "ar-2", Name: "Second Artist"}},
+						{ID: "ar-1", Name: "First Artist"},
+						{ID: "ar-2", Name: "Second Artist"},
 					},
 					model.RoleAlbumArtist: []model.Participant{
-						{Artist: model.Artist{ID: "ar-1", Name: "First Album Artist"}},
-						{Artist: model.Artist{ID: "ar-2", Name: "Second Album Artist"}},
+						{ID: "ar-1", Name: "First Album Artist"},
+						{ID: "ar-2", Name: "Second Album Artist"},
 					},
 				},
 			}
@@ -386,7 +386,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		Describe("NowPlaying", func() {
 			It("calls Last.fm with correct params", func() {
-				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: http.StatusOK}
 
 				err := agent.NowPlaying(ctx, "user-1", track, 0)
 
@@ -416,7 +416,7 @@ var _ = Describe("lastfmAgent", func() {
 				})
 
 				It("uses only the first artist", func() {
-					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: http.StatusOK}
 
 					err := agent.NowPlaying(ctx, "user-1", track, 0)
 
@@ -432,7 +432,7 @@ var _ = Describe("lastfmAgent", func() {
 		Describe("scrobble", func() {
 			It("calls Last.fm with correct params", func() {
 				ts := time.Now()
-				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: http.StatusOK}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
 
@@ -459,7 +459,7 @@ var _ = Describe("lastfmAgent", func() {
 
 				It("uses only the first artist", func() {
 					ts := time.Now()
-					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: http.StatusOK}
 
 					err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
 
@@ -471,14 +471,54 @@ var _ = Describe("lastfmAgent", func() {
 				})
 			})
 
-			It("skips songs with less than 31 seconds", func() {
-				track.Duration = 29
-				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+			It("skips songs at the 30-second minimum", func() {
+				track.Duration = 30
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: http.StatusOK}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("sends the duration parameter for a 30.5-second song", func() {
+				track.Duration = 30.5
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"scrobbles":{"scrobble":{"ignoredMessage":{"code":"0"}},"@attr":{"accepted":1}}}`)), StatusCode: http.StatusOK}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeTrue())
+				Expect(sentParams.Get("duration")).To(Equal("30"))
+			})
+
+			It("skips songs according to the configured minimum duration", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 60 * time.Second })
+				track.Duration = 59
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: http.StatusOK}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("does not skip short songs when the minimum duration is disabled", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 0 })
+				track.Duration = 29
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: http.StatusOK}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).ToNot(BeNil())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeFalse())
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {
@@ -489,7 +529,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns ErrRetryLater on error 11", func() {
 				httpClient.Res = http.Response{
 					Body:       io.NopCloser(bytes.NewBufferString(`{"error":11,"message":"Service Offline - This service is temporarily offline. Try again later."}`)),
-					StatusCode: 400,
+					StatusCode: http.StatusBadRequest,
 				}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
@@ -499,7 +539,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns ErrRetryLater on error 16", func() {
 				httpClient.Res = http.Response{
 					Body:       io.NopCloser(bytes.NewBufferString(`{"error":16,"message":"There was a temporary error processing your request. Please try again"}`)),
-					StatusCode: 400,
+					StatusCode: http.StatusBadRequest,
 				}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
@@ -509,7 +549,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns ErrRetryLater on error 29 (rate limit exceeded)", func() {
 				httpClient.Res = http.Response{
 					Body:       io.NopCloser(bytes.NewBufferString(`{"error":29,"message":"Rate limit exceeded"}`)),
-					StatusCode: 200,
+					StatusCode: http.StatusOK,
 				}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
@@ -519,7 +559,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns ErrRetryLater on http errors", func() {
 				httpClient.Res = http.Response{
 					Body:       io.NopCloser(bytes.NewBufferString(`internal server error`)),
-					StatusCode: 500,
+					StatusCode: http.StatusInternalServerError,
 				}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
@@ -529,7 +569,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("returns ErrUnrecoverable on other errors", func() {
 				httpClient.Res = http.Response{
 					Body:       io.NopCloser(bytes.NewBufferString(`{"error":8,"message":"Operation failed - Something else went wrong"}`)),
-					StatusCode: 400,
+					StatusCode: http.StatusBadRequest,
 				}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
@@ -550,7 +590,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns the biography", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetAlbumInfo(ctx, "Believe", "Cher", "03c91c40-49a6-44a7-90e7-a700edf97a62")).To(Equal(&agents.AlbumInfo{
 				Name:        "Believe",
 				MBID:        "03c91c40-49a6-44a7-90e7-a700edf97a62",
@@ -566,7 +606,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns empty images if no images are available", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.empty_urls.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetAlbumInfo(ctx, "The Definitive Less Damage And More Joy", "The Jesus and Mary Chain", "")).To(Equal(&agents.AlbumInfo{
 				Name: "The Definitive Less Damage And More Joy",
 				URL:  "https://www.last.fm/music/The+Jesus+and+Mary+Chain/The+Definitive+Less+Damage+And+More+Joy",
@@ -584,7 +624,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error if Last.fm call returns an error", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError3)), StatusCode: http.StatusOK}
 			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -592,7 +632,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("returns an error when Last.fm returns an error 6 (album not found)", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: http.StatusOK}
 			_, err := agent.GetAlbumInfo(ctx, "123", "U2", "mbid-1234")
 			Expect(err).To(HaveOccurred())
 			// A definitive not-found must satisfy the sentinel, or the artwork worker retries it.
@@ -618,10 +658,10 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns the artist image from the page", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+			apiClient.Res = http.Response{Body: fApi, StatusCode: http.StatusOK}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.html")
-			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: http.StatusOK}
 
 			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
 			Expect(err).ToNot(HaveOccurred())
@@ -630,7 +670,7 @@ var _ = Describe("lastfmAgent", func() {
 		})
 
 		It("maps a Last.fm error 6 (artist not found) to the shared not-found sentinel", func() {
-			apiClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: 200}
+			apiClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(lastfmError6)), StatusCode: http.StatusOK}
 			_, err := agent.GetArtistImages(ctx, "123", "Nonexistent Artist", "")
 			// Not a fault: runs of missing artists must not trip the worker's circuit breaker.
 			Expect(errors.Is(err, agents.ErrNotFound)).To(BeTrue())
@@ -638,10 +678,10 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns empty list if image is the ignored default image", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+			apiClient.Res = http.Response{Body: fApi, StatusCode: http.StatusOK}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.ignored.html")
-			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: http.StatusOK}
 
 			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
 			Expect(err).ToNot(HaveOccurred())
@@ -650,10 +690,10 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("errors when the page has no meta tags", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+			apiClient.Res = http.Response{Body: fApi, StatusCode: http.StatusOK}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.no_meta.html")
-			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: http.StatusOK}
 
 			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
 			Expect(err).To(MatchError(errNoArtistPage))
@@ -661,10 +701,10 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("errors when Last.fm serves a bot challenge page", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+			apiClient.Res = http.Response{Body: fApi, StatusCode: http.StatusOK}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
-			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: http.StatusOK}
 
 			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
 			Expect(err).To(MatchError(errNoArtistPage))
@@ -674,10 +714,10 @@ var _ = Describe("lastfmAgent", func() {
 		It("does not park the agent: the failure is not a retry-later", func() {
 			// A RetryLaterError would cool down the agent's API-backed methods too.
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+			apiClient.Res = http.Response{Body: fApi, StatusCode: http.StatusOK}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
-			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: http.StatusOK}
 
 			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeFalse())
@@ -692,7 +732,7 @@ var _ = Describe("lastfmAgent", func() {
 
 		It("returns error if scraper call fails", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
-			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+			apiClient.Res = http.Response{Body: fApi, StatusCode: http.StatusOK}
 
 			httpClient.Err = errors.New("scraper error")
 			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
@@ -725,7 +765,7 @@ func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
 	}
 	// Return default empty response if no specific response is configured
 	return &http.Response{
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
 	}, nil
 }

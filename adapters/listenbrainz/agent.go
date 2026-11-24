@@ -80,7 +80,7 @@ func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track
 	li := l.formatListen(track)
 	err = l.client.updateNowPlaying(ctx, sk, li)
 	if err != nil {
-		log.Warn(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
+		log.Debug(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
 		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
@@ -228,29 +228,30 @@ func (l *listenBrainzAgent) PlaybackReport(context.Context, scrobbler.PlaybackSe
 }
 
 func init() {
-	conf.AddHook(func() {
-		if conf.Server().ListenBrainz.Enabled {
-			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzAgent)(nil)
-				// See https://go.dev/doc/faq#nil_error
-				a := listenBrainzConstructor(ds)
-				if a != nil {
-					return a
-				}
-				return nil
-			})
+	conf.AddHook(register)
+}
 
-			agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
-				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzAgent)(nil)
-				// See https://go.dev/doc/faq#nil_error
-				a := listenBrainzConstructor(ds)
-				if a != nil {
-					return a
-				}
-				return nil
-			})
-		}
-	})
+func register() {
+	scrobbler.Register(listenBrainzAgentName, newScrobbler)
+	agents.Register(listenBrainzAgentName, newAgent)
+}
+
+func listenBrainzEnabled() bool {
+	return conf.Server().ListenBrainz.Enabled
+}
+
+func newScrobbler(ds model.DataStore) scrobbler.Scrobbler {
+	if !listenBrainzEnabled() {
+		return nil
+	}
+	return listenBrainzConstructor(ds)
+}
+
+func newAgent(ds model.DataStore) agents.Interface {
+	if !listenBrainzEnabled() {
+		return nil
+	}
+	return listenBrainzConstructor(ds)
 }
 
 var (

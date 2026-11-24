@@ -84,6 +84,8 @@ const (
 
 	DefaultInfoLanguage = "en"
 
+	DefaultMinScrobbleDuration = 30 * time.Second
+
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute
@@ -91,6 +93,7 @@ const (
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
+	NoMediaFile    = ".nomedia"
 	ArtworkFolder  = "artwork"
 	// HashedArtworkFolder is a subtree of ArtworkFolder, kept apart from the name-addressed
 	// upload folders beside it so Prune's sweep never reaches them.
@@ -210,13 +213,11 @@ var (
 var HTTPUserAgent = "Navidrome/" + Version + " - https://github.com/navidrome"
 
 var (
-	VariousArtists = "Various Artists"
-	// TODO This will be dynamic when using disambiguation
-	VariousArtistsID = "63sqASlAfjbGMuLP4JhnZU"
-	UnknownAlbum     = "[Unknown Album]"
-	UnknownArtist    = "[Unknown Artist]"
-	// TODO This will be dynamic when using disambiguation
-	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
+	VariousArtists      = "Various Artists"
+	VariousArtistsID    = "63sqASlAfjbGMuLP4JhnZU" // TODO This will be dynamic when using disambiguation
+	UnknownAlbum        = "[Unknown Album]"
+	UnknownArtist       = "[Unknown Artist]"
+	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist)) // TODO This will be dynamic when using disambiguation
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ArtistJoiner = " • "

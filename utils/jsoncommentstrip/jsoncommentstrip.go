@@ -114,12 +114,13 @@ func (cr *reader) Read(p []byte) (int, error) {
 			// Otherwise, consume and discard
 
 		case stateMaybeBlockEnd:
-			if b == '/' {
+			switch b {
+			case '/':
 				cr.state = stateNormal
-			} else if b == '*' {
+			case '*':
 				// Stay in stateMaybeBlockEnd (consecutive *'s)
 				cr.state = stateMaybeBlockEnd
-			} else {
+			default:
 				cr.state = stateBlockComment
 			}
 		}

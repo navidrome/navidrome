@@ -21,7 +21,7 @@ var _ = Describe("TagRepository", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		tagRepo := NewTagRepository(GetDBXBuilder())
 		repo = tagRepo
 		restRepo = tagRepo
@@ -267,7 +267,7 @@ var _ = Describe("TagRepository", func() {
 
 			Expect(slices.IsSortedFunc(tags, func(a, b model.Tag) int {
 				return strings.Compare(strings.ToLower(a.TagValue), strings.ToLower(b.TagValue))
-			}))
+			})).To(BeTrue())
 		})
 
 		It("should sort tags by value descending", func() {
@@ -282,7 +282,7 @@ var _ = Describe("TagRepository", func() {
 
 			Expect(slices.IsSortedFunc(tags, func(a, b model.Tag) int {
 				return strings.Compare(strings.ToLower(b.TagValue), strings.ToLower(a.TagValue)) // Descending order
-			}))
+			})).To(BeTrue())
 		})
 	})
 })

@@ -14,34 +14,27 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 )
 
-func initialSetup(ds model.DataStore) {
-	ctx := context.TODO()
-	err := ds.WithTx(func(tx model.DataStore) error {
-		if err := tx.Library().StoreMusicFolder(ctx); err != nil {
-			return err
-		}
-
-		properties := tx.Property()
-		_, err := properties.Get(ctx, consts.InitialSetupFlagKey)
-		if err == nil {
-			return nil
-		}
+// initialSetup keeps reads out of the transaction: SQLite fails a write that follows a read at once,
+// without waiting for the lock
+func initialSetup(ctx context.Context, ds model.DataStore) error {
+	if err := ds.Library().StoreMusicFolder(ctx); err != nil {
+		return err
+	}
+	if _, err := ds.Property().Get(ctx, consts.InitialSetupFlagKey); err == nil {
+		return nil
+	}
+	return ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
 		log.Info("Running initial setup")
 		if conf.Server().DevAutoCreateAdminPassword != "" {
-			if err = createInitialAdminUser(ctx, tx, conf.Server().DevAutoCreateAdminPassword); err != nil {
+			if err := createInitialAdminUser(ctx, tx, conf.Server().DevAutoCreateAdminPassword); err != nil {
 				return err
 			}
 		}
-
-		err = properties.Put(ctx, consts.InitialSetupFlagKey, time.Now().String())
-		return err
+		return tx.Property().Put(ctx, consts.InitialSetupFlagKey, time.Now().String())
 	}, "initial setup")
-	if err != nil {
-		log.Fatal("Error running initial setup", err)
-	}
 }
 
-// If the Dev Admin user is not present, create it
+// createInitialAdminUser creates the Dev Admin user if it is not present
 func createInitialAdminUser(ctx context.Context, ds model.DataStore, initialPassword string) error {
 	users := ds.User()
 	c, err := users.CountAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})

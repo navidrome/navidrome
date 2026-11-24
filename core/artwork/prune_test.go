@@ -8,14 +8,16 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 type flakyGetArtworkRepo struct {
-	*tests.MockArtworkRepo
+	model.ArtworkRepository
 }
 
 func (f *flakyGetArtworkRepo) GetMimeByHash(context.Context) (map[string]string, error) {
@@ -24,34 +26,31 @@ func (f *flakyGetArtworkRepo) GetMimeByHash(context.Context) (map[string]string,
 
 var _ = Describe("Prune", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var store *ImageStore
-	var awRepo *tests.MockArtworkRepo
+	var awRepo model.ArtworkRepository
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
-		awRepo = ds.Artwork().(*tests.MockArtworkRepo)
+		ds = newTestDS(ctx)
+		awRepo = ds.Artwork()
 		store = NewImageStore(GinkgoT().TempDir())
 	})
 
-	// PutImage refreshes created_at like the SQL repo, so fixtures are aged directly.
+	// PutImage refreshes created_at, so fixtures are aged directly.
 	ageArtwork := func(h string, t time.Time) {
-		a := awRepo.Data[h]
-		a.CreatedAt = t
-		awRepo.Data[h] = a
+		GinkgoHelper()
+		_, err := db.Db().Exec("UPDATE artwork SET created_at = ? WHERE hash = ?", t, h)
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	It("purges dangling item_artwork state for gone entities, summed across kinds", func() {
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: "live-artist", Name: "Live"})
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "gone-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "live-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
-		awRepo.ExistingIDs = map[string]map[string]bool{
-			"al": {},
-			"ar": {"live-artist": true},
-		}
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "gone-album", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -62,18 +61,16 @@ var _ = Describe("Prune", func() {
 	})
 
 	It("purges dangling artwork_queue rows for gone entities", func() {
-		queueRepo := tests.CreateMockArtworkQueueRepo()
-		Expect(queueRepo.Enqueue(ctx,
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "live-album", Name: "Live"})
+		Expect(ds.ArtworkQueue().Enqueue(ctx,
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary},
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "live-album", ImageType: model.ImageTypePrimary},
 		)).To(Succeed())
-		queueRepo.ExistingIDs = map[string]map[string]bool{"al": {"live-album": true}}
-		ds.MockedArtworkQueue = queueRepo
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
-		Expect(findQueued(queueRepo, "al", "gone-album")).To(BeNil())
-		Expect(findQueued(queueRepo, "al", "live-album")).ToNot(BeNil())
+		Expect(queued(ctx, ds, "al", "gone-album")).To(BeNil())
+		Expect(queued(ctx, ds, "al", "live-album")).ToNot(BeNil())
 	})
 
 	It("deletes orphan rows and their store files, keeps referenced ones", func() {
@@ -90,7 +87,7 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(hk, "image/jpeg", bytes.NewReader(kept))).To(Succeed())
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -107,10 +104,11 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: "a1", Name: "Album"})
 		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).ToNot(HaveOccurred())
@@ -126,7 +124,7 @@ var _ = Describe("Prune", func() {
 		// Reacquisition refreshed created_at, so the row is unreferenced but too young to drop.
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).ToNot(HaveOccurred())
@@ -143,7 +141,7 @@ var _ = Describe("Prune", func() {
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
 		// The row is orphaned, but a concurrent acquisition just touched the file's mtime.
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())
@@ -157,7 +155,7 @@ var _ = Describe("Prune", func() {
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := store.Open(h, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -174,7 +172,7 @@ var _ = Describe("Prune", func() {
 		// The row records the current mime; the .png file is a superseded variant.
 		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := store.Open(h, "image/png")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -210,7 +208,7 @@ var _ = Describe("Prune", func() {
 		Expect(os.Chmod(shardDir, 0500)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(shardDir, 0755) })
 
-		Expect(prune(context.Background(), ds, store)).To(Succeed())
+		Expect(prune(ctx, ds, store)).To(Succeed())
 
 		_, err := awRepo.GetImage(ctx, hg)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -226,13 +224,15 @@ var _ = Describe("Prune", func() {
 	})
 
 	It("never sweeps files on a transient DB error", func() {
-		ds.MockedArtwork = &flakyGetArtworkRepo{MockArtworkRepo: tests.CreateMockArtworkRepo()}
+		ds = persistencetest.Stub(ds, persistencetest.Repos{Artwork: func(r model.ArtworkRepository) model.ArtworkRepository {
+			return &flakyGetArtworkRepo{ArtworkRepository: r}
+		}})
 
 		data := []byte("live-bytes")
 		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 
-		Expect(prune(context.Background(), ds, store)).ToNot(Succeed())
+		Expect(prune(ctx, ds, store)).ToNot(Succeed())
 
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())

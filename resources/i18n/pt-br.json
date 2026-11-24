@@ -83,7 +83,8 @@
         "mood": "Mood",
         "date": "Data de Lançamento",
         "missing": "Ausente",
-        "libraryName": "Biblioteca"
+        "libraryName": "Biblioteca",
+        "played": "Executado"
       },
       "actions": {
         "playAll": "Tocar",
@@ -162,6 +163,7 @@
       "helperTexts": {
         "name": "Alterações no seu nome só serão refletidas no próximo login",
         "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão",
+        "librariesEdit": "Selecione as bibliotecas que este usuário pode acessar",
         "scrobbleFilter": "Músicas que correspondem a estas regras de playlist inteligente não são enviadas ao Last.fm, ListenBrainz ou plugins de scrobble. Usa a mesma sintaxe JSON e o mesmo comportamento das playlists inteligentes. Exemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Deixe vazio para enviar scrobbles de todas as músicas. As contagens de reprodução locais não são afetadas."
       },
       "notifications": {

@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -18,11 +17,11 @@ import (
 	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/api"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,20 +30,17 @@ import (
 func TestAPIv1(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
+	persistencetest.Init(t)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "API v1 Suite")
 }
 
 var _ = configtest.RestoreAfterEachSpec()
+var _ = persistencetest.ResetBeforeEachSpec()
 
 var specRouter routers.Router
 
-// One database for the suite (db.Db() is a process-wide singleton); each spec clears users and grants.
 var _ = BeforeSuite(func() {
-	conf.Update(func(c *conf.Options) {
-		c.DbPath = filepath.Join(GinkgoT().TempDir(), "apiv1.db") + "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000"
-	})
-	DeferCleanup(db.Init(GinkgoT().Context()))
 	realDS = persistence.New(db.Db())
 
 	doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())

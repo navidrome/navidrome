@@ -43,7 +43,7 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 	}
 
 	// Fetch a new anonymous token
-	req, err := http.NewRequestWithContext(ctx, "GET", authBaseURL+"/login/anonymous?jo=p&rto=c", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, authBaseURL+"/login/anonymous?jo=p&rto=c", nil)
 	if err != nil {
 		return "", err
 	}
@@ -55,7 +55,7 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("deezer: failed to get JWT token: %s", resp.Status)
 	}
 
@@ -65,7 +65,7 @@ func (c *client) getJWT(ctx context.Context) (string, error) {
 	}
 
 	type authResponse struct {
-		JWT string `json:"jwt"` //nolint:gosec
+		JWT string `json:"jwt"`
 	}
 
 	var result authResponse

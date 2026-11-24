@@ -3,17 +3,25 @@ package lyrics_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"testing/fstest"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/core/storage/storagetest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/text/unicode/norm"
 )
 
 var _ = Describe("Lyrics", func() {
@@ -164,7 +172,7 @@ var _ = Describe("Lyrics", func() {
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = priority })
 		svc := lyrics.NewLyrics(nil, nil)
 		list, err := svc.GetLyrics(ctx, &mf)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(Equal(expected))
 	},
 		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics),
@@ -177,23 +185,16 @@ var _ = Describe("Lyrics", func() {
 	It("resolves source priority across duplicate media files", func() {
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".ttml,embedded" })
 		embeddedJSON, err := json.Marshal(embeddedLyrics)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
-		repo := &tests.MockMediaFileRepo{}
-		repo.SetData(model.MediaFiles{
-			{
-				Lyrics: string(embeddedJSON),
-				Path:   "tests/fixtures/01 Invisible (RED) Edit Version.mp3",
-			},
-			{
-				Lyrics: "[]",
-				Path:   "tests/fixtures/test.mp3",
-			},
-		})
-		svc := lyrics.NewLyrics(&tests.MockDataStore{MockedMediaFile: repo}, nil)
+		ds := persistence.New(db.Db())
+		useRepoRootAsLibrary(ctx, ds)
+		putRickAstleySong(ctx, ds, "tests/fixtures/01 Invisible (RED) Edit Version.mp3", string(embeddedJSON))
+		putRickAstleySong(ctx, ds, "tests/fixtures/test.mp3", "[]")
+		svc := lyrics.NewLyrics(ds, nil)
 
 		list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(Equal(ttmlLyrics))
 	})
 
@@ -221,7 +222,7 @@ var _ = Describe("Lyrics", func() {
 			Path:        "song.mp3",
 		})
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Line).To(Equal([]model.Line{
 			{Start: new(int64(1000)), Value: "Upper suffix"},
@@ -248,12 +249,41 @@ var _ = Describe("Lyrics", func() {
 		// ParseLyrics falls back to plain text for any suffix when the content
 		// doesn't match the structured format, so the .yaml hit is non-empty and
 		// shadows the lower-priority .lrc entirely.
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Synced).To(BeFalse())
 		Expect(list[0].Line).To(Equal([]model.Line{
 			{Value: "title: not lyricsfile"},
 		}))
+	})
+
+	It("resolves an external sidecar whose Unicode normalization differs from the track path", func() {
+		// An in-memory FS keeps the NFC/NFD mismatch byte-exact. The host filesystem
+		// may normalize names on lookup and hide the bug. See openSidecar.
+		const scheme = "fake-lyrics-e2e"
+		fsys := &storagetest.FakeFS{}
+		storagetest.Register(scheme, fsys)
+
+		const base = "03. 鬱P feat. 初音ミク - ガ"
+		modTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		fsys.SetFiles(fstest.MapFS{
+			norm.NFC.String(base) + ".flac": &fstest.MapFile{Data: []byte("audio"), ModTime: modTime},
+			norm.NFD.String(base) + ".lrc":  &fstest.MapFile{Data: []byte("[00:18.80]We're no strangers to love"), ModTime: modTime},
+		})
+
+		// Default priority from the bug report: ".lrc,.txt,embedded".
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lrc,.txt,embedded" })
+		svc := lyrics.NewLyrics(nil, nil)
+		list, err := svc.GetLyrics(ctx, &model.MediaFile{
+			LibraryPath: scheme + ":///music",
+			Path:        norm.NFC.String(base) + ".flac",
+		})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Synced).To(BeTrue())
+		Expect(list[0].Line).To(HaveLen(1))
+		Expect(list[0].Line[0].Value).To(Equal("We're no strangers to love"))
 	})
 
 	Context("Errors", func() {
@@ -286,7 +316,7 @@ var _ = Describe("Lyrics", func() {
 
 				svc := lyrics.NewLyrics(nil, nil)
 				list, err := svc.GetLyrics(ctx, &mf)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(list).To(Equal(embeddedLyrics))
 			})
 
@@ -295,7 +325,7 @@ var _ = Describe("Lyrics", func() {
 
 				svc := lyrics.NewLyrics(nil, nil)
 				list, err := svc.GetLyrics(ctx, &mf)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(list).To(BeEmpty())
 			})
 		})
@@ -313,7 +343,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
 		})
 
@@ -323,7 +353,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
 		})
 
@@ -332,7 +362,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // embedded wins
 		})
 
@@ -341,7 +371,7 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.notFound = true
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
 		})
 
@@ -351,42 +381,132 @@ var _ = Describe("Lyrics", func() {
 			mockLoader.lyrics = unsyncedLyrics
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
 		})
 
 		It("should handle plugin error gracefully", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "test-lyrics-plugin,embedded" })
-			mockLoader.err = fmt.Errorf("plugin error")
+			mockLoader.err = errors.New("plugin error")
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
+		})
+	})
+
+	Context("caching", func() {
+		var mockLoader *mockPluginLoader
+		var svc lyrics.Lyrics
+
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.LyricsPriority = "test-lyrics-plugin" })
+			mockLoader = &mockPluginLoader{}
+			svc = lyrics.NewLyrics(nil, mockLoader)
+			mf.ID = "mf-1"
+		})
+
+		It("serves a repeated request for the same track from the cache", func() {
+			mockLoader.lyrics = unsyncedLyrics
+			_, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(unsyncedLyrics))
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("caches a miss, so a track without lyrics does not reach the plugin again", func() {
+			for range 2 {
+				list, err := svc.GetLyrics(ctx, &mf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(list).To(BeEmpty())
+			}
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("caches a plugin error as a miss, since some plugins report no lyrics as an error", func() {
+			mockLoader.err = errors.New("no lyrics found from any provider")
+			for range 2 {
+				list, err := svc.GetLyrics(ctx, &mf)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(list).To(BeEmpty())
+			}
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("looks up each track separately", func() {
+			other := mf
+			other.ID = "mf-2"
+			_, _ = svc.GetLyrics(ctx, &mf)
+			_, _ = svc.GetLyrics(ctx, &other)
+			Expect(mockLoader.calls).To(Equal(2))
+		})
+
+		It("finishes and caches the lookup when the caller's request is cancelled", func() {
+			mockLoader.lyrics = unsyncedLyrics
+			cancelled, cancel := context.WithCancel(ctx)
+			cancel()
+
+			list, err := svc.GetLyrics(cancelled, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(unsyncedLyrics))
+
+			list, err = svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(unsyncedLyrics))
+			Expect(mockLoader.calls).To(Equal(1))
+		})
+
+		It("bounds the lookup with a deadline", func() {
+			_, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mockLoader.hadDeadline).To(BeTrue())
 		})
 	})
 
 	var _ = Describe("GetLyricsByArtistTitle", func() {
 		var svc lyrics.Lyrics
-		var repo *tests.MockMediaFileRepo
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded" })
-			repo = &tests.MockMediaFileRepo{}
-			ds = &tests.MockDataStore{MockedMediaFile: repo}
+			ds = persistence.New(db.Db())
 			svc = lyrics.NewLyrics(ds, nil)
 		})
 
 		It("bounds the query to a duplicate window", func() {
-			repo.SetData(model.MediaFiles{})
-			_, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lrc" })
+			useRepoRootAsLibrary(ctx, ds)
+			var decoys []string
+			for i := range 10 {
+				decoys = append(decoys, putRickAstleySong(ctx, ds, fmt.Sprintf("missing/%02d.mp3", i), ""))
+			}
+			withSidecar := putRickAstleySong(ctx, ds, "tests/fixtures/test.mp3", "")
+			_, err := db.Db().Exec("UPDATE media_file SET updated_at = ? WHERE id = ?", time.Now().Add(-time.Hour), withSidecar)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(repo.Options.Max).To(Equal(10))
+
+			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(BeNil())
+
+			Expect(ds.MediaFile().Delete(ctx, decoys[0])).To(Succeed())
+			list, err = svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(syncedLyrics))
 		})
 
 		It("returns nil when no media file matches", func() {
-			repo.SetData(model.MediaFiles{})
-			list, err := svc.GetLyricsByArtistTitle(ctx, "Nobody", "No Song")
+			lyricsJSON, err := json.Marshal(embeddedLyrics)
+			Expect(err).ToNot(HaveOccurred())
+			putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
+
+			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "No Song")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(BeNil())
+
+			list, err = svc.GetLyricsByArtistTitle(ctx, "Nobody", "Never Gonna Give You Up")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(BeNil())
 		})
@@ -397,9 +517,7 @@ var _ = Describe("Lyrics", func() {
 			embedded, _ := embeddedList.Main()
 			embeddedJSON, err := json.Marshal(model.LyricList{embedded})
 			Expect(err).ToNot(HaveOccurred())
-			repo.SetData(model.MediaFiles{
-				{ID: "1", Title: "Never Gonna Give You Up", Lyrics: string(embeddedJSON)},
-			})
+			putRickAstleySong(ctx, ds, "song.mp3", string(embeddedJSON))
 
 			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
 			Expect(err).ToNot(HaveOccurred())
@@ -409,11 +527,37 @@ var _ = Describe("Lyrics", func() {
 	})
 })
 
+func useRepoRootAsLibrary(ctx context.Context, ds model.DataStore) {
+	GinkgoHelper()
+	root, err := os.Getwd()
+	Expect(err).ToNot(HaveOccurred())
+	persistencetest.SetLibraries(ctx, ds, root)
+}
+
+// putRickAstleySong stores "Never Gonna Give You Up" by Rick Astley at path and returns its ID.
+func putRickAstleySong(ctx context.Context, ds model.DataStore, path, lyrics string) string {
+	GinkgoHelper()
+	artist := model.Artist{ID: "ar-rick", Name: "Rick Astley"}
+	Expect(ds.Artist().Put(ctx, &artist)).To(Succeed())
+	mf := &model.MediaFile{
+		LibraryID:    model.DefaultLibraryID,
+		Path:         path,
+		Title:        "Never Gonna Give You Up",
+		Lyrics:       lyrics,
+		UpdatedAt:    time.Now(),
+		Participants: model.Participants{model.RoleArtist: {{Artist: artist}}},
+	}
+	Expect(ds.MediaFile().Put(ctx, mf)).To(Succeed())
+	return mf.ID
+}
+
 type mockPluginLoader struct {
-	lyrics     model.LyricList
-	err        error
-	notFound   bool
-	pluginName string // expected plugin name (exact match, like real manager)
+	lyrics      model.LyricList
+	err         error
+	notFound    bool
+	pluginName  string // expected plugin name (exact match, like real manager)
+	calls       int
+	hadDeadline bool
 }
 
 func (m *mockPluginLoader) PluginNames(_ string) []string {
@@ -431,14 +575,18 @@ func (m *mockPluginLoader) LoadLyricsProvider(name string) (lyrics.Provider, boo
 	if m.pluginName != "" && name != m.pluginName {
 		return nil, false
 	}
-	return &mockLyricsProvider{lyrics: m.lyrics, err: m.err}, true
+	return &mockLyricsProvider{loader: m}, true
 }
 
 type mockLyricsProvider struct {
-	lyrics model.LyricList
-	err    error
+	loader *mockPluginLoader
 }
 
-func (m *mockLyricsProvider) GetLyrics(_ context.Context, _ *model.MediaFile) (model.LyricList, error) {
-	return m.lyrics, m.err
+func (m *mockLyricsProvider) GetLyrics(ctx context.Context, _ *model.MediaFile) (model.LyricList, error) {
+	m.loader.calls++
+	_, m.loader.hadDeadline = ctx.Deadline()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return m.loader.lyrics, m.loader.err
 }

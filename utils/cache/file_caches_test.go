@@ -23,7 +23,10 @@ func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getRead
 }
 
 var _ = Describe("File Caches", func() {
+	var ctx context.Context
+
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		tmpDir, _ := os.MkdirTemp("", "file_caches")
 		DeferCleanup(func() {
 			_ = os.RemoveAll(tmpDir)
@@ -53,9 +56,9 @@ var _ = Describe("File Caches", func() {
 
 		It("reports when cache is disabled", func() {
 			fc := callNewFileCache("test", "0", "test", 0, nil)
-			Expect(fc.Disabled(context.Background())).To(BeTrue())
+			Expect(fc.Disabled(ctx)).To(BeTrue())
 			fc = callNewFileCache("test", "1KB", "test", 0, nil)
-			Expect(fc.Disabled(context.Background())).To(BeFalse())
+			Expect(fc.Disabled(ctx)).To(BeFalse())
 		})
 	})
 
@@ -67,16 +70,16 @@ var _ = Describe("File Caches", func() {
 				return strings.NewReader(arg.Key()), nil
 			})
 			// First call is a MISS
-			s, err := fc.Get(context.Background(), &testArg{"test"})
-			Expect(err).To(BeNil())
+			s, err := fc.Get(ctx, &testArg{"test"})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Cached).To(BeFalse())
 			Expect(s.Closer).To(BeNil())
 			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 
 			// Second call is a HIT
 			called = false
-			s, err = fc.Get(context.Background(), &testArg{"test"})
-			Expect(err).To(BeNil())
+			s, err = fc.Get(ctx, &testArg{"test"})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 			Expect(s.Cached).To(BeTrue())
 			Expect(s.Closer).ToNot(BeNil())
@@ -90,15 +93,15 @@ var _ = Describe("File Caches", func() {
 				return strings.NewReader(arg.Key()), nil
 			})
 			// First call is a MISS
-			s, err := fc.Get(context.Background(), &testArg{"test"})
-			Expect(err).To(BeNil())
+			s, err := fc.Get(ctx, &testArg{"test"})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Cached).To(BeFalse())
 			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 
 			// Second call is also a MISS
 			called = false
-			s, err = fc.Get(context.Background(), &testArg{"test"})
-			Expect(err).To(BeNil())
+			s, err = fc.Get(ctx, &testArg{"test"})
+			Expect(err).ToNot(HaveOccurred())
 			Expect(io.ReadAll(s)).To(Equal([]byte("test")))
 			Expect(s.Cached).To(BeFalse())
 			Expect(called).To(BeTrue())
@@ -108,8 +111,8 @@ var _ = Describe("File Caches", func() {
 			fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 				return strings.NewReader("complete-data"), nil
 			})
-			s, err := fc.Get(context.Background(), &testArg{"markme"})
-			Expect(err).To(BeNil())
+			s, err := fc.Get(ctx, &testArg{"markme"})
+			Expect(err).ToNot(HaveOccurred())
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
 
@@ -126,19 +129,19 @@ var _ = Describe("File Caches", func() {
 			})
 
 			// First Get → MISS; the cache starts copying pr into the entry in a goroutine.
-			s1, err := fc.Get(context.Background(), &testArg{"live"})
-			Expect(err).To(BeNil())
+			s1, err := fc.Get(ctx, &testArg{"live"})
+			Expect(err).ToNot(HaveOccurred())
 
 			// Write the first chunk so the entry exists with in-flight bytes,
 			// but leave the pipe open so the second reader can attach mid-stream.
 			// io.Pipe writes block until the cache goroutine reads them, giving us
 			// a deterministic happens-before: the entry is live before we call Get again.
 			_, err = pw.Write([]byte("hello "))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			// Second Get while the pipe is still open → attaches to the in-progress entry.
-			s2, err := fc.Get(context.Background(), &testArg{"live"})
-			Expect(err).To(BeNil())
+			s2, err := fc.Get(ctx, &testArg{"live"})
+			Expect(err).ToNot(HaveOccurred())
 
 			// Drain both readers concurrently; they race against the producer below.
 			ch1 := make(chan []byte, 1)
@@ -148,7 +151,7 @@ var _ = Describe("File Caches", func() {
 
 			// Deliver the rest of the stream and close; both draining goroutines must see it.
 			_, err = pw.Write([]byte("world"))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pw.Close()).To(Succeed())
 
 			Expect(string(<-ch1)).To(Equal("hello world"))
@@ -164,8 +167,8 @@ var _ = Describe("File Caches", func() {
 			}).Should(BeTrue())
 
 			// Steady-state HIT: full data, Cached flag set.
-			s3, err := fc.Get(context.Background(), &testArg{"live"})
-			Expect(err).To(BeNil())
+			s3, err := fc.Get(ctx, &testArg{"live"})
+			Expect(err).ToNot(HaveOccurred())
 			got3, _ := io.ReadAll(s3)
 			_ = s3.Close()
 			Expect(s3.Cached).To(BeTrue())
@@ -179,7 +182,7 @@ var _ = Describe("File Caches", func() {
 						return nil, errors.New("failed")
 					})
 
-					_, err := fc.Get(context.Background(), &testArg{"test"})
+					_, err := fc.Get(ctx, &testArg{"test"})
 					Expect(err).To(MatchError("failed"))
 				})
 			})
@@ -189,7 +192,7 @@ var _ = Describe("File Caches", func() {
 						return errFakeReader{errors.New("read failure")}, nil
 					})
 
-					s, err := fc.Get(context.Background(), &testArg{"test"})
+					s, err := fc.Get(ctx, &testArg{"test"})
 					Expect(err).ToNot(HaveOccurred())
 					_, _ = io.Copy(io.Discard, s)
 					// TODO How to make the fscache reader return the underlying reader error?
@@ -197,7 +200,7 @@ var _ = Describe("File Caches", func() {
 
 					// Data should not be cached (or eventually be removed from cache)
 					Eventually(func() bool {
-						s, _ = fc.Get(context.Background(), &testArg{"test"})
+						s, _ = fc.Get(ctx, &testArg{"test"})
 						if s != nil {
 							return s.Cached
 						}
@@ -217,7 +220,7 @@ var _ = Describe("File Caches", func() {
 
 				// Plant a partial file (no marker), simulating a killed process.
 				sfs, err := NewSpreadFS(filepath.Join(conf.Server().CacheFolder.String(), "test"), 0755)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				partialPath := sfs.KeyMapper((&testArg{"track"}).Key())
 				Expect(os.MkdirAll(filepath.Dir(partialPath), 0755)).To(Succeed())
 				Expect(os.WriteFile(partialPath, []byte("PARTIAL"), 0600)).To(Succeed())
@@ -229,8 +232,8 @@ var _ = Describe("File Caches", func() {
 					return strings.NewReader("FULL-TRANSCODE"), nil
 				})
 
-				s, err := fc2.Get(context.Background(), &testArg{"track"})
-				Expect(err).To(BeNil())
+				s, err := fc2.Get(ctx, &testArg{"track"})
+				Expect(err).ToNot(HaveOccurred())
 				data, _ := io.ReadAll(s)
 				_ = s.Close()
 
@@ -244,8 +247,8 @@ var _ = Describe("File Caches", func() {
 				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 					return errFakeReader{errors.New("boom")}, nil
 				})
-				s, err := fc.Get(context.Background(), &testArg{"err"})
-				Expect(err).To(BeNil())
+				s, err := fc.Get(ctx, &testArg{"err"})
+				Expect(err).ToNot(HaveOccurred())
 				_, _ = io.Copy(io.Discard, s)
 				_ = s.Close()
 
@@ -262,7 +265,7 @@ var _ = Describe("File Caches", func() {
 				// this fails in CI instead of silently reviving the truncation bug.
 				fc := callNewFileCache("test", "10MB", "test", 0, nil)
 				_, w, err := fc.cache.Get("capability")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(func() { _ = w.Close() })
 
 				_, ok := w.(interface{ CloseWithError(error) error })
@@ -273,8 +276,8 @@ var _ = Describe("File Caches", func() {
 				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 					return &partialThenErrReader{data: []byte("PARTIAL"), err: errors.New("transcoder died")}, nil
 				})
-				s, err := fc.Get(context.Background(), &testArg{"inband"})
-				Expect(err).To(BeNil())
+				s, err := fc.Get(ctx, &testArg{"inband"})
+				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(func() { _ = s.Close() })
 
 				_, err = io.ReadAll(s)
@@ -286,16 +289,16 @@ var _ = Describe("File Caches", func() {
 				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 					return pr, nil
 				})
-				s1, err := fc.Get(context.Background(), &testArg{"joined"})
-				Expect(err).To(BeNil())
+				s1, err := fc.Get(ctx, &testArg{"joined"})
+				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(func() { _ = s1.Close() })
 
 				// The blocking pipe write gives a happens-before: the entry is in flight.
 				_, err = pw.Write([]byte("PARTIAL"))
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 
-				s2, err := fc.Get(context.Background(), &testArg{"joined"})
-				Expect(err).To(BeNil())
+				s2, err := fc.Get(ctx, &testArg{"joined"})
+				Expect(err).ToNot(HaveOccurred())
 				DeferCleanup(func() { _ = s2.Close() })
 				Expect(s2.Cached).To(BeTrue())
 
@@ -311,8 +314,8 @@ var _ = Describe("File Caches", func() {
 				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 					return &partialThenErrReader{data: []byte("PARTIAL-OUTPUT"), err: errors.New("transcoder died")}, nil
 				})
-				s, err := fc.Get(context.Background(), &testArg{"partial"})
-				Expect(err).To(BeNil())
+				s, err := fc.Get(ctx, &testArg{"partial"})
+				Expect(err).ToNot(HaveOccurred())
 				_, _ = io.Copy(io.Discard, s)
 				_ = s.Close()
 
@@ -334,8 +337,8 @@ var _ = Describe("File Caches", func() {
 					return strings.NewReader("payload"), nil
 				})
 
-				s, err := fc.Get(context.Background(), &testArg{"vanish"})
-				Expect(err).To(BeNil())
+				s, err := fc.Get(ctx, &testArg{"vanish"})
+				Expect(err).ToNot(HaveOccurred())
 				Expect(io.ReadAll(s)).To(Equal([]byte("payload")))
 				Expect(s.Close()).To(Succeed())
 
@@ -343,7 +346,7 @@ var _ = Describe("File Caches", func() {
 				Eventually(func() error { _, e := os.Stat(dataPath); return e }).Should(Succeed())
 				Expect(os.Remove(dataPath)).To(Succeed())
 
-				s2, err := fc.Get(context.Background(), &testArg{"vanish"})
+				s2, err := fc.Get(ctx, &testArg{"vanish"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(io.ReadAll(s2)).To(Equal([]byte("payload")))
 				_ = s2.Close()
@@ -362,13 +365,13 @@ var _ = Describe("File Caches", func() {
 				})
 
 				key := (&testArg{"deferred"}).Key()
-				s1, err := fc.Get(context.Background(), &testArg{"deferred"})
-				Expect(err).To(BeNil())
+				s1, err := fc.Get(ctx, &testArg{"deferred"})
+				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(func() bool { return fc.cache.Exists(key) }).Should(BeFalse())
 
-				s2, err := fc.Get(context.Background(), &testArg{"deferred"})
-				Expect(err).To(BeNil())
+				s2, err := fc.Get(ctx, &testArg{"deferred"})
+				Expect(err).ToNot(HaveOccurred())
 				Expect(io.ReadAll(s2)).To(Equal([]byte("GOOD")))
 				Expect(s2.Close()).To(Succeed())
 
@@ -380,7 +383,7 @@ var _ = Describe("File Caches", func() {
 					return e
 				}).Should(Succeed(), "the replacement entry's file must survive the failed entry's cleanup")
 
-				s3, err := fc.Get(context.Background(), &testArg{"deferred"})
+				s3, err := fc.Get(ctx, &testArg{"deferred"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(io.ReadAll(s3)).To(Equal([]byte("GOOD")))
 				_ = s3.Close()
@@ -405,7 +408,7 @@ var _ = Describe("File Caches", func() {
 				})
 				Expect(os.Remove(dataPath)).To(Succeed())
 
-				s, err := adopted.Get(context.Background(), &testArg{"adopted"})
+				s, err := adopted.Get(ctx, &testArg{"adopted"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(io.ReadAll(s)).To(Equal([]byte("payload")))
 				_ = s.Close()

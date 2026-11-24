@@ -99,7 +99,7 @@ var _ = Describe("Sort index coverage", func() {
 	}
 
 	for _, c := range cases {
-		It(fmt.Sprintf("uses an index for every sort mapping on %s", c.table), func() {
+		It("uses an index for every sort mapping on "+c.table, func() {
 			r := c.newRepo(newCtx())
 			for _, sort := range slices.Sorted(maps.Keys(r.sortMappings)) {
 				if _, ok := c.exceptions[sort]; ok {
@@ -114,7 +114,7 @@ var _ = Describe("Sort index coverage", func() {
 			}
 		})
 
-		It(fmt.Sprintf("has no stale exceptions entries for %s", c.table), func() {
+		It("has no stale exceptions entries for "+c.table, func() {
 			r := c.newRepo(newCtx())
 			for _, sort := range slices.Sorted(maps.Keys(c.exceptions)) {
 				Expect(r.sortMappings).To(HaveKey(sort),
@@ -140,24 +140,30 @@ var _ = Describe("Sort index coverage", func() {
 // "USE TEMP B-TREE FOR LAST TERM OF ORDER BY" (or "LAST N TERMS") and are allowed.
 var fullTempBTreeSort = regexp.MustCompile(`USE TEMP B-TREE FOR ORDER BY`)
 
-func checkSortUsesIndex(conn *sql.DB, table, orderBy string) error {
-	rows, err := conn.Query(fmt.Sprintf("explain query plan select * from %s order by %s limit 15", table, orderBy))
+func queryPlan(conn interface {
+	Query(string, ...any) (*sql.Rows, error)
+}, query string, args ...any) ([]string, error) {
+	rows, err := conn.Query("explain query plan "+query, args...)
 	if err != nil {
-		return fmt.Errorf("explain query plan failed for order by %q: %w", orderBy, err)
+		return nil, err
 	}
 	defer rows.Close()
 
 	var details []string
 	for rows.Next() {
-		var id, parent, notUsed int
 		var detail string
-		if err := rows.Scan(&id, &parent, &notUsed, &detail); err != nil {
-			return err
+		if err := rows.Scan(new(int), new(int), new(int), &detail); err != nil {
+			return nil, err
 		}
 		details = append(details, detail)
 	}
-	if err := rows.Err(); err != nil {
-		return err
+	return details, rows.Err()
+}
+
+func checkSortUsesIndex(conn *sql.DB, table, orderBy string) error {
+	details, err := queryPlan(conn, fmt.Sprintf("select * from %s order by %s limit 15", table, orderBy))
+	if err != nil {
+		return fmt.Errorf("explain query plan failed for order by %q: %w", orderBy, err)
 	}
 	if slices.ContainsFunc(details, fullTempBTreeSort.MatchString) {
 		return fmt.Errorf("no index satisfies ORDER BY %s - plan: %v", orderBy, details)

@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -19,26 +20,25 @@ import (
 var _ = Describe("Users", func() {
 	var ctx context.Context
 	var api *Router
-	// The repo holds the full rows; the user carries the id/name-only copy its projection returns.
+	// The DB holds the full rows; the user carries the id/name-only copy its projection returns.
 	authedWithLibraries := func(r *http.Request, libs model.Libraries) *http.Request {
-		api.ds.Library().(*tests.MockLibraryRepo).SetData(libs)
+		putLibraries(ctx, api.ds, libs)
 		stripped := make(model.Libraries, len(libs))
 		for i, lib := range libs {
 			stripped[i] = model.Library{ID: lib.ID, Name: lib.Name}
 		}
-		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped})
-		return r.WithContext(ctx)
+		return r.WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped}))
 	}
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		api = &Router{ds: &tests.MockDataStore{}}
+		api = &Router{ds: persistence.New(db.Db())}
 	})
 
 	Describe("getUserViews", func() {
 		It("returns one view per accessible library", func() {
 			libs := model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Podcasts"}}
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest("GET", "/UserViews", nil), libs))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), libs))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -60,7 +60,7 @@ var _ = Describe("Users", func() {
 			created := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
 			libs := model.Libraries{{ID: 1, Name: "Music", Path: "/music", TotalAlbums: 42, CreatedAt: created}}
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest("GET", "/UserViews", nil), libs))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), libs))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 
@@ -77,7 +77,7 @@ var _ = Describe("Users", func() {
 		It("returns a single view for a user with one library", func() {
 			libs := model.Libraries{{ID: 1, Name: "Music"}}
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest("GET", "/UserViews", nil), libs))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), libs))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -87,18 +87,18 @@ var _ = Describe("Users", func() {
 
 		It("returns no views for a user with no library access", func() {
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest("GET", "/UserViews", nil), nil))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
-			Expect(res.Items).To(HaveLen(0))
+			Expect(res.Items).To(BeEmpty())
 			Expect(res.TotalRecordCount).To(Equal(0))
 		})
 	})
 
 	It("returns the current user", func() {
 		w := httptest.NewRecorder()
-		api.getCurrentUser(w, authedWithLibraries(httptest.NewRequest("GET", "/Users/Me", nil), nil))
+		api.getCurrentUser(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/Users/Me", nil), nil))
 		var u dto.UserDto
 		Expect(json.Unmarshal(w.Body.Bytes(), &u)).To(Succeed())
 		Expect(u.Name).To(Equal("alice"))
@@ -108,10 +108,9 @@ var _ = Describe("Users", func() {
 	})
 
 	Describe("getPublicUsers", func() {
-		var ur *tests.MockedUserRepo
 		publicUsers := func() []dto.UserDto {
 			w := httptest.NewRecorder()
-			api.getPublicUsers(w, httptest.NewRequest("GET", "/Users/Public", nil))
+			api.getPublicUsers(w, httptest.NewRequest(http.MethodGet, "/Users/Public", nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var users []dto.UserDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &users)).To(Succeed())
@@ -119,9 +118,8 @@ var _ = Describe("Users", func() {
 		}
 
 		BeforeEach(func() {
-			ur = api.ds.User().(*tests.MockedUserRepo)
-			Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
-			Expect(ur.Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
+			Expect(api.ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
+			Expect(api.ds.User().Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
 		})
 
 		It("returns an empty list when the config is unset", func() {
@@ -156,3 +154,19 @@ var _ = Describe("Users", func() {
 		})
 	})
 })
+
+// putLibraries stores libs with their stats and creation dates, which Library().Put does not store.
+func putLibraries(ctx context.Context, ds model.DataStore, libs model.Libraries) {
+	GinkgoHelper()
+	for _, lib := range libs {
+		if lib.Path == "" {
+			lib.Path = "/" + lib.Name
+		}
+		if lib.ID != model.DefaultLibraryID {
+			Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
+		}
+		_, err := db.Db().Exec("UPDATE library SET name = ?, path = ?, total_albums = ?, created_at = ? WHERE id = ?",
+			lib.Name, lib.Path, lib.TotalAlbums, lib.CreatedAt, lib.ID)
+		Expect(err).ToNot(HaveOccurred())
+	}
+}

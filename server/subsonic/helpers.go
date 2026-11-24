@@ -324,14 +324,14 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 func fakePath(mf model.MediaFile) string {
 	builder := strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.FullAlbumName())))
+	fmt.Fprintf(&builder, "%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.FullAlbumName()))
 	if mf.DiscNumber != 0 {
-		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
+		fmt.Fprintf(&builder, "%02d-", mf.DiscNumber)
 	}
 	if mf.TrackNumber != 0 {
-		builder.WriteString(fmt.Sprintf("%02d - ", mf.TrackNumber))
+		fmt.Fprintf(&builder, "%02d - ", mf.TrackNumber)
 	}
-	builder.WriteString(fmt.Sprintf("%s.%s", sanitizeSlashes(mf.FullTitle()), mf.Suffix))
+	fmt.Fprintf(&builder, "%s.%s", sanitizeSlashes(mf.FullTitle()), mf.Suffix)
 	return builder.String()
 }
 

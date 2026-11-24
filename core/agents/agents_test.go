@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
@@ -42,11 +44,9 @@ var _ = Describe("Agents", func() {
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var ds model.DataStore
-	var mfRepo *tests.MockMediaFileRepo
 	BeforeEach(func() {
-		ctx, cancel = context.WithCancel(context.Background())
-		mfRepo = tests.CreateMockMediaFileRepo()
-		ds = &tests.MockDataStore{MockedMediaFile: mfRepo}
+		ctx, cancel = context.WithCancel(GinkgoT().Context())
+		ds = persistence.New(db.Db())
 	})
 
 	Describe("Local", func() {
@@ -57,8 +57,20 @@ var _ = Describe("Agents", func() {
 		})
 
 		It("calls the placeholder GetArtistImages", func() {
-			mfRepo.SetData(model.MediaFiles{{ID: "1", Title: "One"}, {ID: "2", Title: "Two"}})
-			songs, err := ag.GetArtistTopSongs(ctx, "123", "John Doe", "mb123", 2)
+			user := model.User{ID: "user-1", UserName: "user-1"}
+			Expect(ds.User().Put(ctx, &user)).To(Succeed())
+			ctx = request.WithUser(ctx, user)
+			putSongs(ctx, ds,
+				model.MediaFile{ID: "1", Title: "One", ArtistID: "123"},
+				model.MediaFile{ID: "2", Title: "Two", ArtistID: "123"},
+				model.MediaFile{ID: "3", Title: "Not a favourite", ArtistID: "123"},
+				model.MediaFile{ID: "4", Title: "Other artist", ArtistID: "456"},
+			)
+			Expect(ds.MediaFile().SetStar(ctx, true, "1", "4")).To(Succeed())
+			Expect(ds.MediaFile().SetRating(ctx, 5, "2")).To(Succeed())
+			Expect(ds.MediaFile().SetRating(ctx, 4, "3")).To(Succeed())
+
+			songs, err := ag.GetArtistTopSongs(ctx, "123", "John Doe", "mb123", 3)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(ConsistOf([]Song{{ID: "1", Name: "One"}, {ID: "2", Name: "Two"}}))
 		})

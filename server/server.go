@@ -37,7 +37,9 @@ type Server struct {
 
 func New(ds model.DataStore, broker events.Broker, insights metrics.Insights) *Server {
 	s := &Server{ds: ds, broker: broker, insights: insights}
-	initialSetup(ds)
+	if err := initialSetup(context.TODO(), ds); err != nil {
+		log.Fatal("Error running initial setup", err)
+	}
 	auth.Init(s.ds)
 	s.initRoutes()
 	s.mountAuthenticationRoutes()
@@ -220,7 +222,7 @@ func (s *Server) mountAuthenticationRoutes() chi.Router {
 	})
 }
 
-// Serve UI app assets
+// mountRootRedirector redirects the root path to the UI app
 func (s *Server) mountRootRedirector() {
 	r := s.router
 	// Redirect root to UI URL
@@ -244,7 +246,7 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 // It provides detailed error messages for common issues like encrypted private keys.
 func validateTLSCertificates(certFile, keyFile string) error {
 	// Read the key file to check for encryption
-	keyData, err := os.ReadFile(keyFile) //nolint:gosec
+	keyData, err := os.ReadFile(keyFile)
 	if err != nil {
 		return fmt.Errorf("reading TLS key file: %w", err)
 	}

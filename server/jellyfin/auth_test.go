@@ -8,10 +8,11 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -19,19 +20,18 @@ import (
 var _ = Describe("AuthenticateByName", func() {
 	var ctx context.Context
 	var api *Router
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		ur := ds.User().(*tests.MockedUserRepo)
-		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		Expect(ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
 	It("issues a token for valid credentials", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"alice","Pw":"secret"}`))
 		api.authenticateByName(w, r)
 
@@ -55,7 +55,7 @@ var _ = Describe("AuthenticateByName", func() {
 	Describe("SessionInfo", func() {
 		login := func(authHeader string) map[string]any {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+			r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
 				strings.NewReader(`{"Username":"alice","Pw":"secret"}`))
 			r.Header.Set("Authorization", authHeader)
 			api.authenticateByName(w, r)
@@ -102,23 +102,21 @@ var _ = Describe("AuthenticateByName", func() {
 
 	It("records the login time, like the web UI login does", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"alice","Pw":"secret"}`))
 		api.authenticateByName(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
-		ur := ds.User().(*tests.MockedUserRepo)
-		usr, err := ur.FindByUsername(ctx, "alice")
+		usr, err := ds.User().FindByUsername(ctx, "alice")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(usr.LastLoginAt).ToNot(BeNil())
 	})
 
 	It("reflects an administrator in the User.Policy", func() {
-		ur := ds.User().(*tests.MockedUserRepo)
-		Expect(ur.Put(ctx, &model.User{ID: testID("admin1"), UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
+		Expect(ds.User().Put(ctx, &model.User{ID: testID("admin1"), UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"root","Pw":"secret"}`))
 		api.authenticateByName(w, r)
 
@@ -131,18 +129,17 @@ var _ = Describe("AuthenticateByName", func() {
 
 	It("rejects invalid credentials with 401", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"alice","Pw":"wrong"}`))
 		api.authenticateByName(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
 
 	It("rejects an empty password even for a user with an empty stored password with 401", func() {
-		ur := ds.User().(*tests.MockedUserRepo)
-		Expect(ur.Put(ctx, &model.User{ID: testID("e"), UserName: "empty", NewPassword: ""})).To(Succeed())
+		Expect(ds.User().Put(ctx, &model.User{ID: testID("e"), UserName: "empty", NewPassword: ""})).To(Succeed())
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
+		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"empty","Pw":""}`))
 		api.authenticateByName(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -151,11 +148,10 @@ var _ = Describe("AuthenticateByName", func() {
 
 var _ = Describe("AuthenticateByName body limit", func() {
 	It("rejects a request body larger than the limit", func() {
-		ds := &tests.MockDataStore{}
-		api := &Router{ds: ds}
+		api := &Router{ds: struct{ model.DataStore }{}}
 		w := httptest.NewRecorder()
 		body := `{"Username":"alice","Pw":"secret","Padding":"` + strings.Repeat("x", server.MaxLoginBodySize) + `"}`
-		r := httptest.NewRequest("POST", "/Users/AuthenticateByName", strings.NewReader(body))
+		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(body))
 		server.LimitLoginBody(http.HandlerFunc(api.authenticateByName)).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 	})

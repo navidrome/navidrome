@@ -2,7 +2,6 @@ package scanner_test
 
 import (
 	"context"
-	"time"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -13,23 +12,22 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Controller", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var ctrl model.Scanner
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	Describe("Status", func() {
 		BeforeEach(func() {
-			ctx = context.Background()
-			db.Init(ctx)
-			DeferCleanup(func() { Expect(tests.ClearDB()).To(Succeed()) })
-			ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-			ds.MockedProperty = &tests.MockedPropertyRepo{}
+			ds = persistence.New(db.Db())
 			ctrl = scanner.New(ctx, ds, events.NoopBroker(), playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 		})
 
@@ -66,45 +64,50 @@ var _ = Describe("LockForMaintenance", func() {
 })
 
 var _ = Describe("EffectiveFullScan", func() {
-	var ds *tests.MockDataStore
+	var ctx context.Context
+	var ds model.DataStore
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		libs := ds.Library()
+		Expect(libs.Put(ctx, &model.Library{ID: 2, Name: "Library 2", Path: "/music2"})).To(Succeed())
+		Expect(libs.Put(ctx, &model.Library{ID: 3, Name: "Library 3", Path: "/music3", PIDAlbum: "folder"})).To(Succeed())
 		pid := model.Library{}.EffectivePID()
-		libraries := &tests.MockLibraryRepo{}
-		libraries.SetData(model.Libraries{
-			{ID: 1, FullScanInProgress: true, ScannedPIDAlbum: pid.Album, ScannedPIDTrack: pid.Track},
-			{ID: 2, ScannedPIDAlbum: pid.Album, ScannedPIDTrack: pid.Track},
-			{ID: 3, LastScanAt: time.Now(), PIDAlbum: "folder", ScannedPIDAlbum: pid.Album, ScannedPIDTrack: pid.Track},
-		})
-		ds = &tests.MockDataStore{MockedLibrary: libraries}
+		for _, id := range []int{1, 2, 3} {
+			Expect(libs.SetScannedPID(ctx, id, pid)).To(Succeed())
+		}
+		Expect(libs.ScanEnd(ctx, 3)).To(Succeed())
+		Expect(libs.ScanBegin(ctx, 1, true)).To(Succeed())
 	})
 
 	It("detects a library that needs a full rescan for a PID change", func() {
 		targets := []model.ScanTarget{{LibraryID: 3, FolderPath: "."}}
-		Expect(scanner.EffectiveFullScan(GinkgoT().Context(), ds, false, targets)).To(BeTrue())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, targets)).To(BeTrue())
 	})
 
 	It("detects an interrupted full scan in a targeted library", func() {
 		targets := []model.ScanTarget{{LibraryID: 1, FolderPath: "."}}
-		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeTrue())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, targets)).To(BeTrue())
 	})
 
 	It("detects an interrupted full scan when scanning all libraries", func() {
-		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, nil)).To(BeTrue())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, nil)).To(BeTrue())
 	})
 
 	It("ignores interrupted full scans in untargeted libraries", func() {
 		targets := []model.ScanTarget{{LibraryID: 2, FolderPath: "."}}
-		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeFalse())
+		Expect(scanner.EffectiveFullScan(ctx, ds, false, targets)).To(BeFalse())
 	})
 })
 
 var _ = Describe("GetInstance", func() {
 	It("returns the same controller to every caller", func() {
-		ds := &tests.MockDataStore{}
+		ds := persistence.New(db.Db())
 		pls := playlists.NewPlaylists(ds, artwork.NewUploader(ds))
-		a := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
-		b := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		ctx := context.WithoutCancel(GinkgoT().Context())
+		a := scanner.GetInstance(ctx, ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		b := scanner.GetInstance(ctx, ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
 		Expect(a).To(BeIdenticalTo(b))
 	})
 })

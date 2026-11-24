@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -20,19 +21,17 @@ var _ = Describe("BufferedScrobbler", func() {
 	var scr *fakeScrobbler
 	var bs *bufferedScrobbler
 	var ctx context.Context
-	var buffer *tests.MockedScrobbleBufferRepo
+	var buffer model.ScrobbleBufferRepository
 
 	BeforeEach(func() {
-		ctx = context.Background()
-		buffer = tests.CreateMockedScrobbleBufferRepo()
-		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(ctx, &model.User{ID: "user1", UserName: "alice"})).To(Succeed())
-		ds = &tests.MockDataStore{
-			MockedScrobbleBuffer: buffer,
-			MockedUser:           userRepo,
-		}
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		putUsers(GinkgoT(), ds, model.User{ID: "user1", UserName: "alice"})
+		putTracks(GinkgoT(), ds, "123")
+		buffer = ds.ScrobbleBuffer()
 		scr = &fakeScrobbler{Authorized: true}
 		bs = newBufferedScrobbler(ds, scr, "test")
+		DeferCleanup(bs.Stop)
 	})
 
 	It("forwards IsAuthorized calls", func() {
@@ -127,12 +126,12 @@ var _ = Describe("backoffDelay", func() {
 // Drives the real run loop and asserts the exact retry schedule + recovery. Plain
 // test: testing/synctest's fake clock needs a *testing.T, which Ginkgo doesn't give.
 func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
+	ds := newRealDataStore(t)
+	putUsers(t, ds, model.User{ID: "user1", UserName: "alice"})
+	putTracks(t, ds, "123")
+	buffer := ds.ScrobbleBuffer()
 	synctest.Test(t, func(t *testing.T) {
 		g := NewWithT(t)
-		buffer := tests.CreateMockedScrobbleBufferRepo()
-		userRepo := tests.CreateMockUserRepo()
-		g.Expect(userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})).To(Succeed())
-		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 
 		flaky := &recoveringScrobbler{}
 		flaky.fail(ErrRetryLater)
@@ -142,7 +141,7 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		// Let the loop settle on the empty buffer, then enqueue a scrobble.
 		synctest.Wait()
 		track := model.MediaFile{ID: "123", Title: "Test Track", Artist: "Test Artist"}
-		g.Expect(bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: track, TimeStamp: time.Now()})).To(Succeed())
+		g.Expect(bs.Scrobble(t.Context(), "user1", Scrobble{MediaFile: track, TimeStamp: time.Now()})).To(Succeed())
 
 		// First attempt fires immediately on the enqueue wake and is left buffered.
 		synctest.Wait()
@@ -173,18 +172,17 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 }
 
 func TestBufferedScrobblerBackoffWindow(t *testing.T) {
+	ds := newRealDataStore(t)
+	putUsers(t, ds, model.User{ID: "user1", UserName: "alice"})
+	putTracks(t, ds, "1", "2")
 	synctest.Test(t, func(t *testing.T) {
-		buffer := tests.CreateMockedScrobbleBufferRepo()
-		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
-		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &fakeScrobbler{Authorized: true}
 		scr.SetError(errors.Join(errors.New("boom"), ErrRetryLater))
 		bs := newBufferedScrobbler(ds, scr, "test")
 		defer bs.Stop()
 
 		// First enqueue: one immediate attempt, then a 5s window opens.
-		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
+		_ = bs.Scrobble(t.Context(), "user1", Scrobble{ID: "1", TimeStamp: time.Now()})
 		synctest.Wait()
 		if got := scr.ScrobbleAttempts(); got != 1 {
 			t.Fatalf("expected 1 attempt after first enqueue, got %d", got)
@@ -192,7 +190,7 @@ func TestBufferedScrobblerBackoffWindow(t *testing.T) {
 
 		// A wake inside the window must NOT trigger an early attempt.
 		time.Sleep(1 * time.Second)
-		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "2"}, TimeStamp: time.Now()})
+		_ = bs.Scrobble(t.Context(), "user1", Scrobble{ID: "2", TimeStamp: time.Now()})
 		synctest.Wait()
 		if got := scr.ScrobbleAttempts(); got != 1 {
 			t.Fatalf("wake during backoff drained early: %d attempts", got)
@@ -208,17 +206,16 @@ func TestBufferedScrobblerBackoffWindow(t *testing.T) {
 }
 
 func TestBufferedScrobblerHonorsServerDelay(t *testing.T) {
+	ds := newRealDataStore(t)
+	putUsers(t, ds, model.User{ID: "user1", UserName: "alice"})
+	putTracks(t, ds, "1", "2")
 	synctest.Test(t, func(t *testing.T) {
-		buffer := tests.CreateMockedScrobbleBufferRepo()
-		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
-		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &fakeScrobbler{Authorized: true}
 		scr.SetError(errors.Join(errors.New("429"), &agents.RetryLaterError{RetryIn: 30 * time.Second}))
 		bs := newBufferedScrobbler(ds, scr, "test")
 		defer bs.Stop()
 
-		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
+		_ = bs.Scrobble(t.Context(), "user1", Scrobble{ID: "1", TimeStamp: time.Now()})
 		synctest.Wait()
 		if got := scr.ScrobbleAttempts(); got != 1 {
 			t.Fatalf("expected 1 attempt, got %d", got)
@@ -241,12 +238,11 @@ func TestBufferedScrobblerHonorsServerDelay(t *testing.T) {
 // The drain visits users in an arbitrary order, so the longest delay must win regardless
 // of which user was seen last.
 func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
+	ds := newRealDataStore(t)
+	putUsers(t, ds, model.User{ID: "user1", UserName: "alice"}, model.User{ID: "user2", UserName: "bob"})
+	putTracks(t, ds, "1", "2")
+	buffer := ds.ScrobbleBuffer()
 	synctest.Test(t, func(t *testing.T) {
-		buffer := tests.CreateMockedScrobbleBufferRepo()
-		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
-		_ = userRepo.Put(t.Context(), &model.User{ID: "user2", UserName: "bob"})
-		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &recoveringScrobbler{delays: map[string]time.Duration{
 			"user1": 10 * time.Second,
 			"user2": 45 * time.Second,

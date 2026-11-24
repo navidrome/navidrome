@@ -8,7 +8,8 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/api"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -17,13 +18,13 @@ var _ = Describe("Router", func() {
 	var router *Router
 
 	BeforeEach(func() {
-		router = New(&tests.MockDataStore{})
+		router = New(persistence.New(db.Db()))
 	})
 
 	It("routes every operation in the embedded spec", func() {
 		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
 		Expect(err).ToNot(HaveOccurred())
-		mux := New(&tests.MockDataStore{}).Handler.(chi.Routes)
+		mux := router.Handler.(chi.Routes)
 		for path, item := range doc.Paths.Map() {
 			for method := range item.Operations() {
 				Expect(mux.Find(chi.NewRouteContext(), method, path)).To(Equal(path), method+" "+path)
@@ -93,7 +94,7 @@ var _ = Describe("Router", func() {
 	})
 
 	panicking := func(v any) http.Handler {
-		return problemRecoverer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic(v) }))
+		return problemRecoverer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic(v) })) //nolint:forbidigo
 	}
 
 	It("turns a handler panic into a 500 problem", func() {

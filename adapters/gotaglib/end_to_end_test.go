@@ -20,13 +20,13 @@ func (t testFileInfo) BirthTime() time.Time {
 	if ts := times.Get(t.FileInfo); ts.HasBirthTime() {
 		return ts.BirthTime()
 	}
-	return t.FileInfo.ModTime()
+	return t.ModTime()
 }
 
 var _ = Describe("Extractor", func() {
 	toP := func(name, sortName, mbid string) model.Participant {
 		return model.Participant{
-			Artist: model.Artist{Name: name, SortArtistName: sortName, MbzArtistID: mbid},
+			Name: name, SortArtistName: sortName, MbzArtistID: mbid,
 		}
 	}
 
@@ -156,7 +156,7 @@ var _ = Describe("Extractor", func() {
 			mf := parseTestFile("tests/fixtures/" + file)
 
 			lyrics, err := mf.StructuredLyrics()
-			Expect(err).To(Not(HaveOccurred()))
+			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(2))
 
 			unspec := makeLyrics("xxx", "unspecified")
@@ -250,7 +250,7 @@ var _ = Describe("Extractor", func() {
 
 				// WMA has no Arranger role
 				if role == model.RoleArranger {
-					Expect(actual).To(HaveLen(0))
+					Expect(actual).To(BeEmpty())
 					continue
 				}
 

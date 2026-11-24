@@ -131,10 +131,10 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 }
 
 func (c smartPlaylistCriteria) where() (squirrel.Sqlizer, error) {
-	if c.Criteria.Expression == nil {
+	if c.Expression == nil {
 		return squirrel.Expr("1 = 1"), nil
 	}
-	return c.exprSQL(c.Criteria.Expression)
+	return c.exprSQL(c.Expression)
 }
 
 func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
@@ -209,7 +209,7 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	field, value, info, ok := singleField(values)
 	if !ok {
 		if len(values) != 1 {
-			return nil, fmt.Errorf("invalid field in criteria: isMissing/isPresent requires exactly one field")
+			return nil, errors.New("invalid field in criteria: isMissing/isPresent requires exactly one field")
 		}
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
@@ -378,7 +378,7 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 	return squirrel.Expr("media_file.id IN ("+subSQL+")", subArgs...), nil
 }
 
-// Filesystems disagree on the Unicode form of a name, so match the path in NFC and NFD.
+// pathVariants returns the path in NFC and NFD, because filesystems disagree on the Unicode form of a name.
 func pathVariants(path string) []string {
 	variants := []string{path}
 	if alt := norm.NFC.String(path); alt != path {
@@ -805,7 +805,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) expressionJoins() smartPlaylistJoinType {
 	var joins smartPlaylistJoinType
-	_ = criteria.Walk(c.Criteria.Expression, func(expr criteria.Expression) error {
+	_ = criteria.Walk(c.Expression, func(expr criteria.Expression) error {
 		for field := range criteria.Fields(expr) {
 			joins |= fieldJoinType(field)
 		}
@@ -816,7 +816,7 @@ func (c smartPlaylistCriteria) expressionJoins() smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) requiredJoins() smartPlaylistJoinType {
 	joins := c.expressionJoins()
-	for _, name := range c.Criteria.SortFieldNames() {
+	for _, name := range c.SortFieldNames() {
 		joins |= fieldJoinType(name)
 	}
 	return joins
@@ -858,7 +858,7 @@ func (c smartPlaylistCriteria) applyJoins(sq squirrel.SelectBuilder, joins smart
 }
 
 func (c smartPlaylistCriteria) orderBy() string {
-	sortFields := c.Criteria.OrderByFields()
+	sortFields := c.OrderByFields()
 	parts := make([]string, 0, len(sortFields))
 	for _, sf := range sortFields {
 		mapped, ok := sortExpr(sf.Field)

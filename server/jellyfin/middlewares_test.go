@@ -8,11 +8,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -20,13 +22,12 @@ import (
 var _ = Describe("authenticate middleware", func() {
 	var ctx context.Context
 	var api *Router
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		ur := ds.User().(*tests.MockedUserRepo)
-		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		Expect(ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
@@ -43,7 +44,7 @@ var _ = Describe("authenticate middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Items", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 		r.Header.Set("X-Emby-Token", tokenFor("alice"))
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -57,7 +58,7 @@ var _ = Describe("authenticate middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Items", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 		r.Header.Set("Authorization", `MediaBrowser Token="`+tokenFor("alice")+`", Client="Test", DeviceId="dev1"`)
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -67,7 +68,7 @@ var _ = Describe("authenticate middleware", func() {
 	It("rejects a missing token with 401", func() {
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Items", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
@@ -79,7 +80,7 @@ var _ = Describe("authenticate middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Items", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 		r.Header.Set("X-Emby-Token", "not-a-jwt")
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -92,7 +93,7 @@ var _ = Describe("authenticate middleware", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Items", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 		r.Header.Set("X-Emby-Token", t)
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -102,9 +103,9 @@ var _ = Describe("authenticate middleware", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			ur := ds.User().(*tests.MockedUserRepo)
 			usr = &model.User{ID: testID("u2"), UserName: "bob", NewPassword: "secret", TokenEpoch: 3}
-			Expect(ur.Put(ctx, usr)).To(Succeed())
+			Expect(ds.User().Put(ctx, usr)).To(Succeed())
+			setTokenEpoch(usr.ID, 3)
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {
@@ -112,7 +113,7 @@ var _ = Describe("authenticate middleware", func() {
 				w.WriteHeader(http.StatusOK)
 			})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items", nil)
+			r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 			r.Header.Set("X-Emby-Token", token)
 			api.authenticate(next).ServeHTTP(w, r)
 			return w
@@ -127,7 +128,7 @@ var _ = Describe("authenticate middleware", func() {
 		It("rejects a token whose epoch is stale", func() {
 			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
 			Expect(err).ToNot(HaveOccurred())
-			usr.TokenEpoch = 4
+			setTokenEpoch(usr.ID, 4)
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
 		})
 
@@ -151,7 +152,7 @@ var _ = Describe("withPlayer middleware", func() {
 
 	BeforeEach(func() {
 		players = &fakePlayers{}
-		api = &Router{ds: &tests.MockDataStore{}, players: players}
+		api = &Router{ds: struct{ model.DataStore }{}, players: players}
 	})
 
 	callWith := func() (model.Player, model.Transcoding, bool) {
@@ -164,7 +165,7 @@ var _ = Describe("withPlayer middleware", func() {
 			w.WriteHeader(http.StatusOK)
 		})
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/Audio/s1/stream", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Audio/s1/stream", nil)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Finamp", Device="Pixel", DeviceId="dev1", Version="1.0"`)
 		api.withPlayer(next).ServeHTTP(w, r)
 		return gotPlayer, gotTrc, hasTrc
@@ -186,25 +187,25 @@ var _ = Describe("withPlayer middleware", func() {
 
 var _ = Describe("tokenFromRequest", func() {
 	It("accepts the recommended Authorization: MediaBrowser scheme", func() {
-		r := httptest.NewRequest("GET", "/Items", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 		r.Header.Set("Authorization", `MediaBrowser Token="tok123", Client="Finamp", Device="Pixel", DeviceId="dev1", Version="1.0"`)
 		Expect(tokenFromRequest(r)).To(Equal("tok123"))
 	})
 
 	It("prefers the Authorization scheme token over deprecated token headers", func() {
-		r := httptest.NewRequest("GET", "/Items", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items", nil)
 		r.Header.Set("Authorization", `MediaBrowser Token="scheme-token"`)
 		r.Header.Set("X-Emby-Token", "legacy-token")
 		Expect(tokenFromRequest(r)).To(Equal("scheme-token"))
 	})
 
 	It("accepts the lowercase api_key query param", func() {
-		r := httptest.NewRequest("GET", "/Items/s1/File?api_key=tok123", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items/s1/File?api_key=tok123", nil)
 		Expect(tokenFromRequest(r)).To(Equal("tok123"))
 	})
 
 	It("accepts a PascalCase ApiKey query param once normalizeQueryKeys has folded it", func() {
-		r := httptest.NewRequest("GET", "/Items/s1/File?ApiKey=tok123", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items/s1/File?ApiKey=tok123", nil)
 		var got string
 		invoke(func(_ http.ResponseWriter, r *http.Request) { got = tokenFromRequest(r) }, httptest.NewRecorder(), r)
 		Expect(got).To(Equal("tok123"))
@@ -213,7 +214,7 @@ var _ = Describe("tokenFromRequest", func() {
 
 var _ = Describe("parseMediaBrowserAuth", func() {
 	authFor := func(header string) mediaBrowserAuth {
-		r := httptest.NewRequest("GET", "/", nil)
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		r.Header.Set("X-Emby-Authorization", header)
 		return parseMediaBrowserAuth(r)
 	}
@@ -237,7 +238,7 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 	})
 
 	It("prefers the recommended Authorization header over the deprecated X-Emby-Authorization", func() {
-		r := httptest.NewRequest("GET", "/", nil)
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		r.Header.Set("Authorization", `MediaBrowser Client="New", DeviceId="dev-new"`)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Old", DeviceId="dev-old"`)
 		a := parseMediaBrowserAuth(r)
@@ -248,7 +249,7 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 	It("falls back to X-Emby-Authorization when Authorization carries a foreign scheme", func() {
 		// A reverse proxy may inject Basic/Digest credentials; the client's MediaBrowser data must
 		// still be honored.
-		r := httptest.NewRequest("GET", "/", nil)
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		r.Header.Set("Authorization", `Digest username="proxy", realm="site"`)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Finamp", DeviceId="dev1", Token="tok"`)
 		a := parseMediaBrowserAuth(r)
@@ -257,7 +258,7 @@ var _ = Describe("parseMediaBrowserAuth", func() {
 	})
 
 	It("rejects a foreign scheme even when its parameters mimic MediaBrowser fields", func() {
-		r := httptest.NewRequest("GET", "/", nil)
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		r.Header.Set("Authorization", `Custom Token="not-for-us"`)
 		Expect(parseMediaBrowserAuth(r).Token).To(BeEmpty())
 	})
@@ -278,7 +279,7 @@ var _ = Describe("normalizeQueryKeys", func() {
 	// keyFor runs a request through normalizeQueryKeys and reports the value the handler sees for
 	// the given (lowercase) key — i.e. what a case-insensitive read would find.
 	keyFor := func(rawQuery, key string) string {
-		r := httptest.NewRequest("GET", "/Items?"+rawQuery, nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items?"+rawQuery, nil)
 		var got string
 		invoke(func(_ http.ResponseWriter, r *http.Request) { got = r.URL.Query().Get(key) }, httptest.NewRecorder(), r)
 		return got
@@ -298,7 +299,7 @@ var _ = Describe("normalizeQueryKeys", func() {
 	})
 
 	It("merges values when two keys fold to the same name instead of dropping one", func() {
-		r := httptest.NewRequest("GET", "/Items?Ids=aaa&ids=bbb", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Items?Ids=aaa&ids=bbb", nil)
 		var got []string
 		invoke(func(_ http.ResponseWriter, r *http.Request) { got = r.URL.Query()["ids"] }, httptest.NewRecorder(), r)
 		Expect(got).To(ConsistOf("aaa", "bbb"))
@@ -325,11 +326,9 @@ var _ = Describe("throttleStreams", func() {
 
 		var wg sync.WaitGroup
 		for range n {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/Items", nil))
-			}()
+			wg.Go(func() {
+				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/Items", nil))
+			})
 		}
 		// Give the admitted requests time to pile up before letting them finish.
 		time.Sleep(100 * time.Millisecond)
@@ -352,11 +351,9 @@ var _ = Describe("throttleStreams", func() {
 		}))
 		var wg sync.WaitGroup
 		for range 8 {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/Items", nil))
-			}()
+			wg.Go(func() {
+				h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/Items", nil))
+			})
 		}
 		close(release)
 		wg.Wait()
@@ -396,7 +393,7 @@ var _ = Describe("caseInsensitivePaths", func() {
 
 	serve := func(path string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
 		return w
 	}
 
@@ -424,7 +421,7 @@ var _ = Describe("caseInsensitivePaths", func() {
 		parent := chi.NewRouter()
 		parent.Mount("/jellyfin", handler)
 		w := httptest.NewRecorder()
-		parent.ServeHTTP(w, httptest.NewRequest("GET", "/jellyfin/FOO/abc/BAR", nil))
+		parent.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/jellyfin/FOO/abc/BAR", nil))
 		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 })

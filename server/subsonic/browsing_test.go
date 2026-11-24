@@ -3,13 +3,17 @@ package subsonic
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -31,11 +35,38 @@ var _ = Describe("Browsing", func() {
 	var ctx context.Context
 	var ds model.DataStore
 
+	// putArtistPerLibrary stores album artist ar-N in each library N, all granted to user-id.
+	putArtistPerLibrary := func() {
+		GinkgoHelper()
+		putUsers(ctx, ds, model.User{ID: "user-id", UserName: "user-id"})
+		for _, id := range persistencetest.SetLibraries(ctx, ds, "/music/library1", "/music/library2", "/music/library3") {
+			putAlbumArtists(ctx, ds, id, model.Artist{ID: fmt.Sprintf("ar-%d", id), Name: fmt.Sprintf("Test Artist %d", id)})
+		}
+	}
+	indexedArtistIDs := func(indexes []responses.Index) []string {
+		var ids []string
+		for _, idx := range indexes {
+			for _, a := range idx.Artists {
+				ids = append(ids, a.Id)
+			}
+		}
+		return ids
+	}
+	indexedArtistID3IDs := func(indexes []responses.IndexID3) []string {
+		var ids []string
+		for _, idx := range indexes {
+			for _, a := range idx.Artists {
+				ids = append(ids, a.Id)
+			}
+		}
+		return ids
+	}
+
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
 		api = &Router{ds: ds}
-		ctx = context.Background()
 	})
 
 	Describe("GetMusicFolders", func() {
@@ -44,7 +75,7 @@ var _ = Describe("Browsing", func() {
 			ctx := contextWithUser(ctx, "user-id", 1, 2, 3)
 
 			// Create request
-			r := httptest.NewRequest("GET", "/rest/getMusicFolders", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getMusicFolders", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -63,11 +94,12 @@ var _ = Describe("Browsing", func() {
 
 	Describe("GetIndexes", func() {
 		It("should validate user access to the specified musicFolderId", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to library 1 only
 			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=2 (not accessible)
-			r := httptest.NewRequest("GET", "/rest/getIndexes?musicFolderId=2", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getIndexes?musicFolderId=2", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -79,25 +111,12 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("should default to first accessible library when no musicFolderId specified", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to libraries 2 and 3
 			ctx = contextWithUser(ctx, "user-id", 2, 3)
 
-			// Setup minimal mock library data for working tests
-			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
-			mockLibRepo.SetData(model.Libraries{
-				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
-				{ID: 3, Name: "Test Library 3", Path: "/music/library3"},
-			})
-
-			// Setup mock artist data
-			mockArtistRepo := ds.Artist().(*tests.MockArtistRepo)
-			mockArtistRepo.SetData(model.Artists{
-				{ID: "1", Name: "Test Artist 1"},
-				{ID: "2", Name: "Test Artist 2"},
-			})
-
 			// Create request without musicFolderId
-			r := httptest.NewRequest("GET", "/rest/getIndexes", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getIndexes", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -107,16 +126,18 @@ var _ = Describe("Browsing", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response).ToNot(BeNil())
 			Expect(response.Indexes).ToNot(BeNil())
+			Expect(indexedArtistIDs(response.Indexes.Index)).To(ConsistOf("ar-2", "ar-3"))
 		})
 	})
 
 	Describe("GetArtists", func() {
 		It("should validate user access to the specified musicFolderId", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to library 1 only
 			ctx = contextWithUser(ctx, "user-id", 1)
 
 			// Create request with musicFolderId=3 (not accessible)
-			r := httptest.NewRequest("GET", "/rest/getArtists?musicFolderId=3", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtists?musicFolderId=3", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -128,25 +149,12 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("should default to first accessible library when no musicFolderId specified", func() {
+			putArtistPerLibrary()
 			// Create mock user with access to libraries 1 and 2
 			ctx = contextWithUser(ctx, "user-id", 1, 2)
 
-			// Setup minimal mock library data for working tests
-			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
-			mockLibRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Test Library 1", Path: "/music/library1"},
-				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
-			})
-
-			// Setup mock artist data
-			mockArtistRepo := ds.Artist().(*tests.MockArtistRepo)
-			mockArtistRepo.SetData(model.Artists{
-				{ID: "1", Name: "Test Artist 1"},
-				{ID: "2", Name: "Test Artist 2"},
-			})
-
 			// Create request without musicFolderId
-			r := httptest.NewRequest("GET", "/rest/getArtists", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtists", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint
@@ -156,21 +164,22 @@ var _ = Describe("Browsing", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response).ToNot(BeNil())
 			Expect(response.Artist).ToNot(BeNil())
+			Expect(indexedArtistID3IDs(response.Artist.Index)).To(ConsistOf("ar-1", "ar-2"))
 		})
 	})
 
 	Describe("GetAlbumInfo", func() {
 		It("emits image URLs when the album artwork is unresolved", func() {
 			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1"}}
-			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
 			resp, err := api.GetAlbumInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumInfo.SmallImageUrl).ToNot(BeEmpty())
 			Expect(resp.AlbumInfo.LargeImageUrl).ToNot(BeEmpty())
 		})
 		It("omits image URLs when the album artwork is known absent", func() {
-			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
-			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
+			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ImageAbsent: true}}
+			r := httptest.NewRequest(http.MethodGet, "/rest/getAlbumInfo?id=al-1", nil)
 			resp, err := api.GetAlbumInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumInfo.SmallImageUrl).To(BeEmpty())
@@ -182,14 +191,14 @@ var _ = Describe("Browsing", func() {
 	Describe("GetArtistInfo", func() {
 		It("emits image URLs when the artist artwork is unresolved", func() {
 			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1"}}
-			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistInfo.SmallImageUrl).ToNot(BeEmpty())
 		})
 		It("omits image URLs when the artist artwork is known absent", func() {
-			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
-			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ImageAbsent: true}}
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo?id=ar-1", nil)
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistInfo.SmallImageUrl).To(BeEmpty())

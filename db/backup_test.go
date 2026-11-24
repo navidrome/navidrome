@@ -73,7 +73,7 @@ var _ = Describe("database backups", func() {
 		}
 
 		BeforeEach(func() {
-
+			ctx = GinkgoT().Context()
 			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
 			Expect(err).ToNot(HaveOccurred())
 			conf.Update(func(c *conf.Options) { c.Backup.Path = conf.NewDir(tempFolder) })
@@ -95,8 +95,6 @@ var _ = Describe("database backups", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_ = file.Close()
 			}
-
-			ctx = context.Background()
 		})
 
 		DescribeTable("prune", func(count, expected int) {
@@ -138,7 +136,7 @@ var _ = Describe("database backups", func() {
 		var ctx context.Context
 
 		BeforeAll(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			DeferCleanup(conf.SnapshotConfig())
 
 			conf.Update(func(c *conf.Options) { c.DbPath = "file::memory:?cache=shared&_foreign_keys=on" })
@@ -168,7 +166,7 @@ var _ = Describe("database backups", func() {
 			path, err := Backup(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = tests.ClearDB()
+			err = tests.ClearDB(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(IsSchemaEmpty(ctx, Db())).To(BeTrue())
 
@@ -184,7 +182,7 @@ var _ = Describe("database backups", func() {
 		var dbFilePath string
 
 		BeforeAll(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			DeferCleanup(conf.SnapshotConfig())
 
 			var err error
@@ -222,7 +220,7 @@ var _ = Describe("database backups", func() {
 			Expect(err).ToNot(HaveOccurred())
 			singleton.DeleteInstance[*sql.DB]()
 
-			err = tests.ClearDB()
+			err = tests.ClearDB(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("restoring the backup")

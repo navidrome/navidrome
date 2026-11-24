@@ -38,6 +38,9 @@ type ClientInfo struct {
 	DirectPlayProfiles         []DirectPlayProfile
 	TranscodingProfiles        []Profile
 	CodecProfiles              []CodecProfile
+	// AllowLossyToLossless is set when a format was requested by name rather than
+	// negotiated from a preference list, where it would only inflate lossy files.
+	AllowLossyToLossless bool
 }
 
 // CapBitrate lowers the client's declared audio bitrate limits to maxKbps,

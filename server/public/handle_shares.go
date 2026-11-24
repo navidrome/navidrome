@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -60,7 +60,7 @@ func (pub *Router) handleM3U(w http.ResponseWriter, r *http.Request) {
 	s = pub.mapShareToM3U(r, *s)
 	w.Header().Set("Content-Type", "audio/x-mpegurl")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(s.ToM3U8())) //nolint:gosec
+	_, _ = w.Write([]byte(s.ToM3U8()))
 }
 
 func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id string) {
@@ -81,7 +81,7 @@ func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id s
 }
 
 func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
-	s.URL = ShareURL(r.Context(), s.ID)
+	s.URL = publicurl.ShareURL(r.Context(), s.ID)
 	s.ImageURL = publicurl.ImageURL(r.Context(), s.CoverArtID(), conf.Server().UICoverArtSize)
 	for i := range s.Tracks {
 		s.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
@@ -120,6 +120,6 @@ func encodeMediafileShare(s model.Share, id string) string {
 		BitRate: s.MaxBitRate,
 		ShareID: s.ID,
 	}
-	token, _ := auth.CreateExpiringPublicToken(V(s.ExpiresAt), claims)
+	token, _ := auth.CreateExpiringPublicToken(gg.V(s.ExpiresAt), claims)
 	return token
 }

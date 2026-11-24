@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 
@@ -26,7 +27,7 @@ var _ = Describe("API key authentication", func() {
 	doKeyReq := func(endpoint, apiKey string) *responses.Subsonic {
 		q := url.Values{"apiKey": {apiKey}, "v": {"1.16.1"}, "c": {"test-client"}, "f": {"json"}}
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, httptest.NewRequest("GET", "/"+endpoint+"?"+q.Encode(), nil))
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/"+endpoint+"?"+q.Encode(), nil))
 		return parseJSONResponse(w)
 	}
 

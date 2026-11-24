@@ -132,7 +132,7 @@ var _ = Describe("getPID", func() {
 				Expect(func() {
 					pid := getPID(mf, md, spec, false)
 					Expect(pid).To(Equal("(\\album name\\Version\\2022)"))
-				}).To(Not(Panic()))
+				}).ToNot(Panic())
 			})
 		})
 	})

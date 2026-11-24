@@ -41,13 +41,15 @@ func lookupQuickConnect(qc quickconnect.QuickConnect) http.HandlerFunc {
 	}
 }
 
+// maxSmallJSONBody bounds request bodies that carry a few short fields.
+const maxSmallJSONBody = 64 << 10
+
 func authorizeQuickConnect(qc quickconnect.QuickConnect) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Code string `json:"code"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "Bad Request", http.StatusBadRequest)
+		if !server.DecodeJSONBody(w, r, maxSmallJSONBody, &body) {
 			return
 		}
 		ctx := r.Context()
@@ -71,6 +73,8 @@ func writeQuickConnectResult(w http.ResponseWriter, r *http.Request, req quickco
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	default:
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(quickConnectDevice{AppName: req.Device.App, AppVersion: req.Device.AppVersion, DeviceName: req.Device.Name})
+		if err := json.NewEncoder(w).Encode(quickConnectDevice{AppName: req.Device.App, AppVersion: req.Device.AppVersion, DeviceName: req.Device.Name}); err != nil {
+			log.Error(r.Context(), "Error encoding Quick Connect response", err)
+		}
 	}
 }

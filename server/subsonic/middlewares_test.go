@@ -13,29 +13,31 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 func newGetRequest(queryParams ...string) *http.Request {
-	r := httptest.NewRequest("GET", "/ping?"+strings.Join(queryParams, "&"), nil)
+	r := httptest.NewRequest(http.MethodGet, "/ping?"+strings.Join(queryParams, "&"), nil)
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
 }
 
 func newPostRequest(queryParam string, formFields ...string) *http.Request {
-	r, err := http.NewRequest("POST", "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
-	if err != nil {
-		panic(err)
-	}
+	GinkgoHelper()
+	r, err := http.NewRequest(http.MethodPost, "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
+	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
@@ -51,7 +53,7 @@ var _ = Describe("Middlewares", func() {
 		ctx = GinkgoT().Context()
 		next = &mockHandler{}
 		w = httptest.NewRecorder()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 	})
 
 	Describe("ParsePostForm", func() {
@@ -332,7 +334,7 @@ var _ = Describe("Middlewares", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
 				key = "nds_0123456789abcdefghijkl"
-				Expect(ds.Player().SetAPIKey(ctx, "player-1", key)).To(Succeed())
+				Expect(ds.Player().SetAPIKey(request.WithUser(ctx, *usr), "player-1", key)).To(Succeed())
 			})
 
 			It("authenticates the owner and binds the key's player", func() {
@@ -473,10 +475,11 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not count server errors", func() {
-				userRepo := ds.User().(*tests.MockedUserRepo)
-				userRepo.Error = errors.New("db down")
+				store := &failingAuthStore{}
+				cp = authenticate(store.stub(ds))(next)
+				store.userErr = errors.New("db down")
 				failTimes(5, "u=admin", "p=wordpass")
-				userRepo.Error = nil
+				store.userErr = nil
 
 				serve(newGetRequest("u=admin", "p=wordpass"))
 				Expect(next.called).To(BeTrue())
@@ -484,14 +487,15 @@ var _ = Describe("Middlewares", func() {
 
 			It("does not count server errors when a key is sent as the password", func() {
 				usr, _ := ds.User().FindByUsername(ctx, "admin")
-				playerRepo := ds.Player().(*tests.MockPlayerRepo)
-				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
 				key := "nds_0123456789abcdefghijkl"
-				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+				Expect(ds.Player().SetAPIKey(request.WithUser(ctx, *usr), "player-1", key)).To(Succeed())
+				store := &failingAuthStore{}
+				cp = authenticate(store.stub(ds))(next)
 
-				playerRepo.Error = errors.New("db down")
+				store.playerErr = errors.New("db down")
 				failTimes(5, "u=admin", "p="+key)
-				playerRepo.Error = nil
+				store.playerErr = nil
 
 				serve(newGetRequest("u=admin", "p="+key))
 				Expect(next.called).To(BeTrue())
@@ -530,16 +534,18 @@ var _ = Describe("Middlewares", func() {
 
 			It("throttles a repeated bad key without locking out valid keys from the same IP", func() {
 				usr, _ := ds.User().FindByUsername(ctx, "admin")
-				playerRepo := ds.Player().(*tests.MockPlayerRepo)
-				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				ownerCtx := request.WithUser(ctx, *usr)
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
 				key := "nds_0123456789abcdefghijkl"
-				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+				Expect(ds.Player().SetAPIKey(ownerCtx, "player-1", key)).To(Succeed())
+				badKey := "nds_bad0000000000000000000"
 
 				for range 3 {
-					Expect(serve(newGetRequest("apiKey=nds_bad")).Body.String()).To(ContainSubstring(`code="44"`))
+					Expect(serve(newGetRequest("apiKey=" + badKey)).Body.String()).To(ContainSubstring(`code="44"`))
 				}
-				playerRepo.APIKeys["nds_bad"] = "player-1"
-				rec := serve(newGetRequest("apiKey=nds_bad"))
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-2", UserId: usr.ID})).To(Succeed())
+				Expect(ds.Player().SetAPIKey(ownerCtx, "player-2", badKey)).To(Succeed())
+				rec := serve(newGetRequest("apiKey=" + badKey))
 				Expect(next.called).To(BeFalse())
 				Expect(rec.Body.String()).To(ContainSubstring(`code="44"`))
 
@@ -664,6 +670,40 @@ var _ = Describe("Middlewares", func() {
 			Expect(cookieStr).To(ContainSubstring(playerIDCookieName("someone")))
 		})
 
+		It("registers the player with the client IP from RemoteAddr", func() {
+			r.RemoteAddr = "192.0.2.10:54321"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
+		It("keeps the client IP when RemoteAddr has no port, as set behind a trusted proxy", func() {
+			r.RemoteAddr = "192.0.2.10"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("192.0.2.10"))
+		})
+
+		It("takes the client IP resolved into the context, not the peer address", func() {
+			// realIPMiddleware resolves forwarding headers from a trusted proxy the same way
+			r.RemoteAddr = "10.0.0.1:1234"
+			r.Header.Set("X-Real-IP", "203.0.113.6")
+			gp := middleware.ClientIPFromHeader("X-Real-IP")(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(Equal("203.0.113.6"))
+		})
+
+		It("does not take a unix socket peer for an IP", func() {
+			r.RemoteAddr = "@"
+			gp := middleware.ClientIPFromRemoteAddr(getPlayer(mockedPlayers)(next))
+			gp.ServeHTTP(w, r)
+
+			Expect(mockedPlayers.ip).To(BeEmpty())
+		})
+
 		It("does not add the cookie if there was an error", func() {
 			ctx := request.WithClient(r.Context(), "error")
 			r = r.WithContext(ctx)
@@ -754,9 +794,7 @@ var _ = Describe("Middlewares", func() {
 
 			var err error
 			usr, err = ur.FindByUsernameWithPassword(ctx, "admin")
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("Plaintext password", func() {
@@ -801,9 +839,7 @@ var _ = Describe("Middlewares", func() {
 				usr = &model.User{UserName: "admin"}
 				var err error
 				validToken, err = auth.CreateToken(usr)
-				if err != nil {
-					panic(err)
-				}
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("authenticates with JWT token based authentication", func() {
@@ -872,10 +908,12 @@ type mockPlayers struct {
 	core.Players
 	transcoding *model.Transcoding
 	touched     bool
+	ip          string
 }
 
-func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, _ string) (*model.Player, *model.Transcoding, error) {
+func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, ip string) (*model.Player, *model.Transcoding, error) {
 	mp.touched = true
+	mp.ip = ip
 	return &plr, mp.transcoding, nil
 }
 
@@ -884,6 +922,7 @@ func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player,
 }
 
 func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string) (*model.Player, *model.Transcoding, error) {
+	mp.ip = ip
 	if client == "error" {
 		return nil, nil, errors.New(client)
 	}
@@ -914,3 +953,41 @@ func (g *gatedUserRepo) FindByUsernameWithPassword(ctx context.Context, username
 type countingHandler struct{ calls atomic.Int32 }
 
 func (c *countingHandler) ServeHTTP(http.ResponseWriter, *http.Request) { c.calls.Add(1) }
+
+// failingAuthStore fails the credential lookups while userErr or playerErr is set.
+type failingAuthStore struct {
+	userErr, playerErr error
+}
+
+func (f *failingAuthStore) stub(ds model.DataStore) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{
+		User: func(r model.UserRepository) model.UserRepository { return failingAuthUserRepo{UserRepository: r, f: f} },
+		Player: func(r model.PlayerRepository) model.PlayerRepository {
+			return failingAuthPlayerRepo{PlayerRepository: r, f: f}
+		},
+	})
+}
+
+type failingAuthUserRepo struct {
+	model.UserRepository
+	f *failingAuthStore
+}
+
+func (r failingAuthUserRepo) FindByUsernameWithPassword(ctx context.Context, username string) (*model.User, error) {
+	if r.f.userErr != nil {
+		return nil, r.f.userErr
+	}
+	return r.UserRepository.FindByUsernameWithPassword(ctx, username)
+}
+
+type failingAuthPlayerRepo struct {
+	model.PlayerRepository
+	f *failingAuthStore
+}
+
+func (r failingAuthPlayerRepo) FindByAPIKey(ctx context.Context, key string) (*model.Player, error) {
+	if r.f.playerErr != nil {
+		return nil, r.f.playerErr
+	}
+	return r.PlayerRepository.FindByAPIKey(ctx, key)
+}

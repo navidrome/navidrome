@@ -41,7 +41,7 @@ type dbSimilarArtist struct {
 }
 
 func (a *dbArtist) PostScan() error {
-	a.Artist.Stats = make(map[model.Role]model.ArtistStats)
+	a.Stats = make(map[model.Role]model.ArtistStats)
 
 	if a.LibraryStatsJSON != "" {
 		var rawLibStats map[string]map[string]map[string]int64
@@ -61,9 +61,9 @@ func (a *dbArtist) PostScan() error {
 
 				// Store total stats into the main attributes
 				if key == "total" {
-					a.Artist.Size += artistStats.Size
-					a.Artist.SongCount += artistStats.SongCount
-					a.Artist.AlbumCount += artistStats.AlbumCount
+					a.Size += artistStats.Size
+					a.SongCount += artistStats.SongCount
+					a.AlbumCount += artistStats.AlbumCount
 				}
 
 				role := model.RoleFromString(key)
@@ -71,11 +71,11 @@ func (a *dbArtist) PostScan() error {
 					continue
 				}
 
-				current := a.Artist.Stats[role]
+				current := a.Stats[role]
 				current.Size += artistStats.Size
 				current.SongCount += artistStats.SongCount
 				current.AlbumCount += artistStats.AlbumCount
-				a.Artist.Stats[role] = current
+				a.Stats[role] = current
 			}
 		}
 	}
@@ -102,7 +102,10 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	for _, s := range a.Artist.SimilarArtists {
 		sa = append(sa, dbSimilarArtist{ID: s.ID, Name: s.Name})
 	}
-	similarArtists, _ := json.Marshal(sa)
+	similarArtists, err := json.Marshal(sa)
+	if err != nil {
+		return fmt.Errorf("marshalling similar artists: %w", err)
+	}
 	m["similar_artists"] = string(similarArtists)
 	// When adding a derived column here, also add it to the scanner's artist Put column list
 	// in phase_1_folders.go, or rescans will never update it (how search_normalized went stale).

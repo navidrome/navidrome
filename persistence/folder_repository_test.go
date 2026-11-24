@@ -21,7 +21,7 @@ var _ = Describe("FolderRepository", func() {
 	var testLib, otherLib model.Library
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
 		repo = newFolderRepository(conn)
 
@@ -321,7 +321,7 @@ var _ = Describe("FolderRepository", func() {
 		It("does not panic when the cursor yields a dbFolder with nil Folder", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbFolder (where Folder is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbFolder, error) bool) {
 				var empty dbFolder // Folder pointer is nil
 				yield(empty, dbErr)

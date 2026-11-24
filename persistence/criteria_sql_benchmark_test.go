@@ -32,12 +32,12 @@ func BenchmarkSmartPlaylistRole(b *testing.B) {
 	b.Cleanup(conf.SnapshotConfig())
 	tmpDir := b.TempDir()
 	conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "bench-smartpl.db") })
-	cleanup := db.Init(context.Background())
+	cleanup := db.Init(b.Context())
 	defer cleanup()
 	log.SetLevel(log.LevelFatal)
 
 	conn := dbx.NewFromDB(db.Db(), db.Dialect)
-	ctx := log.NewContext(context.Background())
+	ctx := log.NewContext(b.Context())
 	user := model.User{ID: "bench-user", UserName: "bench", Name: "Bench User", IsAdmin: true}
 	ctx = request.WithUser(ctx, user)
 
@@ -67,12 +67,12 @@ func BenchmarkSmartPlaylistNegatedRole(b *testing.B) {
 	b.Cleanup(conf.SnapshotConfig())
 	tmpDir := b.TempDir()
 	conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "bench-smartpl-neg.db") })
-	cleanup := db.Init(context.Background())
+	cleanup := db.Init(b.Context())
 	defer cleanup()
 	log.SetLevel(log.LevelFatal)
 
 	conn := dbx.NewFromDB(db.Db(), db.Dialect)
-	ctx := log.NewContext(context.Background())
+	ctx := log.NewContext(b.Context())
 	user := model.User{ID: "bench-user", UserName: "bench", Name: "Bench User", IsAdmin: true}
 	ctx = request.WithUser(ctx, user)
 
@@ -250,7 +250,10 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 		primaryArtistName := fmt.Sprintf("Artist %04d", primaryArtistIdx)
 
 		participants := map[string][]map[string]string{"artist": artistEntries}
-		participantsJSON, _ := json.Marshal(participants)
+		participantsJSON, err := json.Marshal(participants)
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		if _, err := mfStmt.Exec(
 			trackID,
