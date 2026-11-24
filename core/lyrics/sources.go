@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/ioutils"
+	"golang.org/x/text/unicode/norm"
 )
 
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
@@ -40,7 +41,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, fmt.Errorf("opening library filesystem: %w", err)
 	}
 
-	f, err := fsys.Open(sidecarRelPath)
+	f, openedPath, err := openSidecar(fsys, sidecarRelPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		log.Trace(ctx, "no lyrics found at path")
 		return nil, nil
@@ -48,6 +49,8 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 	defer f.Close()
+	// Log the name that is really on disk, so a parse error points at the right file.
+	ctx = log.NewContext(ctx, "file", openedPath)
 
 	contents, err := io.ReadAll(ioutils.UTF8Reader(f))
 	if err != nil {
@@ -67,6 +70,30 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 
 	log.Trace(ctx, "retrieved lyrics from external file")
 	return list, nil
+}
+
+// openSidecar opens the sidecar lyrics file and returns the path it opened. When the
+// exact path is missing, it retries with the NFD and NFC forms of the file name: the
+// sidecar can be in another Unicode form than the stored track path (macOS often
+// writes NFD, Linux and Windows keep NFC). The folders are kept as stored, because
+// the scanner read them from disk.
+func openSidecar(fsys fs.FS, relPath string) (fs.File, string, error) {
+	f, err := fsys.Open(relPath)
+	if !errors.Is(err, fs.ErrNotExist) {
+		return f, relPath, err
+	}
+
+	dir, base := path.Split(relPath)
+	for _, form := range []norm.Form{norm.NFD, norm.NFC} {
+		altPath := dir + form.String(base)
+		if altPath == relPath {
+			continue
+		}
+		if altFile, altErr := fsys.Open(altPath); !errors.Is(altErr, fs.ErrNotExist) {
+			return altFile, altPath, altErr
+		}
+	}
+	return f, relPath, err
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name. Results are cached,
