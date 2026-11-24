@@ -26,6 +26,7 @@ type Folder struct {
 	NumPlaylists    int       `structs:"num_playlists"`
 	ImageFiles      []string  `structs:"image_files"`
 	ImagesUpdatedAt time.Time `structs:"images_updated_at"`
+	LyricsFiles     []string  `structs:"lyrics_files"` // nil if the folder was not scanned for lyrics files yet
 	Hash            string    `structs:"hash"`
 	Missing         bool      `structs:"missing"`
 	UpdateAt        time.Time `structs:"updated_at"`
@@ -63,14 +64,15 @@ func NewFolder(lib Library, folderPath string) *Folder {
 		parentID = FolderID(lib, dir)
 	}
 	return &Folder{
-		LibraryID:  lib.ID,
-		ID:         newID,
-		Path:       dir,
-		Name:       name,
-		ParentID:   parentID,
-		ImageFiles: []string{},
-		UpdateAt:   time.Now(),
-		CreatedAt:  time.Now(),
+		LibraryID:   lib.ID,
+		ID:          newID,
+		Path:        dir,
+		Name:        name,
+		ParentID:    parentID,
+		ImageFiles:  []string{},
+		LyricsFiles: []string{},
+		UpdateAt:    time.Now(),
+		CreatedAt:   time.Now(),
 	}
 }
 

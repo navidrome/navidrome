@@ -57,6 +57,7 @@ type scanJob struct {
 	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
 	targetFolders    []string                          // Specific folders to scan (including all descendants)
 	prevAlbumPIDConf string                            // Album PID spec of the last finished scan, only when it differs from the current one
+	lyricsSuffixes   []string                          // External lyrics suffixes from LyricsPriority, like ".lrc"
 	lock             sync.Mutex
 	numFolders       atomic.Int64
 }
@@ -105,6 +106,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 		lastUpdates:      lastUpdates,
 		targetFolders:    targetFolders,
 		prevAlbumPIDConf: prevAlbumPIDConf,
+		lyricsSuffixes:   model.LyricsFileSuffixes(),
 	}, nil
 }
 

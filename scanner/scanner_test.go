@@ -562,6 +562,62 @@ var _ = Describe("Scanner", func() {
 			Expect(mf.BitRate).To(Equal(640))
 		})
 
+		Context("lyrics files", func() {
+			lyricsOf := func(folder string) []string {
+				GinkgoHelper()
+				f, err := ds.Folder().GetByPath(ctx, lib, folder)
+				Expect(err).ToNot(HaveOccurred())
+				return f.LyricsFiles
+			}
+			lrc := func(modTime time.Time) *fstest.MapFile {
+				return &fstest.MapFile{Data: []byte("[00:01.00]Let me tell you how it will be"), ModTime: modTime}
+			}
+
+			It("records lyrics files matching LyricsPriority suffixes", func() {
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{}))
+
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lrc", lrc(time.Now()))
+				fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.TXT", lrc(time.Now()))
+				fsys.Add("The Beatles/Revolver/notes.nfo", &fstest.MapFile{Data: []byte("x")})
+
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{"01 - Taxman.lrc", "02 - Eleanor Rigby.TXT"}))
+				Expect(lyricsOf("The Beatles/Help!")).To(Equal([]string{}))
+			})
+
+			It("forgets a removed lyrics file even when the folder mtime is unchanged", func() {
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lrc", lrc(time.Now().Add(-time.Hour)))
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{"01 - Taxman.lrc"}))
+
+				fsys.Remove("The Beatles/Revolver/01 - Taxman.lrc", time.Unix(0, 0))
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{}))
+			})
+
+			It("picks up lyrics files with new suffixes when LyricsPriority changes", func() {
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lyr", lrc(time.Now().Add(-time.Hour)))
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{}))
+
+				conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lyr,embedded" })
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{"01 - Taxman.lyr"}))
+			})
+
+			It("does not re-read tags of unchanged files", func() {
+				before, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
+				Expect(err).ToNot(HaveOccurred())
+
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lrc", lrc(time.Now()))
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				after, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(after.UpdatedAt).To(Equal(before.UpdatedAt))
+			})
+		})
+
 		It("detects a file was removed from the library", func() {
 			By("Removing a file")
 			fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")

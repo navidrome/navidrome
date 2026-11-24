@@ -173,6 +173,8 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			case model.IsImageFile(name):
 				folder.imageFiles[entry.Name()] = entry
 				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
+			case job.isLyricsFile(entry.Name()):
+				folder.lyricsFiles[entry.Name()] = entry
 			}
 		}
 	}
@@ -348,4 +350,10 @@ func isDirIgnored(name string) bool {
 // folders sometimes start with ellipses), so all of these return false.
 func isDotEntry(name string) bool {
 	return name != "." && strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
+}
+
+func (j *scanJob) isLyricsFile(name string) bool {
+	return slices.ContainsFunc(j.lyricsSuffixes, func(suffix string) bool {
+		return len(name) > len(suffix) && strings.EqualFold(name[len(name)-len(suffix):], suffix)
+	})
 }

@@ -167,7 +167,7 @@ var _ = Describe("Lyrics", func() {
 
 	DescribeTable("Lyrics Priority", func(priority string, expected model.LyricList) {
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = priority })
-		svc := lyrics.NewLyrics(nil, nil)
+		svc := lyrics.NewLyrics(persistence.New(db.Db()), nil)
 		list, err := svc.GetLyrics(ctx, &mf)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(Equal(expected))
@@ -195,6 +195,41 @@ var _ = Describe("Lyrics", func() {
 		Expect(list).To(Equal(ttmlLyrics))
 	})
 
+	Context("folder lyrics files", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lrc,.txt,embedded" })
+		})
+		withFolder := func(files []string) lyrics.Lyrics {
+			GinkgoHelper()
+			ds := persistence.New(db.Db())
+			lib, err := ds.Library().Get(ctx, model.DefaultLibraryID)
+			Expect(err).ToNot(HaveOccurred())
+			folder := model.NewFolder(*lib, "tests/fixtures")
+			folder.LyricsFiles = files
+			Expect(ds.Folder().Put(ctx, folder)).To(Succeed())
+			mf.FolderID = folder.ID
+			return lyrics.NewLyrics(ds, nil)
+		}
+
+		It("reads only the lyrics files the scanner found", func() {
+			list, err := withFolder([]string{"test.txt"}).GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(unsyncedLyrics))
+		})
+
+		It("skips the filesystem when the folder has no lyrics files", func() {
+			list, err := withFolder([]string{}).GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(embeddedLyrics))
+		})
+
+		It("probes the filesystem when the folder was not scanned for lyrics files", func() {
+			list, err := withFolder(nil).GetLyrics(ctx, &mf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(Equal(syncedLyrics))
+		})
+	})
+
 	It("preserves configured sidecar suffix casing on case-sensitive filesystems", func() {
 		dir, err := os.MkdirTemp("", "lyrics-case-*")
 		Expect(err).ToNot(HaveOccurred())
@@ -213,7 +248,7 @@ var _ = Describe("Lyrics", func() {
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".LRC" })
 		Expect(os.WriteFile(filepath.Join(dir, "song.LRC"), []byte("[00:01.00]Upper suffix"), 0600)).To(Succeed())
 
-		svc := lyrics.NewLyrics(nil, nil)
+		svc := lyrics.NewLyrics(persistence.New(db.Db()), nil)
 		list, err := svc.GetLyrics(ctx, &model.MediaFile{
 			LibraryPath: dir,
 			Path:        "song.mp3",
@@ -237,7 +272,7 @@ var _ = Describe("Lyrics", func() {
 		Expect(os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("[00:01.00]Fallback line"), 0600)).To(Succeed())
 
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".yaml,.lrc" })
-		svc := lyrics.NewLyrics(nil, nil)
+		svc := lyrics.NewLyrics(persistence.New(db.Db()), nil)
 		list, err := svc.GetLyrics(ctx, &model.MediaFile{
 			LibraryPath: dir,
 			Path:        "song.mp3",
@@ -282,7 +317,7 @@ var _ = Describe("Lyrics", func() {
 			It("should fallback to embedded if an error happens when parsing file", func() {
 				conf.Update(func(c *conf.Options) { c.LyricsPriority = ".mp3,embedded" })
 
-				svc := lyrics.NewLyrics(nil, nil)
+				svc := lyrics.NewLyrics(persistence.New(db.Db()), nil)
 				list, err := svc.GetLyrics(ctx, &mf)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(list).To(Equal(embeddedLyrics))
@@ -291,7 +326,7 @@ var _ = Describe("Lyrics", func() {
 			It("should return nothing if error happens when trying to parse file", func() {
 				conf.Update(func(c *conf.Options) { c.LyricsPriority = ".mp3" })
 
-				svc := lyrics.NewLyrics(nil, nil)
+				svc := lyrics.NewLyrics(persistence.New(db.Db()), nil)
 				list, err := svc.GetLyrics(ctx, &mf)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(list).To(BeEmpty())
@@ -309,7 +344,7 @@ var _ = Describe("Lyrics", func() {
 		It("should return lyrics from a plugin", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "test-lyrics-plugin" })
 			mockLoader.lyrics = unsyncedLyrics
-			svc := lyrics.NewLyrics(nil, mockLoader)
+			svc := lyrics.NewLyrics(persistence.New(db.Db()), mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
@@ -319,7 +354,7 @@ var _ = Describe("Lyrics", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,test-lyrics-plugin" })
 			mf.Lyrics = "" // No embedded lyrics
 			mockLoader.lyrics = unsyncedLyrics
-			svc := lyrics.NewLyrics(nil, mockLoader)
+			svc := lyrics.NewLyrics(persistence.New(db.Db()), mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
@@ -328,7 +363,7 @@ var _ = Describe("Lyrics", func() {
 		It("should skip plugin if embedded has lyrics", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,test-lyrics-plugin" })
 			mockLoader.lyrics = unsyncedLyrics
-			svc := lyrics.NewLyrics(nil, mockLoader)
+			svc := lyrics.NewLyrics(persistence.New(db.Db()), mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // embedded wins
@@ -337,7 +372,7 @@ var _ = Describe("Lyrics", func() {
 		It("should skip unknown plugin names gracefully", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "nonexistent-plugin,embedded" })
 			mockLoader.notFound = true
-			svc := lyrics.NewLyrics(nil, mockLoader)
+			svc := lyrics.NewLyrics(persistence.New(db.Db()), mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
@@ -347,7 +382,7 @@ var _ = Describe("Lyrics", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "MyLyricsPlugin" })
 			mockLoader.pluginName = "MyLyricsPlugin"
 			mockLoader.lyrics = unsyncedLyrics
-			svc := lyrics.NewLyrics(nil, mockLoader)
+			svc := lyrics.NewLyrics(persistence.New(db.Db()), mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(unsyncedLyrics))
@@ -356,7 +391,7 @@ var _ = Describe("Lyrics", func() {
 		It("should handle plugin error gracefully", func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "test-lyrics-plugin,embedded" })
 			mockLoader.err = errors.New("plugin error")
-			svc := lyrics.NewLyrics(nil, mockLoader)
+			svc := lyrics.NewLyrics(persistence.New(db.Db()), mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
@@ -370,7 +405,7 @@ var _ = Describe("Lyrics", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "test-lyrics-plugin" })
 			mockLoader = &mockPluginLoader{}
-			svc = lyrics.NewLyrics(nil, mockLoader)
+			svc = lyrics.NewLyrics(persistence.New(db.Db()), mockLoader)
 			mf.ID = "mf-1"
 		})
 

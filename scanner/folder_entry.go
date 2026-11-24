@@ -24,6 +24,7 @@ func newFolderEntry(job *scanJob, id, path string, info model.FolderUpdateInfo) 
 		audioFiles:          make(map[string]fs.DirEntry),
 		imageFiles:          make(map[string]fs.DirEntry),
 		playlistFiles:       make(map[string]fs.DirEntry),
+		lyricsFiles:         make(map[string]fs.DirEntry),
 		albumIDMap:          make(map[string]string),
 		updTime:             info.UpdatedAt,
 		prevHash:            info.Hash,
@@ -43,6 +44,7 @@ type folderEntry struct {
 	audioFiles      map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
 	playlistFiles   map[string]fs.DirEntry
+	lyricsFiles     map[string]fs.DirEntry
 	numSubFolders   int
 	imagesUpdatedAt time.Time
 	prevHash        string // Previous hash from DB
@@ -99,6 +101,7 @@ func (f *folderEntry) toFolder() *model.Folder {
 	}
 	folder.ImageFiles = slices.Collect(maps.Keys(f.imageFiles))
 	folder.ImagesUpdatedAt = f.imagesUpdatedAt
+	folder.LyricsFiles = append(folder.LyricsFiles, slices.Sorted(maps.Keys(f.lyricsFiles))...) // stays non-nil: nil means "not scanned"
 	folder.Hash = f.hash()
 	return folder
 }
@@ -114,38 +117,20 @@ func (f *folderEntry) hash() string {
 		f.imagesUpdatedAt.UTC(),
 	)
 
-	// Sort the keys of audio, image and playlist files to ensure consistent hashing
-	audioKeys := slices.Collect(maps.Keys(f.audioFiles))
-	slices.Sort(audioKeys)
-	imageKeys := slices.Collect(maps.Keys(f.imageFiles))
-	slices.Sort(imageKeys)
-	playlistKeys := slices.Collect(maps.Keys(f.playlistFiles))
-	slices.Sort(playlistKeys)
-
-	// Include audio files with their size and modtime
-	for _, key := range audioKeys {
-		_, _ = io.WriteString(h, key)
-		if info, err := f.audioFiles[key].Info(); err == nil {
-			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+	// Include files with their size and modtime. Playlists and lyrics are included so a
+	// content edit is detected even when the folder's mtime is preserved (rsync -a) or the
+	// file is not the newest one in the folder.
+	for _, files := range []map[string]fs.DirEntry{f.audioFiles, f.imageFiles, f.playlistFiles, f.lyricsFiles} {
+		for _, key := range slices.Sorted(maps.Keys(files)) {
+			_, _ = io.WriteString(h, key)
+			if info, err := files[key].Info(); err == nil {
+				_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+			}
 		}
 	}
 
-	// Include image files with their size and modtime
-	for _, key := range imageKeys {
-		_, _ = io.WriteString(h, key)
-		if info, err := f.imageFiles[key].Info(); err == nil {
-			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
-		}
-	}
-
-	// Include playlist files, so a content edit is detected even when the folder's
-	// mtime is preserved (rsync -a) or the playlist is not the newest file.
-	for _, key := range playlistKeys {
-		_, _ = io.WriteString(h, key)
-		if info, err := f.playlistFiles[key].Info(); err == nil {
-			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
-		}
-	}
+	// Changing the lyrics suffixes changes which files are tracked, so it must trigger a rescan
+	_, _ = fmt.Fprintf(h, "lyrics:%q", f.job.lyricsSuffixes)
 
 	return hex.EncodeToString(h.Sum(nil))
 }

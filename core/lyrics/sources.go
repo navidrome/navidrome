@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
@@ -26,9 +28,18 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 	return nil, nil
 }
 
-func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (model.LyricList, error) {
-	ext := path.Ext(mf.Path)
-	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix
+// fromExternalFile reads lyrics from the file sharing mf's base name and ending with suffix.
+// folderFiles lists the lyrics files in mf's folder. If nil, the filesystem is probed instead.
+func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []string, suffix string) (model.LyricList, error) {
+	dir, name := path.Split(mf.Path)
+	name = strings.TrimSuffix(name, path.Ext(name)) + suffix
+	if folderFiles != nil {
+		var ok bool
+		if name, ok = findFile(folderFiles, name); !ok {
+			return nil, nil
+		}
+	}
+	sidecarRelPath := dir + name
 	ctx = log.NewContext(ctx, "file", sidecarRelPath)
 
 	store, err := storage.For(mf.LibraryPath)
@@ -99,4 +110,16 @@ func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, plu
 		}
 		return lyricsList, 0, nil
 	})
+}
+
+// findFile looks for name in files, preferring an exact match over a case-insensitive one.
+func findFile(files []string, name string) (string, bool) {
+	if slices.Contains(files, name) {
+		return name, true
+	}
+	i := slices.IndexFunc(files, func(f string) bool { return strings.EqualFold(f, name) })
+	if i < 0 {
+		return "", false
+	}
+	return files[i], true
 }

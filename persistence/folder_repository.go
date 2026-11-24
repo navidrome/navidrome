@@ -24,7 +24,8 @@ type folderRepository struct {
 
 type dbFolder struct {
 	*model.Folder `structs:",flatten"`
-	ImageFiles    string `structs:"-" json:"-"`
+	ImageFiles    string  `structs:"-" json:"-"`
+	LyricsFiles   *string `structs:"-" json:"-"`
 }
 
 // String guards the promoted Folder.String(), which would dereference a nil Folder.
@@ -42,6 +43,11 @@ func (f *dbFolder) PostScan() error {
 			return fmt.Errorf("parsing folder image files from db: %w", err)
 		}
 	}
+	if f.LyricsFiles != nil {
+		if err = json.Unmarshal([]byte(*f.LyricsFiles), &f.Folder.LyricsFiles); err != nil {
+			return fmt.Errorf("parsing folder lyrics files from db: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -54,6 +60,14 @@ func (f *dbFolder) PostMapArgs(args map[string]any) error {
 			return fmt.Errorf("marshalling image files: %w", err)
 		}
 		args["image_files"] = string(imgFiles)
+	}
+	args["lyrics_files"] = nil
+	if f.Folder.LyricsFiles != nil {
+		lyricsFiles, err := json.Marshal(f.Folder.LyricsFiles)
+		if err != nil {
+			return fmt.Errorf("marshalling lyrics files: %w", err)
+		}
+		args["lyrics_files"] = string(lyricsFiles)
 	}
 	return nil
 }

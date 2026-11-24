@@ -108,6 +108,7 @@ func songsByArtistTitleWithLyricsFirst(artist, title string) model.QueryOptions 
 }
 
 func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles []*model.MediaFile) (model.LyricList, error) {
+	folders := make(map[string]*model.Folder)
 	for pattern := range strings.SplitSeq(conf.Server().LyricsPriority, ",") {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" {
@@ -119,7 +120,7 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 				continue
 			}
 
-			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern)
+			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern, folders)
 			if err != nil {
 				log.Error(ctx, "error getting lyrics", "source", pattern, err)
 				continue
@@ -134,13 +135,31 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 	return nil, nil
 }
 
-func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string) (model.LyricList, error) {
+func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string, folders map[string]*model.Folder) (model.LyricList, error) {
 	switch {
 	case strings.EqualFold(pattern, "embedded"):
 		return fromEmbedded(ctx, mf)
 	case strings.HasPrefix(pattern, "."):
-		return fromExternalFile(ctx, mf, pattern)
+		return fromExternalFile(ctx, mf, l.lyricsFilesOf(ctx, mf, folders), pattern)
 	default:
 		return l.fromPlugin(ctx, mf, pattern)
 	}
+}
+
+// lyricsFilesOf returns the lyrics files the scanner found in mf's folder, or nil if the
+// folder was not scanned for them yet. Folders are memoized in the given map.
+func (l *lyricsService) lyricsFilesOf(ctx context.Context, mf *model.MediaFile, folders map[string]*model.Folder) []string {
+	folder, ok := folders[mf.FolderID]
+	if !ok {
+		var err error
+		folder, err = l.ds.Folder().Get(ctx, mf.FolderID)
+		if err != nil {
+			log.Warn(ctx, "Error loading folder of media file. Looking for lyrics files in the filesystem", "path", mf.Path, err)
+		}
+		folders[mf.FolderID] = folder
+	}
+	if folder == nil {
+		return nil
+	}
+	return folder.LyricsFiles
 }
