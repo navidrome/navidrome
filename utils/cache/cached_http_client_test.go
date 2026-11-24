@@ -10,8 +10,11 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("HTTPClient", func() {
@@ -96,21 +99,38 @@ var _ = Describe("HTTPClient", func() {
 
 		It("passes the caller's context values, but not its cancellation", func() {
 			type ctxKey struct{}
-			var sent context.Context
-			doer := doerFunc(func(req *http.Request) (*http.Response, error) {
-				sent = req.Context()
-				return http.DefaultClient.Do(req)
-			})
-			chc = NewHTTPClient(doer, consts.DefaultHttpClientTimeOut)
+			fake := &tests.FakeHttpClient{Res: http.Response{StatusCode: http.StatusOK, ProtoMajor: 1, ProtoMinor: 1, Body: io.NopCloser(strings.NewReader("ok"))}}
+			chc = NewHTTPClient(fake, consts.DefaultHttpClientTimeOut)
 
 			ctx, cancel := context.WithCancel(context.WithValue(GinkgoT().Context(), ctxKey{}, "value"))
 			cancel()
 			r, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
-			resp, err := chc.Do(r)
+			_, err := chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
-			_ = resp.Body.Close()
+			sent := fake.SavedRequest.Context()
 			Expect(sent.Value(ctxKey{})).To(Equal("value"))
 			Expect(sent.Err()).To(Succeed())
+		})
+
+		It("does not log request headers", func() {
+			l, hook := test.NewNullLogger()
+			prevLogger, prevLevel := log.SetDefaultLogger(l), log.CurrentLevel()
+			log.SetLevel(log.LevelTrace)
+			DeferCleanup(func() {
+				log.SetDefaultLogger(prevLogger)
+				log.SetLevel(prevLevel)
+			})
+
+			r, _ := http.NewRequest(http.MethodGet, ts.URL, nil)
+			r.Header.Set("Authorization", "Bearer secret-token")
+			_, err := chc.Do(r)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(hook.AllEntries()).ToNot(BeEmpty())
+			for _, e := range hook.AllEntries() {
+				line, _ := e.String()
+				Expect(line).ToNot(ContainSubstring("secret-token"))
+			}
 		})
 	})
 
@@ -164,7 +184,3 @@ var _ = Describe("HTTPClient", func() {
 		})
 	})
 })
-
-type doerFunc func(*http.Request) (*http.Response, error)
-
-func (f doerFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
