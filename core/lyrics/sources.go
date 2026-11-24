@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/ioutils"
+	"golang.org/x/text/unicode/norm"
 )
 
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
@@ -30,13 +31,13 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 
 // fromExternalFile reads lyrics from the file sharing mf's base name and ending with suffix.
 // folderFiles lists the lyrics files in mf's folder: a file missing from it is not opened.
-// If nil, the filesystem is always probed. The list is matched ignoring case, as the
-// filesystem may do, but the file is still opened by its expected name.
+// If nil, the filesystem is always probed. The list is matched ignoring case and Unicode
+// normalization, as the filesystem may do, but the file is still opened by its expected name.
 func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []string, suffix string) (model.LyricList, error) {
 	ext := path.Ext(mf.Path)
 	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix
-	name := path.Base(sidecarRelPath)
-	if folderFiles != nil && !slices.ContainsFunc(folderFiles, func(f string) bool { return strings.EqualFold(f, name) }) {
+	name := norm.NFC.String(path.Base(sidecarRelPath))
+	if folderFiles != nil && !slices.ContainsFunc(folderFiles, func(f string) bool { return strings.EqualFold(norm.NFC.String(f), name) }) {
 		return nil, nil
 	}
 	ctx = log.NewContext(ctx, "file", sidecarRelPath)

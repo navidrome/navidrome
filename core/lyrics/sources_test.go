@@ -95,6 +95,16 @@ var _ = Describe("sources", func() {
 			Expect(lyrics).ToNot(BeEmpty())
 		})
 
+		It("should match a listed file stored in another Unicode normalization form", func() {
+			dir := GinkgoT().TempDir()
+			Expect(os.WriteFile(filepath.Join(dir, "Caf\u00e9.lrc"), []byte("[00:01.00]Composed name"), 0600)).To(Succeed())
+
+			lyrics, err := fromExternalFile(ctx, &model.MediaFile{LibraryPath: dir, Path: "Caf\u00e9.mp3"}, []string{"Cafe\u0301.lrc"}, ".lrc")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).ToNot(BeEmpty())
+		})
+
 		It("should not use another track's sidecar on case-sensitive filesystems", func() {
 			dir := GinkgoT().TempDir()
 			Expect(os.WriteFile(filepath.Join(dir, "Song.lrc"), []byte("[00:01.00]Other track"), 0600)).To(Succeed())
