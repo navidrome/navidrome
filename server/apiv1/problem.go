@@ -59,17 +59,14 @@ func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	log.Debug(r.Context(), "API v1: request failed", "path", r.URL.Path, "status", status, "code", code, err)
-	var se *scopeError
-	if errors.As(err, &se) {
+	if se, ok := errors.AsType[*scopeError](err); ok {
 		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer error="insufficient_scope", scope=%q`, se.scope))
 	}
 	var detail string
-	var ce *clientError
-	if errors.As(err, &ce) {
+	if ce, ok := errors.AsType[*clientError](err); ok {
 		detail = ce.detail
 	}
-	var fe *fieldErrors
-	if errors.As(err, &fe) {
+	if fe, ok := errors.AsType[*fieldErrors](err); ok {
 		writeProblemStatus(w, r, status, code, detail, fe.fields...)
 		return
 	}

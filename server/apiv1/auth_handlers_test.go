@@ -43,7 +43,8 @@ var _ = Describe("auth endpoints", func() {
 		wg.Wait()
 		Expect(realDS.User().CountAll(ctx)).To(Equal(int64(1)))
 		Expect(v1Code).To(Or(Equal(http.StatusCreated), Equal(http.StatusConflict)))
-		Expect(v1Code == http.StatusCreated).ToNot(Equal(v0Err == nil), "exactly one must win")
+		v1Won, v0Won := v1Code == http.StatusCreated, v0Err == nil
+		Expect(v1Won).ToNot(Equal(v0Won), "exactly one must win")
 	})
 
 	It("sets up the first admin once, then answers 409 setup_complete", func() {

@@ -84,7 +84,7 @@ var _ = Describe("Auth", func() {
 
 		Describe("createAdmin when a user already exists", func() {
 			It("responds 403", func() {
-				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"another", "password":"secret"}`))
+				req = httptest.NewRequest(http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"another", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 				Expect(ds.User().Put(ctx, &model.User{UserName: "johndoe", NewPassword: "secret"})).To(Succeed())
 

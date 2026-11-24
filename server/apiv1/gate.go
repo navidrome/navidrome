@@ -50,7 +50,7 @@ type gate struct {
 	limiter func(http.Handler) http.Handler
 }
 
-// Modules that ride another module's scope; every other module's scope is its own name.
+// moduleScope lists modules that ride another module's scope; every other module's scope is its own name.
 var moduleScope = map[string]string{
 	"core":            apiauth.ScopeRead,
 	"transcoding":     "streaming",
@@ -240,7 +240,7 @@ func bearerToken(r *http.Request) (string, bool) {
 	return token, true
 }
 
-// SkipSettingDefaults: the handlers apply defaults themselves, and the validator must not rewrite the body.
+// validationOptions sets SkipSettingDefaults: the handlers apply defaults themselves, and the validator must not rewrite the body.
 var validationOptions = &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc, MultiError: true, SkipSettingDefaults: true}
 
 func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx *chi.Context) bool {

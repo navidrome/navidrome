@@ -191,7 +191,7 @@ func NewContext(ctx context.Context, keyValuePairs ...any) context.Context {
 	return ctx
 }
 
-// Shorter values could match unrelated log text, or the [REDACTED] marker itself.
+// minSecretLen guards against shorter values matching unrelated log text, or the [REDACTED] marker itself.
 const minSecretLen = 8
 
 // WithSecrets returns a context whose log entries have every occurrence of values replaced by

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 
 	"github.com/navidrome/navidrome/model"
 )
@@ -42,8 +43,10 @@ func checkCredentials(ctx context.Context, checkers []CredentialChecker, usernam
 			return res, nil
 		case Unavailable:
 			return CredentialResult{}, model.ErrNotAvailable
-		default:
+		case Rejected:
 			return CredentialResult{}, model.ErrInvalidAuth
+		default:
+			return CredentialResult{}, fmt.Errorf("unknown credential outcome %d", res.Outcome)
 		}
 	}
 	return CredentialResult{}, model.ErrInvalidAuth

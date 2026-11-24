@@ -120,7 +120,7 @@ var _ = Describe("Logger", func() {
 			Error(ctx, "Simple Message")
 			Expect(hook.LastEntry().Context).To(Equal(ctx))
 
-			Error(httptest.NewRequest("get", "/", nil).WithContext(ctx), "Simple Message")
+			Error(httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx), "Simple Message")
 			Expect(hook.LastEntry().Context).To(Equal(ctx))
 		})
 

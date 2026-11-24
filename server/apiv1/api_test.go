@@ -110,7 +110,7 @@ var _ = Describe("Router", func() {
 		logs := captureLogs()
 		w := httptest.NewRecorder()
 		h := referenceIDMiddleware(problemRecoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			panic("kaboom")
+			panic("kaboom") //nolint:forbidigo
 		})))
 		h.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/boom", nil))
 		p := decodeProblem(w)

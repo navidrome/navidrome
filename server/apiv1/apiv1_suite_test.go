@@ -71,7 +71,8 @@ func (c testClient) call(method, path, bearer string, body any) *httptest.Respon
 	if body == nil {
 		return c.callRaw(method, path, bearer, "")
 	}
-	b, _ := json.Marshal(body)
+	b, err := json.Marshal(body)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	return c.callRaw(method, path, bearer, string(b))
 }
 
