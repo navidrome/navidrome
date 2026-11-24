@@ -19,8 +19,14 @@ import (
 
 // ImageURL generates a public URL for artwork images.
 // It creates a signed token for the artwork ID and builds a complete public URL.
+// It returns an empty string when the artwork has no ID (e.g. a similar artist that
+// is not in the library), as the public image endpoint would reject such a token.
 func ImageURL(ctx context.Context, artID model.ArtworkID, size int) string {
-	token, _ := auth.CreatePublicToken(auth.Claims{ID: artID.String()})
+	id := artID.String()
+	if id == "" {
+		return ""
+	}
+	token, _ := auth.CreatePublicToken(auth.Claims{ID: id})
 	uri := path.Join(consts.URLPathPublicImages, token)
 	params := url.Values{}
 	if size > 0 {

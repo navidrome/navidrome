@@ -206,6 +206,37 @@ var _ = Describe("Browsing", func() {
 			Expect(resp.ArtistInfo.LargeImageUrl).To(BeEmpty())
 		})
 	})
+
+	Describe("similar artists not in the library", func() {
+		BeforeEach(func() {
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", SimilarArtists: model.Artists{
+				{ID: "ar-2", Name: "In Library"},
+				{Name: "Not In Library"},
+			}}}
+		})
+
+		It("GetArtistInfo omits the artistImageUrl only for the artist not in the library", func() {
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo?id=ar-1&includeNotPresent=true", nil)
+			resp, err := api.GetArtistInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.ArtistInfo.SimilarArtist).To(HaveLen(2))
+			Expect(resp.ArtistInfo.SimilarArtist[0].ArtistImageUrl).ToNot(BeEmpty())
+			Expect(resp.ArtistInfo.SimilarArtist[1].Id).To(Equal("-1"))
+			Expect(resp.ArtistInfo.SimilarArtist[1].CoverArt).To(BeEmpty())
+			Expect(resp.ArtistInfo.SimilarArtist[1].ArtistImageUrl).To(BeEmpty())
+		})
+
+		It("GetArtistInfo2 omits the artistImageUrl only for the artist not in the library", func() {
+			r := httptest.NewRequest(http.MethodGet, "/rest/getArtistInfo2?id=ar-1&includeNotPresent=true", nil)
+			resp, err := api.GetArtistInfo2(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.ArtistInfo2.SimilarArtist).To(HaveLen(2))
+			Expect(resp.ArtistInfo2.SimilarArtist[0].ArtistImageUrl).ToNot(BeEmpty())
+			Expect(resp.ArtistInfo2.SimilarArtist[1].Id).To(Equal("-1"))
+			Expect(resp.ArtistInfo2.SimilarArtist[1].CoverArt).To(BeEmpty())
+			Expect(resp.ArtistInfo2.SimilarArtist[1].ArtistImageUrl).To(BeEmpty())
+		})
+	})
 })
 
 type fakeInfoProvider struct {
