@@ -258,15 +258,12 @@ var _ = Describe("Lyrics", func() {
 	})
 
 	It("resolves an external sidecar whose Unicode normalization differs from the track path (issue #4148)", func() {
-		// Reproduces the reported case: a Japanese filename whose sidecar is stored
-		// in a different normalization form than the track. An in-memory FS keeps
-		// the mismatch byte-exact regardless of the host filesystem, which may
-		// normalize names on lookup and hide the bug.
+		// An in-memory FS keeps the NFC/NFD mismatch byte-exact. The host filesystem
+		// may normalize names on lookup and hide the bug. See openSidecar.
 		const scheme = "fake-lyrics-e2e"
 		fsys := &storagetest.FakeFS{}
 		storagetest.Register(scheme, fsys)
 
-		// "ガ" is katakana KA plus a dakuten, so its NFC and NFD forms differ.
 		const base = "03. 鬱P feat. 初音ミク - ガ"
 		modTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 		fsys.SetFiles(fstest.MapFS{

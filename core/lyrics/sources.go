@@ -49,10 +49,8 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 	defer f.Close()
-	if openedPath != sidecarRelPath {
-		// Log the name that is really on disk, so a parse error points at the right file.
-		ctx = log.NewContext(ctx, "file", openedPath)
-	}
+	// Log the name that is really on disk, so a parse error points at the right file.
+	ctx = log.NewContext(ctx, "file", openedPath)
 
 	contents, err := io.ReadAll(ioutils.UTF8Reader(f))
 	if err != nil {
@@ -74,13 +72,11 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	return list, nil
 }
 
-// openSidecar opens the sidecar lyrics file, retrying with the alternate Unicode
-// normalization forms of its file name when the exact path is missing. A sidecar
-// written next to a track can use a different form than the path stored for the
-// media file (macOS commonly yields NFD, while Linux and Windows typically keep
-// NFC), so a byte-exact lookup would miss a file that is really on disk. Only the
-// base name is converted: the directories were read from disk by the scanner, so
-// they are already correct as stored. It also returns the path it opened. Issue #4148.
+// openSidecar opens the sidecar lyrics file and returns the path it opened. When the
+// exact path is missing, it retries with the NFD and NFC forms of the file name: the
+// sidecar can be in another Unicode form than the stored track path (macOS often
+// writes NFD, Linux and Windows keep NFC). The folders are kept as stored, because
+// the scanner read them from disk. Issue #4148.
 func openSidecar(fsys fs.FS, relPath string) (fs.File, string, error) {
 	f, err := fsys.Open(relPath)
 	if !errors.Is(err, fs.ErrNotExist) {
