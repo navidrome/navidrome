@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Allowed by label
         if: contains(github.event.pull_request.labels.*.name, 'allow-nolint')
-        run: echo "::notice::The allow-nolint label is set, so new //nolint directives are allowed."
+        run: echo "::notice::The allow-nolint label is set, so new //nolint directives and lint config changes are allowed."
 
       - uses: actions/checkout@v7
         if: "!contains(github.event.pull_request.labels.*.name, 'allow-nolint')"
