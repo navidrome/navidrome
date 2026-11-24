@@ -69,7 +69,6 @@ var _ = Describe("GET /capabilities", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		resetDB()
 		api = testClient{ctx: ctx, router: New(realDS)}
 	})
 

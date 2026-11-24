@@ -22,7 +22,6 @@ var _ = Describe("auth endpoints", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.AuthRequestLimit = 0 })
-		resetDB()
 		api = testClient{ctx: ctx, router: New(realDS)}
 	})
 

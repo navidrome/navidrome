@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
@@ -38,6 +39,7 @@ func TestAPIv1(t *testing.T) {
 var _ = configtest.RestoreAfterEachSpec()
 var _ = persistencetest.ResetBeforeEachSpec()
 
+var realDS model.DataStore
 var specRouter routers.Router
 
 var _ = BeforeSuite(func() {

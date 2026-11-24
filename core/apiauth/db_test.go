@@ -2,9 +2,7 @@ package apiauth
 
 import (
 	"context"
-	"path/filepath"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -15,12 +13,7 @@ import (
 
 var realDS model.DataStore
 
-// One database for the whole suite: db.Db() is a process-wide singleton.
 var _ = BeforeSuite(func() {
-	conf.Update(func(c *conf.Options) {
-		c.DbPath = filepath.Join(GinkgoT().TempDir(), "apiauth.db") + "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000"
-	})
-	DeferCleanup(db.Init(GinkgoT().Context()))
 	realDS = persistence.New(db.Db())
 })
 
