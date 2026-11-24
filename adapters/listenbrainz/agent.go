@@ -80,7 +80,7 @@ func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track
 	li := l.formatListen(track)
 	err = l.client.updateNowPlaying(ctx, sk, li)
 	if err != nil {
-		log.Warn(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
+		log.Debug(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
 		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
