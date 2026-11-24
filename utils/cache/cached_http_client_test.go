@@ -93,6 +93,25 @@ var _ = Describe("HTTPClient", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(requestsReceived).To(Equal(2))
 		})
+
+		It("passes the caller's context values, but not its cancellation", func() {
+			type ctxKey struct{}
+			var sent context.Context
+			doer := doerFunc(func(req *http.Request) (*http.Response, error) {
+				sent = req.Context()
+				return http.DefaultClient.Do(req)
+			})
+			chc = NewHTTPClient(doer, consts.DefaultHttpClientTimeOut)
+
+			ctx, cancel := context.WithCancel(context.WithValue(GinkgoT().Context(), ctxKey{}, "value"))
+			cancel()
+			r, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
+			resp, err := chc.Do(r)
+			Expect(err).ToNot(HaveOccurred())
+			_ = resp.Body.Close()
+			Expect(sent.Value(ctxKey{})).To(Equal("value"))
+			Expect(sent.Err()).To(Succeed())
+		})
 	})
 
 	Context("non-GET", func() {
@@ -145,3 +164,7 @@ var _ = Describe("HTTPClient", func() {
 		})
 	})
 })
+
+type doerFunc func(*http.Request) (*http.Response, error)
+
+func (f doerFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
