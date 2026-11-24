@@ -605,6 +605,22 @@ var _ = Describe("Scanner", func() {
 				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{"01 - Taxman.lyr"}))
 			})
 
+			It("keeps folders up to date when LyricsPriority only changes order or case", func() {
+				hashOf := func() string {
+					GinkgoHelper()
+					f, err := ds.Folder().GetByPath(ctx, lib, "The Beatles/Revolver")
+					Expect(err).ToNot(HaveOccurred())
+					return f.Hash
+				}
+				conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lrc,.txt,embedded" })
+				Expect(runScanner(ctx, false)).To(Succeed())
+				before := hashOf()
+
+				conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.TXT,.lrc" })
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(hashOf()).To(Equal(before))
+			})
+
 			It("does not re-read tags of unchanged files", func() {
 				before, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
 				Expect(err).ToNot(HaveOccurred())

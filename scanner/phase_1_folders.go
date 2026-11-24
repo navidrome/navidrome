@@ -57,7 +57,7 @@ type scanJob struct {
 	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
 	targetFolders    []string                          // Specific folders to scan (including all descendants)
 	prevAlbumPIDConf string                            // Album PID spec of the last finished scan, only when it differs from the current one
-	lyricsSuffixes   []string                          // External lyrics suffixes from LyricsPriority, like ".lrc"
+	lyricsSuffixes   []string                          // External lyrics suffixes from LyricsPriority, like ".lrc", lowercased and sorted
 	lock             sync.Mutex
 	numFolders       atomic.Int64
 }
