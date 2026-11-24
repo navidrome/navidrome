@@ -8,9 +8,12 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage/storagetest"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -198,6 +201,27 @@ var _ = Describe("sources", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
 			Expect(lyrics[0].Synced).To(BeTrue())
+		})
+
+		It("logs the sidecar path that is really on disk", func() {
+			l, hook := test.NewNullLogger()
+			prevLevel := log.CurrentLevel()
+			// Swap the logger before raising the level, so Trace entries reach the hook.
+			prevLogger := log.SetDefaultLogger(l)
+			log.SetLevel(log.LevelTrace)
+			DeferCleanup(func() {
+				log.SetDefaultLogger(prevLogger)
+				log.SetLevel(prevLevel)
+			})
+
+			_, err := lyricsFor("", norm.NFC, norm.NFD)
+
+			Expect(err).ToNot(HaveOccurred())
+			entry := hook.LastEntry()
+			Expect(entry).ToNot(BeNil())
+			Expect(entry.Level).To(Equal(logrus.TraceLevel))
+			Expect(entry.Message).To(Equal("retrieved lyrics from external file"))
+			Expect(entry.Data).To(HaveKeyWithValue("file", norm.NFD.String(base)+".lrc"))
 		})
 
 		It("finds an NFC-encoded sidecar for an NFD track path", func() {

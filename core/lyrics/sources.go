@@ -41,7 +41,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, fmt.Errorf("opening library filesystem: %w", err)
 	}
 
-	f, err := openSidecar(fsys, sidecarRelPath)
+	f, openedPath, err := openSidecar(fsys, sidecarRelPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		log.Trace(ctx, "no lyrics found at path")
 		return nil, nil
@@ -49,6 +49,10 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, err
 	}
 	defer f.Close()
+	if openedPath != sidecarRelPath {
+		// Log the name that is really on disk, so a parse error points at the right file.
+		ctx = log.NewContext(ctx, "file", openedPath)
+	}
 
 	contents, err := io.ReadAll(ioutils.UTF8Reader(f))
 	if err != nil {
@@ -76,11 +80,11 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 // media file (macOS commonly yields NFD, while Linux and Windows typically keep
 // NFC), so a byte-exact lookup would miss a file that is really on disk. Only the
 // base name is converted: the directories were read from disk by the scanner, so
-// they are already correct as stored. Issue #4148.
-func openSidecar(fsys fs.FS, relPath string) (fs.File, error) {
+// they are already correct as stored. It also returns the path it opened. Issue #4148.
+func openSidecar(fsys fs.FS, relPath string) (fs.File, string, error) {
 	f, err := fsys.Open(relPath)
 	if !errors.Is(err, fs.ErrNotExist) {
-		return f, err
+		return f, relPath, err
 	}
 
 	dir, base := path.Split(relPath)
@@ -90,10 +94,10 @@ func openSidecar(fsys fs.FS, relPath string) (fs.File, error) {
 			continue
 		}
 		if altFile, altErr := fsys.Open(altPath); !errors.Is(altErr, fs.ErrNotExist) {
-			return altFile, altErr
+			return altFile, altPath, altErr
 		}
 	}
-	return f, err
+	return f, relPath, err
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name. Results are cached,
