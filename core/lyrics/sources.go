@@ -32,7 +32,8 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 // fromExternalFile reads lyrics from the file sharing mf's base name and ending with suffix.
 // folderFiles lists the lyrics files in mf's folder: a file missing from it is not opened.
 // If nil, the filesystem is always probed. The list is matched ignoring case and Unicode
-// normalization, as the filesystem may do, but the file is still opened by its expected name.
+// normalization, as the filesystem may do, but the file is still opened by its expected name
+// (see openSidecar).
 func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []string, suffix string) (model.LyricList, error) {
 	ext := path.Ext(mf.Path)
 	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix
@@ -51,7 +52,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []st
 		return nil, fmt.Errorf("opening library filesystem: %w", err)
 	}
 
-	f, err := fsys.Open(sidecarRelPath)
+	f, openedPath, err := openSidecar(fsys, sidecarRelPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		log.Trace(ctx, "no lyrics found at path")
 		return nil, nil
@@ -59,6 +60,8 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []st
 		return nil, err
 	}
 	defer f.Close()
+	// Log the name that is really on disk, so a parse error points at the right file.
+	ctx = log.NewContext(ctx, "file", openedPath)
 
 	contents, err := io.ReadAll(ioutils.UTF8Reader(f))
 	if err != nil {
@@ -78,6 +81,30 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []st
 
 	log.Trace(ctx, "retrieved lyrics from external file")
 	return list, nil
+}
+
+// openSidecar opens the sidecar lyrics file and returns the path it opened. When the
+// exact path is missing, it retries with the NFD and NFC forms of the file name: the
+// sidecar can be in another Unicode form than the stored track path (macOS often
+// writes NFD, Linux and Windows keep NFC). The folders are kept as stored, because
+// the scanner read them from disk.
+func openSidecar(fsys fs.FS, relPath string) (fs.File, string, error) {
+	f, err := fsys.Open(relPath)
+	if !errors.Is(err, fs.ErrNotExist) {
+		return f, relPath, err
+	}
+
+	dir, base := path.Split(relPath)
+	for _, form := range []norm.Form{norm.NFD, norm.NFC} {
+		altPath := dir + form.String(base)
+		if altPath == relPath {
+			continue
+		}
+		if altFile, altErr := fsys.Open(altPath); !errors.Is(altErr, fs.ErrNotExist) {
+			return altFile, altPath, altErr
+		}
+	}
+	return f, relPath, err
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name. Results are cached,
