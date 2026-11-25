@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"github.com/Masterminds/squirrel"
@@ -216,12 +217,27 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("treats duplicate IDs as a set so a real subset still narrows", func() {
-				// {1,1,2} has 3 entries but is a strict subset of the user's 3 libraries.
-				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 1, 2}})).To(Equal([]int{1, 1, 2}))
+				// An admin sees every library, so only the membership check can narrow here. The request
+				// has as many entries as there are libraries but misses the first one.
+				_, _, _ = restrictedFixture("dupscope")
+				var allLibs []int
+				Expect(NewLibraryRepository(GetDBXBuilder()).(*libraryRepository).
+					queryAllSlice(ctx, squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
+				Expect(len(allLibs)).To(BeNumerically(">", 1))
+				req := append(slices.Clone(allLibs[1:]), allLibs[1])
+				admin := model.User{ID: "a", IsAdmin: true}
+				Expect(scope(admin, squirrel.Eq{"library_id": req})).To(Equal(req))
 			})
 
-			It("returns nil (fast-path) when the request covers all the user's libraries", func() {
-				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2, 3}})).To(BeNil())
+			It("still narrows when the request covers all the user's libraries but not every library", func() {
+				_, _, _ = restrictedFixture("coverscope")
+				var allLibs []int
+				Expect(NewLibraryRepository(GetDBXBuilder()).(*libraryRepository).
+					queryAllSlice(ctx, squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
+				Expect(len(allLibs)).To(BeNumerically(">", 1))
+				granted := allLibs[1:]
+				user := model.User{ID: "c", Libraries: slice.Map(granted, func(id int) model.Library { return model.Library{ID: id} })}
+				Expect(scope(user, squirrel.Eq{"library_id": granted})).To(Equal(granted))
 			})
 
 			It("scopes to the user's libraries when no library filter is given", func() {
@@ -985,37 +1001,41 @@ var _ = Describe("ArtistRepository", func() {
 					}
 				})
 
-				It("paginates a restricted user's visible artists without gaps", func() {
-					// ID "25" sorts between base fixtures "2" and "3", so this lib2-only artist lands
-					// inside the restricted user's visible range — exercising the no-gap guarantee.
-					lib2Artist := model.Artist{ID: "25", Name: "Restricted Lib2 Artist"}
-					Expect(repo.Put(ctx, &lib2Artist)).To(Succeed())
-					Expect(lr.AddArtist(lrCtx, lib2.ID, lib2Artist.ID)).To(Succeed())
-					DeferCleanup(func() {
-						if raw, ok := repo.(*artistRepository); ok {
-							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
-						}
-					})
+				DescribeTable("paginates a restricted user's visible artists without gaps",
+					func(filter squirrel.Sqlizer) {
+						// ID "25" sorts between base fixtures "2" and "3", so this lib2-only artist lands
+						// inside the restricted user's visible range — exercising the no-gap guarantee.
+						lib2Artist := model.Artist{ID: "25", Name: "Restricted Lib2 Artist"}
+						Expect(createArtistWithLibrary(ctx, repo, &lib2Artist, lib2.ID)).To(Succeed())
+						DeferCleanup(func() {
+							if raw, ok := repo.(*artistRepository); ok {
+								_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
+							}
+						})
 
-					all, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1000})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(len(all)).To(BeNumerically(">", 1))
-					for _, a := range all {
-						Expect(a.ID).ToNot(Equal(lib2Artist.ID))
-					}
-
-					var paged model.Artists
-					for offset := range len(all) {
-						page, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1, Offset: offset})
+						all, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1000, Filters: filter})
 						Expect(err).ToNot(HaveOccurred())
-						Expect(page).To(HaveLen(1), fmt.Sprintf("page at offset %d should be full", offset))
-						paged = append(paged, page...)
-					}
-					Expect(paged).To(HaveLen(len(all)))
-					for i := range all {
-						Expect(paged[i].ID).To(Equal(all[i].ID))
-					}
-				})
+						Expect(len(all)).To(BeNumerically(">", 1))
+						for _, a := range all {
+							Expect(a.ID).ToNot(Equal(lib2Artist.ID))
+						}
+
+						var paged model.Artists
+						for offset := range len(all) {
+							page, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1, Offset: offset, Filters: filter})
+							Expect(err).ToNot(HaveOccurred())
+							Expect(page).To(HaveLen(1), fmt.Sprintf("page at offset %d should be full", offset))
+							paged = append(paged, page...)
+						}
+						Expect(paged).To(HaveLen(len(all)))
+						for i := range all {
+							Expect(paged[i].ID).To(Equal(all[i].ID))
+						}
+					},
+					Entry("with no library filter", nil),
+					// search3 sends the user's libraries as the filter when musicFolderId is absent.
+					Entry("filtered by all of the user's libraries", squirrel.Eq{"library_id": []int{1}}),
+				)
 			})
 
 			Context("Headless Processes (No User Context)", func() {
