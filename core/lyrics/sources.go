@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
@@ -27,9 +29,15 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 	return nil, nil
 }
 
-func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (model.LyricList, error) {
+// fromExternalFile does not open a sidecar missing from folderFiles (nil means not scanned: always probe).
+// The list is matched loosely, as the filesystem may be, but openSidecar still decides which file opens.
+func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []string, suffix string) (model.LyricList, error) {
 	ext := path.Ext(mf.Path)
 	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix
+	name := norm.NFC.String(path.Base(sidecarRelPath))
+	if folderFiles != nil && !slices.ContainsFunc(folderFiles, func(f string) bool { return strings.EqualFold(norm.NFC.String(f), name) }) {
+		return nil, nil
+	}
 	ctx = log.NewContext(ctx, "file", sidecarRelPath)
 
 	store, err := storage.For(mf.LibraryPath)

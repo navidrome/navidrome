@@ -267,6 +267,24 @@ var _ = Describe("folder_entry", func() {
 				Expect(hash1).ToNot(Equal(hash2))
 			})
 
+			It("produces different hash when lyrics files change", func() {
+				hash1 := entry.hash()
+
+				entry.lyricsFiles["song.lrc"] = &fakeDirEntry{name: "song.lrc"}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when lyrics suffixes change", func() {
+				hash1 := entry.hash()
+
+				job.lyricsSuffixes = []string{".lrc"}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
 			It("produces different hash when subfolder count changes", func() {
 				hash1 := entry.hash()
 

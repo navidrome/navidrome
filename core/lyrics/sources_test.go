@@ -3,6 +3,7 @@ package lyrics
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing/fstest"
 	"time"
@@ -80,8 +81,59 @@ var _ = Describe("sources", func() {
 			return &model.MediaFile{LibraryPath: fixturesDir, Path: name}
 		}
 
+		It("should only read files from the folder's list of lyrics files", func() {
+			lyrics, err := fromExternalFile(ctx, mf("test.mp3"), []string{"test.lrc"}, ".lrc")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).ToNot(BeEmpty())
+
+			lyrics, err = fromExternalFile(ctx, mf("test.mp3"), []string{"test.lrc"}, ".txt")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeEmpty())
+
+			lyrics, err = fromExternalFile(ctx, mf("test.mp3"), []string{}, ".lrc")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeEmpty())
+		})
+
+		It("should open the expected file name when the listed one differs in case", func() {
+			lyrics, err := fromExternalFile(ctx, mf("test.mp3"), []string{"TEST.LRC"}, ".lrc")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).ToNot(BeEmpty())
+		})
+
+		It("should match a listed file stored in another Unicode normalization form", func() {
+			dir := GinkgoT().TempDir()
+			Expect(os.WriteFile(filepath.Join(dir, "Caf\u00e9.lrc"), []byte("[00:01.00]Composed name"), 0600)).To(Succeed())
+
+			lyrics, err := fromExternalFile(ctx, &model.MediaFile{LibraryPath: dir, Path: "Caf\u00e9.mp3"}, []string{"Cafe\u0301.lrc"}, ".lrc")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).ToNot(BeEmpty())
+		})
+
+		It("should not use another track's sidecar on case-sensitive filesystems", func() {
+			dir := GinkgoT().TempDir()
+			Expect(os.WriteFile(filepath.Join(dir, "Song.lrc"), []byte("[00:01.00]Other track"), 0600)).To(Succeed())
+			if _, err := os.Stat(filepath.Join(dir, "song.lrc")); err == nil {
+				Skip("filesystem is case-insensitive")
+			}
+
+			lyrics, err := fromExternalFile(ctx, &model.MediaFile{LibraryPath: dir, Path: "song.mp3"}, []string{"Song.lrc"}, ".lrc")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeEmpty())
+		})
+
+		It("should return nil when a listed file was deleted since the scan", func() {
+			lyrics, err := fromExternalFile(ctx, mf("test.mp3"), []string{"test.gone"}, ".gone")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics).To(BeEmpty())
+		})
+
 		It("should return nil for lyrics that don't exist", func() {
-			lyrics, err := fromExternalFile(ctx, mf("01 Invisible (RED) Edit Version.mp3"), ".lrc")
+			lyrics, err := fromExternalFile(ctx, mf("01 Invisible (RED) Edit Version.mp3"), nil, ".lrc")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(BeEmpty())
@@ -92,7 +144,7 @@ var _ = Describe("sources", func() {
 		// Here we only verify each suffix is read from the library FS and routed.
 		DescribeTable("should read the sidecar file and route its suffix to a parser",
 			func(name, suffix string, expectSynced bool) {
-				lyrics, err := fromExternalFile(ctx, mf(name), suffix)
+				lyrics, err := fromExternalFile(ctx, mf(name), nil, suffix)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lyrics).ToNot(BeEmpty())
@@ -108,7 +160,7 @@ var _ = Describe("sources", func() {
 		)
 
 		It("should handle LRC files with UTF-8 BOM marker (issue #4631)", func() {
-			lyrics, err := fromExternalFile(ctx, mf("bom-test.mp3"), ".lrc")
+			lyrics, err := fromExternalFile(ctx, mf("bom-test.mp3"), nil, ".lrc")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
@@ -119,7 +171,7 @@ var _ = Describe("sources", func() {
 		})
 
 		It("should handle UTF-16 LE encoded LRC files", func() {
-			lyrics, err := fromExternalFile(ctx, mf("bom-utf16-test.mp3"), ".lrc")
+			lyrics, err := fromExternalFile(ctx, mf("bom-utf16-test.mp3"), nil, ".lrc")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
@@ -132,7 +184,7 @@ var _ = Describe("sources", func() {
 		})
 
 		It("should handle TTML files with UTF-8 BOM marker", func() {
-			lyrics, err := fromExternalFile(ctx, mf("bom-test.mp3"), ".ttml")
+			lyrics, err := fromExternalFile(ctx, mf("bom-test.mp3"), nil, ".ttml")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
@@ -144,7 +196,7 @@ var _ = Describe("sources", func() {
 		})
 
 		It("should handle UTF-16 BE encoded TTML files", func() {
-			lyrics, err := fromExternalFile(ctx, mf("bom-utf16-test.mp3"), ".ttml")
+			lyrics, err := fromExternalFile(ctx, mf("bom-utf16-test.mp3"), nil, ".ttml")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lyrics).To(HaveLen(1))
@@ -188,7 +240,7 @@ var _ = Describe("sources", func() {
 			})
 
 			mf := &model.MediaFile{LibraryPath: scheme + ":///music", Path: trackBase + ".flac"}
-			return fromExternalFile(ctx, mf, ".lrc")
+			return fromExternalFile(ctx, mf, []string{sidecarForm.String(base) + ".lrc"}, ".lrc")
 		}
 
 		// Only the sidecar's file name can differ in form: the folders come from the

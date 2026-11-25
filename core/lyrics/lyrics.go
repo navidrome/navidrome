@@ -2,8 +2,10 @@ package lyrics
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -11,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/cache"
+	"golang.org/x/text/unicode/norm"
 )
 
 // maxLegacyLyricsCandidates bounds the duplicate window scanned by the legacy
@@ -108,18 +111,14 @@ func songsByArtistTitleWithLyricsFirst(artist, title string) model.QueryOptions 
 }
 
 func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles []*model.MediaFile) (model.LyricList, error) {
-	for pattern := range strings.SplitSeq(conf.Server().LyricsPriority, ",") {
-		pattern = strings.TrimSpace(pattern)
-		if pattern == "" {
-			continue
-		}
-
+	folders := make(map[string][]string)
+	for _, pattern := range priorityPatterns() {
 		for _, mf := range mediaFiles {
 			if mf == nil {
 				continue
 			}
 
-			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern)
+			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern, folders)
 			if err != nil {
 				log.Error(ctx, "error getting lyrics", "source", pattern, err)
 				continue
@@ -134,13 +133,62 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 	return nil, nil
 }
 
-func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string) (model.LyricList, error) {
+func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string, folders map[string][]string) (model.LyricList, error) {
 	switch {
 	case strings.EqualFold(pattern, "embedded"):
 		return fromEmbedded(ctx, mf)
-	case strings.HasPrefix(pattern, "."):
-		return fromExternalFile(ctx, mf, pattern)
+	case isFileSuffix(pattern):
+		return fromExternalFile(ctx, mf, l.lyricsFilesOf(ctx, mf, folders), pattern)
 	default:
 		return l.fromPlugin(ctx, mf, pattern)
 	}
+}
+
+// lyricsFilesOf returns nil when the folder was not scanned for lyrics files yet, so the caller probes the filesystem.
+func (l *lyricsService) lyricsFilesOf(ctx context.Context, mf *model.MediaFile, folders map[string][]string) []string {
+	files, ok := folders[mf.FolderID]
+	if !ok {
+		if folder, err := l.ds.Folder().Get(ctx, mf.FolderID); err != nil {
+			log.Warn(ctx, "Error loading folder of media file. Looking for lyrics files in the filesystem", "path", mf.Path, err)
+		} else {
+			files = folder.LyricsFiles
+		}
+		folders[mf.FolderID] = files
+	}
+	return files
+}
+
+func priorityPatterns() []string {
+	var res []string
+	for p := range strings.SplitSeq(conf.Server().LyricsPriority, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			res = append(res, p)
+		}
+	}
+	return res
+}
+
+func isFileSuffix(pattern string) bool {
+	return strings.HasPrefix(pattern, ".")
+}
+
+// FileSuffixes returns the sidecar suffixes in LyricsPriority in NFC, lowercased and sorted so
+// that reordering or recasing them does not change the scanner's folder hashes.
+func FileSuffixes() []string {
+	var res []string
+	for _, p := range priorityPatterns() {
+		if isFileSuffix(p) {
+			res = append(res, strings.Map(lowerIfFoldable, norm.NFC.String(p)))
+		}
+	}
+	slices.Sort(res)
+	return slices.Compact(res)
+}
+
+// lowerIfFoldable keeps runes like İ whose lowercase form is not EqualFold to them.
+func lowerIfFoldable(r rune) rune {
+	if l := unicode.ToLower(r); strings.EqualFold(string(l), string(r)) {
+		return l
+	}
+	return r
 }
