@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"golang.org/x/text/unicode/norm"
 )
 
 // walkDirTree recursively walks the directory tree starting from the given targetFolders.
@@ -354,6 +355,7 @@ func isDotEntry(name string) bool {
 }
 
 func (j *scanJob) isLyricsFile(name string) bool {
+	name = norm.NFC.String(name)
 	return slices.ContainsFunc(j.lyricsSuffixes, func(suffix string) bool {
 		return hasSuffixFold(name, suffix)
 	})

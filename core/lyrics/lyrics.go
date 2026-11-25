@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
@@ -12,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/cache"
+	"golang.org/x/text/unicode/norm"
 )
 
 // maxLegacyLyricsCandidates bounds the duplicate window scanned by the legacy
@@ -170,15 +172,23 @@ func isFileSuffix(pattern string) bool {
 	return strings.HasPrefix(pattern, ".")
 }
 
-// FileSuffixes returns the sidecar suffixes in LyricsPriority, lowercased and sorted so that
-// reordering or recasing them does not change the scanner's folder hashes.
+// FileSuffixes returns the sidecar suffixes in LyricsPriority in NFC, lowercased and sorted so
+// that reordering or recasing them does not change the scanner's folder hashes.
 func FileSuffixes() []string {
 	var res []string
 	for _, p := range priorityPatterns() {
 		if isFileSuffix(p) {
-			res = append(res, strings.ToLower(p))
+			res = append(res, strings.Map(lowerIfFoldable, norm.NFC.String(p)))
 		}
 	}
 	slices.Sort(res)
 	return slices.Compact(res)
+}
+
+// lowerIfFoldable keeps runes like İ whose lowercase form is not EqualFold to them.
+func lowerIfFoldable(r rune) rune {
+	if l := unicode.ToLower(r); strings.EqualFold(string(l), string(r)) {
+		return l
+	}
+	return r
 }

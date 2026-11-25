@@ -12,6 +12,7 @@ import (
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -343,7 +344,10 @@ var _ = Describe("walk_dir_tree", func() {
 	Describe("helper functions", func() {
 		DescribeTable("isLyricsFile",
 			func(name string, expected bool) {
-				job := &scanJob{lyricsSuffixes: []string{".lrc", ".srt"}}
+				conf.Update(func(c *conf.Options) {
+					c.LyricsPriority = ".lrc,.SRT,.\u0130ngilizce.ttml,.fran\u00e7ais.ttml,embedded"
+				})
+				job := &scanJob{lyricsSuffixes: lyrics.FileSuffixes()}
 				Expect(job.isLyricsFile(name)).To(Equal(expected))
 			},
 			Entry("matching suffix", "song.lrc", true),
@@ -352,6 +356,8 @@ var _ = Describe("walk_dir_tree", func() {
 			Entry("non-ASCII base name", "Caf\u00e9.lrc", true),
 			Entry("other suffix", "song.txt", false),
 			Entry("name that is only the suffix", ".lrc", false),
+			Entry("suffix whose lowercase does not fold back", "song.\u0130ngilizce.ttml", true),
+			Entry("NFD name for an NFC suffix", "song.franc\u0327ais.ttml", true),
 		)
 
 		dir, _ := os.Getwd()
