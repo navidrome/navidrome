@@ -8,11 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -243,8 +241,14 @@ func bearerToken(r *http.Request) (string, bool) {
 	return token, true
 }
 
-// validationOptions sets SkipSettingDefaults: the handlers apply defaults themselves, and the validator must not rewrite the body.
-var validationOptions = &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc, MultiError: true, SkipSettingDefaults: true}
+// validationOptions keeps the body unrewritten (handlers apply defaults) and keeps the validated value, so
+// runtime.BindJSONBody binds what was checked, matching names exactly where encoding/json also takes case variants.
+var validationOptions = &openapi3filter.Options{
+	AuthenticationFunc:  openapi3filter.NoopAuthenticationFunc,
+	MultiError:          true,
+	SkipSettingDefaults: true,
+	KeepValidatedValue:  true,
+}
 
 func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx *chi.Context) bool {
 	params := make(map[string]string, len(rctx.URLParams.Keys))
@@ -256,9 +260,6 @@ func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx
 		err = openapi3filter.ValidateRequest(r.Context(), &openapi3filter.RequestValidationInput{
 			Request: r, PathParams: params, Route: op.route, Options: validationOptions,
 		})
-		if body != nil {
-			r.Body = io.NopCloser(bytes.NewReader(body))
-		}
 	}
 	if tooLarge(err) {
 		writeProblem(w, r, ClientError(err, tooLargeDetail))
@@ -267,7 +268,7 @@ func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx
 	var fields []ValidationError
 	if err != nil {
 		fields = sanitizeValidation(err)
-	} else if fields = jsonBodyFields(body, op.route.Operation); len(fields) == 0 {
+	} else if fields = trailingJSON(body, op.route.Operation); len(fields) == 0 {
 		return true
 	}
 	log.Debug(r.Context(), "API v1: request failed validation", "operation", op.id(), "errors", fields)
@@ -275,7 +276,7 @@ func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx
 	return false
 }
 
-// readBody reads a declared body once, so the validator, the JSON checks and the handler all see the same bytes.
+// readBody reads a declared body once, so the validator and the trailing-data check see the same bytes.
 func readBody(r *http.Request, op *openapi3.Operation) ([]byte, error) {
 	if op.RequestBody == nil || r.Body == nil || r.Body == http.NoBody {
 		return nil, nil
@@ -288,66 +289,16 @@ func readBody(r *http.Request, op *openapi3.Operation) ([]byte, error) {
 	return data, nil
 }
 
-// jsonBodyFields checks what kin-openapi misses in a JSON body: data after the first value, which Go's decoder
-// ignores, and keys that only case-fold to a declared property, which encoding/json decodes into that property.
-func jsonBodyFields(data []byte, op *openapi3.Operation) []ValidationError {
-	if op.RequestBody == nil || op.RequestBody.Value == nil || len(bytes.TrimSpace(data)) == 0 {
+// trailingJSON rejects data after the body's JSON value, which kin-openapi's decoder ignores. The validator
+// already rejected a bad first value, so json.Valid fails here only on what follows it.
+func trailingJSON(data []byte, op *openapi3.Operation) []ValidationError {
+	if op.RequestBody == nil || op.RequestBody.Value == nil || op.RequestBody.Value.Content.Get("application/json") == nil {
 		return nil
 	}
-	// Keyed on the spec, not the request's Content-Type: the handlers decode JSON whatever the header says.
-	media := op.RequestBody.Value.Content.Get("application/json")
-	if media == nil || media.Schema == nil {
+	if len(bytes.TrimSpace(data)) == 0 || json.Valid(data) {
 		return nil
 	}
-	dec := json.NewDecoder(bytes.NewReader(data))
-	var body any
-	if err := dec.Decode(&body); err != nil {
-		return []ValidationError{{Field: "", Message: "must be a single JSON value"}}
-	}
-	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
-		return []ValidationError{{Field: "", Message: "must be a single JSON value"}}
-	}
-	var out []ValidationError
-	collectCaseAliases(body, media.Schema.Value, "", &out)
-	return out
-}
-
-func collectCaseAliases(v any, schema *openapi3.Schema, path string, out *[]ValidationError) {
-	if schema == nil {
-		return
-	}
-	switch v := v.(type) {
-	case map[string]any:
-		for _, key := range slices.Sorted(maps.Keys(v)) {
-			field := joinField(path, key)
-			if prop, ok := schema.Properties[key]; ok {
-				if prop != nil {
-					collectCaseAliases(v[key], prop.Value, field, out)
-				}
-				continue
-			}
-			for name := range schema.Properties {
-				if strings.EqualFold(key, name) {
-					*out = append(*out, ValidationError{Field: field, Message: "must match the field name exactly"})
-					break
-				}
-			}
-		}
-	case []any:
-		if schema.Items == nil {
-			return
-		}
-		for i, item := range v {
-			collectCaseAliases(item, schema.Items.Value, joinField(path, strconv.Itoa(i)), out)
-		}
-	}
-}
-
-func joinField(path, name string) string {
-	if path == "" {
-		return name
-	}
-	return path + "." + name
+	return []ValidationError{{Field: "", Message: "must be a single JSON value"}}
 }
 
 var missingProperty = regexp.MustCompile(`property "([^"]+)" is missing`)
