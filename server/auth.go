@@ -92,7 +92,7 @@ func buildAuthPayload(user *model.User) map[string]any {
 	return payload
 }
 
-// MaxLoginBodySize bounds the payload of unauthenticated login routes across all APIs.
+// MaxLoginBodySize bounds the payload of login-type routes across all APIs.
 const MaxLoginBodySize = 8 << 10
 
 func LimitLoginBody(next http.Handler) http.Handler {

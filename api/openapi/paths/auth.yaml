@@ -61,11 +61,10 @@ logout:
   post:
     operationId: logout
     x-module: core
-    x-scope: read
     x-stability-level: alpha
     tags: [auth]
     summary: Log out
-    description: Revokes the grant that made this request.
+    description: Revokes the grant that made this request. Needs no scope, so any grant can end itself.
     security: [{bearerAuth: []}]
     responses:
       '200':

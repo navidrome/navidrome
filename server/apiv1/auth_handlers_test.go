@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -104,10 +105,16 @@ var _ = Describe("auth endpoints", func() {
 		Expect(gc.Grant.Scopes).To(ConsistOf(ScopeRead))
 	})
 
-	It("does not let a grant without read log out or revoke grants", func() {
+	It("lets a grant with no scopes log itself out", func() {
+		api.setup()
+		narrow := api.login([]string{})
+		Expect(api.call(http.MethodPost, "/api/v1/auth/logout", narrow.Secret, nil).Code).To(Equal(http.StatusOK))
+		Expect(api.call(http.MethodGet, "/api/v1/capabilities", narrow.Secret, nil).Code).To(Equal(http.StatusUnauthorized))
+	})
+
+	It("does not let a grant without read revoke grants", func() {
 		gc := api.setup()
 		narrow := api.login([]string{"password"})
-		Expect(api.call(http.MethodPost, "/api/v1/auth/logout", narrow.Secret, nil).Code).To(Equal(http.StatusForbidden))
 		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/"+gc.Grant.Id, narrow.Secret, nil).Code).To(Equal(http.StatusForbidden))
 	})
 
@@ -153,7 +160,7 @@ var _ = Describe("auth endpoints", func() {
 
 	It("rejects a case-variant client key that would skip its length limit", func() {
 		api.setup()
-		body := `{"username":"admin","password":"pw","client":"ok","Client":"` + strings.Repeat("x", 60_000) + `"}`
+		body := `{"username":"admin","password":"pw","client":"ok","Client":"` + strings.Repeat("x", 65) + `"}`
 		w := api.callRaw(http.MethodPost, "/api/v1/auth/login", "", body)
 		Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
 		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "Client", Message: "must match the field name exactly"}))
@@ -258,9 +265,9 @@ var _ = Describe("auth endpoints", func() {
 		Entry("bad scope format", map[string]any{"username": "a", "password": "hunter2", "client": "c", "scopes": []string{"NOT OK"}}, "scopes.0"),
 	)
 
-	DescribeTable("rejects a body over 1 MiB with 413",
+	DescribeTable("rejects a login body over the login size limit with 413",
 		func(body func(string) io.Reader) {
-			big := `{"username":"a","password":"` + strings.Repeat("a", maxBodyBytes) + `","client":"c"}`
+			big := `{"username":"a","password":"` + strings.Repeat("a", server.MaxLoginBodySize) + `","client":"c"}`
 			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/auth/login", body(big))
 			req.Header.Set("Content-Type", "application/json")
 			w := serve(api.router, req)

@@ -201,11 +201,14 @@ func (g *gate) handler(next http.Handler) http.Handler {
 			}
 			next.ServeHTTP(w, r)
 		}
-		if op.limited && g.limiter != nil {
-			g.limiter(http.HandlerFunc(serve)).ServeHTTP(w, r)
-			return
+		h := http.Handler(http.HandlerFunc(serve))
+		if op.limited {
+			h = server.LimitLoginBody(h)
+			if g.limiter != nil {
+				h = g.limiter(h)
+			}
 		}
-		serve(w, r)
+		h.ServeHTTP(w, r)
 	})
 }
 

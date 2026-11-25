@@ -140,7 +140,7 @@ func (s *Service) Authenticate(ctx context.Context, secret, ip string) (*Princip
 	return &Principal{User: *u, GrantID: g.ID, Scopes: Expand(g.Scopes, u.IsAdmin)}, nil
 }
 
-// dropIdle deletes only still-idle grants, sparing one renewed meanwhile.
+// dropIdle deletes every grant still idle at idleSince, of any user, sparing one renewed meanwhile.
 func (s *Service) dropIdle(ctx context.Context, id string, idleSince time.Time) {
 	if _, err := s.ds.Grant().DeleteIdle(ctx, idleSince); err != nil {
 		log.Warn(ctx, "API v1: could not delete idle grants", "grant", id, err)
