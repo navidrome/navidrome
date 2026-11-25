@@ -213,6 +213,11 @@ var _ = Describe("Public URL Utilities", func() {
 			result := publicurl.ImageURL(ctx, artID, 0)
 			Expect(result).ToNot(ContainSubstring("size="))
 		})
+
+		It("returns an empty string when the artwork ID is empty", func() {
+			artID := model.ArtworkID{Kind: model.KindArtistArtwork}
+			Expect(publicurl.ImageURL(ctx, artID, 600)).To(BeEmpty())
+		})
 	})
 
 	Describe("ShareURL", func() {

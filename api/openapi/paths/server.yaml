@@ -3,11 +3,11 @@ get:
   x-module: core
   x-stability-level: alpha
   tags: [server]
+  security: []
   summary: Describe the server
   description: |
     Returns the public server description. No authentication required.
-    Authenticated requests will additionally receive the implemented capability modules
-    once authentication is available.
+    Capability modules are listed by `GET /capabilities`.
   responses:
     '200':
       description: Server description.

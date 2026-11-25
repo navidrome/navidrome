@@ -59,6 +59,7 @@ type Repos struct {
 	Plugin         func(model.PluginRepository) model.PluginRepository
 	Artwork        func(model.ArtworkRepository) model.ArtworkRepository
 	ArtworkQueue   func(model.ArtworkQueueRepository) model.ArtworkQueueRepository
+	Grant          func(model.GrantRepository) model.GrantRepository
 }
 
 // Stub returns ds with the non-nil Repos wrappers applied, also inside every transaction it opens.
@@ -161,4 +162,8 @@ func (s *stubbed) Artwork() model.ArtworkRepository {
 
 func (s *stubbed) ArtworkQueue() model.ArtworkQueueRepository {
 	return wrapRepo(s.repos.ArtworkQueue, s.DataStore.ArtworkQueue())
+}
+
+func (s *stubbed) Grant() model.GrantRepository {
+	return wrapRepo(s.repos.Grant, s.DataStore.Grant())
 }

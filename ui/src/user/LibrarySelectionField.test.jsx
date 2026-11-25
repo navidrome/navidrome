@@ -46,11 +46,22 @@ describe('<LibrarySelectionField />', () => {
     expect(screen.getByText('resources.user.fields.libraries')).not.toBeNull()
   })
 
-  it('should render helper text from translations', () => {
+  it('should render the create helper text for a new user', () => {
     render(<LibrarySelectionField />)
     expect(
       screen.getByText('resources.user.helperTexts.libraries'),
     ).not.toBeNull()
+  })
+
+  it('should render the edit helper text for an existing user', () => {
+    useRecordContext.mockReturnValue({ id: 'user-1' })
+    render(<LibrarySelectionField />)
+    expect(
+      screen.getByText('resources.user.helperTexts.librariesEdit'),
+    ).not.toBeNull()
+    expect(
+      screen.queryByText('resources.user.helperTexts.libraries'),
+    ).toBeNull()
   })
 
   it('should render SelectLibraryInput with correct props', () => {
