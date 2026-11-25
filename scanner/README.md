@@ -40,6 +40,30 @@ flowchart TD
 
 The execution flow shows that Phases 1 and 2 run sequentially, while Phases 3 and 4 execute in parallel to maximize performance before the final processing steps.
 
+## Experimental Comment Genres
+
+`Scanner.ExperimentalCommentGenres` is experimental and defaults to `false`.
+To enable it, add this to `navidrome.toml`:
+
+```toml
+[Scanner]
+ExperimentalCommentGenres = true
+```
+
+Navidrome appends genres from the first `/* Ambient / Soundtrack */` block in
+the track's first comment. It supports local FLAC, MP3, WAV, and AIFF files,
+keeps existing genres, and skips duplicate values.
+
+The first scan after enabling the option backfills existing tracks, including
+on a quick scan. With `Scanner.ScanOnStartup` enabled, that can be the startup
+scan. Later quick scans process new and modified tracks.
+
+The scanner stages and verifies each edit before rewriting the original inode
+and restoring its modification time. The library must be writable, and a
+temporary directory must have room for two copies of a track. An interrupted
+write can leave the original bytes in a `navidrome-comment-genres-*` temporary
+directory for recovery.
+
 ## Core Components
 
 ### Scanner Controller (`controller.go`)

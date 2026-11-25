@@ -181,6 +181,8 @@ type scannerOptions struct {
 	IgnoreDotFolders      bool     // Whether to ignore folders whose name starts with a dot when scanning
 	RespectNoMedia        bool     // Whether to skip folders (and their subfolders) containing a .nomedia file
 	PurgeMissing          string   // Values: "never", "always", "full"
+
+	ExperimentalCommentGenres bool
 }
 
 type transcodingOptions struct {
@@ -1058,6 +1060,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.scanonstartup", true)
 	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
 	viper.SetDefault("scanner.artistsplitexceptions", []string{})
+	viper.SetDefault("scanner.experimentalcommentgenres", false)
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)

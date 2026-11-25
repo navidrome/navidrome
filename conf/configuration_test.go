@@ -221,6 +221,17 @@ var _ = Describe("Configuration", func() {
 			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
 		})
 
+		It("enables experimental comment genres through navidrome.toml", func() {
+			Expect(conf.Server().Scanner.ExperimentalCommentGenres).To(BeFalse())
+			filename := filepath.Join(GinkgoT().TempDir(), "navidrome.toml")
+			Expect(os.WriteFile(filename, []byte("[Scanner]\nExperimentalCommentGenres = true\n"), 0600)).To(Succeed())
+			conf.InitConfig(filename, false)
+			conf.Load(true)
+
+			Expect(conf.Server().Scanner.ExperimentalCommentGenres).To(BeTrue())
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
 		It("does not report the [default] section of INI files", func() {
 			conf.InitConfig(filepath.Join("testdata", "cfg.ini"), false)
 			conf.Load(true)

@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing/fstest"
 	"time"
@@ -17,9 +21,11 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/persistence/persistencetest"
@@ -29,6 +35,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.senan.xyz/taglib"
 )
 
 // Easy aliases for the storagetest package
@@ -42,6 +49,26 @@ func createFS(files fstest.MapFS) storagetest.FakeFS {
 	fs.SetFiles(files)
 	storagetest.Register("fake", &fs)
 	return fs
+}
+
+type commentGenreTestExtractor struct{ dir string }
+
+func (commentGenreTestExtractor) Version() string { return "test" }
+
+func (e commentGenreTestExtractor) Parse(paths ...string) (map[string]metadata.Info, error) {
+	result := make(map[string]metadata.Info, len(paths))
+	for _, path := range paths {
+		tags, err := taglib.ReadTags(filepath.Join(e.dir, filepath.FromSlash(path)))
+		if err != nil {
+			return nil, err
+		}
+		rawTags := make(model.RawTags, len(tags))
+		for key, values := range tags {
+			rawTags[strings.ToLower(key)] = values
+		}
+		result[path] = metadata.Info{Tags: rawTags}
+	}
+	return result, nil
 }
 
 var _ = Describe("Scanner", func() {
@@ -82,6 +109,59 @@ var _ = Describe("Scanner", func() {
 		_, err := s.ScanAll(ctx, fullScan)
 		return err
 	}
+
+	It("writes genres on a quick backfill without reordering recently added tracks", func() {
+		dir := GinkgoT().TempDir()
+		persistencetest.SetLibraries(ctx, ds, dir)
+		local.RegisterExtractor("comment-genre-test", func(root fs.FS, dir string) local.Extractor {
+			return commentGenreTestExtractor{dir: dir}
+		})
+		conf.Update(func(c *conf.Options) {
+			c.Scanner.Extractor = "comment-genre-test"
+			c.Scanner.ExperimentalCommentGenres = false
+		})
+		audio, err := os.ReadFile("tests/fixtures/comment-genres.flac")
+		Expect(err).NotTo(HaveOccurred())
+
+		addTrack := func(name string, mtime time.Time) {
+			file := filepath.Join(dir, name)
+			Expect(os.WriteFile(file, audio, 0600)).To(Succeed())
+			Expect(os.Chtimes(file, mtime, mtime)).To(Succeed())
+			Expect(runScanner(ctx, false)).To(Succeed())
+		}
+		addTrack("old.flac", time.Now().Add(-48*time.Hour))
+		addTrack("new.flac", time.Now().Add(-24*time.Hour))
+
+		recentlyAdded := func() model.MediaFiles {
+			tracks, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).NotTo(HaveOccurred())
+			return tracks
+		}
+		before := recentlyAdded()
+		Expect(slice.Map(before, func(track model.MediaFile) string { return track.Path })).To(Equal([]string{"new.flac", "old.flac"}))
+		Expect(before[1].Tags[model.TagGenre]).To(Equal([]string{"Electronic"}))
+
+		conf.Update(func(c *conf.Options) { c.Scanner.ExperimentalCommentGenres = true })
+		warnings, err := s.ScanAll(ctx, false)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(warnings).To(BeEmpty())
+
+		for _, byModTime := range []bool{false, true} {
+			conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = byModTime })
+			after := recentlyAdded()
+			Expect(slice.Map(after, func(track model.MediaFile) string { return track.Path })).To(Equal([]string{"new.flac", "old.flac"}))
+			for i, track := range after {
+				Expect(track.ID).To(Equal(before[i].ID))
+				Expect(track.CreatedAt.Equal(before[i].CreatedAt)).To(BeTrue())
+				Expect(track.UpdatedAt.Equal(before[i].UpdatedAt)).To(BeTrue())
+				Expect(track.BirthTime.Equal(before[i].BirthTime)).To(BeTrue())
+				Expect(track.Tags[model.TagGenre]).To(ConsistOf("Electronic", "Ambient", "Soundtrack", "Sleep", "Dreamy"))
+			}
+		}
+		tags, err := taglib.ReadTags(filepath.Join(dir, "old.flac"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(tags["GENRE"]).To(ConsistOf("Electronic", "Ambient", "Soundtrack", "Sleep", "Dreamy"))
+	})
 
 	// Stands in for the artwork worker: drains the queue and records every item as resolved,
 	// so a later scan can only queue genuine reprocessing.

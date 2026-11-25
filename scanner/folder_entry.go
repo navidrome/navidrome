@@ -57,6 +57,8 @@ type folderEntry struct {
 	artists             model.Artists
 	tags                model.TagList
 	missingTracks       []*model.MediaFile
+
+	commentGenreWriteFailed bool
 }
 
 func (f *folderEntry) hasNoFiles() bool {
@@ -106,6 +108,8 @@ func (f *folderEntry) toFolder() *model.Folder {
 	return folder
 }
 
+const commentGenreHashPrefix = "comment-genres:"
+
 func (f *folderEntry) hash() string {
 	h := md5.New()
 	_, _ = fmt.Fprintf(
@@ -130,5 +134,11 @@ func (f *folderEntry) hash() string {
 	// Changing the lyrics suffixes changes which files are tracked, so it must trigger a rescan
 	_, _ = fmt.Fprintf(h, "lyrics:%q", f.job.lyricsSuffixes)
 
-	return hex.EncodeToString(h.Sum(nil))
+	hash := hex.EncodeToString(h.Sum(nil))
+	// Mark successful backfills so quick scans skip unchanged tracks.
+	// Leave failed folders unmarked so the next quick scan can retry without a file change.
+	if f.job.commentGenres != nil && !f.commentGenreWriteFailed {
+		return commentGenreHashPrefix + hash
+	}
+	return hash
 }

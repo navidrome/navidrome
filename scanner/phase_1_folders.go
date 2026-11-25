@@ -8,6 +8,7 @@ import (
 	"maps"
 	"path"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -52,7 +53,12 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		imageChanges: &imageChangeCollector{ds: ds}}
 }
 
+type commentGenreWriter interface {
+	WriteCommentGenres(string, *metadata.Info) error
+}
+
 type scanJob struct {
+	commentGenres    commentGenreWriter
 	lib              model.Library
 	fs               storage.MusicFS
 	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
@@ -101,7 +107,13 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 	// the DB may have FullScanInProgress=false, but we need it true for isOutdated() to work correctly.
 	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 
+	var genreWriter commentGenreWriter
+	if conf.Server().Scanner.ExperimentalCommentGenres {
+		genreWriter, _ = fsys.(commentGenreWriter)
+	}
+
 	return &scanJob{
+		commentGenres:    genreWriter,
 		lib:              lib,
 		fs:               fsys,
 		lastUpdates:      lastUpdates,
@@ -247,13 +259,14 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		dbTracks[mf.Path] = &mf
 	}
 
-	// Get list of files to import, based on modtime (or all if fullScan),
-	// leave in dbTracks only tracks that are missing (not found in the FS)
+	// Backfill unchanged tracks on the first scan with genre writeback enabled.
+	// Leave only missing tracks in dbTracks.
+	importCommentGenres := entry.job.commentGenres != nil && !strings.HasPrefix(entry.prevHash, commentGenreHashPrefix)
 	filesToImport := make(map[string]*model.MediaFile, len(entry.audioFiles))
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
-		if !foundInDB || entry.job.lib.FullScanInProgress {
+		if !foundInDB || entry.job.lib.FullScanInProgress || importCommentGenres {
 			filesToImport[fullPath] = dbTrack
 		} else {
 			info, err := af.Info()
@@ -302,6 +315,14 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 			return err
 		}
 		for filePath, info := range allInfo {
+			// Write back before indexing so the same scan sees the new genres.
+			if writer := entry.job.commentGenres; writer != nil {
+				if err := writer.WriteCommentGenres(filePath, &info); err != nil {
+					entry.commentGenreWriteFailed = true
+					log.Warn(p.ctx, "Scanner: Could not write comment genres", "file", filePath, err)
+					p.state.sendWarning(fmt.Sprintf("Could not write comment genres for %s: %v", filePath, err))
+				}
+			}
 			md := metadata.New(filePath, info)
 			track := md.ToMediaFile(entry.job.lib, entry.id)
 			tracks = append(tracks, track)
