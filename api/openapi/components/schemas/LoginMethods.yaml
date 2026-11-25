@@ -1,0 +1,8 @@
+type: object
+description: |
+  Login methods this server accepts, keyed by method. A missing key means the method is not offered.
+  Keys are optional on purpose: discovery is read by clients of any version against servers of any
+  version, so new methods are added as new optional keys. Clients ignore keys they do not know.
+properties:
+  password:
+    $ref: ./PasswordLoginMethod.yaml

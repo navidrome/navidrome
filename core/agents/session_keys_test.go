@@ -1,9 +1,12 @@
 package agents
 
 import (
+	"bytes"
 	"context"
+	"os"
 
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 
@@ -54,5 +57,30 @@ var _ = Describe("SessionKeys", func() {
 	It("handles a not found value", func() {
 		_, err := sk.Get(ctx, "u-2")
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("never logs the session key, but still logs the user id and key name", func() {
+		logged := model.User{ID: "logged-user-id", UserName: "logged-user-id"}
+		Expect(ds.User().Put(ctx, &logged)).To(Succeed())
+		dbKeys := SessionKeys{DataStore: ds, KeyName: "LastFMSessionKey"}
+
+		logs := &bytes.Buffer{}
+		log.SetOutput(logs)
+		log.SetLevel(log.LevelTrace)
+		DeferCleanup(func() {
+			log.SetOutput(os.Stderr)
+			log.SetLevel(log.LevelFatal)
+		})
+
+		Expect(dbKeys.Put(ctx, logged.ID, "inserted-session-key")).To(Succeed())
+		Expect(dbKeys.Put(ctx, logged.ID, "updated-session-key")).To(Succeed())
+
+		Expect(dbKeys.Get(ctx, logged.ID)).To(Equal("updated-session-key"))
+		Expect(logs.String()).To(ContainSubstring("INSERT INTO user_props"))
+		Expect(logs.String()).To(ContainSubstring("UPDATE user_props"))
+		Expect(logs.String()).To(ContainSubstring("logged-user-id"))
+		Expect(logs.String()).To(ContainSubstring("LastFMSessionKey"))
+		Expect(logs.String()).ToNot(ContainSubstring("inserted-session-key"))
+		Expect(logs.String()).ToNot(ContainSubstring("updated-session-key"))
 	})
 })
