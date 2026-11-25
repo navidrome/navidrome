@@ -679,30 +679,24 @@ func (r *artistRepository) Search(ctx context.Context, q string, options ...mode
 	return artists, nil
 }
 
-// searchScope returns the library IDs the search must be restricted to, or nil to skip the filter
-// entirely (the fast-path: the user sees everything the search could return, so a filter would be
-// pure O(offset) overhead). It intersects the requested libraries with what the user can see.
+// searchScope returns the requested libraries (default: the user's visible ones), or nil to skip
+// the O(offset) filter when that scope already covers every library that exists.
 func (r *artistRepository) searchScope(ctx context.Context, filter Sqlizer) []int {
+	requested := r.requestedLibraryIDs(filter)
 	visible, err := r.visibleLibraryIDs(ctx)
 	if err != nil {
-		return r.requestedLibraryIDs(filter) // fail safe: narrow to the request rather than widen
+		return requested // fail safe: narrow to the request rather than widen
 	}
-	requested := r.requestedLibraryIDs(filter)
 	if requested == nil {
-		// No explicit request: scope to the visible set, unless the user sees everything.
-		if r.userSeesAllLibraries(ctx, visible) {
-			return nil
-		}
-		return visible
+		requested = visible
 	}
-	// Skip the filter only when the request covers every library that exists. Compare by membership,
-	// not length: the requested IDs may contain duplicates.
+	// Compare by membership, not length: the requested IDs may contain duplicates.
 	requestedSet := slice.ToSet(requested)
-	if slices.ContainsFunc(visible, func(id int) bool { _, ok := requestedSet[id]; return !ok }) ||
-		!r.userSeesAllLibraries(ctx, visible) {
-		return requested
+	coversVisible := !slices.ContainsFunc(visible, func(id int) bool { _, ok := requestedSet[id]; return !ok })
+	if coversVisible && r.userSeesAllLibraries(ctx, visible) {
+		return nil
 	}
-	return nil
+	return requested
 }
 
 // requestedLibraryIDs extracts the []int from an Eq{"library_id": ids} filter, or nil if filter is
