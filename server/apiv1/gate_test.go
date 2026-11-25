@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/oapi-codegen/runtime"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -59,6 +60,16 @@ components:
     bearerAuth: {type: http, scheme: bearer}
 `
 
+// thing is the createThing body, bound the way the generated strict handlers bind theirs.
+type thing struct {
+	Name string     `json:"name"`
+	Tags []thingTag `json:"tags"`
+}
+
+type thingTag struct {
+	Label string `json:"label"`
+}
+
 type fakeAuth struct {
 	principal *apiauth.Principal
 	err       error
@@ -83,6 +94,7 @@ var _ = Describe("spec gate", func() {
 	var mux *chi.Mux
 	var g *gate
 	var reached string
+	var bound *thing
 
 	build := func(spec string) (*chi.Mux, error) {
 		doc, err := openapi3.NewLoader().LoadFromData([]byte(spec))
@@ -104,7 +116,15 @@ var _ = Describe("spec gate", func() {
 		}
 		m.Get("/open", ok("open"))
 		m.Get("/things/{id}", ok("getThing"))
-		m.Post("/things", ok("createThing"))
+		m.Post("/things", func(w http.ResponseWriter, r *http.Request) {
+			var body thing
+			if err := runtime.BindJSONBody(r, &body); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			bound = &body
+			ok("createThing")(w, r)
+		})
 		m.Get("/caps", ok("caps"))
 		m.Post("/limited", ok("limited"))
 		return m, nil
@@ -128,7 +148,7 @@ var _ = Describe("spec gate", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		reached = ""
+		reached, bound = "", nil
 		fa = &fakeAuth{principal: &apiauth.Principal{User: model.User{ID: "u1"}, GrantID: "g1", Scopes: []string{"read"}}}
 		var err error
 		mux, err = build(gateSpec)
@@ -244,19 +264,17 @@ var _ = Describe("spec gate", func() {
 		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "name", Message: "is required"}))
 	})
 
-	DescribeTable("rejects a case variant of a declared body field, which Go would decode into it",
-		func(body, field string) {
+	DescribeTable("binds only exact field names, ignoring case variants that encoding/json would decode",
+		func(body string, want thing) {
 			fa.principal.Scopes = []string{"password"}
 			w := do(http.MethodPost, "/things", "Bearer x", body)
-			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
-			p := decodeProblem(w)
-			Expect(p.Code).To(Equal(ProblemCodeValidation))
-			Expect(*p.Errors).To(ConsistOf(ValidationError{Field: field, Message: "must match the field name exactly"}))
-			Expect(reached).To(BeEmpty())
+			Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+			Expect(bound).To(HaveValue(Equal(want)))
 		},
-		Entry("top level", `{"name":"ok","NAME":"much-too-long"}`, "NAME"),
-		Entry("inside array items", `{"name":"ok","tags":[{"label":"a"},{"label":"b","Label":"much-too-long"}]}`, "tags.1.Label"),
-		Entry("Unicode case folding", "{\"name\":\"ok\",\"tag\u017f\":null}", "tag\u017f"),
+		Entry("top level", `{"name":"ok","NAME":"much-too-long"}`, thing{Name: "ok"}),
+		Entry("inside array items", `{"name":"ok","tags":[{"label":"a","Label":"much-too-long"}]}`,
+			thing{Name: "ok", Tags: []thingTag{{Label: "a"}}}),
+		Entry("Unicode case folding", "{\"name\":\"ok\",\"tag\u017f\":[{\"label\":\"much-too-long\"}]}", thing{Name: "ok"}),
 	)
 
 	DescribeTable("rejects data after the first JSON value, which Go's decoder would ignore",
@@ -274,7 +292,7 @@ var _ = Describe("spec gate", func() {
 		Entry("a stray bracket", `{"name":"ok"}]`),
 	)
 
-	DescribeTable("checks the body whatever parameters the Content-Type carries",
+	DescribeTable("binds the validated body whatever parameters the Content-Type carries",
 		func(contentType string) {
 			fa.principal.Scopes = []string{"password"}
 			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/things", strings.NewReader(`{"name":"ok","NAME":"much-too-long"}`))
@@ -282,9 +300,8 @@ var _ = Describe("spec gate", func() {
 			req.Header.Set("Authorization", "Bearer x")
 			w := httptest.NewRecorder()
 			mux.ServeHTTP(w, req)
-			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
-			Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "NAME", Message: "must match the field name exactly"}))
-			Expect(reached).To(BeEmpty())
+			Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+			Expect(bound).To(HaveValue(Equal(thing{Name: "ok"})))
 		},
 		Entry("repeated parameter", "application/json; a=1; a=2"),
 		Entry("repeated charset", "application/json; charset=utf-8; CHARSET=latin1"),

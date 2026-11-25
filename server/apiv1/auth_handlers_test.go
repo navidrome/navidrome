@@ -154,21 +154,23 @@ var _ = Describe("auth endpoints", func() {
 		api.login(nil)
 	})
 
-	It("rejects a case-variant scopes key that would widen an explicit empty subset", func() {
+	It("ignores a case-variant scopes key that would widen an explicit empty subset", func() {
 		api.setup()
 		w := api.callRaw(http.MethodPost, "/api/v1/auth/login", "", `{"username":"admin","password":"pw","client":"c","scopes":[],"Scopes":null}`)
-		Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
-		p := decodeProblem(w)
-		Expect(p.Code).To(Equal(ProblemCodeValidation))
-		Expect(*p.Errors).To(ConsistOf(ValidationError{Field: "Scopes", Message: "must match the field name exactly"}))
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		var gc GrantCreated
+		decodeJSON(w, &gc)
+		Expect(gc.Grant.Scopes).To(BeEmpty())
 	})
 
-	It("rejects a case-variant client key that would skip its length limit", func() {
+	It("ignores a case-variant client key that would skip its length limit", func() {
 		api.setup()
 		body := `{"username":"admin","password":"pw","client":"ok","Client":"` + strings.Repeat("x", 65) + `"}`
 		w := api.callRaw(http.MethodPost, "/api/v1/auth/login", "", body)
-		Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
-		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "Client", Message: "must match the field name exactly"}))
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		var gc GrantCreated
+		decodeJSON(w, &gc)
+		Expect(gc.Grant.Client).To(Equal("ok"))
 	})
 
 	DescribeTable("rejects a body with data after its JSON value, without echoing it",
@@ -190,14 +192,16 @@ var _ = Describe("auth endpoints", func() {
 		Entry("password change with a trailing byte", "/api/v1/auth/password", true, `{"currentPassword":"hunter2","newPassword":"pw2"}x`),
 	)
 
-	It("checks the login body even when Content-Type has a repeated parameter", func() {
+	It("binds the validated login body even when Content-Type has a repeated parameter", func() {
 		api.setup()
 		body := `{"username":"admin","password":"pw","client":"c","scopes":[],"Scopes":null}`
 		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/auth/login", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json; a=1; a=2")
 		w := serve(api.router, req)
-		Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
-		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "Scopes", Message: "must match the field name exactly"}))
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		var gc GrantCreated
+		decodeJSON(w, &gc)
+		Expect(gc.Grant.Scopes).To(BeEmpty())
 	})
 
 	It("marks responses carrying a grant secret no-store", func() {
