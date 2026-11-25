@@ -29,11 +29,8 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 	return nil, nil
 }
 
-// fromExternalFile reads lyrics from the file sharing mf's base name and ending with suffix.
-// folderFiles lists the lyrics files in mf's folder: a file missing from it is not opened.
-// If nil, the filesystem is always probed. The list is matched ignoring case and Unicode
-// normalization, as the filesystem may do, but the file is still opened by its expected name
-// (see openSidecar).
+// fromExternalFile does not open a sidecar missing from folderFiles (nil means not scanned: always probe).
+// The list is matched loosely, as the filesystem may be, but openSidecar still decides which file opens.
 func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []string, suffix string) (model.LyricList, error) {
 	ext := path.Ext(mf.Path)
 	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix

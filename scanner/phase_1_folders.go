@@ -16,6 +16,7 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -57,7 +58,7 @@ type scanJob struct {
 	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
 	targetFolders    []string                          // Specific folders to scan (including all descendants)
 	prevAlbumPIDConf string                            // Album PID spec of the last finished scan, only when it differs from the current one
-	lyricsSuffixes   []string                          // External lyrics suffixes from LyricsPriority, like ".lrc", lowercased and sorted
+	lyricsSuffixes   []string
 	lock             sync.Mutex
 	numFolders       atomic.Int64
 }
@@ -106,7 +107,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 		lastUpdates:      lastUpdates,
 		targetFolders:    targetFolders,
 		prevAlbumPIDConf: prevAlbumPIDConf,
-		lyricsSuffixes:   model.LyricsFileSuffixes(),
+		lyricsSuffixes:   lyrics.FileSuffixes(),
 	}, nil
 }
 

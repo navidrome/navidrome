@@ -110,16 +110,14 @@ func (f *folderEntry) hash() string {
 	h := md5.New()
 	_, _ = fmt.Fprintf(
 		h,
-		"%s:%d:%d:%s",
+		"%s:%d:%s",
 		f.modTime.UTC(),
-		len(f.playlistFiles), // redundant with the loop below, but dropping it re-hashes every folder
 		f.numSubFolders,
 		f.imagesUpdatedAt.UTC(),
 	)
 
-	// Include files with their size and modtime. Playlists and lyrics are included so a
-	// content edit is detected even when the folder's mtime is preserved (rsync -a) or the
-	// file is not the newest one in the folder.
+	// Size and modtime catch a content edit even when the folder's mtime is preserved (rsync -a)
+	// or the edited file is not the newest one in the folder.
 	for _, files := range []map[string]fs.DirEntry{f.audioFiles, f.imageFiles, f.playlistFiles, f.lyricsFiles} {
 		for _, key := range slices.Sorted(maps.Keys(files)) {
 			_, _ = io.WriteString(h, key)
