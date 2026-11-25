@@ -695,10 +695,11 @@ func (r *artistRepository) searchScope(ctx context.Context, filter Sqlizer) []in
 		}
 		return visible
 	}
-	// Narrow unless the request already covers everything the user can see. Compare by membership,
+	// Skip the filter only when the request covers every library that exists. Compare by membership,
 	// not length: the requested IDs may contain duplicates.
 	requestedSet := slice.ToSet(requested)
-	if slices.ContainsFunc(visible, func(id int) bool { _, ok := requestedSet[id]; return !ok }) {
+	if slices.ContainsFunc(visible, func(id int) bool { _, ok := requestedSet[id]; return !ok }) ||
+		!r.userSeesAllLibraries(ctx, visible) {
 		return requested
 	}
 	return nil

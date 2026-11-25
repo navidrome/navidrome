@@ -220,8 +220,8 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 1, 2}})).To(Equal([]int{1, 1, 2}))
 			})
 
-			It("returns nil (fast-path) when the request covers all the user's libraries", func() {
-				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2, 3}})).To(BeNil())
+			It("still narrows when the request covers all the user's libraries but not every library", func() {
+				Expect(scope(subsetUser, squirrel.Eq{"library_id": []int{1, 2, 3}})).To(Equal([]int{1, 2, 3}))
 			})
 
 			It("scopes to the user's libraries when no library filter is given", func() {
@@ -1015,6 +1015,32 @@ var _ = Describe("ArtistRepository", func() {
 					for i := range all {
 						Expect(paged[i].ID).To(Equal(all[i].ID))
 					}
+				})
+
+				It("fills every page for a restricted user filtering by all their libraries", func() {
+					// search3 always sends the user's libraries as a filter when musicFolderId is absent.
+					lib2Artist := model.Artist{ID: "25", Name: "Restricted Lib2 Artist"}
+					Expect(repo.Put(ctx, &lib2Artist)).To(Succeed())
+					Expect(lr.AddArtist(lrCtx, lib2.ID, lib2Artist.ID)).To(Succeed())
+					DeferCleanup(func() {
+						if raw, ok := repo.(*artistRepository); ok {
+							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
+						}
+					})
+					filter := squirrel.Eq{"library_id": []int{1}}
+
+					all, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1000, Filters: filter})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(len(all)).To(BeNumerically(">", 1))
+
+					var paged model.Artists
+					for offset := range len(all) {
+						page, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1, Offset: offset, Filters: filter})
+						Expect(err).ToNot(HaveOccurred())
+						Expect(page).To(HaveLen(1), fmt.Sprintf("page at offset %d should be full", offset))
+						paged = append(paged, page...)
+					}
+					Expect(paged).To(HaveLen(len(all)))
 				})
 			})
 
