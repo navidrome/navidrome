@@ -37,6 +37,7 @@ rules:
           - radio
           - admin
           - password
+          - grants
   nd-operation-security-required:
     description: Every operation declares security explicitly (use [] for public operations).
     severity: error

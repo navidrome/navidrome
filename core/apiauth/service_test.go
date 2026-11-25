@@ -89,7 +89,7 @@ var _ = Describe("Service", func() {
 			issued, p := login(ctx, svc, u, "pw", nil)
 			Expect(p.User.ID).To(Equal(u.ID))
 			Expect(p.GrantID).To(Equal(issued.Grant.ID))
-			Expect(p.Scopes).To(Equal([]string{ScopePassword, ScopeRead}))
+			Expect(p.Scopes).To(Equal([]string{ScopeGrants, ScopePassword, ScopeRead}))
 		})
 
 		It("carries only the scopes stored on a narrow grant", func() {

@@ -88,6 +88,7 @@ var _ = Describe("GET /capabilities", func() {
 		decodeJSON(w, &caps)
 		Expect(caps.Core.Version).To(Equal(1))
 		Expect(caps.Password.Version).To(Equal(1))
+		Expect(caps.Grants.Version).To(Equal(1))
 	})
 })
 

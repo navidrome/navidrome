@@ -9,11 +9,12 @@ const (
 	ScopeAll      = "all"
 	ScopeRead     = "read"
 	ScopePassword = "password"
+	ScopeGrants   = "grants"
 	ScopeAdmin    = "admin"
 )
 
 // KnownScopes lists the scopes of modules this server implements; `all` expands to these.
-var KnownScopes = []string{ScopeRead, ScopePassword}
+var KnownScopes = []string{ScopeRead, ScopePassword, ScopeGrants}
 
 func known(s string) bool {
 	return slices.Contains(KnownScopes, s)

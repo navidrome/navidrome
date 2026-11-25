@@ -1,8 +1,8 @@
 grants:
   get:
     operationId: listGrants
-    x-module: core
-    x-scope: read
+    x-module: grants
+    x-scope: grants
     x-stability-level: alpha
     tags: [auth]
     summary: List my grants
@@ -29,8 +29,8 @@ grants:
 grant:
   delete:
     operationId: revokeGrant
-    x-module: core
-    x-scope: read
+    x-module: grants
+    x-scope: grants
     x-stability-level: alpha
     tags: [auth]
     summary: Revoke one of my grants

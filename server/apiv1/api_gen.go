@@ -67,6 +67,7 @@ func (e ProblemCode) Valid() bool {
 // Defines values for Scope.
 const (
 	ScopeAll      Scope = "all"
+	ScopeGrants   Scope = "grants"
 	ScopePassword Scope = "password"
 	ScopeRead     Scope = "read"
 )
@@ -75,6 +76,8 @@ const (
 func (e Scope) Valid() bool {
 	switch e {
 	case ScopeAll:
+		return true
+	case ScopeGrants:
 		return true
 	case ScopePassword:
 		return true
@@ -109,6 +112,9 @@ type AuthUser struct {
 type Capabilities struct {
 	// Core The mandatory core module.
 	Core *CoreCapability `json:"core,omitempty"`
+
+	// Grants The grants module (listing and revoking the user's own grants). Logout stays in core and needs no scope.
+	Grants *GrantsCapability `json:"grants,omitempty"`
 
 	// Password The password login module (login, first-admin setup, password change).
 	Password *PasswordCapability `json:"password,omitempty"`
@@ -199,6 +205,12 @@ type GrantList struct {
 
 	// Total Total number of grants.
 	Total int `json:"total"`
+}
+
+// GrantsCapability The grants module (listing and revoking the user's own grants). Logout stays in core and needs no scope.
+type GrantsCapability struct {
+	// Version Module version. Bumped only on semantic change.
+	Version int `json:"version"`
 }
 
 // LoginMethods Login methods this server accepts, keyed by method. A missing key means the method is not offered.

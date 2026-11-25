@@ -95,7 +95,7 @@ var _ = Describe("auth endpoints", func() {
 		Expect(none.Grant.Scopes).To(BeEmpty())
 		w := api.call(http.MethodGet, "/api/v1/auth/grants", none.Secret, nil)
 		Expect(w.Code).To(Equal(http.StatusForbidden))
-		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="insufficient_scope", scope="read"`))
+		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="insufficient_scope", scope="grants"`))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInsufficientScope))
 	})
 
@@ -112,10 +112,15 @@ var _ = Describe("auth endpoints", func() {
 		Expect(api.call(http.MethodGet, "/api/v1/capabilities", narrow.Secret, nil).Code).To(Equal(http.StatusUnauthorized))
 	})
 
-	It("does not let a grant without read revoke grants", func() {
+	It("needs the grants scope, not read, to list or revoke grants", func() {
 		gc := api.setup()
-		narrow := api.login([]string{"password"})
-		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/"+gc.Grant.Id, narrow.Secret, nil).Code).To(Equal(http.StatusForbidden))
+		reader := api.login([]string{"read"})
+		Expect(api.call(http.MethodGet, "/api/v1/auth/grants", reader.Secret, nil).Code).To(Equal(http.StatusForbidden))
+		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/"+gc.Grant.Id, reader.Secret, nil).Code).To(Equal(http.StatusForbidden))
+
+		manager := api.login([]string{"grants"})
+		Expect(api.call(http.MethodGet, "/api/v1/auth/grants", manager.Secret, nil).Code).To(Equal(http.StatusOK))
+		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/"+gc.Grant.Id, manager.Secret, nil).Code).To(Equal(http.StatusNoContent))
 	})
 
 	It("logs out: the secret stops working and logoutUrl is null", func() {

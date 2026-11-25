@@ -125,8 +125,8 @@
     "/auth/grants": {
       "get": {
         "operationId": "listGrants",
-        "x-module": "core",
-        "x-scope": "read",
+        "x-module": "grants",
+        "x-scope": "grants",
         "x-stability-level": "alpha",
         "tags": [
           "auth"
@@ -209,8 +209,8 @@
     "/auth/grants/{id}": {
       "delete": {
         "operationId": "revokeGrant",
-        "x-module": "core",
-        "x-scope": "read",
+        "x-module": "grants",
+        "x-scope": "grants",
         "x-stability-level": "alpha",
         "tags": [
           "auth"
@@ -599,6 +599,9 @@
           },
           "password": {
             "$ref": "#/components/schemas/PasswordCapability"
+          },
+          "grants": {
+            "$ref": "#/components/schemas/GrantsCapability"
           }
         }
       },
@@ -618,6 +621,19 @@
       "PasswordCapability": {
         "type": "object",
         "description": "The password login module (login, first-admin setup, password change).",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Module version. Bumped only on semantic change."
+          }
+        }
+      },
+      "GrantsCapability": {
+        "type": "object",
+        "description": "The grants module (listing and revoking the user's own grants). Logout stays in core and needs no scope.",
         "required": [
           "version"
         ],
@@ -852,7 +868,8 @@
         "enum": [
           "all",
           "read",
-          "password"
+          "password",
+          "grants"
         ]
       },
       "ScopeRequest": {

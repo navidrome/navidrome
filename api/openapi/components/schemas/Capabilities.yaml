@@ -8,3 +8,5 @@ properties:
     $ref: ./CoreCapability.yaml
   password:
     $ref: ./PasswordCapability.yaml
+  grants:
+    $ref: ./GrantsCapability.yaml

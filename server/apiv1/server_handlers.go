@@ -26,5 +26,6 @@ func (rt *Router) GetCapabilities(context.Context, GetCapabilitiesRequestObject)
 	return GetCapabilities200JSONResponse{
 		Core:     &CoreCapability{Version: 1},
 		Password: &PasswordCapability{Version: 1},
+		Grants:   &GrantsCapability{Version: 1},
 	}, nil
 }
