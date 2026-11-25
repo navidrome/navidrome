@@ -341,6 +341,19 @@ var _ = Describe("walk_dir_tree", func() {
 	})
 
 	Describe("helper functions", func() {
+		DescribeTable("isLyricsFile",
+			func(name string, expected bool) {
+				job := &scanJob{lyricsSuffixes: []string{".lrc", ".srt"}}
+				Expect(job.isLyricsFile(name)).To(Equal(expected))
+			},
+			Entry("matching suffix", "song.lrc", true),
+			Entry("suffix in another case", "song.SRT", true),
+			Entry("suffix that folds to a different byte length", "song.\u017frt", true),
+			Entry("non-ASCII base name", "Caf\u00e9.lrc", true),
+			Entry("other suffix", "song.txt", false),
+			Entry("name that is only the suffix", ".lrc", false),
+		)
+
 		dir, _ := os.Getwd()
 		fsys := os.DirFS(dir)
 		baseDir := filepath.Join("tests", "fixtures")
