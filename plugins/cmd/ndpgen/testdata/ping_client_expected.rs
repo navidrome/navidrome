@@ -13,9 +13,9 @@ struct PingPingResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn ping_ping(input: Json<serde_json::Value>) -> Json<PingPingResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn ping_ping(input: u64) -> u64;
 }
 
 /// Calls the ping_ping host function.
@@ -23,11 +23,9 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn ping() -> Result<(), Error> {
-    let response = unsafe {
-        ping_ping(Json(serde_json::json!({})))?
-    };
+    let response: PingPingResponse = unsafe { nd_pdk_types::hostcall::call(ping_ping, &serde_json::json!({})) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 

@@ -28,7 +28,7 @@ docker-compose.yml
 binaries
 navidrome-*
 /ndpgen
-AGENTS.md
+AGENTS.override.md
 .github/prompts
 .github/instructions
 .github/git-commit-instructions.md

@@ -3,6 +3,8 @@
 //! Navidrome shared plugin data types.
 
 use serde::{Deserialize, Serialize};
+
+pub mod hostcall;
 use std::collections::HashMap;
 
 // Helper functions for skip_serializing_if with numeric types

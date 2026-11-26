@@ -34,6 +34,7 @@ const (
 	JWTPublicSecretKey     = "JWTPublicSecret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
+	APIv1GrantIdleExpiry   = 90 * 24 * time.Hour
 	DefaultSmartRefresh    = 5 * time.Second
 	DefaultShareExpiration = 8760 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
@@ -172,6 +173,12 @@ const (
 	PurgeMissingNever  = "never"
 	PurgeMissingAlways = "always"
 	PurgeMissingFull   = "full"
+)
+
+const (
+	RecentlyAddedByScan    = "scan"
+	RecentlyAddedByBirth   = "birth"
+	RecentlyAddedByModTime = "modtime"
 )
 
 var (

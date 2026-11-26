@@ -85,6 +85,7 @@ func SchedulerScheduleOneTime(delaySeconds int32, payload string, scheduleID str
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response schedulerScheduleOneTimeResponse
@@ -130,6 +131,7 @@ func SchedulerScheduleRecurring(cronExpression string, payload string, scheduleI
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response schedulerScheduleRecurringResponse
@@ -170,6 +172,7 @@ func SchedulerCancelSchedule(scheduleID string) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {

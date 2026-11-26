@@ -505,6 +505,73 @@ var _ = Describe("Scanner", func() {
 		})
 	})
 
+	Context("Recently added timestamps", func() {
+		var fsys storagetest.FakeFS
+		oldBirth := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		newerBirth := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		modTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		withTimes := func(birth time.Time, tags _t) func(...map[string]any) *fstest.MapFile {
+			return template(tags, storagetest.BirthTime(birth.Format(time.RFC3339)), storagetest.ModTime(modTime.Format(time.RFC3339)))
+		}
+
+		BeforeEach(func() {
+			first := withTimes(newerBirth, _t{"albumartist": "Artist", "album": "First Scanned"})
+			fsys = createFS(fstest.MapFS{
+				"Artist/First Scanned/01.mp3": first(track(1, "One")),
+			})
+		})
+
+		getAlbum := func(name string) model.Album {
+			GinkgoHelper()
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).To(HaveLen(1))
+			return albums[0]
+		}
+
+		It("dates a new album by its first scan, keeping the file birth time apart", func() {
+			scanStart := time.Now()
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			album := getAlbum("First Scanned")
+			Expect(album.CreatedAt).To(BeTemporally(">=", scanStart))
+			Expect(album.BirthTime).To(BeTemporally("==", newerBirth))
+			Expect(album.UpdatedAt).To(BeTemporally("==", modTime))
+		})
+
+		It("keeps the album timestamps stable across full scans", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			before := getAlbum("First Scanned")
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+			after := getAlbum("First Scanned")
+			Expect(after.CreatedAt).To(BeTemporally("==", before.CreatedAt))
+			Expect(after.BirthTime).To(BeTemporally("==", before.BirthTime))
+
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album_id": after.ID}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after.Equals(mfs.ToAlbum())).To(BeTrue(), "phase 3 would rewrite an unchanged album on every scan")
+		})
+
+		DescribeTable("orders a later-scanned album with older files by the configured mode",
+			func(mode string, expected []string) {
+				Expect(runScanner(ctx, true)).To(Succeed())
+				older := withTimes(oldBirth, _t{"albumartist": "Artist", "album": "Old Files"})
+				// Same folder, so the fake FS needs no new directory entry; the tags make it another album
+				fsys.Add("Artist/First Scanned/old.mp3", older(track(1, "One")), time.Now().Add(time.Second))
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = mode })
+				// Repositories read the sort mode when the store is created
+				albums, err := persistence.New(db.Db()).Album().GetAll(ctx, model.QueryOptions{Sort: "recently_added", Order: "desc"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(albums, func(a model.Album) string { return a.Name })).To(Equal(expected))
+			},
+			Entry("scan", consts.RecentlyAddedByScan, []string{"Old Files", "First Scanned"}),
+			Entry("birth", consts.RecentlyAddedByBirth, []string{"First Scanned", "Old Files"}),
+		)
+	})
+
 	Describe("Library changes'", func() {
 		var help, revolver func(...map[string]any) *fstest.MapFile
 		var fsys storagetest.FakeFS
@@ -560,6 +627,78 @@ var _ = Describe("Scanner", func() {
 			Expect(ds.MediaFile().CountAll(ctx)).To(Equal(int64(4)))
 			mf, _ := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
 			Expect(mf.BitRate).To(Equal(640))
+		})
+
+		Context("lyrics files", func() {
+			lyricsOf := func(folder string) []string {
+				GinkgoHelper()
+				f, err := ds.Folder().GetByPath(ctx, lib, folder)
+				Expect(err).ToNot(HaveOccurred())
+				return f.LyricsFiles
+			}
+			lrc := func(modTime time.Time) *fstest.MapFile {
+				return &fstest.MapFile{Data: []byte("[00:01.00]Let me tell you how it will be"), ModTime: modTime}
+			}
+
+			It("records lyrics files matching LyricsPriority suffixes", func() {
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{}))
+
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lrc", lrc(time.Now()))
+				fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.TXT", lrc(time.Now()))
+				fsys.Add("The Beatles/Revolver/notes.nfo", &fstest.MapFile{Data: []byte("x")})
+
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{"01 - Taxman.lrc", "02 - Eleanor Rigby.TXT"}))
+				Expect(lyricsOf("The Beatles/Help!")).To(Equal([]string{}))
+			})
+
+			It("forgets a removed lyrics file even when the folder mtime is unchanged", func() {
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lrc", lrc(time.Now().Add(-time.Hour)))
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{"01 - Taxman.lrc"}))
+
+				fsys.Remove("The Beatles/Revolver/01 - Taxman.lrc", time.Unix(0, 0))
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{}))
+			})
+
+			It("picks up lyrics files with new suffixes when LyricsPriority changes", func() {
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lyr", lrc(time.Now().Add(-time.Hour)))
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{}))
+
+				conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lyr,embedded" })
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(lyricsOf("The Beatles/Revolver")).To(Equal([]string{"01 - Taxman.lyr"}))
+			})
+
+			It("keeps folders up to date when LyricsPriority only changes order or case", func() {
+				hashOf := func() string {
+					GinkgoHelper()
+					f, err := ds.Folder().GetByPath(ctx, lib, "The Beatles/Revolver")
+					Expect(err).ToNot(HaveOccurred())
+					return f.Hash
+				}
+				conf.Update(func(c *conf.Options) { c.LyricsPriority = ".lrc,.txt,embedded" })
+				Expect(runScanner(ctx, false)).To(Succeed())
+				before := hashOf()
+
+				conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.TXT,.lrc" })
+				Expect(runScanner(ctx, false)).To(Succeed())
+				Expect(hashOf()).To(Equal(before))
+			})
+
+			It("does not re-read tags of unchanged files", func() {
+				before, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
+				Expect(err).ToNot(HaveOccurred())
+
+				fsys.Add("The Beatles/Revolver/01 - Taxman.lrc", lrc(time.Now()))
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				after, err := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(after.UpdatedAt).To(Equal(before.UpdatedAt))
+			})
 		})
 
 		It("detects a file was removed from the library", func() {

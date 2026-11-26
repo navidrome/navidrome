@@ -101,6 +101,7 @@ func ArtworkGetArtistUrl(id string, size int32) (string, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response artworkGetArtistUrlResponse
@@ -143,6 +144,7 @@ func ArtworkGetAlbumUrl(id string, size int32) (string, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response artworkGetAlbumUrlResponse
@@ -185,6 +187,7 @@ func ArtworkGetTrackUrl(id string, size int32) (string, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response artworkGetTrackUrlResponse
@@ -227,6 +230,7 @@ func ArtworkGetPlaylistUrl(id string, size int32) (string, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response artworkGetPlaylistUrlResponse

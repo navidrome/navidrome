@@ -30,9 +30,9 @@ struct MatcherMatchSongsResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn matcher_matchsongs(input: Json<MatcherMatchSongsRequest>) -> Json<MatcherMatchSongsResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn matcher_matchsongs(input: u64) -> u64;
 }
 
 /// MatchSongs resolves each input song to its best-matching library track.
@@ -50,16 +50,14 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn match_songs(songs: Vec<nd_pdk_types::SongRef>, opts: MatchOptions) -> Result<Vec<Option<nd_pdk_types::Track>>, Error> {
-    let response = unsafe {
-        matcher_matchsongs(Json(MatcherMatchSongsRequest {
-            songs: songs,
-            opts: opts,
-        }))?
-    };
+    let response: MatcherMatchSongsResponse = unsafe { nd_pdk_types::hostcall::call(matcher_matchsongs, &MatcherMatchSongsRequest {
+        songs: songs,
+        opts: opts,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.results)
+    Ok(response.results)
 }

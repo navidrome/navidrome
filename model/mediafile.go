@@ -388,7 +388,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
-		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
+		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
+		a.BirthTime = older(a.BirthTime, m.BirthTime)
 		a.Missing = a.Missing && m.Missing
 	}
 
@@ -458,6 +459,32 @@ func mostFrequentPtr(items []*float64) *float64 {
 		return nil
 	}
 	return &best
+}
+
+// RecentlyAddedAt is the song counterpart of Album.RecentlyAddedAt.
+func (mf MediaFile) RecentlyAddedAt() time.Time {
+	return recentlyAddedAt(mf.BirthTime, mf.CreatedAt, mf.UpdatedAt, mf.BirthTime)
+}
+
+// recentlyAddedAt picks the RecentlyAddedBy timestamp, then the others in a fixed order, then fallback.
+func recentlyAddedAt(birth, created, updated, fallback time.Time) time.Time {
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
+		return firstNonZero(updated, created, fallback)
+	case consts.RecentlyAddedByBirth:
+		return firstNonZero(birth, created, updated, fallback)
+	default:
+		return firstNonZero(created, updated, fallback)
+	}
+}
+
+func firstNonZero(candidates ...time.Time) time.Time {
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 func newer(t1, t2 time.Time) time.Time {

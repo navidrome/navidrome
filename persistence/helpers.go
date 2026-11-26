@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/fatih/structs"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 )
 
@@ -91,6 +92,18 @@ func naturalSort(col string) string {
 		return col
 	}
 	return fmt.Sprintf("(%s collate %s)", col, db.NaturalCollation)
+}
+
+// recentlyAddedSort orders album and media_file rows by the RecentlyAddedBy timestamp, with id as tiebreaker.
+func recentlyAddedSort(table string) string {
+	col := "created_at"
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
+		col = "updated_at"
+	case consts.RecentlyAddedByBirth:
+		col = "birth_time"
+	}
+	return table + "." + col + ", " + table + ".id"
 }
 
 // mapSortOrder converts the order_* columns to a collated sort expression, falling back to the

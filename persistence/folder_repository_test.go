@@ -79,6 +79,31 @@ var _ = Describe("FolderRepository", func() {
 		})
 	})
 
+	Describe("LyricsFiles", func() {
+		get := func(f *model.Folder) []string {
+			GinkgoHelper()
+			Expect(repo.Put(ctx, f)).To(Succeed())
+			res, err := repo.Get(ctx, f.ID)
+			Expect(err).ToNot(HaveOccurred())
+			return res.LyricsFiles
+		}
+
+		It("persists the list of lyrics files", func() {
+			f := model.NewFolder(testLib, "TestLyrics/Album")
+			Expect(get(f)).To(BeEmpty())
+			Expect(get(f)).ToNot(BeNil())
+
+			f.LyricsFiles = []string{"01.lrc", "02.txt"}
+			Expect(get(f)).To(Equal([]string{"01.lrc", "02.txt"}))
+		})
+
+		It("keeps nil for folders not scanned for lyrics files", func() {
+			f := model.NewFolder(testLib, "TestLyrics/Legacy")
+			f.LyricsFiles = nil
+			Expect(get(f)).To(BeNil())
+		})
+	})
+
 	Describe("GetFolderUpdateInfo", func() {
 		Context("with no target paths", func() {
 			It("returns all folders in the library", func() {
