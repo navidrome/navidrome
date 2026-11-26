@@ -505,6 +505,73 @@ var _ = Describe("Scanner", func() {
 		})
 	})
 
+	Context("Recently added timestamps", func() {
+		var fsys storagetest.FakeFS
+		oldBirth := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		newerBirth := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		modTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+		withTimes := func(birth time.Time, tags _t) func(...map[string]any) *fstest.MapFile {
+			return template(tags, storagetest.BirthTime(birth.Format(time.RFC3339)), storagetest.ModTime(modTime.Format(time.RFC3339)))
+		}
+
+		BeforeEach(func() {
+			first := withTimes(newerBirth, _t{"albumartist": "Artist", "album": "First Scanned"})
+			fsys = createFS(fstest.MapFS{
+				"Artist/First Scanned/01.mp3": first(track(1, "One")),
+			})
+		})
+
+		getAlbum := func(name string) model.Album {
+			GinkgoHelper()
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).To(HaveLen(1))
+			return albums[0]
+		}
+
+		It("dates a new album by its first scan, keeping the file birth time apart", func() {
+			scanStart := time.Now()
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			album := getAlbum("First Scanned")
+			Expect(album.CreatedAt).To(BeTemporally(">=", scanStart))
+			Expect(album.BirthTime).To(BeTemporally("==", newerBirth))
+			Expect(album.UpdatedAt).To(BeTemporally("==", modTime))
+		})
+
+		It("keeps the album timestamps stable across full scans", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			before := getAlbum("First Scanned")
+
+			Expect(runScanner(ctx, true)).To(Succeed())
+			after := getAlbum("First Scanned")
+			Expect(after.CreatedAt).To(BeTemporally("==", before.CreatedAt))
+			Expect(after.BirthTime).To(BeTemporally("==", before.BirthTime))
+
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album_id": after.ID}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(after.Equals(mfs.ToAlbum())).To(BeTrue(), "phase 3 would rewrite an unchanged album on every scan")
+		})
+
+		DescribeTable("orders a later-scanned album with older files by the configured mode",
+			func(mode string, expected []string) {
+				Expect(runScanner(ctx, true)).To(Succeed())
+				older := withTimes(oldBirth, _t{"albumartist": "Artist", "album": "Old Files"})
+				// Same folder, so the fake FS needs no new directory entry; the tags make it another album
+				fsys.Add("Artist/First Scanned/old.mp3", older(track(1, "One")), time.Now().Add(time.Second))
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = mode })
+				// Repositories read the sort mode when the store is created
+				albums, err := persistence.New(db.Db()).Album().GetAll(ctx, model.QueryOptions{Sort: "recently_added", Order: "desc"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(albums, func(a model.Album) string { return a.Name })).To(Equal(expected))
+			},
+			Entry("scan", consts.RecentlyAddedByScan, []string{"Old Files", "First Scanned"}),
+			Entry("birth", consts.RecentlyAddedByBirth, []string{"First Scanned", "Old Files"}),
+		)
+	})
+
 	Describe("Library changes'", func() {
 		var help, revolver func(...map[string]any) *fstest.MapFile
 		var fsys storagetest.FakeFS

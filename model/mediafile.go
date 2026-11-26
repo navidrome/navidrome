@@ -388,7 +388,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
-		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
+		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
+		a.BirthTime = older(a.BirthTime, m.BirthTime)
 		a.Missing = a.Missing && m.Missing
 	}
 

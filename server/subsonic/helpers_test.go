@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -675,9 +676,9 @@ var _ = Describe("helpers", func() {
 		})
 
 		Describe("buildAlbumID3 Created field", func() {
-			When("RecentlyAddedByModTime is false", func() {
+			When("RecentlyAddedBy is scan", func() {
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
 				})
 
 				It("uses CreatedAt when set", func() {
@@ -708,9 +709,30 @@ var _ = Describe("helpers", func() {
 				})
 			})
 
-			When("RecentlyAddedByModTime is true", func() {
+			When("RecentlyAddedBy is birth", func() {
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
+				})
+
+				It("uses BirthTime even when CreatedAt is also set", func() {
+					birth := time.Date(2018, 1, 2, 3, 4, 5, 0, time.UTC)
+					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+					al := model.Album{ID: "a9", Name: "A", BirthTime: birth, CreatedAt: created}
+					dir := buildAlbumID3(ctx, al)
+					Expect(dir.Created).To(Equal(birth))
+				})
+
+				It("falls back to CreatedAt when BirthTime is zero", func() {
+					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+					al := model.Album{ID: "a10", Name: "A", CreatedAt: created}
+					dir := buildAlbumID3(ctx, al)
+					Expect(dir.Created).To(Equal(created))
+				})
+			})
+
+			When("RecentlyAddedBy is modtime", func() {
+				BeforeEach(func() {
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByModTime })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {
@@ -746,9 +768,9 @@ var _ = Describe("helpers", func() {
 		Describe("childFromMediaFile Created field", func() {
 			birth := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
 
-			When("RecentlyAddedByModTime is false", func() {
+			When("RecentlyAddedBy is scan", func() {
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
 				})
 
 				It("uses CreatedAt, not BirthTime", func() {
@@ -772,9 +794,19 @@ var _ = Describe("helpers", func() {
 				})
 			})
 
-			When("RecentlyAddedByModTime is true", func() {
+			When("RecentlyAddedBy is birth", func() {
+				It("uses BirthTime even when CreatedAt is also set", func() {
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
+					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+					mf := model.MediaFile{ID: "s6", BirthTime: birth, CreatedAt: created}
+					child := childFromMediaFile(ctx, mf)
+					Expect(*child.Created).To(Equal(birth))
+				})
+			})
+
+			When("RecentlyAddedBy is modtime", func() {
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByModTime })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {

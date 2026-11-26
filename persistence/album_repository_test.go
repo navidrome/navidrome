@@ -83,6 +83,8 @@ var _ = Describe("AlbumRepository", func() {
 			album, err := albumRepo.Get(ctx, id)
 			if album != nil {
 				album.ImportedAt = time.Time{}
+				album.CreatedAt = time.Time{}
+				album.BirthTime = time.Time{}
 			}
 			return album, err
 		}
@@ -95,6 +97,32 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("Put", func() {
+		BeforeEach(func() {
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": "put-new"}))
+			})
+		})
+
+		It("stamps a new album without track timestamps with its import time", func() {
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "put-new")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally("~", got.ImportedAt, time.Millisecond))
+			Expect(got.BirthTime).To(BeTemporally("~", got.ImportedAt, time.Millisecond))
+		})
+
+		It("keeps the first created_at and birth_time on later saves", func() {
+			first := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1, CreatedAt: first, BirthTime: first})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "put-new")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally("~", first, time.Second))
+			Expect(got.BirthTime).To(BeTemporally("~", first, time.Second))
+		})
+	})
+
 	Describe("CopyAttributes", func() {
 		var srcTime, dstTime time.Time
 		BeforeEach(func() {
@@ -103,6 +131,9 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-src", Name: "src", LibraryID: 1, CreatedAt: srcTime})).To(Succeed())
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-dst", Name: "dst", LibraryID: 1, CreatedAt: dstTime})).To(Succeed())
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-zero", Name: "zero", LibraryID: 1})).To(Succeed())
+			_, err := albumRepo.executeSQL(ctx, squirrel.Update("album").Where(squirrel.Eq{"id": "copy-zero"}).
+				Set("created_at", "0001-01-01 00:00:00+00:00").Set("birth_time", "0001-01-01 00:00:00+00:00"))
+			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() {
 				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"copy-src", "copy-dst", "copy-zero"}}))
 			})
@@ -113,11 +144,12 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", srcTime, time.Second))
 		})
-		It("leaves destination untouched when source created_at is zero", func() {
-			Expect(albumRepo.CopyAttributes(ctx, "copy-zero", "copy-dst", "created_at")).To(Succeed())
+		It("leaves destination untouched when source timestamps are zero", func() {
+			Expect(albumRepo.CopyAttributes(ctx, "copy-zero", "copy-dst", "created_at", "birth_time")).To(Succeed())
 			got, err := albumRepo.Get(ctx, "copy-dst")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", dstTime, time.Second))
+			Expect(got.BirthTime).To(BeTemporally("~", dstTime, time.Second))
 		})
 		It("returns not found and leaves destination untouched when source does not exist", func() {
 			err := albumRepo.CopyAttributes(ctx, "copy-missing", "copy-dst", "created_at")
@@ -240,6 +272,8 @@ var _ = Describe("AlbumRepository", func() {
 			albums, err := albumRepo.GetAll(ctx, opts...)
 			for i := range albums {
 				albums[i].ImportedAt = time.Time{}
+				albums[i].CreatedAt = time.Time{}
+				albums[i].BirthTime = time.Time{}
 			}
 			return albums, err
 		}

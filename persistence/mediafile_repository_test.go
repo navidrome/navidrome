@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -569,6 +570,7 @@ var _ = Describe("MediaRepository", func() {
 					map[string]any{
 						"created_at": oldTime,
 						"updated_at": newTime,
+						"birth_time": middleTime,
 					},
 					dbx.HashExp{"id": testMediaFiles[0].ID}).Execute()
 				Expect(err).ToNot(HaveOccurred())
@@ -578,6 +580,7 @@ var _ = Describe("MediaRepository", func() {
 					map[string]any{
 						"created_at": middleTime,
 						"updated_at": middleTime,
+						"birth_time": newTime,
 					},
 					dbx.HashExp{"id": testMediaFiles[1].ID}).Execute()
 				Expect(err).ToNot(HaveOccurred())
@@ -587,6 +590,7 @@ var _ = Describe("MediaRepository", func() {
 					map[string]any{
 						"created_at": newTime,
 						"updated_at": oldTime,
+						"birth_time": oldTime,
 					},
 					dbx.HashExp{"id": testMediaFiles[2].ID}).Execute()
 				Expect(err).ToNot(HaveOccurred())
@@ -599,11 +603,11 @@ var _ = Describe("MediaRepository", func() {
 				}
 			})
 
-			When("RecentlyAddedByModTime is false", func() {
+			When("RecentlyAddedBy is scan", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -641,11 +645,11 @@ var _ = Describe("MediaRepository", func() {
 				})
 			})
 
-			When("RecentlyAddedByModTime is true", func() {
+			When("RecentlyAddedBy is modtime", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByModTime })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -667,8 +671,25 @@ var _ = Describe("MediaRepository", func() {
 				})
 			})
 
+			When("RecentlyAddedBy is birth", func() {
+				It("sorts by birth_time", func() {
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
+					results, err := NewMediaFileRepository(GetDBXBuilder()).GetAll(ctx, model.QueryOptions{
+						Sort:    "recently_added",
+						Order:   "desc",
+						Filters: squirrel.Eq{"media_file.id": []string{testMediaFiles[0].ID, testMediaFiles[1].ID, testMediaFiles[2].ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(3))
+
+					Expect(results[0].Title).To(Equal("Middle Song")) // born 2022
+					Expect(results[1].Title).To(Equal("Old Song"))    // born 2021
+					Expect(results[2].Title).To(Equal("New Song"))    // born 2020
+				})
+			})
+
 			It("breaks ties deterministically when files share the same created_at", func() {
-				conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
 				ctx := log.NewContext(GinkgoT().Context())
 				ctx = request.WithUser(ctx, model.User{ID: "userid"})
 				repo := NewMediaFileRepository(GetDBXBuilder())

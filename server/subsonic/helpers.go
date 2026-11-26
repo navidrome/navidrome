@@ -339,30 +339,37 @@ func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
 }
 
-// albumCreatedAt mirrors the column used by recentlyAddedSort so clients can
-// reproduce the "recently added" order locally: UpdatedAt when
-// RecentlyAddedByModTime is set, CreatedAt otherwise. The other timestamps are
-// fallbacks for legacy rows; returns zero only when all three are unset.
+// albumCreatedAt mirrors recentlyAddedSort, so clients can reproduce the "recently added" order
+// locally. The other timestamps are fallbacks for legacy rows.
 func albumCreatedAt(al model.Album) time.Time {
-	candidates := []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
-	if conf.Server().RecentlyAddedByModTime {
+	var candidates []time.Time
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
 		candidates = []time.Time{al.UpdatedAt, al.CreatedAt, al.ImportedAt}
+	case consts.RecentlyAddedByBirth:
+		candidates = []time.Time{al.BirthTime, al.CreatedAt, al.UpdatedAt, al.ImportedAt}
+	default:
+		candidates = []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
 	}
-	for _, t := range candidates {
-		if !t.IsZero() {
-			return t
-		}
-	}
-	return time.Time{}
+	return firstNonZero(candidates)
 }
 
 // mediaFileCreatedAt is the song counterpart of albumCreatedAt, tracking
-// mediaFileRecentlyAddedSort; BirthTime is the legacy fallback.
+// mediaFileRecentlyAddedSort.
 func mediaFileCreatedAt(mf model.MediaFile) time.Time {
-	candidates := []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
-	if conf.Server().RecentlyAddedByModTime {
+	var candidates []time.Time
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
 		candidates = []time.Time{mf.UpdatedAt, mf.CreatedAt, mf.BirthTime}
+	case consts.RecentlyAddedByBirth:
+		candidates = []time.Time{mf.BirthTime, mf.CreatedAt, mf.UpdatedAt}
+	default:
+		candidates = []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
 	}
+	return firstNonZero(candidates)
+}
+
+func firstNonZero(candidates []time.Time) time.Time {
 	for _, t := range candidates {
 		if !t.IsZero() {
 			return t

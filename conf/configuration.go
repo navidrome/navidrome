@@ -71,7 +71,7 @@ type Options struct {
 	DefaultDownsamplingFormat       string
 	Search                          searchOptions  `json:",omitzero"`
 	Matcher                         matcherOptions `json:",omitzero"`
-	RecentlyAddedByModTime          bool
+	RecentlyAddedBy                 string
 	PreferSortTags                  bool
 	EnableNaturalSorting            bool
 	IgnoredArticles                 string
@@ -357,6 +357,7 @@ func Load(noConfigDump bool) {
 			mapDeprecatedOption(o.name, o.replacement)
 		}
 	}
+	mapRecentlyAddedByModTime()
 
 	s := clone(current.Load())
 	err := viper.Unmarshal(s, viper.DecodeHook(
@@ -443,6 +444,7 @@ func Load(noConfigDump bool) {
 		s.validateBackupSchedule,
 		s.validatePlaylistsPath,
 		s.validatePurgeMissingOption,
+		s.validateRecentlyAddedBy,
 		validateByteSize("MaxImageUploadSize", s.MaxImageUploadSize),
 		validateByteSize("MaxImageSize", s.MaxImageSize),
 		validateURL("ExtAuth.LogoutURL", s.ExtAuth.LogoutURL),
@@ -538,6 +540,7 @@ var deprecatedOptions = []struct{ name, replacement string }{
 	{"CoverJpegQuality", "CoverArtQuality"},
 	{"SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold"},
 	{"EnableTranscodingCancellation", "Transcoding.EnableCancellation"},
+	{"RecentlyAddedByModTime", "RecentlyAddedBy"},
 }
 
 var removedOptions = []string{"Spotify.ID", "Spotify.Secret"}
@@ -615,6 +618,18 @@ func mapDeprecatedOption(legacyName, newName string) {
 	// viper.Set outranks the config file, so an explicit replacement must win over the legacy value
 	if viper.IsSet(legacyName) && !explicitlySet(newName) {
 		viper.Set(newName, viper.Get(legacyName))
+	}
+}
+
+// mapRecentlyAddedByModTime overrides the generic mapping, which would copy the legacy boolean as-is.
+func mapRecentlyAddedByModTime() {
+	if !viper.IsSet("RecentlyAddedByModTime") || explicitlySet("RecentlyAddedBy") {
+		return
+	}
+	if viper.GetBool("RecentlyAddedByModTime") {
+		viper.Set("RecentlyAddedBy", consts.RecentlyAddedByModTime)
+	} else {
+		viper.Set("RecentlyAddedBy", consts.RecentlyAddedByScan)
 	}
 }
 
@@ -833,6 +848,16 @@ func parseLanguages(lang string) []string {
 	return languages
 }
 
+func (s *Options) validateRecentlyAddedBy() error {
+	allowedValues := []string{consts.RecentlyAddedByScan, consts.RecentlyAddedByBirth, consts.RecentlyAddedByModTime}
+	if !slices.Contains(allowedValues, s.RecentlyAddedBy) {
+		err := fmt.Errorf("invalid RecentlyAddedBy value: '%s'. Must be one of: %v", s.RecentlyAddedBy, allowedValues)
+		s.RecentlyAddedBy = consts.RecentlyAddedByScan
+		return err
+	}
+	return nil
+}
+
 func (s *Options) validatePurgeMissingOption() error {
 	allowedValues := []string{consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull}
 	valid := slices.Contains(allowedValues, s.Scanner.PurgeMissing)
@@ -998,7 +1023,7 @@ func setViperDefaults() {
 	viper.SetDefault("search.backend", "fts")
 	viper.SetDefault("matcher.preferstarred", true)
 	viper.SetDefault("matcher.fuzzythreshold", 85)
-	viper.SetDefault("recentlyaddedbymodtime", false)
+	viper.SetDefault("recentlyaddedby", consts.RecentlyAddedByScan)
 	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("enablenaturalsorting", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")

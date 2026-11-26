@@ -15,6 +15,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -155,10 +156,14 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 })
 
 func recentlyAddedSort() string {
-	if conf.Server().RecentlyAddedByModTime {
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
 		return "album.updated_at, album.id"
+	case consts.RecentlyAddedByBirth:
+		return "album.birth_time, album.id"
+	default:
+		return "album.created_at, album.id"
 	}
-	return "album.created_at, album.id"
 }
 
 func recentlyPlayedFilter(string, any) Sqlizer {
@@ -212,6 +217,13 @@ func (r *albumRepository) Exists(ctx context.Context, id string) (bool, error) {
 
 func (r *albumRepository) Put(ctx context.Context, al *model.Album) error {
 	al.ImportedAt = time.Now()
+	// The scanner saves a new album before its tracks, so there is no track created_at to aggregate yet.
+	if al.CreatedAt.IsZero() {
+		al.CreatedAt = al.ImportedAt
+	}
+	if al.BirthTime.IsZero() {
+		al.BirthTime = al.CreatedAt
+	}
 	id, err := r.put(ctx, al.ID, &dbAlbum{Album: al})
 	if err != nil {
 		return err
@@ -346,10 +358,8 @@ func (r *albumRepository) CopyAttributes(ctx context.Context, fromID, toID strin
 	to := make(map[string]any)
 	for _, col := range columns {
 		v := from[col]
-		// created_at is aggregated from song birth_times and must never be
-		// overwritten with a zero/poisoned value, or it propagates forward on
-		// every metadata-driven album ID change.
-		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+		// A zero recently-added timestamp would propagate forward on every metadata-driven album ID change.
+		if (col == "created_at" || col == "birth_time") && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
 			continue
 		}
 		to[col] = v
