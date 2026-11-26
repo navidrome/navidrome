@@ -133,8 +133,10 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 }
 
 // normalizedAlbumPlayCount is the same normalization withAnnotation applies to the album's own
-// play_count, so a filter or sort sees the number the album list reports.
-const normalizedAlbumPlayCount = "round(coalesce(round(cast(album_annotation.play_count as float) / coalesce(album.song_count, 1), 1), 0))"
+// play_count, so a filter or sort sees the number the album list reports. The CAST gives the
+// expression INTEGER affinity, which the bare column had: a quoted numeric threshold in a rule
+// ("gt": {"albumPlayCount": "0"}) still compares as a number instead of as TEXT.
+const normalizedAlbumPlayCount = "cast(round(coalesce(round(cast(album_annotation.play_count as float) / coalesce(album.song_count, 1), 1), 0)) as integer)"
 
 // smartPlaylistFieldFor resolves the fields whose SQL value depends on server configuration.
 func smartPlaylistFieldFor(name string) (smartPlaylistField, bool) {

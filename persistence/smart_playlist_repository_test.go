@@ -611,6 +611,23 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Expect(trackIDsOf(rules)).To(ConsistOf(songIDs))
 		})
 
+		It("compares a quoted numeric threshold as a number in normalized mode", func() {
+			conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized })
+
+			// Rules loaded from JSON keep numbers that were quoted as strings.
+			range0 := &criteria.Criteria{Expression: criteria.All{
+				criteria.Is{"album": "Normalized Album"},
+				criteria.Gt{"albumPlayCount": "0"},
+			}}
+			Expect(trackIDsOf(range0)).To(ConsistOf(songIDs))
+
+			equals1 := &criteria.Criteria{Expression: criteria.All{
+				criteria.Is{"album": "Normalized Album"},
+				criteria.Is{"albumPlayCount": "1"},
+			}}
+			Expect(trackIDsOf(equals1)).To(ConsistOf(songIDs))
+		})
+
 		It("matches the stored album play count when AlbumPlayCountMode is absolute", func() {
 			conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute })
 
