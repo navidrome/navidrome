@@ -50,6 +50,7 @@ func (m *dbMediaFile) PostScan() error {
 	m.RGTrackPeak = m.RgTrackPeak
 	m.RGAlbumGain = m.RgAlbumGain
 	m.RGAlbumPeak = m.RgAlbumPeak
+	m.AddedAt = m.RecentlyAddedAt()
 	var err error
 	m.MediaFile.Participants, err = unmarshalParticipants(m.Participants)
 	if err != nil {
