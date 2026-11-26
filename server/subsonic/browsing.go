@@ -326,7 +326,7 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 		if s.ID == "" {
 			similar.Id = "-1"
 			if conf.Server.EnableSimilarArtistImages {
-				if url := api.provider.GetSimilarArtistImageURL(r.Context(), s.Name, s.MbzArtistID); url != "" {
+				if url := s.ArtistImageUrl(); url != "" {
 					similar.ArtistImageUrl = url
 				}
 			}
@@ -351,7 +351,7 @@ func (api *Router) GetArtistInfo2(r *http.Request) (*responses.Subsonic, error) 
 		if s.ID == "" {
 			similar.Id = "-1"
 			if conf.Server.EnableSimilarArtistImages {
-				if url := api.provider.GetSimilarArtistImageURL(r.Context(), s.Name, s.MbzArtistID); url != "" {
+				if url := s.ArtistImageUrl(); url != "" {
 					similar.ArtistImageUrl = url
 				}
 			}

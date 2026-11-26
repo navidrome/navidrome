@@ -361,10 +361,6 @@ func (n noopProvider) RefreshInfo(context.Context, model.Kind, string) error {
 	return nil
 }
 
-func (n noopProvider) GetSimilarArtistImageURL(context.Context, string, string) string {
-	return ""
-}
-
 // Compile-time interface checks
 var (
 	_ artwork.Artwork   = noopArtwork{}

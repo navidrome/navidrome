@@ -7,7 +7,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -18,7 +18,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
@@ -26,15 +25,15 @@ import (
 )
 
 const (
-	maxSimilarArtists           = 100
-	refreshDelay                = 5 * time.Second
-	refreshTimeout              = 15 * time.Second
-	refreshQueueLength          = 2000
-	similarArtistImageCacheSize = 2000
-	similarArtistImageCacheTTL  = 24 * time.Hour
-	// similarArtistImageErrorTTL is how long a transient lookup failure (agents throttling,
-	// timeouts) is remembered, so a recovered agent is retried soon instead of after a day.
-	similarArtistImageErrorTTL = 5 * time.Minute
+	maxSimilarArtists  = 100
+	refreshDelay       = 5 * time.Second
+	refreshTimeout     = 15 * time.Second
+	refreshQueueLength = 2000
+	// maxSimilarArtistImages caps how many not-in-library similar artists get an image lookup per
+	// refresh, and similarArtistImageConcurrency how many of those lookups run at once.
+	maxSimilarArtistImages        = 20
+	similarArtistImageConcurrency = 4
+	similarArtistImageTimeout     = 10 * time.Second
 )
 
 type Provider interface {
@@ -43,31 +42,15 @@ type Provider interface {
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
 	RefreshInfo(ctx context.Context, kind model.Kind, id string) error
-	// GetSimilarArtistImageURL returns a best-effort external image URL for an artist that is not
-	// present in the library (e.g. a similar-artist recommendation), or "" if none was found or the
-	// feature is disabled. Results (including misses) are cached; see EnableSimilarArtistImages.
-	GetSimilarArtistImageURL(ctx context.Context, name, mbid string) string
 }
 
 type provider struct {
-	ds                        model.DataStore
-	ag                        Agents
-	matcher                   *matcher.Matcher
-	broker                    events.Broker
-	similarArtistImageCache   cache.SimpleCache[string, string]
-	similarArtistImageQueue   refreshQueue[similarArtistImageJob]
-	similarArtistImagePending sync.Map // key -> struct{}, jobs currently queued/in flight
-	artistQueue               refreshQueue[auxArtist]
-	albumQueue                refreshQueue[auxAlbum]
-}
-
-// similarArtistImageJob is a background request to resolve one not-in-library similar artist's
-// image. Resolution never happens on the request path: a miss enqueues a job and returns
-// immediately, so a slow/unresponsive agent can never add latency to a getArtistInfo call.
-type similarArtistImageJob struct {
-	Key  string // cache key: Name + "\x00" + MBID
-	Name string
-	MBID string
+	ds          model.DataStore
+	ag          Agents
+	matcher     *matcher.Matcher
+	broker      events.Broker
+	artistQueue refreshQueue[auxArtist]
+	albumQueue  refreshQueue[auxAlbum]
 }
 
 type auxAlbum struct {
@@ -114,63 +97,7 @@ func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker e
 	e := &provider{ds: ds, ag: agents, matcher: m, broker: broker}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
-	e.similarArtistImageCache = cache.NewSimpleCache[string, string](cache.Options{
-		SizeLimit:  similarArtistImageCacheSize,
-		DefaultTTL: similarArtistImageCacheTTL,
-	})
-	e.similarArtistImageQueue = newRefreshQueue(context.TODO(), e.fetchSimilarArtistImage)
 	return e
-}
-
-// GetSimilarArtistImageURL is documented on the Provider interface.
-//
-// This never makes a network call itself. A cache hit (positive or negative) returns
-// immediately; a miss enqueues a background job (at most one in flight per artist) and
-// returns "" for this call - the image, if any, will be available on a later call once the
-// background job completes.
-func (e *provider) GetSimilarArtistImageURL(ctx context.Context, name, mbid string) string {
-	if !conf.Server.EnableSimilarArtistImages || name == "" {
-		return ""
-	}
-	key := name + "\x00" + mbid
-	if url, err := e.similarArtistImageCache.Get(key); err == nil {
-		return url
-	}
-	if _, pending := e.similarArtistImagePending.LoadOrStore(key, struct{}{}); !pending {
-		if !e.similarArtistImageQueue.enqueue(&similarArtistImageJob{Key: key, Name: name, MBID: mbid}) {
-			// The queue is full and dropped the job: clear the marker so a later request can retry
-			e.similarArtistImagePending.Delete(key)
-		}
-	}
-	return ""
-}
-
-// fetchSimilarArtistImage is the similarArtistImageQueue's background worker. Successful results
-// and definitive misses (cached as "") are remembered for the full TTL, so a consistently-unmatched
-// artist is not re-queried on every page view. Transient failures (agents throttling, timeouts)
-// are only remembered briefly. The pending marker is always cleared, so a later cache expiry can
-// re-trigger a fetch.
-func (e *provider) fetchSimilarArtistImage(ctx context.Context, job similarArtistImageJob) (similarArtistImageJob, error) {
-	defer e.similarArtistImagePending.Delete(job.Key)
-
-	searchName := job.Name
-	if !conf.Server.DevPreserveUnicodeInExternalCalls {
-		searchName = str.Clear(job.Name)
-	}
-	imgs, err := e.ag.GetArtistImages(ctx, "", searchName, job.MBID)
-	var url string
-	ttl := similarArtistImageCacheTTL
-	switch {
-	case err == nil && len(imgs) > 0:
-		sort.Slice(imgs, func(i, j int) bool { return imgs[i].Size > imgs[j].Size })
-		url = imgs[0].URL
-	case err != nil && !errors.Is(err, agents.ErrNotFound):
-		ttl = similarArtistImageErrorTTL
-	}
-	if cacheErr := e.similarArtistImageCache.AddWithTTL(job.Key, url, ttl); cacheErr != nil {
-		log.Debug(ctx, "Error caching similar-artist image result", "name", job.Name, "mbid", job.MBID, cacheErr)
-	}
-	return job, nil
 }
 
 func (e *provider) broadcastRefresh(ctx context.Context, resource, id string) {
@@ -342,6 +269,8 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 		}
 	}
 
+	previousSimilar := artist.SimilarArtists
+
 	// Call all registered agents and collect information. The group carries no context, so a
 	// returned error does not cancel the siblings; only throttling is reported back.
 	g := errgroup.Group{}
@@ -353,6 +282,10 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 		return retryLaterOnly(e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true))
 	})
 	throttled := errors.Is(g.Wait(), agents.ErrRetryLater) || errors.Is(mbidErr, agents.ErrRetryLater)
+	if conf.Server.EnableSimilarArtistImages && !utils.IsCtxDone(ctx) {
+		// An incomplete round keeps the previous timestamp too, so the missing images are retried
+		throttled = e.fillSimilarArtistImages(ctx, &artist, previousSimilar) || throttled
+	}
 
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistInfo update canceled", "id", artist.ID, "name", artistName, "elapsed", time.Since(start), ctx.Err())
@@ -526,6 +459,58 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 		artist.SmallImageUrl = images[2].URL
 	}
 	return nil
+}
+
+// fillSimilarArtistImages looks up an image for the not-in-library similar artists (the ones
+// without an ID) and stores the URL in the artist's persisted similar-artists list, so
+// getArtistInfo can return it right away. Images found in a previous round are reused instead of
+// being looked up again. It returns true if some lookups failed transiently (throttling, timeout)
+// and are worth retrying soon.
+func (e *provider) fillSimilarArtistImages(ctx context.Context, artist *auxArtist, previous model.Artists) bool {
+	known := make(map[string]string, len(previous))
+	for _, p := range previous {
+		if p.ID == "" && p.ArtistImageUrl() != "" {
+			known[p.Name] = p.ArtistImageUrl()
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, similarArtistImageTimeout)
+	defer cancel()
+	var retry atomic.Bool
+	g := errgroup.Group{}
+	g.SetLimit(similarArtistImageConcurrency)
+	lookups := 0
+	for i := range artist.SimilarArtists {
+		sa := &artist.SimilarArtists[i]
+		if sa.ID != "" || sa.Name == "" {
+			continue
+		}
+		if url, ok := known[sa.Name]; ok {
+			sa.LargeImageUrl = url
+			continue
+		}
+		if lookups >= maxSimilarArtistImages {
+			continue
+		}
+		lookups++
+		g.Go(func() error {
+			searchName := sa.Name
+			if !conf.Server.DevPreserveUnicodeInExternalCalls {
+				searchName = str.Clear(sa.Name)
+			}
+			imgs, err := e.ag.GetArtistImages(ctx, "", searchName, sa.MbzArtistID)
+			switch {
+			case err != nil && !errors.Is(err, agents.ErrNotFound):
+				retry.Store(true)
+			case len(imgs) > 0:
+				sort.Slice(imgs, func(i, j int) bool { return imgs[i].Size > imgs[j].Size })
+				sa.LargeImageUrl = imgs[0].URL
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
+	return retry.Load()
 }
 
 func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
@@ -802,13 +787,9 @@ func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context,
 	return queue
 }
 
-// enqueue adds the item to the queue and reports whether it was accepted. It never blocks: when
-// the queue is full the item is dropped (it is ok to miss a refresh request) and false is returned.
-func (q *refreshQueue[T]) enqueue(item *T) bool {
+func (q *refreshQueue[T]) enqueue(item *T) {
 	select {
 	case *q <- item:
-		return true
-	default:
-		return false
+	default: // It is ok to miss a refresh request
 	}
 }

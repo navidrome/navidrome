@@ -247,6 +247,56 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		Expect(updatedArtist.SimilarArtists[2].Name).To(Equal("Similar Absent Lookup"))
 	})
 
+	Describe("similar artist images", func() {
+		var absent = []agents.Artist{{Name: "Absent One", MBID: "mbid-absent-1"}}
+
+		BeforeEach(func() {
+			mockArtistRepo.SetData(model.Artists{{ID: "ar-img", Name: "Img Artist"}})
+			ag.On("GetArtistMBID", mock.Anything, "ar-img", "Img Artist").Return("", nil).Maybe()
+			ag.On("GetArtistImages", mock.Anything, "ar-img", "Img Artist", mock.Anything).Return(nil, nil).Maybe()
+			ag.On("GetArtistBiography", mock.Anything, "ar-img", "Img Artist", mock.Anything).Return("", nil).Maybe()
+			ag.On("GetArtistURL", mock.Anything, "ar-img", "Img Artist", mock.Anything).Return("", nil).Maybe()
+			ag.On("GetSimilarArtists", mock.Anything, "ar-img", "Img Artist", mock.Anything, 100).Return(absent, nil).Maybe()
+		})
+
+		It("stores the largest image URL for similar artists that are not in the library", func() {
+			conf.Server.EnableSimilarArtistImages = true
+			ag.On("GetArtistImages", mock.Anything, "", "Absent One", "mbid-absent-1").Return([]agents.ExternalImage{
+				{URL: "http://example.com/small.jpg", Size: 100},
+				{URL: "http://example.com/big.jpg", Size: 600},
+			}, nil).Once()
+
+			artist, err := p.UpdateArtistInfo(ctx, "ar-img", 5, true)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.SimilarArtists).To(HaveLen(1))
+			Expect(artist.SimilarArtists[0].ID).To(BeEmpty())
+			Expect(artist.SimilarArtists[0].MbzArtistID).To(Equal("mbid-absent-1"))
+			Expect(artist.SimilarArtists[0].ArtistImageUrl()).To(Equal("http://example.com/big.jpg"))
+		})
+
+		It("does not look up images when the feature is disabled", func() {
+			conf.Server.EnableSimilarArtistImages = false
+
+			artist, err := p.UpdateArtistInfo(ctx, "ar-img", 5, true)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.SimilarArtists).To(HaveLen(1))
+			Expect(artist.SimilarArtists[0].ArtistImageUrl()).To(BeEmpty())
+			ag.AssertNotCalled(GinkgoT(), "GetArtistImages", mock.Anything, "", "Absent One", mock.Anything)
+		})
+
+		It("retries soon (keeps no update timestamp) when an image lookup fails transiently", func() {
+			conf.Server.EnableSimilarArtistImages = true
+			ag.On("GetArtistImages", mock.Anything, "", "Absent One", "mbid-absent-1").Return(nil, agents.ErrRetryLater)
+
+			artist, err := p.UpdateArtistInfo(ctx, "ar-img", 5, true)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.ExternalInfoUpdatedAt).To(BeNil())
+		})
+	})
+
 	It("updates ArtistInfo even if an optional agent call fails", func() {
 		originalArtist := &model.Artist{
 			ID:   "ar-agent-fail",
