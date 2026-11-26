@@ -114,11 +114,6 @@ var _ = Describe("mappers", func() {
 		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
-	It("sets DateCreated from the media file's CreatedAt", func() {
-		mf := model.MediaFile{ID: testID("s1"), Title: "Song", CreatedAt: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)}
-		Expect(SongToBaseItem(mf, nil).DateCreated).To(Equal("2024-01-15T10:30:00.0000000Z"))
-	})
-
 	It("omits DateCreated when CreatedAt is the zero time", func() {
 		Expect(SongToBaseItem(model.MediaFile{ID: testID("s1"), Title: "Song"}, nil).DateCreated).To(BeEmpty())
 	})

@@ -463,13 +463,18 @@ func mostFrequentPtr(items []*float64) *float64 {
 
 // RecentlyAddedAt is the song counterpart of Album.RecentlyAddedAt.
 func (mf MediaFile) RecentlyAddedAt() time.Time {
+	return recentlyAddedAt(mf.BirthTime, mf.CreatedAt, mf.UpdatedAt, mf.BirthTime)
+}
+
+// recentlyAddedAt picks the RecentlyAddedBy timestamp, then the others in a fixed order, then fallback.
+func recentlyAddedAt(birth, created, updated, fallback time.Time) time.Time {
 	switch conf.Server().RecentlyAddedBy {
 	case consts.RecentlyAddedByModTime:
-		return firstNonZero(mf.UpdatedAt, mf.CreatedAt, mf.BirthTime)
+		return firstNonZero(updated, created, fallback)
 	case consts.RecentlyAddedByBirth:
-		return firstNonZero(mf.BirthTime, mf.CreatedAt, mf.UpdatedAt)
+		return firstNonZero(birth, created, updated, fallback)
 	default:
-		return firstNonZero(mf.CreatedAt, mf.UpdatedAt, mf.BirthTime)
+		return firstNonZero(created, updated, fallback)
 	}
 }
 
