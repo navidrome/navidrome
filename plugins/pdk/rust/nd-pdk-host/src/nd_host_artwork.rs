@@ -70,12 +70,12 @@ struct ArtworkGetPlaylistUrlResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn artwork_getartisturl(input: Json<ArtworkGetArtistUrlRequest>) -> Json<ArtworkGetArtistUrlResponse>;
-    fn artwork_getalbumurl(input: Json<ArtworkGetAlbumUrlRequest>) -> Json<ArtworkGetAlbumUrlResponse>;
-    fn artwork_gettrackurl(input: Json<ArtworkGetTrackUrlRequest>) -> Json<ArtworkGetTrackUrlResponse>;
-    fn artwork_getplaylisturl(input: Json<ArtworkGetPlaylistUrlRequest>) -> Json<ArtworkGetPlaylistUrlResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn artwork_getartisturl(input: u64) -> u64;
+    fn artwork_getalbumurl(input: u64) -> u64;
+    fn artwork_gettrackurl(input: u64) -> u64;
+    fn artwork_getplaylisturl(input: u64) -> u64;
 }
 
 /// GetArtistUrl generates a public URL for an artist's artwork.
@@ -96,18 +96,16 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_artist_url(id: &str, size: i32) -> Result<String, Error> {
-    let response = unsafe {
-        artwork_getartisturl(Json(ArtworkGetArtistUrlRequest {
-            id: id.to_owned(),
-            size: size,
-        }))?
-    };
+    let response: ArtworkGetArtistUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_getartisturl, &ArtworkGetArtistUrlRequest {
+        id: id.to_owned(),
+        size: size,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.url)
+    Ok(response.url)
 }
 
 /// GetAlbumUrl generates a public URL for an album's artwork.
@@ -128,18 +126,16 @@ pub fn get_artist_url(id: &str, size: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_album_url(id: &str, size: i32) -> Result<String, Error> {
-    let response = unsafe {
-        artwork_getalbumurl(Json(ArtworkGetAlbumUrlRequest {
-            id: id.to_owned(),
-            size: size,
-        }))?
-    };
+    let response: ArtworkGetAlbumUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_getalbumurl, &ArtworkGetAlbumUrlRequest {
+        id: id.to_owned(),
+        size: size,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.url)
+    Ok(response.url)
 }
 
 /// GetTrackUrl generates a public URL for a track's artwork.
@@ -160,18 +156,16 @@ pub fn get_album_url(id: &str, size: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_track_url(id: &str, size: i32) -> Result<String, Error> {
-    let response = unsafe {
-        artwork_gettrackurl(Json(ArtworkGetTrackUrlRequest {
-            id: id.to_owned(),
-            size: size,
-        }))?
-    };
+    let response: ArtworkGetTrackUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_gettrackurl, &ArtworkGetTrackUrlRequest {
+        id: id.to_owned(),
+        size: size,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.url)
+    Ok(response.url)
 }
 
 /// GetPlaylistUrl generates a public URL for a playlist's artwork.
@@ -192,16 +186,14 @@ pub fn get_track_url(id: &str, size: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_playlist_url(id: &str, size: i32) -> Result<String, Error> {
-    let response = unsafe {
-        artwork_getplaylisturl(Json(ArtworkGetPlaylistUrlRequest {
-            id: id.to_owned(),
-            size: size,
-        }))?
-    };
+    let response: ArtworkGetPlaylistUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_getplaylisturl, &ArtworkGetPlaylistUrlRequest {
+        id: id.to_owned(),
+        size: size,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.url)
+    Ok(response.url)
 }

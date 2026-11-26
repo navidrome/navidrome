@@ -34,10 +34,10 @@ struct MetaSetResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn meta_get(input: Json<MetaGetRequest>) -> Json<MetaGetResponse>;
-    fn meta_set(input: Json<MetaSetRequest>) -> Json<MetaSetResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn meta_get(input: u64) -> u64;
+    fn meta_set(input: u64) -> u64;
 }
 
 /// Calls the meta_get host function.
@@ -51,17 +51,15 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(key: &str) -> Result<serde_json::Value, Error> {
-    let response = unsafe {
-        meta_get(Json(MetaGetRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: MetaGetResponse = unsafe { nd_pdk_types::hostcall::call(meta_get, &MetaGetRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.value)
+    Ok(response.value)
 }
 
 /// Calls the meta_set host function.
@@ -72,13 +70,11 @@ pub fn get(key: &str) -> Result<serde_json::Value, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set(data: std::collections::HashMap<String, serde_json::Value>) -> Result<(), Error> {
-    let response = unsafe {
-        meta_set(Json(MetaSetRequest {
-            data: data,
-        }))?
-    };
+    let response: MetaSetResponse = unsafe { nd_pdk_types::hostcall::call(meta_set, &MetaSetRequest {
+        data: data,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 

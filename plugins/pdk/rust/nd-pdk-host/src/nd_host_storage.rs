@@ -13,9 +13,9 @@ struct StorageGetStoragePathResponse {
     result: String,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn storage_getstoragepath(input: Json<serde_json::Value>) -> Json<StorageGetStoragePathResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn storage_getstoragepath(input: u64) -> u64;
 }
 
 /// GetStoragePath retrieves the persistent storage path, if allowed
@@ -26,9 +26,7 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_storage_path() -> Result<String, Error> {
-    let response = unsafe {
-        storage_getstoragepath(Json(serde_json::json!({})))?
-    };
+    let response: StorageGetStoragePathResponse = unsafe { nd_pdk_types::hostcall::call(storage_getstoragepath, &serde_json::json!({})) }?;
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

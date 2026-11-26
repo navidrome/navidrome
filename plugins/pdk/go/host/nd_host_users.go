@@ -60,6 +60,7 @@ func UsersGetUsers() ([]User, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response usersGetUsersResponse
@@ -91,6 +92,7 @@ func UsersGetAdmins() ([]User, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response usersGetAdminsResponse

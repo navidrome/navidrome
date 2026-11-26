@@ -103,12 +103,12 @@ struct ScrobbleRetrieverGetScrobbleCountResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn scrobbleretriever_getfirsttimestamp(input: Json<ScrobbleRetrieverGetFirstTimestampRequest>) -> Json<ScrobbleRetrieverGetFirstTimestampResponse>;
-    fn scrobbleretriever_getlasttimestamp(input: Json<ScrobbleRetrieverGetLastTimestampRequest>) -> Json<ScrobbleRetrieverGetLastTimestampResponse>;
-    fn scrobbleretriever_getscrobbles(input: Json<ScrobbleRetrieverGetScrobblesRequest>) -> Json<ScrobbleRetrieverGetScrobblesResponse>;
-    fn scrobbleretriever_getscrobblecount(input: Json<ScrobbleRetrieverGetScrobbleCountRequest>) -> Json<ScrobbleRetrieverGetScrobbleCountResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn scrobbleretriever_getfirsttimestamp(input: u64) -> u64;
+    fn scrobbleretriever_getlasttimestamp(input: u64) -> u64;
+    fn scrobbleretriever_getscrobbles(input: u64) -> u64;
+    fn scrobbleretriever_getscrobblecount(input: u64) -> u64;
 }
 
 /// GetFirstTimestamp returns the unix timestamp of the oldest scrobble for the user.
@@ -123,17 +123,15 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_first_timestamp(username: &str) -> Result<Option<i64>, Error> {
-    let response = unsafe {
-        scrobbleretriever_getfirsttimestamp(Json(ScrobbleRetrieverGetFirstTimestampRequest {
-            username: username.to_owned(),
-        }))?
-    };
+    let response: ScrobbleRetrieverGetFirstTimestampResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getfirsttimestamp, &ScrobbleRetrieverGetFirstTimestampRequest {
+        username: username.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// GetLastTimestamp returns the unix timestamp of the most recent scrobble for the user
@@ -148,17 +146,15 @@ pub fn get_first_timestamp(username: &str) -> Result<Option<i64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
-    let response = unsafe {
-        scrobbleretriever_getlasttimestamp(Json(ScrobbleRetrieverGetLastTimestampRequest {
-            username: username.to_owned(),
-        }))?
-    };
+    let response: ScrobbleRetrieverGetLastTimestampResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getlasttimestamp, &ScrobbleRetrieverGetLastTimestampRequest {
+        username: username.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// GetScrobbles returns one page of scrobbles for a user.
@@ -188,18 +184,16 @@ pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<(Vec<ScrobbleRef>, Option<ScrobbleOptions>), Error> {
-    let response = unsafe {
-        scrobbleretriever_getscrobbles(Json(ScrobbleRetrieverGetScrobblesRequest {
-            username: username.to_owned(),
-            options: options,
-        }))?
-    };
+    let response: ScrobbleRetrieverGetScrobblesResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getscrobbles, &ScrobbleRetrieverGetScrobblesRequest {
+        username: username.to_owned(),
+        options: options,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.scrobbles, response.0.next))
+    Ok((response.scrobbles, response.next))
 }
 
 /// GetScrobbleCount returns the number of scrobbles for a user in a given range
@@ -222,16 +216,14 @@ pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<(Vec<Sc
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_scrobble_count(username: &str, options: ScrobbleCountOptions) -> Result<i64, Error> {
-    let response = unsafe {
-        scrobbleretriever_getscrobblecount(Json(ScrobbleRetrieverGetScrobbleCountRequest {
-            username: username.to_owned(),
-            options: options,
-        }))?
-    };
+    let response: ScrobbleRetrieverGetScrobbleCountResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getscrobblecount, &ScrobbleRetrieverGetScrobbleCountRequest {
+        username: username.to_owned(),
+        options: options,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
