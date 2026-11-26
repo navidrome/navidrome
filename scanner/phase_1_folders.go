@@ -495,8 +495,8 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}
 
-	// Keep created_at field from previous instance of the album
-	if err := repo.CopyAttributes(p.ctx, prevID, a.ID, "created_at"); err != nil {
+	// Keep the recently-added timestamps from the previous instance of the album
+	if err := repo.CopyAttributes(p.ctx, prevID, a.ID, "created_at", "birth_time"); err != nil {
 		// Silently ignore when the previous album is not found
 		if !errors.Is(err, model.ErrNotFound) {
 			log.Warn(p.ctx, "Scanner: Could not copy fields", "from", prevID, "to", a.ID, "album", a.Name, err)

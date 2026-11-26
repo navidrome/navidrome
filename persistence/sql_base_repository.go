@@ -644,8 +644,8 @@ func selectUpdateColumns(values map[string]any, colsToUpdate ...string) map[stri
 	}
 
 	delete(updateValues, "created_at")
-	// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
-	// TODO move to mediafile_repository when each repo has its own upsert method
+	// To avoid updating the media_file and album birth_time on each scan. Not the best solution, but it works for now
+	// TODO move to each repository when each repo has its own upsert method
 	delete(updateValues, "birth_time")
 	return updateValues
 }
