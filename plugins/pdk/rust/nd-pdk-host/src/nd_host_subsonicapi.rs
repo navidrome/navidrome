@@ -62,10 +62,10 @@ struct SubsonicAPICallRawResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn subsonicapi_call(input: Json<SubsonicAPICallRequest>) -> Json<SubsonicAPICallResponse>;
-    fn subsonicapi_callraw(input: Json<SubsonicAPICallRawRequest>) -> Json<SubsonicAPICallRawResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn subsonicapi_call(input: u64) -> u64;
+    fn subsonicapi_callraw(input: u64) -> u64;
 }
 
 /// Call executes a Subsonic API request and returns the JSON response.
@@ -82,17 +82,15 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn call(uri: &str) -> Result<String, Error> {
-    let response = unsafe {
-        subsonicapi_call(Json(SubsonicAPICallRequest {
-            uri: uri.to_owned(),
-        }))?
-    };
+    let response: SubsonicAPICallResponse = unsafe { nd_pdk_types::hostcall::call(subsonicapi_call, &SubsonicAPICallRequest {
+        uri: uri.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.response_json)
+    Ok(response.response_json)
 }
 
 /// CallRaw executes a Subsonic API request and returns the raw binary response.
@@ -108,15 +106,13 @@ pub fn call(uri: &str) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn call_raw(uri: &str) -> Result<(String, Vec<u8>), Error> {
-    let response = unsafe {
-        subsonicapi_callraw(Json(SubsonicAPICallRawRequest {
-            uri: uri.to_owned(),
-        }))?
-    };
+    let response: SubsonicAPICallRawResponse = unsafe { nd_pdk_types::hostcall::call(subsonicapi_callraw, &SubsonicAPICallRawRequest {
+        uri: uri.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.content_type, response.0.data))
+    Ok((response.content_type, response.data))
 }

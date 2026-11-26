@@ -49,11 +49,11 @@ struct ConfigKeysResponse {
     keys: Vec<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn config_get(input: Json<ConfigGetRequest>) -> Json<ConfigGetResponse>;
-    fn config_getint(input: Json<ConfigGetIntRequest>) -> Json<ConfigGetIntResponse>;
-    fn config_keys(input: Json<ConfigKeysRequest>) -> Json<ConfigKeysResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn config_get(input: u64) -> u64;
+    fn config_getint(input: u64) -> u64;
+    fn config_keys(input: u64) -> u64;
 }
 
 /// Get retrieves a configuration value as a string.
@@ -72,14 +72,12 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(key: &str) -> Result<Option<String>, Error> {
-    let response = unsafe {
-        config_get(Json(ConfigGetRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: ConfigGetResponse = unsafe { nd_pdk_types::hostcall::call(config_get, &ConfigGetRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if response.0.exists {
-        Ok(Some(response.0.value))
+    if response.exists {
+        Ok(Some(response.value))
     } else {
         Ok(None)
     }
@@ -102,14 +100,12 @@ pub fn get(key: &str) -> Result<Option<String>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
-    let response = unsafe {
-        config_getint(Json(ConfigGetIntRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: ConfigGetIntResponse = unsafe { nd_pdk_types::hostcall::call(config_getint, &ConfigGetIntRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if response.0.exists {
-        Ok(Some(response.0.value))
+    if response.exists {
+        Ok(Some(response.value))
     } else {
         Ok(None)
     }
@@ -131,11 +127,9 @@ pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn keys(prefix: &str) -> Result<Vec<String>, Error> {
-    let response = unsafe {
-        config_keys(Json(ConfigKeysRequest {
-            prefix: prefix.to_owned(),
-        }))?
-    };
+    let response: ConfigKeysResponse = unsafe { nd_pdk_types::hostcall::call(config_keys, &ConfigKeysRequest {
+        prefix: prefix.to_owned(),
+    }) }?;
 
-    Ok(response.0.keys)
+    Ok(response.keys)
 }

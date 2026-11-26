@@ -28,9 +28,9 @@ struct ListItemsResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn list_items(input: Json<ListItemsRequest>) -> Json<ListItemsResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn list_items(input: u64) -> u64;
 }
 
 /// Calls the list_items host function.
@@ -45,16 +45,14 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn items(name: &str, filter: Filter) -> Result<i32, Error> {
-    let response = unsafe {
-        list_items(Json(ListItemsRequest {
-            name: name.to_owned(),
-            filter: filter,
-        }))?
-    };
+    let response: ListItemsResponse = unsafe { nd_pdk_types::hostcall::call(list_items, &ListItemsRequest {
+        name: name.to_owned(),
+        filter: filter,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.count)
+    Ok(response.count)
 }
