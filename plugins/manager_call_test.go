@@ -245,17 +245,6 @@ var _ = Describe("callPluginFunctionScoped", Ordered, func() {
 		Expect(err).To(MatchError(context.DeadlineExceeded))
 		Expect(r.closed()).To(BeTrue())
 	})
-
-	It("keeps the caller's ctx as the scope's base ctx", func() {
-		var scope *callScope
-		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout,
-			func(s *callScope) (struct{}, error) {
-				scope = s
-				return struct{}{}, nil
-			}, nil)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(scope.baseCtx).To(BeIdenticalTo(ctx))
-	})
 })
 
 var _ = Describe("Plugin unload", func() {
@@ -269,7 +258,7 @@ var _ = Describe("Plugin unload", func() {
 		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
 		p := loadedTestPlugin(manager, "test-streams")
 		Expect(manager.unloadPlugin("test-streams")).To(Succeed())
-		_, err := p.streams.newScope(ctx, ctx)
+		_, err := p.streams.newScope(ctx)
 		Expect(err).To(MatchError(errPluginUnloaded))
 	})
 })

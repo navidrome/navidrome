@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"errors"
 	"io"
 	"math"
@@ -12,7 +13,7 @@ var errBadBuffer = errors.New("invalid stream buffer")
 
 // guestMemory is the part of Extism memory the stream host functions use, so they can be tested without WASM.
 type guestMemory interface {
-	blockLength(offset uint64) uint64
+	blockLength(ctx context.Context, offset uint64) uint64
 	view(offset uint64, n uint32) ([]byte, bool)
 	writeBlock(data []byte) (uint64, error)
 }
@@ -24,11 +25,11 @@ func handleFromWire(v int64) (uint32, bool) {
 	return uint32(v), true
 }
 
-func bufferView(mem guestMemory, buf uint64, n int64) ([]byte, error) {
+func bufferView(ctx context.Context, mem guestMemory, buf uint64, n int64) ([]byte, error) {
 	if n < 1 || n > math.MaxUint32 {
 		return nil, errBadBuffer
 	}
-	if uint64(n) > mem.blockLength(buf) {
+	if uint64(n) > mem.blockLength(ctx, buf) {
 		return nil, errBadBuffer
 	}
 	view, ok := mem.view(buf, uint32(n))
@@ -51,12 +52,12 @@ func (s *callScope) fail(err error) int64 {
 	return -1
 }
 
-func (s *callScope) hostRead(mem guestMemory, handle int64, buf uint64, n int64) int64 {
+func (s *callScope) hostRead(ctx context.Context, mem guestMemory, handle int64, buf uint64, n int64) int64 {
 	b, err := s.streamFor(handle, streamRead)
 	if err != nil {
 		return s.fail(err)
 	}
-	view, err := bufferView(mem, buf, n)
+	view, err := bufferView(ctx, mem, buf, n)
 	if err != nil {
 		return s.fail(err)
 	}
@@ -76,12 +77,12 @@ func (s *callScope) hostRead(mem guestMemory, handle int64, buf uint64, n int64)
 	}
 }
 
-func (s *callScope) hostWrite(mem guestMemory, handle int64, buf uint64, n int64) int64 {
+func (s *callScope) hostWrite(ctx context.Context, mem guestMemory, handle int64, buf uint64, n int64) int64 {
 	b, err := s.streamFor(handle, streamWrite)
 	if err != nil {
 		return s.fail(err)
 	}
-	view, err := bufferView(mem, buf, n)
+	view, err := bufferView(ctx, mem, buf, n)
 	if err != nil {
 		return s.fail(err)
 	}

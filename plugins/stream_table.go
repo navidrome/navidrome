@@ -35,12 +35,10 @@ func newStreamTable() *streamTable {
 	return &streamTable{scopes: map[*callScope]struct{}{}}
 }
 
-// callScope owns the handles of one plugin call. baseCtx is the caller's ctx from before the call deadline and
-// Extism wrapped it: anything that must outlive the call derives from it.
+// callScope owns the handles of one plugin call. ctxErr is the call ctx's Err.
 type callScope struct {
 	table   *streamTable
-	ctx     context.Context //nolint:containedctx // checked on every mutation
-	baseCtx context.Context //nolint:containedctx // parent for work that outlives the call
+	ctxErr  func() error
 	closed  bool
 	done    chan struct{} // closed once every stream of the scope is closed
 	entries map[uint32]*streamBackend
@@ -48,13 +46,13 @@ type callScope struct {
 	length  kernelLength // like lastErr
 }
 
-func (t *streamTable) newScope(ctx, baseCtx context.Context) (*callScope, error) {
+func (t *streamTable) newScope(ctx context.Context) (*callScope, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
 		return nil, errPluginUnloaded
 	}
-	s := &callScope{table: t, ctx: ctx, baseCtx: baseCtx, done: make(chan struct{}), entries: map[uint32]*streamBackend{}}
+	s := &callScope{table: t, ctxErr: ctx.Err, done: make(chan struct{}), entries: map[uint32]*streamBackend{}}
 	t.scopes[s] = struct{}{}
 	return s, nil
 }
@@ -77,7 +75,7 @@ func (s *callScope) checkOpenLocked() error {
 	if s.table.closed {
 		return errPluginUnloaded
 	}
-	if err := s.ctx.Err(); err != nil {
+	if err := s.ctxErr(); err != nil {
 		return err
 	}
 	if s.closed {

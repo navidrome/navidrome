@@ -31,7 +31,9 @@ func (m *fakeGuestMemory) alloc(size int) uint64 {
 	return off
 }
 
-func (m *fakeGuestMemory) blockLength(offset uint64) uint64 { return uint64(len(m.blocks[offset])) }
+func (m *fakeGuestMemory) blockLength(_ context.Context, offset uint64) uint64 {
+	return uint64(len(m.blocks[offset]))
+}
 
 func (m *fakeGuestMemory) view(offset uint64, n uint32) ([]byte, bool) {
 	b, ok := m.blocks[offset]
@@ -63,7 +65,7 @@ var _ = Describe("callScope host operations", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		var err error
-		scope, err = newStreamTable().newScope(ctx, ctx)
+		scope, err = newStreamTable().newScope(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(scope.close)
 		mem = newFakeGuestMemory()
@@ -87,63 +89,63 @@ var _ = Describe("callScope host operations", func() {
 		It("places bytes at the start of the buffer", func() {
 			h := register(readerOf("hello"))
 			buf := mem.alloc(16)
-			Expect(scope.hostRead(mem, h, buf, 16)).To(Equal(int64(5)))
+			Expect(scope.hostRead(ctx, mem, h, buf, 16)).To(Equal(int64(5)))
 			Expect(string(mem.blocks[buf][:5])).To(Equal("hello"))
 			Expect(lastError()).To(BeEmpty())
 		})
 
 		It("reads at most len bytes", func() {
 			h := register(readerOf("hello"))
-			Expect(scope.hostRead(mem, h, mem.alloc(16), 2)).To(Equal(int64(2)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(16), 2)).To(Equal(int64(2)))
 		})
 
 		It("reads at most 1 MiB per call", func() {
 			h := register(newReadStream(io.NopCloser(bytes.NewReader(make([]byte, 3<<20)))))
-			Expect(scope.hostRead(mem, h, mem.alloc(2<<20), 2<<20)).To(Equal(int64(maxStreamChunk)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(2<<20), 2<<20)).To(Equal(int64(maxStreamChunk)))
 		})
 
 		It("returns 0 at the end of the stream", func() {
 			h := register(readerOf(""))
-			Expect(scope.hostRead(mem, h, mem.alloc(8), 8)).To(Equal(int64(0)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(8), 8)).To(Equal(int64(0)))
 			Expect(lastError()).To(BeEmpty())
 		})
 
 		It("returns the bytes first, then the error that came with them", func() {
 			h := register(newReadStream(io.NopCloser(&dataErrReader{data: []byte("abc"), err: errors.New("disk gone")})))
 			buf := mem.alloc(16)
-			Expect(scope.hostRead(mem, h, buf, 16)).To(Equal(int64(3)))
-			Expect(scope.hostRead(mem, h, buf, 16)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, buf, 16)).To(Equal(int64(3)))
+			Expect(scope.hostRead(ctx, mem, h, buf, 16)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal("disk gone"))
 		})
 
 		It("gives up on a reader that never makes progress", func() {
 			h := register(newReadStream(io.NopCloser(noProgressReader{})))
-			Expect(scope.hostRead(mem, h, mem.alloc(8), 8)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(8), 8)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal(io.ErrNoProgress.Error()))
 		})
 
 		It("rejects len 0, len larger than the block, and an offset inside a block", func() {
 			h := register(readerOf("x"))
 			buf := mem.alloc(8)
-			Expect(scope.hostRead(mem, h, buf, 0)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, buf, 0)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal(errBadBuffer.Error()))
-			Expect(scope.hostRead(mem, h, buf, 9)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, buf, 9)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal(errBadBuffer.Error()))
-			Expect(scope.hostRead(mem, h, buf+1, 4)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, buf+1, 4)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal(errBadBuffer.Error()))
 		})
 
 		It("rejects handles outside 1 to 2^31-1", func() {
 			buf := mem.alloc(8)
 			for _, h := range []int64{0, -1, math.MaxInt32 + 1} {
-				Expect(scope.hostRead(mem, h, buf, 8)).To(Equal(int64(-1)))
+				Expect(scope.hostRead(ctx, mem, h, buf, 8)).To(Equal(int64(-1)))
 				Expect(lastError()).To(Equal(errUnknownStream.Error()))
 			}
 		})
 
 		It("refuses to read a write-only stream", func() {
 			h := register(newWriteStream(&trackingWriter{}))
-			Expect(scope.hostRead(mem, h, mem.alloc(8), 8)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(8), 8)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal(errStreamNotReadable.Error()))
 		})
 	})
@@ -154,7 +156,7 @@ var _ = Describe("callScope host operations", func() {
 			h := register(newWriteStream(w))
 			buf := mem.alloc(16)
 			copy(mem.blocks[buf], "hello, old bytes")
-			Expect(scope.hostWrite(mem, h, buf, 5)).To(Equal(int64(5)))
+			Expect(scope.hostWrite(ctx, mem, h, buf, 5)).To(Equal(int64(5)))
 			Expect(string(w.bytes())).To(Equal("hello"))
 			Expect(lastError()).To(BeEmpty())
 		})
@@ -162,14 +164,14 @@ var _ = Describe("callScope host operations", func() {
 		It("reports a short write as a count plus a retained error", func() {
 			h := register(newWriteStream(&trackingWriter{limit: 2}))
 			buf := mem.alloc(8)
-			Expect(scope.hostWrite(mem, h, buf, 4)).To(Equal(int64(2)))
+			Expect(scope.hostWrite(ctx, mem, h, buf, 4)).To(Equal(int64(2)))
 			Expect(lastError()).To(Equal(io.ErrShortWrite.Error()))
-			Expect(scope.hostWrite(mem, h, buf, 4)).To(Equal(int64(-1)))
+			Expect(scope.hostWrite(ctx, mem, h, buf, 4)).To(Equal(int64(-1)))
 		})
 
 		It("refuses to write a read-only stream", func() {
 			h := register(readerOf("x"))
-			Expect(scope.hostWrite(mem, h, mem.alloc(8), 8)).To(Equal(int64(-1)))
+			Expect(scope.hostWrite(ctx, mem, h, mem.alloc(8), 8)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal(errStreamNotWritable.Error()))
 		})
 	})
@@ -222,7 +224,7 @@ var _ = Describe("callScope host operations", func() {
 
 		It("never hands out an empty message", func() {
 			h := register(newReadStream(io.NopCloser(&dataErrReader{err: errors.New("")})))
-			Expect(scope.hostRead(mem, h, mem.alloc(4), 4)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(4), 4)).To(Equal(int64(-1)))
 			off := scope.hostError(mem)
 			Expect(off).To(BeNumerically(">", 0))
 			Expect(string(mem.blocks[uint64(off)])).To(Equal("stream operation failed"))
@@ -230,7 +232,7 @@ var _ = Describe("callScope host operations", func() {
 
 		It("returns 0 after a successful operation", func() {
 			h := register(readerOf("x"))
-			Expect(scope.hostRead(mem, h, mem.alloc(4), 4)).To(Equal(int64(1)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(4), 4)).To(Equal(int64(1)))
 			Expect(scope.hostError(mem)).To(BeZero())
 		})
 	})
@@ -242,7 +244,7 @@ var _ = Describe("callScope host operations", func() {
 			Expect(scope.hostClose(h)).To(Equal(int64(0)))
 			Expect(r.closed()).To(BeTrue())
 
-			Expect(scope.hostRead(mem, h, mem.alloc(4), 4)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(4), 4)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal(errUnknownStream.Error()))
 			Expect(scope.hostClose(h)).To(Equal(int64(-1)))
 		})
@@ -256,14 +258,14 @@ var _ = Describe("callScope host operations", func() {
 		It("reports a write error that came with a full write", func() {
 			h := register(newWriteStream(&errWriter{accept: math.MaxInt, err: errors.New("flush failed")}))
 			buf := mem.alloc(4)
-			Expect(scope.hostWrite(mem, h, buf, 4)).To(Equal(int64(4)))
+			Expect(scope.hostWrite(ctx, mem, h, buf, 4)).To(Equal(int64(4)))
 			Expect(scope.hostClose(h)).To(Equal(int64(-1)))
 			Expect(lastError()).To(Equal("flush failed"))
 		})
 
 		It("closes a read stream cleanly after an error", func() {
 			h := register(newReadStream(io.NopCloser(&dataErrReader{err: errors.New("net down")})))
-			Expect(scope.hostRead(mem, h, mem.alloc(4), 4)).To(Equal(int64(-1)))
+			Expect(scope.hostRead(ctx, mem, h, mem.alloc(4), 4)).To(Equal(int64(-1)))
 			Expect(scope.hostClose(h)).To(Equal(int64(0)))
 		})
 	})

@@ -40,7 +40,7 @@ var _ = Describe("streamTable", func() {
 	})
 
 	newScope := func() *callScope {
-		s, err := table.newScope(ctx, ctx)
+		s, err := table.newScope(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		return s
 	}
@@ -150,7 +150,7 @@ var _ = Describe("streamTable", func() {
 
 	It("refuses to register once the call ctx is cancelled, even before the scope closes", func() {
 		callCtx, cancel := context.WithCancel(ctx)
-		s, err := table.newScope(callCtx, ctx)
+		s, err := table.newScope(callCtx)
 		Expect(err).ToNot(HaveOccurred())
 		cancel()
 		r, backend := reader()
@@ -161,7 +161,7 @@ var _ = Describe("streamTable", func() {
 
 	It("still reports the ctx error after a cancel closed the scope", func() {
 		callCtx, cancel := context.WithCancel(ctx)
-		s, err := table.newScope(callCtx, ctx)
+		s, err := table.newScope(callCtx)
 		Expect(err).ToNot(HaveOccurred())
 		cancel()
 		s.close()
@@ -255,7 +255,7 @@ var _ = Describe("streamTable", func() {
 
 		It("fails once the call ctx is cancelled", func() {
 			callCtx, cancel := context.WithCancel(ctx)
-			s, err := table.newScope(callCtx, ctx)
+			s, err := table.newScope(callCtx)
 			Expect(err).ToNot(HaveOccurred())
 			_, backend := reader()
 			h := mustRegister(s, backend)
@@ -290,7 +290,7 @@ var _ = Describe("streamTable", func() {
 		mustRegister(s, backend)
 		Expect(table.Close()).To(Succeed())
 		Expect(r.closed()).To(BeTrue())
-		_, err := table.newScope(ctx, ctx)
+		_, err := table.newScope(ctx)
 		Expect(err).To(MatchError(errPluginUnloaded))
 	})
 

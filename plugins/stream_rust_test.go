@@ -22,12 +22,13 @@ func buildRustTestPlugin(dir string) string {
 	if err != nil || !strings.Contains(string(targets), "wasm32-wasip1") {
 		Skip("the wasm32-wasip1 Rust target is not installed")
 	}
-	cargo, err := exec.Command(rustup, "which", "cargo").Output()
+	cargoOut, err := exec.Command(rustup, "which", "cargo").Output()
 	Expect(err).ToNot(HaveOccurred())
 	rustc, err := exec.Command(rustup, "which", "rustc").Output()
 	Expect(err).ToNot(HaveOccurred())
 
-	cmd := exec.Command(strings.TrimSpace(string(cargo)), "build", "--release", "--target", "wasm32-wasip1") //nolint:gosec // path comes from rustup
+	cargo := strings.TrimSpace(string(cargoOut))
+	cmd := exec.Command(cargo, "build", "--release", "--target", "wasm32-wasip1")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "CARGO_BUILD_RUSTC="+strings.TrimSpace(string(rustc)))
 	out, err := cmd.CombinedOutput()

@@ -54,7 +54,7 @@ func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *p
 	ctx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
-	scope, err := plugin.streams.newScope(ctx, parentCtx)
+	scope, err := plugin.streams.newScope(ctx)
 	if err != nil {
 		return result, err
 	}
