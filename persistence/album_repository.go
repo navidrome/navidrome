@@ -346,7 +346,7 @@ func (r *albumRepository) CopyAttributes(ctx context.Context, fromID, toID strin
 	for _, col := range columns {
 		v := from[col]
 		// A zero recently-added timestamp would propagate forward on every metadata-driven album ID change.
-		if (col == "created_at" || col == "birth_time") && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+		if (col == "created_at" || col == "birth_time") && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-") || strings.HasPrefix(v.String, "0000-")) {
 			continue
 		}
 		to[col] = v

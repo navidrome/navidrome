@@ -132,7 +132,7 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-dst", Name: "dst", LibraryID: 1, CreatedAt: dstTime})).To(Succeed())
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-zero", Name: "zero", LibraryID: 1})).To(Succeed())
 			_, err := albumRepo.executeSQL(ctx, squirrel.Update("album").Where(squirrel.Eq{"id": "copy-zero"}).
-				Set("created_at", "0001-01-01 00:00:00+00:00").Set("birth_time", "0001-01-01 00:00:00+00:00"))
+				Set("created_at", "0001-01-01 00:00:00+00:00").Set("birth_time", "0000-00-00 00:00:00"))
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() {
 				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"copy-src", "copy-dst", "copy-zero"}}))
