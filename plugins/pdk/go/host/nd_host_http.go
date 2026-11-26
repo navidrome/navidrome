@@ -74,6 +74,7 @@ func HTTPSend(request HTTPRequest) (*HTTPResponse, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response hTTPSendResponse

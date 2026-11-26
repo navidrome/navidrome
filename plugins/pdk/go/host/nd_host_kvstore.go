@@ -152,6 +152,7 @@ func KVStoreSet(key string, value []byte) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -198,6 +199,7 @@ func KVStoreSetWithTTL(key string, value []byte, ttlSeconds int64) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -237,6 +239,7 @@ func KVStoreGet(key string) ([]byte, bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response kVStoreGetResponse
@@ -278,6 +281,7 @@ func KVStoreGetMany(keys []string) (map[string][]byte, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response kVStoreGetManyResponse
@@ -318,6 +322,7 @@ func KVStoreHas(key string) (bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response kVStoreHasResponse
@@ -358,6 +363,7 @@ func KVStoreList(prefix string) ([]string, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response kVStoreListResponse
@@ -398,6 +404,7 @@ func KVStoreDelete(key string) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -437,6 +444,7 @@ func KVStoreDeleteByPrefix(prefix string) (int64, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response kVStoreDeleteByPrefixResponse
@@ -465,6 +473,7 @@ func KVStoreGetStorageUsed() (int64, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response kVStoreGetStorageUsedResponse

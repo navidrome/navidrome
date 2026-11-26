@@ -90,12 +90,12 @@ struct WebSocketCloseConnectionResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn websocket_connect(input: Json<WebSocketConnectRequest>) -> Json<WebSocketConnectResponse>;
-    fn websocket_sendtext(input: Json<WebSocketSendTextRequest>) -> Json<WebSocketSendTextResponse>;
-    fn websocket_sendbinary(input: Json<WebSocketSendBinaryRequest>) -> Json<WebSocketSendBinaryResponse>;
-    fn websocket_closeconnection(input: Json<WebSocketCloseConnectionRequest>) -> Json<WebSocketCloseConnectionResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn websocket_connect(input: u64) -> u64;
+    fn websocket_sendtext(input: u64) -> u64;
+    fn websocket_sendbinary(input: u64) -> u64;
+    fn websocket_closeconnection(input: u64) -> u64;
 }
 
 /// Connect establishes a WebSocket connection to the specified URL.
@@ -122,19 +122,17 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn connect(url: &str, headers: std::collections::HashMap<String, String>, connection_id: &str) -> Result<String, Error> {
-    let response = unsafe {
-        websocket_connect(Json(WebSocketConnectRequest {
-            url: url.to_owned(),
-            headers: headers,
-            connection_id: connection_id.to_owned(),
-        }))?
-    };
+    let response: WebSocketConnectResponse = unsafe { nd_pdk_types::hostcall::call(websocket_connect, &WebSocketConnectRequest {
+        url: url.to_owned(),
+        headers: headers,
+        connection_id: connection_id.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.new_connection_id)
+    Ok(response.new_connection_id)
 }
 
 /// SendText sends a text message over an established WebSocket connection.
@@ -152,14 +150,12 @@ pub fn connect(url: &str, headers: std::collections::HashMap<String, String>, co
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn send_text(connection_id: &str, message: &str) -> Result<(), Error> {
-    let response = unsafe {
-        websocket_sendtext(Json(WebSocketSendTextRequest {
-            connection_id: connection_id.to_owned(),
-            message: message.to_owned(),
-        }))?
-    };
+    let response: WebSocketSendTextResponse = unsafe { nd_pdk_types::hostcall::call(websocket_sendtext, &WebSocketSendTextRequest {
+        connection_id: connection_id.to_owned(),
+        message: message.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -181,14 +177,12 @@ pub fn send_text(connection_id: &str, message: &str) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn send_binary(connection_id: &str, data: Vec<u8>) -> Result<(), Error> {
-    let response = unsafe {
-        websocket_sendbinary(Json(WebSocketSendBinaryRequest {
-            connection_id: connection_id.to_owned(),
-            data: data,
-        }))?
-    };
+    let response: WebSocketSendBinaryResponse = unsafe { nd_pdk_types::hostcall::call(websocket_sendbinary, &WebSocketSendBinaryRequest {
+        connection_id: connection_id.to_owned(),
+        data: data,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -212,15 +206,13 @@ pub fn send_binary(connection_id: &str, data: Vec<u8>) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn close_connection(connection_id: &str, code: i32, reason: &str) -> Result<(), Error> {
-    let response = unsafe {
-        websocket_closeconnection(Json(WebSocketCloseConnectionRequest {
-            connection_id: connection_id.to_owned(),
-            code: code,
-            reason: reason.to_owned(),
-        }))?
-    };
+    let response: WebSocketCloseConnectionResponse = unsafe { nd_pdk_types::hostcall::call(websocket_closeconnection, &WebSocketCloseConnectionRequest {
+        connection_id: connection_id.to_owned(),
+        code: code,
+        reason: reason.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 

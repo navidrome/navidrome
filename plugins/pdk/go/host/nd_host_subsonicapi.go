@@ -66,6 +66,7 @@ func SubsonicAPICall(uri string) (string, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response subsonicAPICallResponse
@@ -103,6 +104,7 @@ func SubsonicAPICallRaw(uri string) (string, []byte, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response subsonicAPICallRawResponse

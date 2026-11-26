@@ -170,6 +170,7 @@ func CacheSetString(key string, value string, ttlSeconds int64) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -210,6 +211,7 @@ func CacheGetString(key string) (string, bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response cacheGetStringResponse
@@ -254,6 +256,7 @@ func CacheSetInt(key string, value int64, ttlSeconds int64) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -294,6 +297,7 @@ func CacheGetInt(key string) (int64, bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response cacheGetIntResponse
@@ -338,6 +342,7 @@ func CacheSetFloat(key string, value float64, ttlSeconds int64) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -378,6 +383,7 @@ func CacheGetFloat(key string) (float64, bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response cacheGetFloatResponse
@@ -422,6 +428,7 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -462,6 +469,7 @@ func CacheGetBytes(key string) ([]byte, bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response cacheGetBytesResponse
@@ -502,6 +510,7 @@ func CacheHas(key string) (bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response cacheHasResponse
@@ -542,6 +551,7 @@ func CacheRemove(key string) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {

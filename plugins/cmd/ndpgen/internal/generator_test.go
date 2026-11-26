@@ -1191,6 +1191,12 @@ var _ = Describe("Shared Types Generation", func() {
 		Expect(out).To(ContainSubstring("use base64::Engine as _"))
 		Expect(out).To(ContainSubstring(`#[serde(with = "base64_bytes")]`))
 	})
+
+	It("exposes the hostcall module in the Rust types crate", func() {
+		code, err := GenerateSharedTypesRust(nil)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(code)).To(ContainSubstring("pub mod hostcall;"))
+	})
 })
 
 var _ = Describe("Rust Generation", func() {

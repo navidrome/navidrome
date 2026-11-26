@@ -21,9 +21,9 @@ struct EchoEchoResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn echo_echo(input: Json<EchoEchoRequest>) -> Json<EchoEchoResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn echo_echo(input: u64) -> u64;
 }
 
 /// Calls the echo_echo host function.
@@ -37,15 +37,13 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn echo(message: &str) -> Result<String, Error> {
-    let response = unsafe {
-        echo_echo(Json(EchoEchoRequest {
-            message: message.to_owned(),
-        }))?
-    };
+    let response: EchoEchoResponse = unsafe { nd_pdk_types::hostcall::call(echo_echo, &EchoEchoRequest {
+        message: message.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.reply)
+    Ok(response.reply)
 }

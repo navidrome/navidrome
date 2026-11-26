@@ -73,9 +73,9 @@ struct HTTPSendResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn http_send(input: Json<HTTPSendRequest>) -> Json<HTTPSendResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn http_send(input: u64) -> u64;
 }
 
 /// Send executes an HTTP request and returns the response.
@@ -96,15 +96,13 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn send(request: HTTPRequest) -> Result<Option<HTTPResponse>, Error> {
-    let response = unsafe {
-        http_send(Json(HTTPSendRequest {
-            request: request,
-        }))?
-    };
+    let response: HTTPSendResponse = unsafe { nd_pdk_types::hostcall::call(http_send, &HTTPSendRequest {
+        request: request,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
