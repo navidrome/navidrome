@@ -675,154 +675,23 @@ var _ = Describe("helpers", func() {
 			})
 		})
 
-		Describe("buildAlbumID3 Created field", func() {
-			When("RecentlyAddedBy is scan", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
-				})
+		Describe("Created field", func() {
+			birth := time.Date(2018, 1, 2, 3, 4, 5, 0, time.UTC)
+			created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
 
-				It("uses CreatedAt when set", func() {
-					t := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					al := model.Album{ID: "a1", Name: "A", CreatedAt: t}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(t))
-				})
-
-				It("falls back to UpdatedAt when CreatedAt is zero", func() {
-					updated := time.Date(2019, 5, 6, 7, 8, 9, 0, time.UTC)
-					al := model.Album{ID: "a2", Name: "A", UpdatedAt: updated}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(updated))
-				})
-
-				It("falls back to ImportedAt when CreatedAt and UpdatedAt are zero", func() {
-					imported := time.Date(2021, 8, 9, 10, 11, 12, 0, time.UTC)
-					al := model.Album{ID: "a3", Name: "A", ImportedAt: imported}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(imported))
-				})
-
-				It("leaves Created as zero time when all timestamps are zero", func() {
-					al := model.Album{ID: "a4", Name: "A"}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created.IsZero()).To(BeTrue())
-				})
+			BeforeEach(func() {
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
 			})
 
-			When("RecentlyAddedBy is birth", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
-				})
-
-				It("uses BirthTime even when CreatedAt is also set", func() {
-					birth := time.Date(2018, 1, 2, 3, 4, 5, 0, time.UTC)
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					al := model.Album{ID: "a9", Name: "A", BirthTime: birth, CreatedAt: created}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(birth))
-				})
-
-				It("falls back to CreatedAt when BirthTime is zero", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					al := model.Album{ID: "a10", Name: "A", CreatedAt: created}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(created))
-				})
+			It("uses the album's recently-added timestamp", func() {
+				al := model.Album{ID: "a1", Name: "A", BirthTime: birth, CreatedAt: created}
+				Expect(buildAlbumID3(ctx, al).Created).To(Equal(birth))
+				Expect(*childFromAlbum(ctx, al).Created).To(Equal(birth))
 			})
 
-			When("RecentlyAddedBy is modtime", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByModTime })
-				})
-
-				It("uses UpdatedAt even when CreatedAt is also set", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					updated := time.Date(2022, 6, 7, 8, 9, 10, 0, time.UTC)
-					al := model.Album{ID: "a5", Name: "A", CreatedAt: created, UpdatedAt: updated}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(updated))
-				})
-
-				It("falls back to CreatedAt when UpdatedAt is zero", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					al := model.Album{ID: "a6", Name: "A", CreatedAt: created}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(created))
-				})
-
-				It("falls back to ImportedAt when UpdatedAt and CreatedAt are zero", func() {
-					imported := time.Date(2021, 8, 9, 10, 11, 12, 0, time.UTC)
-					al := model.Album{ID: "a7", Name: "A", ImportedAt: imported}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(imported))
-				})
-
-				It("leaves Created as zero time when all timestamps are zero", func() {
-					al := model.Album{ID: "a8", Name: "A"}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created.IsZero()).To(BeTrue())
-				})
-			})
-		})
-
-		Describe("childFromMediaFile Created field", func() {
-			birth := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
-
-			When("RecentlyAddedBy is scan", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
-				})
-
-				It("uses CreatedAt, not BirthTime", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					mf := model.MediaFile{ID: "s1", BirthTime: birth, CreatedAt: created}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(created))
-				})
-
-				It("falls back to UpdatedAt when CreatedAt is zero", func() {
-					updated := time.Date(2019, 5, 6, 7, 8, 9, 0, time.UTC)
-					mf := model.MediaFile{ID: "s2", BirthTime: birth, UpdatedAt: updated}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(updated))
-				})
-
-				It("falls back to BirthTime when CreatedAt and UpdatedAt are zero", func() {
-					mf := model.MediaFile{ID: "s3", BirthTime: birth}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(birth))
-				})
-			})
-
-			When("RecentlyAddedBy is birth", func() {
-				It("uses BirthTime even when CreatedAt is also set", func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					mf := model.MediaFile{ID: "s6", BirthTime: birth, CreatedAt: created}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(birth))
-				})
-			})
-
-			When("RecentlyAddedBy is modtime", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByModTime })
-				})
-
-				It("uses UpdatedAt even when CreatedAt is also set", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					updated := time.Date(2022, 6, 7, 8, 9, 10, 0, time.UTC)
-					mf := model.MediaFile{ID: "s4", BirthTime: birth, CreatedAt: created, UpdatedAt: updated}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(updated))
-				})
-
-				It("falls back to CreatedAt when UpdatedAt is zero", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					mf := model.MediaFile{ID: "s5", BirthTime: birth, CreatedAt: created}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(created))
-				})
+			It("uses the song's recently-added timestamp", func() {
+				mf := model.MediaFile{ID: "s1", BirthTime: birth, CreatedAt: created}
+				Expect(*childFromMediaFile(ctx, mf).Created).To(Equal(birth))
 			})
 		})
 

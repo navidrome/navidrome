@@ -461,6 +461,27 @@ func mostFrequentPtr(items []*float64) *float64 {
 	return &best
 }
 
+// RecentlyAddedAt is the song counterpart of Album.RecentlyAddedAt.
+func (mf MediaFile) RecentlyAddedAt() time.Time {
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
+		return firstNonZero(mf.UpdatedAt, mf.CreatedAt, mf.BirthTime)
+	case consts.RecentlyAddedByBirth:
+		return firstNonZero(mf.BirthTime, mf.CreatedAt, mf.UpdatedAt)
+	default:
+		return firstNonZero(mf.CreatedAt, mf.UpdatedAt, mf.BirthTime)
+	}
+}
+
+func firstNonZero(candidates ...time.Time) time.Time {
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
 func newer(t1, t2 time.Time) time.Time {
 	if t1.After(t2) {
 		return t1

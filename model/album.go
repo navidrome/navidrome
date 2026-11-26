@@ -10,6 +10,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 )
 
 type Album struct {
@@ -71,6 +72,19 @@ type Album struct {
 	CreatedAt  time.Time `structs:"created_at" json:"createdAt" hash:"ignore"`   // Oldest CreatedAt for all songs in this album
 	BirthTime  time.Time `structs:"birth_time" json:"birthTime" hash:"ignore"`   // Oldest BirthTime for all songs in this album
 	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album
+}
+
+// RecentlyAddedAt is the timestamp the "recently added" sort uses, so API clients can reproduce
+// that order. The other timestamps are fallbacks for legacy rows.
+func (a Album) RecentlyAddedAt() time.Time {
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
+		return firstNonZero(a.UpdatedAt, a.CreatedAt, a.ImportedAt)
+	case consts.RecentlyAddedByBirth:
+		return firstNonZero(a.BirthTime, a.CreatedAt, a.UpdatedAt, a.ImportedAt)
+	default:
+		return firstNonZero(a.CreatedAt, a.UpdatedAt, a.ImportedAt)
+	}
 }
 
 func (a Album) CoverArtID() ArtworkID {

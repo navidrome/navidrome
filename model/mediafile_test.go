@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -645,6 +646,26 @@ var _ = Describe("MediaFile", func() {
 		})
 	})
 
+})
+
+var _ = Describe("MediaFile.RecentlyAddedAt", func() {
+	birth := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
+	created := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	updated := time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	DescribeTable("picks the timestamp for the RecentlyAddedBy mode",
+		func(mode string, mf MediaFile, expected time.Time) {
+			conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = mode })
+			Expect(mf.RecentlyAddedAt()).To(Equal(expected))
+		},
+		Entry("scan uses CreatedAt", consts.RecentlyAddedByScan, MediaFile{BirthTime: birth, CreatedAt: created, UpdatedAt: updated}, created),
+		Entry("scan falls back to UpdatedAt", consts.RecentlyAddedByScan, MediaFile{BirthTime: birth, UpdatedAt: updated}, updated),
+		Entry("scan falls back to BirthTime", consts.RecentlyAddedByScan, MediaFile{BirthTime: birth}, birth),
+		Entry("birth uses BirthTime", consts.RecentlyAddedByBirth, MediaFile{BirthTime: birth, CreatedAt: created, UpdatedAt: updated}, birth),
+		Entry("birth falls back to CreatedAt", consts.RecentlyAddedByBirth, MediaFile{CreatedAt: created, UpdatedAt: updated}, created),
+		Entry("modtime uses UpdatedAt", consts.RecentlyAddedByModTime, MediaFile{BirthTime: birth, CreatedAt: created, UpdatedAt: updated}, updated),
+		Entry("modtime falls back to CreatedAt", consts.RecentlyAddedByModTime, MediaFile{BirthTime: birth, CreatedAt: created}, created),
+	)
 })
 
 var _ = DescribeTable("MediaFile.HasEmbeddedLyrics",
