@@ -56,6 +56,7 @@ type configOptions struct {
 	EnableDownloads                 bool
 	EnableExternalServices          bool
 	EnableM3UExternalAlbumArt       bool
+	EnableSimilarArtistImages       bool
 	EnableInsightsCollector         bool
 	EnableScheduledDBAnalyze        bool
 	EnableMediaFileCoverArt         bool
@@ -807,6 +808,7 @@ func disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
 	Server.EnableInsightsCollector = false
 	Server.EnableM3UExternalAlbumArt = false
+	Server.EnableSimilarArtistImages = false
 	Server.LastFM.Enabled = false
 	Server.Deezer.Enabled = false
 	Server.ListenBrainz.Enabled = false
@@ -1000,6 +1002,7 @@ func setViperDefaults() {
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablem3uexternalalbumart", false)
+	viper.SetDefault("enablesimilarartistimages", false)
 	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)

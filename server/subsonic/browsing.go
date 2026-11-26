@@ -289,6 +289,12 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 	}
 	count := p.IntOr("count", 20)
 	includeNotPresent := p.BoolOr("includeNotPresent", false)
+	// Similar-artist images are only useful if not-present artists actually make it into the
+	// response - without this, most clients (which don't pass includeNotPresent) would never
+	// see them at all, making the feature a no-op in practice.
+	if conf.Server.EnableSimilarArtistImages {
+		includeNotPresent = true
+	}
 
 	artist, err := api.provider.UpdateArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {
@@ -322,6 +328,11 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 		similar := toArtist(r, s)
 		if s.ID == "" {
 			similar.Id = "-1"
+			if conf.Server.EnableSimilarArtistImages {
+				if url := api.provider.GetSimilarArtistImageURL(r.Context(), s.Name, s.MbzArtistID); url != "" {
+					similar.ArtistImageUrl = url
+				}
+			}
 		}
 		response.ArtistInfo.SimilarArtist = append(response.ArtistInfo.SimilarArtist, similar)
 	}
@@ -342,6 +353,11 @@ func (api *Router) GetArtistInfo2(r *http.Request) (*responses.Subsonic, error) 
 		similar := toArtistID3(r, s)
 		if s.ID == "" {
 			similar.Id = "-1"
+			if conf.Server.EnableSimilarArtistImages {
+				if url := api.provider.GetSimilarArtistImageURL(r.Context(), s.Name, s.MbzArtistID); url != "" {
+					similar.ArtistImageUrl = url
+				}
+			}
 		}
 		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)
 	}

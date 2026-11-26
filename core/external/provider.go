@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
@@ -24,10 +26,12 @@ import (
 )
 
 const (
-	maxSimilarArtists  = 100
-	refreshDelay       = 5 * time.Second
-	refreshTimeout     = 15 * time.Second
-	refreshQueueLength = 2000
+	maxSimilarArtists           = 100
+	refreshDelay                = 5 * time.Second
+	refreshTimeout              = 15 * time.Second
+	refreshQueueLength          = 2000
+	similarArtistImageCacheSize = 2000
+	similarArtistImageCacheTTL  = 24 * time.Hour
 )
 
 type Provider interface {
@@ -36,15 +40,31 @@ type Provider interface {
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
 	RefreshInfo(ctx context.Context, kind model.Kind, id string) error
+	// GetSimilarArtistImageURL returns a best-effort external image URL for an artist that is not
+	// present in the library (e.g. a similar-artist recommendation), or "" if none was found or the
+	// feature is disabled. Results (including misses) are cached; see EnableSimilarArtistImages.
+	GetSimilarArtistImageURL(ctx context.Context, name, mbid string) string
 }
 
 type provider struct {
-	ds          model.DataStore
-	ag          Agents
-	matcher     *matcher.Matcher
-	broker      events.Broker
-	artistQueue refreshQueue[auxArtist]
-	albumQueue  refreshQueue[auxAlbum]
+	ds                        model.DataStore
+	ag                        Agents
+	matcher                   *matcher.Matcher
+	broker                    events.Broker
+	similarArtistImageCache   cache.SimpleCache[string, string]
+	similarArtistImageQueue   refreshQueue[similarArtistImageJob]
+	similarArtistImagePending sync.Map // key -> struct{}, jobs currently queued/in flight
+	artistQueue               refreshQueue[auxArtist]
+	albumQueue                refreshQueue[auxAlbum]
+}
+
+// similarArtistImageJob is a background request to resolve one not-in-library similar artist's
+// image. Resolution never happens on the request path: a miss enqueues a job and returns
+// immediately, so a slow/unresponsive agent can never add latency to a getArtistInfo call.
+type similarArtistImageJob struct {
+	Key  string // cache key: Name + "\x00" + MBID
+	Name string
+	MBID string
 }
 
 type auxAlbum struct {
@@ -91,7 +111,54 @@ func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker e
 	e := &provider{ds: ds, ag: agents, matcher: m, broker: broker}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
+	e.similarArtistImageCache = cache.NewSimpleCache[string, string](cache.Options{
+		SizeLimit:  similarArtistImageCacheSize,
+		DefaultTTL: similarArtistImageCacheTTL,
+	})
+	e.similarArtistImageQueue = newRefreshQueue(context.TODO(), e.fetchSimilarArtistImage)
 	return e
+}
+
+// GetSimilarArtistImageURL is documented on the Provider interface.
+//
+// This never makes a network call itself. A cache hit (positive or negative) returns
+// immediately; a miss enqueues a background job (at most one in flight per artist) and
+// returns "" for this call - the image, if any, will be available on a later call once the
+// background job completes.
+func (e *provider) GetSimilarArtistImageURL(ctx context.Context, name, mbid string) string {
+	if !conf.Server.EnableSimilarArtistImages || name == "" {
+		return ""
+	}
+	key := name + "\x00" + mbid
+	if url, err := e.similarArtistImageCache.Get(key); err == nil {
+		return url
+	}
+	if _, pending := e.similarArtistImagePending.LoadOrStore(key, struct{}{}); !pending {
+		e.similarArtistImageQueue.enqueue(&similarArtistImageJob{Key: key, Name: name, MBID: mbid})
+	}
+	return ""
+}
+
+// fetchSimilarArtistImage is the similarArtistImageQueue's background worker. It always caches a
+// result - including "" for a miss - so a consistently-unmatched artist is not re-queried on
+// every page view, and clears the pending marker so a later cache expiry can re-trigger a fetch.
+func (e *provider) fetchSimilarArtistImage(ctx context.Context, job similarArtistImageJob) (similarArtistImageJob, error) {
+	defer e.similarArtistImagePending.Delete(job.Key)
+
+	searchName := job.Name
+	if !conf.Server.DevPreserveUnicodeInExternalCalls {
+		searchName = str.Clear(job.Name)
+	}
+	imgs, err := e.ag.GetArtistImages(ctx, "", searchName, job.MBID)
+	var url string
+	if err == nil && len(imgs) > 0 {
+		sort.Slice(imgs, func(i, j int) bool { return imgs[i].Size > imgs[j].Size })
+		url = imgs[0].URL
+	}
+	if cacheErr := e.similarArtistImageCache.AddWithTTL(job.Key, url, similarArtistImageCacheTTL); cacheErr != nil {
+		log.Debug(ctx, "Error caching similar-artist image result", "name", job.Name, "mbid", job.MBID, cacheErr)
+	}
+	return job, nil
 }
 
 func (e *provider) broadcastRefresh(ctx context.Context, resource, id string) {
