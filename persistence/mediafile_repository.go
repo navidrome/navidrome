@@ -13,8 +13,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -103,7 +101,7 @@ func NewMediaFileRepository(db dbx.Builder) model.MediaFileRepository {
 		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, " + naturalSort("media_file.title"),
 		"random":         "random",
 		"created_at":     "media_file.created_at",
-		"recently_added": mediaFileRecentlyAddedSort(),
+		"recently_added": recentlyAddedSort("media_file"),
 		"starred_at":     "starred, starred_at",
 		"rated_at":       "rating, rated_at",
 		"year":           "year",
@@ -143,17 +141,6 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 
 func mediaFileArtistFilter(_ string, value any) Sqlizer {
 	return ParticipantIDFilter("media_file", value, model.RoleAlbumArtist, model.RoleArtist)
-}
-
-func mediaFileRecentlyAddedSort() string {
-	switch conf.Server().RecentlyAddedBy {
-	case consts.RecentlyAddedByModTime:
-		return "media_file.updated_at, media_file.id"
-	case consts.RecentlyAddedByBirth:
-		return "media_file.birth_time, media_file.id"
-	default:
-		return "media_file.created_at, media_file.id"
-	}
 }
 
 func (r *mediaFileRepository) CountAll(ctx context.Context, options ...model.QueryOptions) (int64, error) {

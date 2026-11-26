@@ -342,34 +342,29 @@ func sanitizeSlashes(target string) string {
 // albumCreatedAt mirrors recentlyAddedSort, so clients can reproduce the "recently added" order
 // locally. The other timestamps are fallbacks for legacy rows.
 func albumCreatedAt(al model.Album) time.Time {
-	var candidates []time.Time
 	switch conf.Server().RecentlyAddedBy {
 	case consts.RecentlyAddedByModTime:
-		candidates = []time.Time{al.UpdatedAt, al.CreatedAt, al.ImportedAt}
+		return firstNonZero(al.UpdatedAt, al.CreatedAt, al.ImportedAt)
 	case consts.RecentlyAddedByBirth:
-		candidates = []time.Time{al.BirthTime, al.CreatedAt, al.UpdatedAt, al.ImportedAt}
+		return firstNonZero(al.BirthTime, al.CreatedAt, al.UpdatedAt, al.ImportedAt)
 	default:
-		candidates = []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
+		return firstNonZero(al.CreatedAt, al.UpdatedAt, al.ImportedAt)
 	}
-	return firstNonZero(candidates)
 }
 
-// mediaFileCreatedAt is the song counterpart of albumCreatedAt, tracking
-// mediaFileRecentlyAddedSort.
+// mediaFileCreatedAt is the song counterpart of albumCreatedAt.
 func mediaFileCreatedAt(mf model.MediaFile) time.Time {
-	var candidates []time.Time
 	switch conf.Server().RecentlyAddedBy {
 	case consts.RecentlyAddedByModTime:
-		candidates = []time.Time{mf.UpdatedAt, mf.CreatedAt, mf.BirthTime}
+		return firstNonZero(mf.UpdatedAt, mf.CreatedAt, mf.BirthTime)
 	case consts.RecentlyAddedByBirth:
-		candidates = []time.Time{mf.BirthTime, mf.CreatedAt, mf.UpdatedAt}
+		return firstNonZero(mf.BirthTime, mf.CreatedAt, mf.UpdatedAt)
 	default:
-		candidates = []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
+		return firstNonZero(mf.CreatedAt, mf.UpdatedAt, mf.BirthTime)
 	}
-	return firstNonZero(candidates)
 }
 
-func firstNonZero(candidates []time.Time) time.Time {
+func firstNonZero(candidates ...time.Time) time.Time {
 	for _, t := range candidates {
 		if !t.IsZero() {
 			return t

@@ -14,8 +14,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -120,7 +118,7 @@ func NewAlbumRepository(db dbx.Builder) model.AlbumRepository {
 		// TODO Rename this to just year (or date)
 		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, " + naturalSort("album.name"),
 		"random":         "random",
-		"recently_added": recentlyAddedSort(),
+		"recently_added": recentlyAddedSort("album"),
 		"starred_at":     "starred, starred_at",
 		"rated_at":       "rating, rated_at",
 	})
@@ -154,17 +152,6 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 
 	return filters
 })
-
-func recentlyAddedSort() string {
-	switch conf.Server().RecentlyAddedBy {
-	case consts.RecentlyAddedByModTime:
-		return "album.updated_at, album.id"
-	case consts.RecentlyAddedByBirth:
-		return "album.birth_time, album.id"
-	default:
-		return "album.created_at, album.id"
-	}
-}
 
 func recentlyPlayedFilter(string, any) Sqlizer {
 	return Gt{"play_count": 0}

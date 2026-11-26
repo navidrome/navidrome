@@ -239,10 +239,7 @@ func (s *maintenanceService) refreshAlbumChunk(ctx context.Context, albumIDs []s
 
 		// Only update if something changed (avoid unnecessary writes)
 		if !oldAlbum.Equals(newAlbum) {
-			// Preserve original timestamps
 			newAlbum.UpdatedAt = time.Now()
-			newAlbum.CreatedAt = oldAlbum.CreatedAt
-			newAlbum.BirthTime = oldAlbum.BirthTime
 
 			if err := albumRepo.Put(ctx, &newAlbum); err != nil {
 				log.Error(ctx, "Error updating album during refresh", "albumID", albumID, err)

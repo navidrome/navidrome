@@ -443,8 +443,10 @@ func Load(noConfigDump bool) {
 		s.validateScanSchedule,
 		s.validateBackupSchedule,
 		s.validatePlaylistsPath,
-		s.validatePurgeMissingOption,
-		s.validateRecentlyAddedBy,
+		validateEnum("Scanner.PurgeMissing", &s.Scanner.PurgeMissing,
+			consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull),
+		validateEnum("RecentlyAddedBy", &s.RecentlyAddedBy,
+			consts.RecentlyAddedByScan, consts.RecentlyAddedByBirth, consts.RecentlyAddedByModTime),
 		validateByteSize("MaxImageUploadSize", s.MaxImageUploadSize),
 		validateByteSize("MaxImageSize", s.MaxImageSize),
 		validateURL("ExtAuth.LogoutURL", s.ExtAuth.LogoutURL),
@@ -848,25 +850,16 @@ func parseLanguages(lang string) []string {
 	return languages
 }
 
-func (s *Options) validateRecentlyAddedBy() error {
-	allowedValues := []string{consts.RecentlyAddedByScan, consts.RecentlyAddedByBirth, consts.RecentlyAddedByModTime}
-	if !slices.Contains(allowedValues, s.RecentlyAddedBy) {
-		err := fmt.Errorf("invalid RecentlyAddedBy value: '%s'. Must be one of: %v", s.RecentlyAddedBy, allowedValues)
-		s.RecentlyAddedBy = consts.RecentlyAddedByScan
+// validateEnum resets value to its first allowed entry when it is not one of them.
+func validateEnum(name string, value *string, allowed ...string) func() error {
+	return func() error {
+		if slices.Contains(allowed, *value) {
+			return nil
+		}
+		err := fmt.Errorf("invalid %s value: '%s'. Must be one of: %v", name, *value, allowed)
+		*value = allowed[0]
 		return err
 	}
-	return nil
-}
-
-func (s *Options) validatePurgeMissingOption() error {
-	allowedValues := []string{consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull}
-	valid := slices.Contains(allowedValues, s.Scanner.PurgeMissing)
-	if !valid {
-		err := fmt.Errorf("invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", s.Scanner.PurgeMissing, allowedValues)
-		s.Scanner.PurgeMissing = consts.PurgeMissingNever
-		return err
-	}
-	return nil
 }
 
 func validateByteSize(name, value string) func() error {

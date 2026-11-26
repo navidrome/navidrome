@@ -6,16 +6,14 @@
 ALTER TABLE album ADD COLUMN birth_time datetime NOT NULL DEFAULT '0000-00-00 00:00:00';
 UPDATE album SET birth_time = created_at;
 
-UPDATE album SET created_at = (
-    SELECT MIN(created_at) FROM media_file
-    WHERE media_file.album_id = album.id
-      AND created_at IS NOT NULL AND created_at != ''
-      AND created_at NOT LIKE '0001-%' AND created_at NOT LIKE '0000-%')
-WHERE EXISTS (
-    SELECT 1 FROM media_file
-    WHERE media_file.album_id = album.id
-      AND created_at IS NOT NULL AND created_at != ''
-      AND created_at NOT LIKE '0001-%' AND created_at NOT LIKE '0000-%');
+-- One pass over media_file: walking media_file_album_id costs a random row read per track.
+UPDATE album SET created_at = first_scan.created_at
+FROM (SELECT album_id, MIN(created_at) AS created_at
+      FROM media_file NOT INDEXED
+      WHERE created_at IS NOT NULL AND created_at != ''
+        AND created_at NOT LIKE '0001-%' AND created_at NOT LIKE '0000-%'
+      GROUP BY album_id) AS first_scan
+WHERE first_scan.album_id = album.id;
 
 CREATE INDEX IF NOT EXISTS album_birth_time ON album(birth_time, id);
 CREATE INDEX IF NOT EXISTS media_file_birth_time ON media_file(birth_time, id);

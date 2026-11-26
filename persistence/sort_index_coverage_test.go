@@ -136,6 +136,7 @@ var _ = Describe("Sort index coverage", func() {
 				}
 			}
 		},
+		Entry("scan", consts.RecentlyAddedByScan),
 		Entry("modtime", consts.RecentlyAddedByModTime),
 		Entry("birth", consts.RecentlyAddedByBirth),
 	)
