@@ -61,7 +61,12 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Leave Content-Type unset so net/http sniffs it (covers may be PNG/WebP/JPEG).
-	_, _ = io.Copy(w, img)
+	if cnt, err := imghttp.WriteImage(w, img); err != nil {
+		log.Warn(ctx, "Error sending image", "id", itemId, err)
+		if cnt == 0 {
+			http.Error(w, "Error sending image", http.StatusInternalServerError)
+		}
+	}
 }
 
 // hashFromTag returns the ?tag query param when it is exactly a 16-char lowercase-hex content

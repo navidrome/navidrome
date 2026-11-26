@@ -119,3 +119,39 @@ var _ = Describe("WriteImageHeaders", func() {
 				wantCache: "public, no-cache", wantLastMod: true}),
 	)
 })
+
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
+
+var _ = Describe("WriteImage", func() {
+	It("sends the body with a Content-Length", func() {
+		w := httptest.NewRecorder()
+
+		n, err := imghttp.WriteImage(w, found())
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(Equal(int64(3)))
+		Expect(w.Header().Get("Content-Length")).To(Equal("3"))
+		Expect(w.Body.String()).To(Equal("IMG"))
+	})
+
+	It("writes nothing and withdraws the caching headers when the image cannot be read", func() {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "/img", nil)
+		img := found()
+		img.ReadCloser = io.NopCloser(failingReader{})
+		Expect(imghttp.WriteImageHeaders(w, r, img, testHash)).To(BeFalse())
+
+		n, err := imghttp.WriteImage(w, img)
+
+		Expect(err).To(MatchError(io.ErrUnexpectedEOF))
+		Expect(n).To(BeZero())
+		Expect(w.Body.Len()).To(BeZero())
+		h := w.Header()
+		Expect(h.Get("Content-Length")).To(BeEmpty())
+		Expect(h.Get("ETag")).To(BeEmpty())
+		Expect(h.Get("Last-Modified")).To(BeEmpty())
+		Expect(h.Get("Cache-Control")).To(Equal("no-store"))
+	})
+})

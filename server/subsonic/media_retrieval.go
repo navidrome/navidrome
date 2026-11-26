@@ -85,7 +85,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	if imghttp.WriteImageHeaders(w, r, img, artID.Hash) {
 		return nil, nil
 	}
-	cnt, err := io.Copy(w, img)
+	cnt, err := imghttp.WriteImage(w, img)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
 	}

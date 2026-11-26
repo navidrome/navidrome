@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -48,6 +49,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(artwork.recvSize).To(Equal(128))
 			Expect(artwork.recvSquare).To(BeTrue())
 			Expect(w.Body.String()).To(Equal(artwork.data))
+			Expect(w.Header().Get("Content-Length")).To(Equal(strconv.Itoa(len(artwork.data))))
 		})
 
 		It("should return placeholder if id parameter is missing (mimicking Subsonic)", func() {

@@ -3,7 +3,9 @@
 package imghttp
 
 import (
+	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/utils/req"
@@ -45,4 +47,18 @@ func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Imag
 		return true
 	}
 	return false
+}
+
+func WriteImage(w http.ResponseWriter, img *artwork.Image) (int64, error) {
+	data, err := io.ReadAll(img)
+	if err != nil {
+		h := w.Header()
+		h.Del("ETag")
+		h.Del("Last-Modified")
+		h.Set("Cache-Control", "no-store")
+		return 0, err
+	}
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	n, err := w.Write(data)
+	return int64(n), err
 }

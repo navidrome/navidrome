@@ -3,7 +3,6 @@ package public
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"time"
 
@@ -67,9 +66,12 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	if imghttp.WriteImageHeaders(w, r, img, artId.Hash) {
 		return
 	}
-	cnt, err := io.Copy(w, img)
+	cnt, err := imghttp.WriteImage(w, img)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
+		if cnt == 0 {
+			http.Error(w, "Error sending image", http.StatusInternalServerError)
+		}
 	}
 }
 
