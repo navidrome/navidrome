@@ -288,13 +288,10 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 		return nil, nil, err
 	}
 	count := p.IntOr("count", 20)
-	includeNotPresent := p.BoolOr("includeNotPresent", false)
 	// Similar-artist images are only useful if not-present artists actually make it into the
-	// response - without this, most clients (which don't pass includeNotPresent) would never
-	// see them at all, making the feature a no-op in practice.
-	if conf.Server.EnableSimilarArtistImages {
-		includeNotPresent = true
-	}
+	// response, so with the feature enabled they are included by default. An explicit
+	// includeNotPresent from the client is always honored.
+	includeNotPresent := p.BoolOr("includeNotPresent", conf.Server.EnableSimilarArtistImages)
 
 	artist, err := api.provider.UpdateArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {

@@ -32,6 +32,9 @@ const (
 	refreshQueueLength          = 2000
 	similarArtistImageCacheSize = 2000
 	similarArtistImageCacheTTL  = 24 * time.Hour
+	// similarArtistImageErrorTTL is how long a transient lookup failure (agents throttling,
+	// timeouts) is remembered, so a recovered agent is retried soon instead of after a day.
+	similarArtistImageErrorTTL = 5 * time.Minute
 )
 
 type Provider interface {
@@ -134,14 +137,19 @@ func (e *provider) GetSimilarArtistImageURL(ctx context.Context, name, mbid stri
 		return url
 	}
 	if _, pending := e.similarArtistImagePending.LoadOrStore(key, struct{}{}); !pending {
-		e.similarArtistImageQueue.enqueue(&similarArtistImageJob{Key: key, Name: name, MBID: mbid})
+		if !e.similarArtistImageQueue.enqueue(&similarArtistImageJob{Key: key, Name: name, MBID: mbid}) {
+			// The queue is full and dropped the job: clear the marker so a later request can retry
+			e.similarArtistImagePending.Delete(key)
+		}
 	}
 	return ""
 }
 
-// fetchSimilarArtistImage is the similarArtistImageQueue's background worker. It always caches a
-// result - including "" for a miss - so a consistently-unmatched artist is not re-queried on
-// every page view, and clears the pending marker so a later cache expiry can re-trigger a fetch.
+// fetchSimilarArtistImage is the similarArtistImageQueue's background worker. Successful results
+// and definitive misses (cached as "") are remembered for the full TTL, so a consistently-unmatched
+// artist is not re-queried on every page view. Transient failures (agents throttling, timeouts)
+// are only remembered briefly. The pending marker is always cleared, so a later cache expiry can
+// re-trigger a fetch.
 func (e *provider) fetchSimilarArtistImage(ctx context.Context, job similarArtistImageJob) (similarArtistImageJob, error) {
 	defer e.similarArtistImagePending.Delete(job.Key)
 
@@ -151,11 +159,15 @@ func (e *provider) fetchSimilarArtistImage(ctx context.Context, job similarArtis
 	}
 	imgs, err := e.ag.GetArtistImages(ctx, "", searchName, job.MBID)
 	var url string
-	if err == nil && len(imgs) > 0 {
+	ttl := similarArtistImageCacheTTL
+	switch {
+	case err == nil && len(imgs) > 0:
 		sort.Slice(imgs, func(i, j int) bool { return imgs[i].Size > imgs[j].Size })
 		url = imgs[0].URL
+	case err != nil && !errors.Is(err, agents.ErrNotFound):
+		ttl = similarArtistImageErrorTTL
 	}
-	if cacheErr := e.similarArtistImageCache.AddWithTTL(job.Key, url, similarArtistImageCacheTTL); cacheErr != nil {
+	if cacheErr := e.similarArtistImageCache.AddWithTTL(job.Key, url, ttl); cacheErr != nil {
 		log.Debug(ctx, "Error caching similar-artist image result", "name", job.Name, "mbid", job.MBID, cacheErr)
 	}
 	return job, nil
@@ -535,7 +547,7 @@ func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.Artis
 
 func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artist, limit int, includeNotPresent bool) (model.Artists, error) {
 	var result model.Artists
-	var notPresent []string
+	var notPresent []agents.Artist
 
 	// Load artists by ID (highest priority)
 	idMatches, err := e.loadArtistsByID(ctx, similar)
@@ -583,7 +595,7 @@ func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artis
 			result = append(result, artist)
 			count++
 		} else {
-			notPresent = append(notPresent, s.Name)
+			notPresent = append(notPresent, s)
 		}
 	}
 
@@ -591,7 +603,7 @@ func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artis
 	if includeNotPresent && count < limit {
 		for _, s := range notPresent {
 			// Let the ID empty to indicate that the artist is not present in the DB
-			sa := model.Artist{Name: s}
+			sa := model.Artist{Name: s.Name, MbzArtistID: s.MBID}
 			result = append(result, sa)
 
 			count++
@@ -790,9 +802,13 @@ func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context,
 	return queue
 }
 
-func (q *refreshQueue[T]) enqueue(item *T) {
+// enqueue adds the item to the queue and reports whether it was accepted. It never blocks: when
+// the queue is full the item is dropped (it is ok to miss a refresh request) and false is returned.
+func (q *refreshQueue[T]) enqueue(item *T) bool {
 	select {
 	case *q <- item:
-	default: // It is ok to miss a refresh request
+		return true
+	default:
+		return false
 	}
 }
