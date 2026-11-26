@@ -97,7 +97,7 @@ var _ = Describe("MediaRepository", func() {
 	It("gets mediafile from the DB", func() {
 		actual, err := mr.Get(ctx, "1004")
 		Expect(err).ToNot(HaveOccurred())
-		actual.CreatedAt = time.Time{}
+		actual.CreatedAt, actual.AddedAt = time.Time{}, time.Time{}
 		Expect(actual).To(Equal(&songAntenna))
 	})
 
@@ -685,6 +685,14 @@ var _ = Describe("MediaRepository", func() {
 					Expect(results[0].Title).To(Equal("Middle Song")) // born 2022
 					Expect(results[1].Title).To(Equal("Old Song"))    // born 2021
 					Expect(results[2].Title).To(Equal("New Song"))    // born 2020
+				})
+
+				It("fills AddedAt with the birth time the sort uses", func() {
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
+					mf, err := NewMediaFileRepository(GetDBXBuilder()).Get(ctx, testMediaFiles[2].ID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf.AddedAt).To(BeTemporally("==", mf.BirthTime))
+					Expect(mf.AddedAt).ToNot(BeTemporally("==", mf.CreatedAt))
 				})
 			})
 

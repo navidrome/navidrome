@@ -105,6 +105,7 @@ type MediaFile struct {
 	BirthTime time.Time `structs:"birth_time" json:"birthTime" hash:"ignore"` // Time of file creation (ctime)
 	CreatedAt time.Time `structs:"created_at" json:"createdAt" hash:"ignore"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt" hash:"ignore"` // Time of file last update (mtime)
+	AddedAt   time.Time `structs:"-" json:"addedAt,omitzero" hash:"ignore"`   // RecentlyAddedAt(), filled on DB reads
 }
 
 func (mf MediaFile) FullTitle() string {
