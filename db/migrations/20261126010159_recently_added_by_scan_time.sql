@@ -15,6 +15,10 @@ FROM (SELECT album_id, MIN(created_at) AS created_at
       GROUP BY album_id) AS first_scan
 WHERE first_scan.album_id = album.id;
 
+-- Albums whose old created_at was zero would otherwise sort as the oldest in birth mode.
+UPDATE album SET birth_time = created_at
+WHERE birth_time IS NULL OR birth_time = '' OR birth_time LIKE '0001-%' OR birth_time LIKE '0000-%';
+
 CREATE INDEX IF NOT EXISTS album_birth_time ON album(birth_time, id);
 CREATE INDEX IF NOT EXISTS media_file_birth_time ON media_file(birth_time, id);
 -- +goose StatementEnd
