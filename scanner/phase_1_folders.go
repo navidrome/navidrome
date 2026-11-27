@@ -442,6 +442,10 @@ func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, en
 		if err := tx.Artwork().DeleteForItems(ctx, model.KindMediaFileArtwork, trackIDs); err != nil {
 			log.Warn(ctx, "Scanner: could not invalidate media_file artwork", err)
 		}
+		// Restart a queued track so an in-flight worker's stale result cannot delete the row.
+		if err := tx.ArtworkQueue().RestartIfQueued(ctx, model.KindMediaFileArtwork, trackIDs...); err != nil {
+			log.Warn(ctx, "Scanner: could not restart queued media_file artwork", err)
+		}
 	}
 
 	// Mark all missing tracks as not available

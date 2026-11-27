@@ -261,6 +261,29 @@ var _ = Describe("Scanner", func() {
 				_, err = ds.Artwork().GetItemArtwork(ctx, model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
+
+			It("restarts a queued track, so a worker mid-resolve cannot settle it for the old file", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				mf, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf).ToNot(BeEmpty())
+				trackID := mf[0].ID
+
+				queue := ds.ArtworkQueue()
+				Expect(queue.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: trackID,
+					ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump})).To(Succeed())
+				seen, err := queue.Get(ctx, model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
+				Expect(err).ToNot(HaveOccurred())
+
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "reimport"})
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				// The worker that dequeued before the scan settles with the retry_at it saw.
+				Expect(queue.DeleteIfUnchanged(ctx, "mf", trackID, model.ImageTypePrimary, seen.RetryAt)).To(Succeed())
+				_, err = queue.Get(ctx, model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
+				Expect(err).ToNot(HaveOccurred(), "the row must survive the stale settle")
+			})
 		})
 	})
 

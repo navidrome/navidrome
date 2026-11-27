@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -752,5 +753,72 @@ var _ = Describe("ExternalLookupsPerItem", func() {
 		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, count)).To(BeZero())
 		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).To(BeZero())
 		Expect(ExternalLookupsPerItem(model.KindRadioArtwork, count)).To(BeZero())
+	})
+})
+
+// extractHookFFmpeg runs onExtract when the tag is extracted, to land an edit mid-resolve.
+type extractHookFFmpeg struct {
+	*tests.MockFFmpeg
+	onExtract func()
+}
+
+func (f *extractHookFFmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
+	f.onExtract()
+	return f.MockFFmpeg.ExtractImage(ctx, path)
+}
+
+// An edit that lands while the worker takes the bytes must leave refMtime older than the edit, so
+// openOriginal's mtime check re-resolves instead of serving the old bytes as current.
+var _ = Describe("refMtime with an edit during the resolve", func() {
+	var (
+		dir          string
+		lib          libraryView
+		before, edit time.Time
+	)
+
+	BeforeEach(func() {
+		dir = GinkgoT().TempDir()
+		lib = libraryView{FS: osDirFS{os.DirFS(dir)}, absRoot: dir}
+		before = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		edit = before.Add(time.Hour)
+	})
+
+	writeFile := func(name, data string, mtime time.Time) {
+		p := filepath.Join(dir, name)
+		Expect(os.WriteFile(p, []byte(data), 0o600)).To(Succeed())
+		Expect(os.Chtimes(p, mtime, mtime)).To(Succeed())
+	}
+
+	It("embedded: records the mtime from before the tag was extracted", func() {
+		writeFile("track.mp3", "not audio, so the taglib read misses", before)
+		ffm := &extractHookFFmpeg{MockFFmpeg: tests.NewMockFFmpeg("image bytes"), onExtract: func() {
+			p := filepath.Join(dir, "track.mp3")
+			Expect(os.Chtimes(p, edit, edit)).To(Succeed())
+		}}
+
+		res, ok := resolveEmbedded(GinkgoT().Context(), lib, ffm, "track.mp3")
+		Expect(ok).To(BeTrue())
+		defer res.reader.Close()
+		Expect(res.refMtime).To(Equal(before.UnixNano()))
+	})
+
+	It("folder: records the mtime of the opened file, not of a file renamed over it", func() {
+		tests.SkipOnWindows("it blocks a rename over an open file, so this race cannot happen there")
+		writeFile("cover.jpg", "old image", before)
+		sf := func() (io.ReadCloser, string, error) {
+			f, err := lib.FS.Open("cover.jpg")
+			Expect(err).ToNot(HaveOccurred())
+			writeFile("cover.new", "new image", edit)
+			Expect(os.Rename(filepath.Join(dir, "cover.new"), filepath.Join(dir, "cover.jpg"))).To(Succeed())
+			return f, "cover.jpg", nil
+		}
+
+		res, ok := resolveFolderSource(lib, sf)
+		Expect(ok).To(BeTrue())
+		defer res.reader.Close()
+		data, err := io.ReadAll(res.reader)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(data)).To(Equal("old image"))
+		Expect(res.refMtime).To(Equal(before.UnixNano()))
 	})
 })
