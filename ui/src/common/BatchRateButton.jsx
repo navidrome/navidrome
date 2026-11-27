@@ -136,7 +136,11 @@ export const BatchRateButton = ({
         <ComboIcon />
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle style={{ textAlign: 'center' }}>{translate('resources.song.actions.batchRateTitle', { smart_count: selectedIds?.length || 0 })}</DialogTitle>
+        <DialogTitle style={{ textAlign: 'center' }}>
+          {translate('resources.song.actions.batchRateTitle', {
+            smart_count: selectedIds?.length || 0,
+          })}
+        </DialogTitle>
         <DialogContent>
           <div className={classes.ratingRow}>
             <Tooltip title={translate('resources.song.actions.clearRating')}>
