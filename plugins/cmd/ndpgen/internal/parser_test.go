@@ -537,6 +537,10 @@ type EmbedsStream struct {
 type EmbedsBlob struct {
 	Blob
 }
+
+type EmbedsBlobPtr struct {
+	*Blob
+}
 `), 0600)).To(Succeed())
 				var err error
 				shared, err = LoadSharedTypes(sharedDir)
@@ -560,6 +564,7 @@ import (
 				Entry("as a direct param", blobService("", `Put(ctx context.Context, blob types.Blob) error`)),
 				Entry("embedding a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsStream) error`)),
 				Entry("embedding a shared struct with a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsBlob) error`)),
+				Entry("embedding a pointer to a shared struct with a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsBlobPtr) error`)),
 				Entry("through a local struct field", blobService(`
 type Wrapper struct {
 	B types.Blob

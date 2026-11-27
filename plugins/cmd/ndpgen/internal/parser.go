@@ -406,7 +406,7 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 			if len(streamUses(e, nil, nil)) > 0 {
 				return nil, nil, fmt.Errorf("shared type %s embeds %s: %w", canonical, e, errStreamInShared)
 			}
-			if c, ok := nestedSharedCanonical(e, shared); ok {
+			if c, ok := nestedSharedCanonical(strings.TrimPrefix(e, "*"), shared); ok {
 				queue = append(queue, c)
 			}
 		}
