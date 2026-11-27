@@ -181,12 +181,11 @@ func realIPMiddleware(next http.Handler) http.Handler {
 		return fromPeer
 	}
 
+	// ClientIPFromXFF ignores the header unless the peer is in a trusted CIDR, which a socket peer
+	// ("@") never is. dispatch already checked the peer, so trust the hop the local proxy wrote.
 	xff := middleware.ClientIPFromXFFTrustedProxies(1)
-	if prefixes := trustedProxyPrefixes(trusted); len(prefixes) > 0 {
+	if prefixes := trustedProxyPrefixes(trusted); len(prefixes) > 0 && !strings.HasPrefix(conf.Server().Address, "unix:") {
 		xff = middleware.ClientIPFromXFF(prefixes...)
-		if strings.HasPrefix(conf.Server().Address, "unix:") {
-			xff = asTrustedPeer(prefixes, xff)
-		}
 	}
 
 	// Last match wins, so this order reproduces RealIP's precedence: True-Client-IP, X-Real-IP,
@@ -225,35 +224,6 @@ func peerHost(r *http.Request) string {
 		return host
 	}
 	return r.RemoteAddr
-}
-
-// asTrustedPeer runs xff with a stand-in peer from prefixes, as chi skips X-Forwarded-For unless the
-// peer is in a trusted CIDR and a unix socket peer ("@") never is. dispatch already checked the peer.
-func asTrustedPeer(prefixes []string, xff func(http.Handler) http.Handler) func(http.Handler) http.Handler {
-	var standIn string
-	for _, p := range prefixes {
-		pfx, err := netip.ParsePrefix(p)
-		// chi unmaps the peer, so a v4-in-v6 prefix can't vouch for its own network address.
-		if addr := pfx.Masked().Addr().Unmap(); err == nil && pfx.Contains(addr) {
-			standIn = addr.String()
-			break
-		}
-	}
-	if standIn == "" {
-		return middleware.ClientIPFromXFFTrustedProxies(1)
-	}
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			peer := r.RemoteAddr
-			restore := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				r.RemoteAddr = peer
-				next.ServeHTTP(w, r)
-			})
-			r = r.WithContext(r.Context())
-			r.RemoteAddr = standIn
-			xff(restore).ServeHTTP(w, r)
-		})
-	}
 }
 
 // trustedProxyPrefixes returns the CIDR entries of a trusted sources list, skipping non-CIDR

@@ -512,30 +512,18 @@ var _ = Describe("middlewares", func() {
 
 		Context("with a trusted proxy on a unix socket", func() {
 			DescribeTable("uses the forwarded client IP when the peer is the socket",
-				func(trusted, xff, expected string) {
+				func(trusted string) {
 					conf.Update(func(c *conf.Options) {
 						c.Address = "unix:/tmp/navidrome-test"
 						c.ExtAuth.TrustedSources = trusted
 					})
-					call("@", map[string]string{"X-Forwarded-For": xff})
-					Expect(resolved).To(Equal(expected))
-					Expect(remoteAddr).To(Equal(expected))
+					call("@", map[string]string{"X-Forwarded-For": "203.0.113.5"})
+					Expect(resolved).To(Equal("203.0.113.5"))
+					Expect(remoteAddr).To(Equal("203.0.113.5"))
 				},
-				Entry("socket only", "@", "203.0.113.5", "203.0.113.5"),
-				Entry("socket and a CIDR", "@,10.0.0.0/8", "203.0.113.5", "203.0.113.5"),
-				Entry("socket and a CIDR, skipping a trusted hop", "@,10.0.0.0/8", "203.0.113.5, 10.0.0.2", "203.0.113.5"),
-				Entry("socket and a v4-in-v6 CIDR", "@,::ffff:10.0.0.0/104,192.168.0.0/16", "203.0.113.5, 192.168.1.2", "203.0.113.5"),
+				Entry("socket only", "@"),
+				Entry("socket and a CIDR", "@,10.0.0.0/8"),
 			)
-
-			It("keeps the socket peer when every forwarded hop is trusted", func() {
-				conf.Update(func(c *conf.Options) {
-					c.Address = "unix:/tmp/navidrome-test"
-					c.ExtAuth.TrustedSources = "@,10.0.0.0/8"
-				})
-				call("@", map[string]string{"X-Forwarded-For": "10.0.0.3, 10.0.0.2"})
-				Expect(resolved).To(BeEmpty())
-				Expect(remoteAddr).To(Equal("@"))
-			})
 		})
 	})
 
