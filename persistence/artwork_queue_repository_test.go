@@ -184,7 +184,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	})
 
 	Describe("RestartIfQueued", func() {
-		It("makes a stale settle of the in-flight attempt keep the row, even within one clock tick", func() {
+		It("makes a stale settle of the in-flight attempt keep the row, even after two resets within one clock tick", func() {
 			r := repo.(*artworkQueueRepository)
 			tick := time.Now().Add(-time.Minute)
 			Expect(r.enqueueAt(ctx, tick, []model.ArtworkQueueItem{item("mf", "t1", model.ArtworkPriorityBump)})).To(Succeed())
@@ -192,6 +192,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(seen).To(HaveLen(1))
 
+			Expect(r.restartIfQueuedAt(ctx, tick, model.KindMediaFileArtwork, "t1")).To(Succeed())
 			Expect(r.restartIfQueuedAt(ctx, tick, model.KindMediaFileArtwork, "t1")).To(Succeed())
 
 			Expect(repo.DeleteIfUnchanged(ctx, "mf", "t1", model.ImageTypePrimary, seen[0].RetryAt)).To(Succeed())
@@ -267,7 +268,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(n).To(BeZero())
 	})
 
-	It("a re-enqueue within the same clock tick still fails the in-flight DeleteIfUnchanged", func() {
+	It("re-enqueues within the same clock tick still fail the in-flight DeleteIfUnchanged", func() {
 		r := repo.(*artworkQueueRepository)
 		tick := time.Now().Add(-time.Minute)
 		items := []model.ArtworkQueueItem{item("al", "d2", model.ArtworkPriorityScan)}
@@ -276,6 +277,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(got).To(HaveLen(1))
 
+		Expect(r.enqueueAt(ctx, tick, items)).To(Succeed())
 		Expect(r.enqueueAt(ctx, tick, items)).To(Succeed())
 
 		Expect(repo.DeleteIfUnchanged(ctx, "al", "d2", model.ImageTypePrimary, got[0].RetryAt)).To(Succeed())
