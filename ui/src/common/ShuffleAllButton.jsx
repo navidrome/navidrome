@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import { playTracks } from '../actions'
 import PropTypes from 'prop-types'
+import config from '../config'
 
 export const ShuffleAllButton = ({ filters }) => {
   const translate = useTranslate()
@@ -11,6 +12,9 @@ export const ShuffleAllButton = ({ filters }) => {
   const dispatch = useDispatch()
   const notify = useNotify()
   filters = { ...filters, missing: false }
+  if (config.skipLowRatingInShuffle) {
+    filters = { ...filters, not_disliked: true }
+  }
 
   const handleOnClick = () => {
     dataProvider

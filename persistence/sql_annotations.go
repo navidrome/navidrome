@@ -94,6 +94,17 @@ func normalizedAlbumPlayCountExpr(playCountCol, albumTable string) string {
 	return fmt.Sprintf("round(coalesce(round(cast(%s as float) / coalesce(%s.song_count, 1), 1), 0))", playCountCol, albumTable)
 }
 
+func notDislikedFilter(_ string, value any) Sqlizer {
+	v, ok := value.(string)
+	if !ok {
+		return nil
+	}
+	if strings.ToLower(v) == "true" {
+		return NotEq{"COALESCE(annotation.rating, 0)": 1}
+	}
+	return nil
+}
+
 func annotationBoolFilter(field string) func(string, any) Sqlizer {
 	return func(_ string, value any) Sqlizer {
 		v, ok := value.(string)

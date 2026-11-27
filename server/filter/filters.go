@@ -107,6 +107,12 @@ func SongsByArtistID(artistId any) Options {
 	})
 }
 
+// NotDisliked uses a subquery because GetRandom selects rowids without joining the annotation table.
+func NotDisliked(userID string) Sqlizer {
+	return Expr("not exists (select 1 from annotation where annotation.item_id = media_file.id"+
+		" and annotation.item_type = 'media_file' and annotation.user_id = ? and annotation.rating = 1)", userID)
+}
+
 func SongsByGenreAndYearRange(genre string, fromYear, toYear int) Options {
 	options := Options{}
 	ff := And{}

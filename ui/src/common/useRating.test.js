@@ -22,6 +22,11 @@ vi.mock('react-admin', async () => {
   }
 })
 
+vi.mock('react-redux', () => ({
+  useDispatch: () => vi.fn(),
+  useSelector: (selector) => selector({ player: { queue: [], current: {} } }),
+}))
+
 describe('useRating', () => {
   let getOne
   beforeEach(() => {

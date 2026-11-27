@@ -27,6 +27,15 @@ vi.mock('react-admin', async () => {
   }
 })
 
+vi.mock('react-redux', async () => {
+  const actual = await vi.importActual('react-redux')
+  return {
+    ...actual,
+    useDispatch: () => vi.fn(),
+    useSelector: (selector) => selector({ player: { queue: [], current: {} } }),
+  }
+})
+
 // Mock useMediaQuery
 vi.mock('@material-ui/core', async () => {
   const actual = await import('@material-ui/core')
