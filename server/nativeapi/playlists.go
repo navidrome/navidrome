@@ -1,6 +1,7 @@
 package nativeapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -28,9 +30,30 @@ func writePlaylistError(w http.ResponseWriter, err error, defaultStatus int) {
 		http.Error(w, err.Error(), http.StatusForbidden)
 	case errors.Is(err, model.ErrPlaylistNotEditable):
 		http.Error(w, err.Error(), http.StatusConflict)
+	case errors.Is(err, playlists.ErrTooManyEntries), errors.As(err, new(*http.MaxBytesError)):
+		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
 	default:
 		http.Error(w, err.Error(), defaultStatus)
 	}
+}
+
+// maxPlaylistJSONBody leaves about 64 bytes per track id, with a 4 MiB floor.
+func maxPlaylistJSONBody() int64 { return playlists.MaxRequestBytes(4<<20, 64) }
+
+// maxContainerIDs keeps album, artist and disc lists under SQLite's variable and expression-depth limits.
+const maxContainerIDs = 500
+
+// limitPlaylistJSON buffers the body so an oversized one is a 413: deluan/rest answers any read error with 422.
+func limitPlaylistJSON(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxPlaylistJSONBody()))
+		if err != nil {
+			writePlaylistError(w, err, http.StatusBadRequest)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		next.ServeHTTP(w, r)
+	})
 }
 
 func playlistTracksHandler(pls playlists.Playlists, handler func(rest.Repository[model.PlaylistTrack]) http.HandlerFunc, refreshSmartPlaylist func(*http.Request) bool) http.HandlerFunc {
@@ -62,14 +85,17 @@ func getPlaylistTrack(pls playlists.Playlists) http.HandlerFunc {
 	return playlistTracksHandler(pls, rest.Get[model.PlaylistTrack], func(*http.Request) bool { return true })
 }
 
+// maxM3UUploadSize leaves about 512 bytes per entry for long paths and #EXTINF lines, with a 32 MiB floor.
+func maxM3UUploadSize() int64 { return playlists.MaxRequestBytes(32<<20, 512) }
+
 func createPlaylistFromM3U(pls playlists.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		pl, err := pls.ImportM3U(ctx, r.Body)
+		pl, err := pls.ImportM3U(ctx, http.MaxBytesReader(w, r.Body, maxM3UUploadSize()))
 		if err != nil {
 			log.Error(r.Context(), "Error parsing playlist", err)
 			// TODO: consider returning StatusBadRequest for playlists that are malformed
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writePlaylistError(w, err, http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -143,9 +169,14 @@ func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 		p := req.Params(r)
 		playlistId, _ := p.String(":playlistId")
 		var payload addTracksPayload
-		err := json.NewDecoder(r.Body).Decode(&payload)
+		err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxPlaylistJSONBody())).Decode(&payload)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writePlaylistError(w, err, http.StatusBadRequest)
+			return
+		}
+		if playlists.TooManyTracks(len(payload.Ids)) ||
+			len(payload.AlbumIds)+len(payload.ArtistIds)+len(payload.Discs) > maxContainerIDs {
+			writePlaylistError(w, playlists.ErrTooManyEntries, http.StatusBadRequest)
 			return
 		}
 		count, c := 0, 0
@@ -193,9 +224,7 @@ func reorderItem(pls playlists.Playlists) http.HandlerFunc {
 			return
 		}
 		var payload reorderPayload
-		err := json.NewDecoder(r.Body).Decode(&payload)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if !server.DecodeJSONBody(w, r, maxSmallJSONBody, &payload) {
 			return
 		}
 		newPos, err := strconv.Atoi(payload.InsertBefore)

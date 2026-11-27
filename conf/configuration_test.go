@@ -34,10 +34,7 @@ var _ = Describe("Configuration", func() {
 		viper.SetDefault("loglevel", "error")
 		conf.ResetConf()
 
-		// Panic instead of exiting on fatal errors to allow testing error conditions
-		DeferCleanup(conf.SetLogFatal(func(args ...any) {
-			panic(fmt.Sprint(args...))
-		}))
+		DeferCleanup(conf.PanicOnLogFatal())
 	})
 
 	Describe("ParseLanguages", func() {
@@ -112,7 +109,7 @@ var _ = Describe("Configuration", func() {
 
 		It("rejects a URL that cannot be parsed", func() {
 			fn := conf.ValidateURL("TestOption", "://invalid")
-			Expect(fn()).To(HaveOccurred())
+			Expect(fn()).ToNot(Succeed())
 		})
 
 		It("rejects a URL without a host", func() {
@@ -300,6 +297,39 @@ var _ = Describe("Configuration", func() {
 			It("keeps an explicit replacement over the deprecated value", func() {
 				Expect(conf.Server().Search.FullString).To(BeFalse())
 			})
+		})
+	})
+
+	Describe("RecentlyAddedBy", func() {
+		loadTOML := func(content string, loadEnvVars ...bool) {
+			GinkgoHelper()
+			filename := filepath.Join(GinkgoT().TempDir(), "navidrome.toml")
+			Expect(os.WriteFile(filename, []byte(content), 0600)).To(Succeed())
+			conf.InitConfig(filename, len(loadEnvVars) > 0 && loadEnvVars[0])
+			conf.Load(true)
+		}
+
+		DescribeTable("resolves the sort mode",
+			func(content, expected string) {
+				loadTOML(content)
+				Expect(conf.Server().RecentlyAddedBy).To(Equal(expected))
+			},
+			Entry("defaults to scan", ``, consts.RecentlyAddedByScan),
+			Entry("accepts an explicit value", `RecentlyAddedBy = "birth"`, consts.RecentlyAddedByBirth),
+			Entry("maps the deprecated option set to true", `RecentlyAddedByModTime = true`, consts.RecentlyAddedByModTime),
+			Entry("maps the deprecated option set to false", `RecentlyAddedByModTime = false`, consts.RecentlyAddedByScan),
+			Entry("keeps an explicit value over the deprecated option",
+				"RecentlyAddedBy = \"birth\"\nRecentlyAddedByModTime = true", consts.RecentlyAddedByBirth),
+		)
+
+		It("maps the deprecated environment variable", func() {
+			GinkgoT().Setenv("ND_RECENTLYADDEDBYMODTIME", "true")
+			loadTOML(``, true)
+			Expect(conf.Server().RecentlyAddedBy).To(Equal(consts.RecentlyAddedByModTime))
+		})
+
+		It("exits with a fatal error for an unknown value", func() {
+			Expect(func() { loadTOML(`RecentlyAddedBy = "creation"`) }).To(PanicWith(ContainSubstring("invalid RecentlyAddedBy value")))
 		})
 	})
 

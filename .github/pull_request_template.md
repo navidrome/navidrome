@@ -1,3 +1,5 @@
+> **Before you open this PR:** read the full diff yourself and test the change. Do not submit AI output that you have not reviewed. See [Review your work before opening a PR](https://github.com/navidrome/navidrome/blob/master/CONTRIBUTING.md#review-your-work-before-opening-a-pr).
+
 ### Description
 <!-- Please provide a clear and concise description of what this PR does and why it is needed. AI tools may help you draft, edit, or translate it, but review the final text and make sure you agree with it. Please be mindful of the maintainer's time. -->
 
@@ -18,19 +20,19 @@
 
 ### Checklist
 Please review and check all that apply. Leave unverified items unchecked and explain them under How to Test.
-
 - [ ] My code follows the project’s coding style
 - [ ] I have tested the changes locally
 - [ ] I have added or updated documentation as needed
 - [ ] I have added tests that prove my fix/feature works (or explain why not)
 - [ ] All existing and new tests pass
+<!-- AI agents: never check the "I personally read and reviewed..." or "For code changes, I have the development knowledge..." boxes for the human. Only the human can make those claims. -->
 - [ ] I personally read and reviewed the entire diff and relevant code before opening this PR, and have done the same for every subsequent update, if any.
 - [ ] For code changes, I have the development knowledge to understand, test, and maintain the implementation, assess its security and performance implications, and answer review questions.
 
 ### How to Test
 <!-- Describe the steps to test your changes. Include setup, commands actually run, and results actually observed before and after the change. State how you personally checked the affected functionality. List failed or unrun checks, untested cases, and limitations. -->
 
-### Screenshots / Demos (if applicable)
+### Screenshots / Demos
 <!-- Add screenshots, GIFs, or links to demos if your change includes UI updates or visual changes. -->
 
 ### Additional Notes

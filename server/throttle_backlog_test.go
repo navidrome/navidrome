@@ -27,7 +27,7 @@ var _ = Describe("ThrottleBacklog", func() {
 		})
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 		r.ServeHTTP(w, req)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -50,19 +50,19 @@ var _ = Describe("ThrottleBacklog", func() {
 		r.Use(middleware.Recoverer)
 		r.Use(m)
 		r.Get("/panic", func(w http.ResponseWriter, r *http.Request) {
-			panic("boom")
+			panic("boom") //nolint:forbidigo
 		})
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("ok"))
 		})
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/panic", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/panic", nil)
 		r.ServeHTTP(w, req)
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 
 		w = httptest.NewRecorder()
-		req, _ = http.NewRequest("GET", "/test", nil)
+		req, _ = http.NewRequest(http.MethodGet, "/test", nil)
 		r.ServeHTTP(w, req)
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Body.String()).To(Equal("ok"))
@@ -80,7 +80,7 @@ var _ = Describe("ThrottleBacklog", func() {
 		})
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 		r.ServeHTTP(w, req)
 
 		Expect(w.Code).To(Equal(http.StatusCreated))
@@ -100,7 +100,7 @@ var _ = Describe("ThrottleBacklog", func() {
 		})
 
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 		r.ServeHTTP(w, req)
 
 		Expect(w.Code).To(Equal(http.StatusCreated))
@@ -134,7 +134,7 @@ var _ = Describe("ThrottleBacklog", func() {
 		for range goroutines {
 			wg.Go(func() {
 				w := httptest.NewRecorder()
-				req, _ := http.NewRequest("GET", "/test", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 				r.ServeHTTP(w, req)
 			})
 		}
@@ -166,7 +166,7 @@ var _ = Describe("ThrottleBacklog", func() {
 			reqDone := make(chan struct{})
 			go func() {
 				defer close(reqDone)
-				req, _ := http.NewRequest("GET", "/test", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 				router.ServeHTTP(slow, req)
 			}()
 			<-handlerReached
@@ -179,7 +179,7 @@ var _ = Describe("ThrottleBacklog", func() {
 
 			Eventually(func() int {
 				w := httptest.NewRecorder()
-				req, _ := http.NewRequest("GET", "/test", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 				router.ServeHTTP(w, req)
 				return w.Code
 			}, 2*time.Second, 10*time.Millisecond).Should(Equal(http.StatusOK))
@@ -194,7 +194,7 @@ var _ = Describe("ThrottleBacklog", func() {
 			router, unblocked, reqDone := slowClientTest(ThrottleBacklog(1, 1, 500*time.Millisecond))
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/test", nil)
+			req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 			router.ServeHTTP(w, req)
 			Expect(w.Code).To(Equal(http.StatusTooManyRequests))
 
@@ -223,14 +223,14 @@ func runTwoRequests(m func(http.Handler) http.Handler) (firstStatus, secondStatu
 	done := make(chan int)
 	go func() {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("GET", "/test", nil)
+		req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 		r.ServeHTTP(w, req)
 		done <- w.Code
 	}()
 	<-held
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	r.ServeHTTP(w, req)
 	secondStatus = w.Code
 

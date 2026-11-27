@@ -26,11 +26,11 @@ var _ = Describe("client", func() {
 	Describe("ArtistImages", func() {
 		It("returns artist images from a successful request", func() {
 			f, err := os.Open("tests/fixtures/deezer.search.artist.json")
-			Expect(err).To(BeNil())
-			httpClient.mock("https://api.deezer.com/search/artist", http.Response{Body: f, StatusCode: 200})
+			Expect(err).ToNot(HaveOccurred())
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{Body: f, StatusCode: http.StatusOK})
 
 			artists, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(artists).To(HaveLen(17))
 			Expect(artists[0].Name).To(Equal("Michael Jackson"))
 			Expect(artists[0].PictureXl).To(Equal("https://cdn-images.dzcdn.net/images/artist/97fae13b2b30e4aec2e8c9e0c7839d92/1000x1000-000000-80-0-0.jpg"))
@@ -38,7 +38,7 @@ var _ = Describe("client", func() {
 
 		It("fails if artist was not found", func() {
 			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(bytes.NewBufferString(`{"data":[],"total":0}`)),
 			})
 
@@ -49,7 +49,7 @@ var _ = Describe("client", func() {
 		// Deezer answers 200 with no rate-limit headers when throttling, so this body is the only signal.
 		It("reports an exhausted quota as a retryable error, not as a missing artist", func() {
 			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body: io.NopCloser(bytes.NewBufferString(
 					`{"error":{"type":"Exception","message":"Quota limit exceeded","code":4}}`)),
 			})
@@ -64,7 +64,7 @@ var _ = Describe("client", func() {
 
 		It("reports a non-quota body error as a plain error", func() {
 			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body: io.NopCloser(bytes.NewBufferString(
 					`{"error":{"type":"Exception","message":"Invalid query","code":100}}`)),
 			})
@@ -80,11 +80,11 @@ var _ = Describe("client", func() {
 	Describe("TopTracks", func() {
 		It("returns top tracks with artist and album info from a successful request", func() {
 			f, err := os.Open("tests/fixtures/deezer.artist.top.json")
-			Expect(err).To(BeNil())
-			httpClient.mock("https://api.deezer.com/artist/27/top", http.Response{Body: f, StatusCode: 200})
+			Expect(err).ToNot(HaveOccurred())
+			httpClient.mock("https://api.deezer.com/artist/27/top", http.Response{Body: f, StatusCode: http.StatusOK})
 
 			tracks, err := client.getTopTracks(GinkgoT().Context(), 27, 5)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(tracks).To(HaveLen(5))
 
 			// Verify first track has all expected fields
@@ -104,18 +104,18 @@ var _ = Describe("client", func() {
 			// Mock the JWT token endpoint with a valid JWT that expires in 5 minutes
 			testJWT := createTestJWT(5 * time.Minute)
 			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, testJWT))),
 			})
 		})
 
 		It("returns artist bio from a successful request", func() {
 			f, err := os.Open("tests/fixtures/deezer.artist.bio.en.json")
-			Expect(err).To(BeNil())
-			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
+			Expect(err).ToNot(HaveOccurred())
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: http.StatusOK})
 
 			bio, err := client.getArtistBio(GinkgoT().Context(), 27, "en")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(bio).To(ContainSubstring("Schoolmates Thomas and Guy-Manuel"))
 			Expect(bio).ToNot(ContainSubstring("<p>"))
 			Expect(bio).ToNot(ContainSubstring("</p>"))
@@ -123,21 +123,21 @@ var _ = Describe("client", func() {
 
 		It("uses the provided language", func() {
 			f, err := os.Open("tests/fixtures/deezer.artist.bio.fr.json")
-			Expect(err).To(BeNil())
-			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
+			Expect(err).ToNot(HaveOccurred())
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: http.StatusOK})
 
 			_, err = client.getArtistBio(GinkgoT().Context(), 27, "fr")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.lastRequest.Header.Get("Accept-Language")).To(Equal("fr"))
 		})
 
 		It("includes the JWT token in the request", func() {
 			f, err := os.Open("tests/fixtures/deezer.artist.bio.en.json")
-			Expect(err).To(BeNil())
-			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: 200})
+			Expect(err).ToNot(HaveOccurred())
+			httpClient.mock("https://pipe.deezer.com/api", http.Response{Body: f, StatusCode: http.StatusOK})
 
 			_, err = client.getArtistBio(GinkgoT().Context(), 27, "en")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			// Verify that the Authorization header has the Bearer token format
 			authHeader := httpClient.lastRequest.Header.Get("Authorization")
 			Expect(authHeader).To(HavePrefix("Bearer "))
@@ -163,7 +163,7 @@ var _ = Describe("client", func() {
 				]
 			}`
 			httpClient.mock("https://pipe.deezer.com/api", http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(bytes.NewBufferString(errorResponse)),
 			})
 
@@ -185,7 +185,7 @@ var _ = Describe("client", func() {
 				}
 			}`
 			httpClient.mock("https://pipe.deezer.com/api", http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(bytes.NewBufferString(emptyBioResponse)),
 			})
 
@@ -195,7 +195,7 @@ var _ = Describe("client", func() {
 
 		It("handles JWT token fetch failure", func() {
 			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 				Body:       io.NopCloser(bytes.NewBufferString(`{"error":"Internal server error"}`)),
 			})
 
@@ -208,7 +208,7 @@ var _ = Describe("client", func() {
 			// Create a JWT that expires in 30 seconds (less than the 1-minute buffer)
 			expiredJWT := createTestJWT(30 * time.Second)
 			httpClient.mock("https://auth.deezer.com/login/anonymous", http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, expiredJWT))),
 			})
 
@@ -238,5 +238,6 @@ func (c *fakeHttpClient) Do(req *http.Request) (*http.Response, error) {
 	if resp, ok := c.responses[u.String()]; ok {
 		return resp, nil
 	}
-	panic("URL not mocked: " + u.String())
+	Fail("URL not mocked: " + u.String())
+	return nil, nil
 }

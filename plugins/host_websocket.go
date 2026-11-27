@@ -85,7 +85,7 @@ func (s *webSocketServiceImpl) Connect(ctx context.Context, urlStr string, heade
 
 	// Validate scheme
 	if parsedURL.Scheme != "ws" && parsedURL.Scheme != "wss" {
-		return "", fmt.Errorf("invalid URL scheme: must be ws:// or wss://")
+		return "", errors.New("invalid URL scheme: must be ws:// or wss://")
 	}
 
 	// Validate host against allowed hosts

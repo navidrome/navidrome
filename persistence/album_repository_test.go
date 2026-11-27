@@ -83,6 +83,8 @@ var _ = Describe("AlbumRepository", func() {
 			album, err := albumRepo.Get(ctx, id)
 			if album != nil {
 				album.ImportedAt = time.Time{}
+				album.CreatedAt = time.Time{}
+				album.BirthTime = time.Time{}
 			}
 			return album, err
 		}
@@ -95,6 +97,32 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("Put", func() {
+		BeforeEach(func() {
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": "put-new"}))
+			})
+		})
+
+		It("stamps a new album without track timestamps with its import time", func() {
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "put-new")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally("~", got.ImportedAt, time.Millisecond))
+			Expect(got.BirthTime).To(BeTemporally("~", got.ImportedAt, time.Millisecond))
+		})
+
+		It("keeps the first created_at and birth_time on later saves", func() {
+			first := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1, CreatedAt: first, BirthTime: first})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "put-new")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally("~", first, time.Second))
+			Expect(got.BirthTime).To(BeTemporally("~", first, time.Second))
+		})
+	})
+
 	Describe("CopyAttributes", func() {
 		var srcTime, dstTime time.Time
 		BeforeEach(func() {
@@ -103,6 +131,9 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-src", Name: "src", LibraryID: 1, CreatedAt: srcTime})).To(Succeed())
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-dst", Name: "dst", LibraryID: 1, CreatedAt: dstTime})).To(Succeed())
 			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-zero", Name: "zero", LibraryID: 1})).To(Succeed())
+			_, err := albumRepo.executeSQL(ctx, squirrel.Update("album").Where(squirrel.Eq{"id": "copy-zero"}).
+				Set("created_at", "0001-01-01 00:00:00+00:00").Set("birth_time", "0000-00-00 00:00:00"))
+			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() {
 				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"copy-src", "copy-dst", "copy-zero"}}))
 			})
@@ -113,11 +144,12 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", srcTime, time.Second))
 		})
-		It("leaves destination untouched when source created_at is zero", func() {
-			Expect(albumRepo.CopyAttributes(ctx, "copy-zero", "copy-dst", "created_at")).To(Succeed())
+		It("leaves destination untouched when source timestamps are zero", func() {
+			Expect(albumRepo.CopyAttributes(ctx, "copy-zero", "copy-dst", "created_at", "birth_time")).To(Succeed())
 			got, err := albumRepo.Get(ctx, "copy-dst")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", dstTime, time.Second))
+			Expect(got.BirthTime).To(BeTemporally("~", dstTime, time.Second))
 		})
 		It("returns not found and leaves destination untouched when source does not exist", func() {
 			err := albumRepo.CopyAttributes(ctx, "copy-missing", "copy-dst", "created_at")
@@ -240,6 +272,8 @@ var _ = Describe("AlbumRepository", func() {
 			albums, err := albumRepo.GetAll(ctx, opts...)
 			for i := range albums {
 				albums[i].ImportedAt = time.Time{}
+				albums[i].CreatedAt = time.Time{}
+				albums[i].BirthTime = time.Time{}
 			}
 			return albums, err
 		}
@@ -648,11 +682,11 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(dba.Album.Participants).To(HaveLen(2))
 				Expect(dba.Album.Participants).To(HaveKeyWithValue(
 					model.RoleFromString("composer"),
-					model.ParticipantList{{Artist: model.Artist{ID: "1", Name: "Composer 1"}}},
+					model.ParticipantList{{ID: "1", Name: "Composer 1"}},
 				))
 				Expect(dba.Album.Participants).To(HaveKeyWithValue(
 					model.RoleFromString("artist"),
-					model.ParticipantList{{Artist: model.Artist{ID: "2", Name: "Artist 2"}}, {Artist: model.Artist{ID: "3", Name: "Artist 3"}, SubRole: "subRole"}},
+					model.ParticipantList{{ID: "2", Name: "Artist 2"}, {ID: "3", Name: "Artist 3", SubRole: "subRole"}},
 				))
 			})
 
@@ -694,7 +728,7 @@ var _ = Describe("AlbumRepository", func() {
 			It("maps participants correctly", func() {
 				dba.Album.Participants = model.Participants{
 					model.RoleAlbumArtist: model.ParticipantList{_p("AA1", "AlbumArtist1")},
-					model.RoleComposer:    model.ParticipantList{{Artist: model.Artist{ID: "C1", Name: "Composer1"}, SubRole: "composer"}},
+					model.RoleComposer:    model.ParticipantList{{ID: "C1", Name: "Composer1", SubRole: "composer"}},
 				}
 				Expect(dba.PostMapArgs(args)).To(Succeed())
 				Expect(args).To(HaveKeyWithValue(
@@ -721,15 +755,15 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("dbAlbums.toModels", func() {
 		It("converts dbAlbums to model.Albums", func() {
 			dba := dbAlbums{
-				{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, Annotations: model.Annotations{PlayCount: 4}}},
-				{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, Annotations: model.Annotations{PlayCount: 6}}},
+				{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, PlayCount: 4}},
+				{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, PlayCount: 6}},
 			}
 			albums := dba.toModels()
 			for i := range dba {
-				Expect(albums[i].ID).To(Equal(dba[i].Album.ID))
-				Expect(albums[i].Name).To(Equal(dba[i].Album.Name))
-				Expect(albums[i].SongCount).To(Equal(dba[i].Album.SongCount))
-				Expect(albums[i].PlayCount).To(Equal(dba[i].Album.PlayCount))
+				Expect(albums[i].ID).To(Equal(dba[i].ID))
+				Expect(albums[i].Name).To(Equal(dba[i].Name))
+				Expect(albums[i].SongCount).To(Equal(dba[i].SongCount))
+				Expect(albums[i].PlayCount).To(Equal(dba[i].PlayCount))
 			}
 		})
 	})
@@ -827,10 +861,10 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Real Artist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "real-artist-1", Name: "Real Artist"}},
+						{ID: "real-artist-1", Name: "Real Artist"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "real-artist-1", Name: "Real Artist"}, SubRole: "primary"},
+						{ID: "real-artist-1", Name: "Real Artist", SubRole: "primary"},
 					},
 				},
 			}
@@ -862,8 +896,8 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtistID: artist.ID,
 				AlbumArtist:   artist.Name,
 				Participants: model.Participants{
-					model.RoleAlbumArtist: {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
-					model.RoleComposer:    {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
+					model.RoleAlbumArtist: {{ID: artist.ID, Name: artist.Name}},
+					model.RoleComposer:    {{ID: artist.ID, Name: artist.Name}},
 				},
 			}
 			Expect(albumRepo.Put(ctx, album)).To(Succeed())
@@ -904,7 +938,7 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtistID: artist.ID,
 				AlbumArtist:   artist.Name,
 				Participants: model.Participants{
-					model.RoleAlbumArtist: {{Artist: model.Artist{ID: artist.ID, Name: artist.Name}}},
+					model.RoleAlbumArtist: {{ID: artist.ID, Name: artist.Name}},
 				},
 			}
 			DeferCleanup(func() {
@@ -945,13 +979,13 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Real Artist 1",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "real-artist-mix-1", Name: "Real Artist 1"}},
-						{Artist: model.Artist{ID: "non-existent-mix-1", Name: "Non Existent 1"}},
-						{Artist: model.Artist{ID: "real-artist-mix-2", Name: "Real Artist 2"}},
+						{ID: "real-artist-mix-1", Name: "Real Artist 1"},
+						{ID: "non-existent-mix-1", Name: "Non Existent 1"},
+						{ID: "real-artist-mix-2", Name: "Real Artist 2"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "non-existent-mix-2", Name: "Non Existent 2"}},
-						{Artist: model.Artist{ID: "real-artist-mix-1", Name: "Real Artist 1"}},
+						{ID: "non-existent-mix-2", Name: "Non Existent 2"},
+						{ID: "real-artist-mix-1", Name: "Real Artist 1"},
 					},
 				},
 			}
@@ -998,16 +1032,16 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Lead Vocalist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "complex-artist-1", Name: "Lead Vocalist"}},
-						{Artist: model.Artist{ID: "complex-artist-2", Name: "Guitarist"}, SubRole: "lead guitar"},
-						{Artist: model.Artist{ID: "complex-artist-2", Name: "Guitarist"}, SubRole: "rhythm guitar"},
+						{ID: "complex-artist-1", Name: "Lead Vocalist"},
+						{ID: "complex-artist-2", Name: "Guitarist", SubRole: "lead guitar"},
+						{ID: "complex-artist-2", Name: "Guitarist", SubRole: "rhythm guitar"},
 					},
 					model.RoleProducer: {
-						{Artist: model.Artist{ID: "complex-artist-3", Name: "Producer"}, SubRole: "executive"},
+						{ID: "complex-artist-3", Name: "Producer", SubRole: "executive"},
 					},
 					model.RoleEngineer: {
-						{Artist: model.Artist{ID: "complex-artist-4", Name: "Engineer"}, SubRole: "mixing"},
-						{Artist: model.Artist{ID: "complex-artist-4", Name: "Engineer"}, SubRole: "mastering"},
+						{ID: "complex-artist-4", Name: "Engineer", SubRole: "mixing"},
+						{ID: "complex-artist-4", Name: "Engineer", SubRole: "mastering"},
 					},
 				},
 			}
@@ -1048,15 +1082,15 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Non Existent Album Artist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "non-existent-artist-1", Name: "Non Existent Artist 1"}},
-						{Artist: model.Artist{ID: "non-existent-artist-2", Name: "Non Existent Artist 2"}},
+						{ID: "non-existent-artist-1", Name: "Non Existent Artist 1"},
+						{ID: "non-existent-artist-2", Name: "Non Existent Artist 2"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "non-existent-composer-1", Name: "Non Existent Composer 1"}},
-						{Artist: model.Artist{ID: "non-existent-composer-2", Name: "Non Existent Composer 2"}},
+						{ID: "non-existent-composer-1", Name: "Non Existent Composer 1"},
+						{ID: "non-existent-composer-2", Name: "Non Existent Composer 2"},
 					},
 					model.RoleAlbumArtist: {
-						{Artist: model.Artist{ID: "non-existent-album-artist-1", Name: "Non Existent Album Artist 1"}},
+						{ID: "non-existent-album-artist-1", Name: "Non Existent Album Artist 1"},
 					},
 				},
 			}
@@ -1097,10 +1131,10 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Role Change Artist",
 				Participants: model.Participants{
 					model.RoleAlbumArtist: {
-						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+						{ID: "role-change-artist-1", Name: "Role Change Artist"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+						{ID: "role-change-artist-1", Name: "Role Change Artist"},
 					},
 				},
 			}
@@ -1118,7 +1152,7 @@ var _ = Describe("AlbumRepository", func() {
 			// Now update album so artist is ONLY a composer (remove albumartist role)
 			album.Participants = model.Participants{
 				model.RoleComposer: {
-					{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+					{ID: "role-change-artist-1", Name: "Role Change Artist"},
 				},
 			}
 
@@ -1202,7 +1236,7 @@ var _ = Describe("AlbumRepository", func() {
 		It("does not panic when the cursor yields a dbAlbum with nil Album", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbAlbum (where Album is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbAlbum, error) bool) {
 				var empty dbAlbum // Album pointer is nil
 				yield(empty, dbErr)
@@ -1313,9 +1347,9 @@ var _ = Describe("AlbumRepository", func() {
 })
 
 func _p(id, name string, sortName ...string) model.Participant {
-	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
+	p := model.Participant{ID: id, Name: name}
 	if len(sortName) > 0 {
-		p.Artist.SortArtistName = sortName[0]
+		p.SortArtistName = sortName[0]
 	}
 	return p
 }

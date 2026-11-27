@@ -55,7 +55,7 @@ var _ = Describe("SimpleCache", func() {
 	Describe("GetWithLoader", func() {
 		It("should retrieve a value using the loader function", func() {
 			loader := func(key string) (string, time.Duration, error) {
-				return fmt.Sprintf("%s=value", key), 1 * time.Minute, nil
+				return key + "=value", 1 * time.Minute, nil
 			}
 
 			value, err := cache.GetWithLoader("key", loader)
@@ -145,7 +145,7 @@ var _ = Describe("SimpleCache", func() {
 		It("cleans up the in-flight registration when the loader panics", func() {
 			Expect(func() {
 				_, _ = cache.GetWithLoader("key", func(string) (string, time.Duration, error) {
-					panic("boom")
+					panic("boom") //nolint:forbidigo
 				})
 			}).To(PanicWith("boom"))
 

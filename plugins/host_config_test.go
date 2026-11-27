@@ -12,7 +12,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -59,18 +58,14 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 		c.Plugins.AutoReload = false
 	})
 
-	// Setup mock DataStore
-	mockPluginRepo := tests.CreateMockPluginRepo()
-	mockPluginRepo.Permitted = true
-	mockPluginRepo.SetData(model.Plugins{{
+	dataStore := newTestDataStore(model.Plugin{
 		ID:       "test-config",
 		Path:     destPath,
 		SHA256:   hashHex,
 		Enabled:  true,
 		AllUsers: true,
 		Config:   configJSON,
-	}})
-	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+	})
 
 	// Create and start manager
 	manager := &Manager{
@@ -98,7 +93,10 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 		}
 		defer instance.Close(ctx)
 
-		inputBytes, _ := json.Marshal(input)
+		inputBytes, err := json.Marshal(input)
+		if err != nil {
+			return nil, err
+		}
 		_, outputBytes, err := instance.Call("nd_test_config", inputBytes)
 		if err != nil {
 			return nil, err

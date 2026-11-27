@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"strconv"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
@@ -274,7 +275,7 @@ var _ = Describe("Disc artwork resolution", func() {
 			for i, name := range discNames {
 				discNum := i + 1
 				prefix := fmt.Sprintf("Pop; Rock/Grateful Dead/(2001) The Golden Road/%s/", name)
-				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", discNum), map[string]any{"disc": fmt.Sprintf("%d", discNum)})
+				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", discNum), map[string]any{"disc": strconv.Itoa(discNum)})
 				layout[prefix+"folder.jpg"] = smallPNG(fmt.Sprintf("disc-%02d-folder", discNum))
 			}
 			setLayout(layout)
@@ -313,7 +314,7 @@ var _ = Describe("Disc artwork resolution", func() {
 			}
 			for i := 1; i <= 3; i++ {
 				prefix := fmt.Sprintf("Album/Disc %02d/", i)
-				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", i), map[string]any{"disc": fmt.Sprintf("%d", i)})
+				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", i), map[string]any{"disc": strconv.Itoa(i)})
 				layout[prefix+"folder.jpg"] = smallPNG(fmt.Sprintf("disc-%02d-folder", i))
 			}
 			setLayout(layout)

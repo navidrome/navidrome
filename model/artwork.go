@@ -117,7 +117,8 @@ const (
 	ArtworkPriorityBump     = 100
 )
 
-// Delete* takes the rows to remove; Purge* finds them itself and reports how many went.
+// ArtworkRepository stores the artwork images. Delete* takes the rows to remove; Purge* finds them itself
+// and reports how many went.
 type ArtworkRepository interface {
 	GetImage(ctx context.Context, hash string) (*Artwork, error)
 	PutImage(ctx context.Context, a *Artwork) error
@@ -141,6 +142,8 @@ type ArtworkQueueRepository interface {
 	Get(ctx context.Context, kind Kind, id, imageType string) (*ArtworkQueueItem, error)
 	// Enqueue upserts; an existing row keeps the higher priority and has its retry_at reset.
 	Enqueue(ctx context.Context, items ...ArtworkQueueItem) error
+	// RestartIfQueued resets existing rows as Enqueue would, but queues nothing new.
+	RestartIfQueued(ctx context.Context, kind Kind, ids ...string) error
 	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a
 	// request-triggered read-through never resets a failed resolution's backoff.
 	EnqueuePreservingBackoff(ctx context.Context, items ...ArtworkQueueItem) error

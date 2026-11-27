@@ -10,7 +10,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -230,7 +229,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.Created = new(mediaFileCreatedAt(mf))
+	child.Created = new(mf.RecentlyAddedAt())
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
@@ -324,51 +323,19 @@ func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 func fakePath(mf model.MediaFile) string {
 	builder := strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.FullAlbumName())))
+	fmt.Fprintf(&builder, "%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.FullAlbumName()))
 	if mf.DiscNumber != 0 {
-		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
+		fmt.Fprintf(&builder, "%02d-", mf.DiscNumber)
 	}
 	if mf.TrackNumber != 0 {
-		builder.WriteString(fmt.Sprintf("%02d - ", mf.TrackNumber))
+		fmt.Fprintf(&builder, "%02d - ", mf.TrackNumber)
 	}
-	builder.WriteString(fmt.Sprintf("%s.%s", sanitizeSlashes(mf.FullTitle()), mf.Suffix))
+	fmt.Fprintf(&builder, "%s.%s", sanitizeSlashes(mf.FullTitle()), mf.Suffix)
 	return builder.String()
 }
 
 func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
-}
-
-// albumCreatedAt mirrors the column used by recentlyAddedSort so clients can
-// reproduce the "recently added" order locally: UpdatedAt when
-// RecentlyAddedByModTime is set, CreatedAt otherwise. The other timestamps are
-// fallbacks for legacy rows; returns zero only when all three are unset.
-func albumCreatedAt(al model.Album) time.Time {
-	candidates := []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
-	if conf.Server().RecentlyAddedByModTime {
-		candidates = []time.Time{al.UpdatedAt, al.CreatedAt, al.ImportedAt}
-	}
-	for _, t := range candidates {
-		if !t.IsZero() {
-			return t
-		}
-	}
-	return time.Time{}
-}
-
-// mediaFileCreatedAt is the song counterpart of albumCreatedAt, tracking
-// mediaFileRecentlyAddedSort; BirthTime is the legacy fallback.
-func mediaFileCreatedAt(mf model.MediaFile) time.Time {
-	candidates := []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
-	if conf.Server().RecentlyAddedByModTime {
-		candidates = []time.Time{mf.UpdatedAt, mf.CreatedAt, mf.BirthTime}
-	}
-	for _, t := range candidates {
-		if !t.IsZero() {
-			return t
-		}
-	}
-	return time.Time{}
 }
 
 func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
@@ -383,7 +350,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
 	child.CoverArt = coverArtOrEmpty(al.CoverArtID(), al.ImageAbsent)
-	child.Created = new(albumCreatedAt(al))
+	child.Created = new(al.RecentlyAddedAt())
 	child.Parent = al.AlbumArtistID
 	child.ArtistId = al.AlbumArtistID
 	child.Duration = int32(al.Duration)
@@ -479,7 +446,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.PlayCount = album.PlayCount
 	dir.Year = int32(cmp.Or(album.MaxOriginalYear, album.MaxYear))
 	dir.Genre = album.Genre
-	dir.Created = albumCreatedAt(album)
+	dir.Created = album.RecentlyAddedAt()
 	if album.Starred {
 		dir.Starred = album.StarredAt
 	}

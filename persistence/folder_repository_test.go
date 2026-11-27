@@ -79,6 +79,31 @@ var _ = Describe("FolderRepository", func() {
 		})
 	})
 
+	Describe("LyricsFiles", func() {
+		get := func(f *model.Folder) []string {
+			GinkgoHelper()
+			Expect(repo.Put(ctx, f)).To(Succeed())
+			res, err := repo.Get(ctx, f.ID)
+			Expect(err).ToNot(HaveOccurred())
+			return res.LyricsFiles
+		}
+
+		It("persists the list of lyrics files", func() {
+			f := model.NewFolder(testLib, "TestLyrics/Album")
+			Expect(get(f)).To(BeEmpty())
+			Expect(get(f)).ToNot(BeNil())
+
+			f.LyricsFiles = []string{"01.lrc", "02.txt"}
+			Expect(get(f)).To(Equal([]string{"01.lrc", "02.txt"}))
+		})
+
+		It("keeps nil for folders not scanned for lyrics files", func() {
+			f := model.NewFolder(testLib, "TestLyrics/Legacy")
+			f.LyricsFiles = nil
+			Expect(get(f)).To(BeNil())
+		})
+	})
+
 	Describe("GetFolderUpdateInfo", func() {
 		Context("with no target paths", func() {
 			It("returns all folders in the library", func() {
@@ -321,7 +346,7 @@ var _ = Describe("FolderRepository", func() {
 		It("does not panic when the cursor yields a dbFolder with nil Folder", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbFolder (where Folder is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbFolder, error) bool) {
 				var empty dbFolder // Folder pointer is nil
 				yield(empty, dbErr)

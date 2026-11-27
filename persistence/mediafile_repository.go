@@ -13,7 +13,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -51,6 +50,7 @@ func (m *dbMediaFile) PostScan() error {
 	m.RGTrackPeak = m.RgTrackPeak
 	m.RGAlbumGain = m.RgAlbumGain
 	m.RGAlbumPeak = m.RgAlbumPeak
+	m.AddedAt = m.RecentlyAddedAt()
 	var err error
 	m.MediaFile.Participants, err = unmarshalParticipants(m.Participants)
 	if err != nil {
@@ -74,8 +74,13 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
 	args["search_normalized"] = str.NormalizeForFTS(m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
-	args["tags"] = marshalTags(m.MediaFile.Tags)
-	args["participants"] = marshalParticipants(m.MediaFile.Participants)
+	var err error
+	if args["tags"], err = marshalTags(m.MediaFile.Tags); err != nil {
+		return err
+	}
+	if args["participants"], err = marshalParticipants(m.MediaFile.Participants); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -97,7 +102,7 @@ func NewMediaFileRepository(db dbx.Builder) model.MediaFileRepository {
 		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, " + naturalSort("media_file.title"),
 		"random":         "random",
 		"created_at":     "media_file.created_at",
-		"recently_added": mediaFileRecentlyAddedSort(),
+		"recently_added": recentlyAddedSort("media_file"),
 		"starred_at":     "starred, starred_at",
 		"rated_at":       "rating, rated_at",
 		"year":           "year",
@@ -137,13 +142,6 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 
 func mediaFileArtistFilter(_ string, value any) Sqlizer {
 	return ParticipantIDFilter("media_file", value, model.RoleAlbumArtist, model.RoleArtist)
-}
-
-func mediaFileRecentlyAddedSort() string {
-	if conf.Server().RecentlyAddedByModTime {
-		return "media_file.updated_at, media_file.id"
-	}
-	return "media_file.created_at, media_file.id"
 }
 
 func (r *mediaFileRepository) CountAll(ctx context.Context, options ...model.QueryOptions) (int64, error) {

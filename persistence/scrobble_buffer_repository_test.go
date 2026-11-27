@@ -177,7 +177,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 					Expect(entry.MediaFile.Participants).To(HaveLen(1))
 
-					artists, ok := entry.MediaFile.Participants[model.RoleArtist]
+					artists, ok := entry.Participants[model.RoleArtist]
 					Expect(ok).To(BeTrue(), "no artist role in participants")
 
 					Expect(artists).To(HaveLen(1))

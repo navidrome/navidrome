@@ -226,6 +226,12 @@
           "description": "Maximum total concurrent workers across all queues. Default: 1",
           "minimum": 1,
           "default": 1
+        },
+        "maxTaskDuration": {
+          "type": "integer",
+          "description": "Maximum run time of one task execution, in seconds. Capped by the server option Plugins.MaxTaskDuration. Default: 30",
+          "minimum": 1,
+          "default": 30
         }
       }
     },

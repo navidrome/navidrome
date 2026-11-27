@@ -119,6 +119,7 @@ func ScrobbleRetrieverGetFirstTimestamp(username string) (*int64, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response scrobbleRetrieverGetFirstTimestampResponse
@@ -155,6 +156,7 @@ func ScrobbleRetrieverGetLastTimestamp(username string) (*int64, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response scrobbleRetrieverGetLastTimestampResponse
@@ -206,6 +208,7 @@ func ScrobbleRetrieverGetScrobbles(username string, options ScrobbleOptions) ([]
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response scrobbleRetrieverGetScrobblesResponse
@@ -250,6 +253,7 @@ func ScrobbleRetrieverGetScrobbleCount(username string, options ScrobbleCountOpt
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response scrobbleRetrieverGetScrobbleCountResponse

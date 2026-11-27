@@ -267,7 +267,7 @@ var _ = Describe("TagRepository", func() {
 
 			Expect(slices.IsSortedFunc(tags, func(a, b model.Tag) int {
 				return strings.Compare(strings.ToLower(a.TagValue), strings.ToLower(b.TagValue))
-			}))
+			})).To(BeTrue())
 		})
 
 		It("should sort tags by value descending", func() {
@@ -282,7 +282,7 @@ var _ = Describe("TagRepository", func() {
 
 			Expect(slices.IsSortedFunc(tags, func(a, b model.Tag) int {
 				return strings.Compare(strings.ToLower(b.TagValue), strings.ToLower(a.TagValue)) // Descending order
-			}))
+			})).To(BeTrue())
 		})
 	})
 })

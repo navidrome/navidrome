@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,90 +19,126 @@ import (
 )
 
 var _ = Describe("Maintenance", func() {
-	var ds *tests.MockDataStore
-	var mfRepo *extendedMediaFileRepo
+	var ds model.DataStore
 	var service Maintenance
 	var ctx context.Context
 
+	fileExists := func(id string) bool {
+		GinkgoHelper()
+		exists, err := ds.MediaFile().Exists(ctx, id)
+		Expect(err).ToNot(HaveOccurred())
+		return exists
+	}
+
+	albumExists := func(id string) bool {
+		GinkgoHelper()
+		exists, err := ds.Album().Exists(ctx, id)
+		Expect(err).ToNot(HaveOccurred())
+		return exists
+	}
+
+	getAlbum := func(id string) *model.Album {
+		GinkgoHelper()
+		al, err := ds.Album().Get(ctx, id)
+		Expect(err).ToNot(HaveOccurred())
+		return al
+	}
+
+	starred := func(id string) bool {
+		GinkgoHelper()
+		return getAlbum(id).Starred
+	}
+
+	putArtist := func(id string) model.Participant {
+		GinkgoHelper()
+		persistencetest.PutArtists(ctx, ds, model.DefaultLibraryID, model.Artist{ID: id, Name: "Artist " + id})
+		return model.Participant{ID: id, Name: "Artist " + id}
+	}
+
+	artistSongCount := func(id string) int {
+		GinkgoHelper()
+		a, err := ds.Artist().Get(ctx, id)
+		Expect(err).ToNot(HaveOccurred())
+		return a.SongCount
+	}
+
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ctx = request.WithUser(ctx, model.User{ID: "user1", IsAdmin: true})
-
-		ds = createTestDataStore()
-		mfRepo = ds.MockedMediaFile.(*extendedMediaFileRepo)
+		ds = persistence.New(db.Db())
+		admin := model.User{ID: "user1", UserName: "user1", IsAdmin: true}
+		Expect(ds.User().Put(ctx, &admin)).To(Succeed())
+		ctx = request.WithUser(ctx, admin)
 		service = NewMaintenance(ds)
+		DeferCleanup(func() { service.(*maintenanceService).wait() })
 	})
 
 	Describe("DeleteMissingFiles", func() {
 		Context("with specific IDs", func() {
 			It("deletes specific missing files and runs GC", func() {
-				// Setup: mock missing files with album IDs
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "album1", Missing: true},
-					{ID: "mf2", AlbumID: "album2", Missing: true},
-				})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"}, model.Album{ID: "album3"})
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true},
+					model.MediaFile{ID: "mf2", AlbumID: "album2", Missing: true},
+					model.MediaFile{ID: "mf3", AlbumID: "album3", Missing: true},
+				)
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1", "mf2"})
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mfRepo.deleteMissingCalled).To(BeTrue())
-				Expect(mfRepo.deletedIDs).To(Equal([]string{"mf1", "mf2"}))
-				Expect(ds.GCCalled).To(BeTrue(), "GC should be called after deletion")
+				Expect(fileExists("mf1")).To(BeFalse())
+				Expect(fileExists("mf2")).To(BeFalse())
+				Expect(fileExists("mf3")).To(BeTrue())
+				Expect(albumExists("album1")).To(BeFalse(), "GC should purge albums left empty by the deletion")
+				Expect(albumExists("album2")).To(BeFalse(), "GC should purge albums left empty by the deletion")
+				Expect(albumExists("album3")).To(BeTrue())
 			})
 
 			It("triggers artist stats refresh and album refresh after deletion", func() {
-				artistRepo := ds.MockedArtist.(*extendedArtistRepo)
-				// Setup: mock missing files with albums
-				albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
-				albumRepo.SetData(model.Albums{
-					{ID: "album1", Name: "Test Album", SongCount: 5},
-				})
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "album1", Missing: true},
-					{ID: "mf2", AlbumID: "album1", Missing: false, Size: 1000, Duration: 180},
-					{ID: "mf3", AlbumID: "album1", Missing: false, Size: 2000, Duration: 200},
-				})
+				artist := model.Participants{model.RoleArtist: {putArtist("ar1")}}
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Test Album", SongCount: 5, Participants: artist})
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: "mf1", AlbumID: "album1", Album: "Test Album", Missing: true, Participants: artist},
+					model.MediaFile{ID: "mf2", AlbumID: "album1", Album: "Test Album", Size: 1000, Duration: 180, Participants: artist},
+					model.MediaFile{ID: "mf3", AlbumID: "album1", Album: "Test Album", Size: 2000, Duration: 200, Participants: artist},
+				)
+				Expect(artistSongCount("ar1")).To(BeZero())
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
 				Expect(err).ToNot(HaveOccurred())
-
-				// Wait for background goroutines to complete
 				service.(*maintenanceService).wait()
 
-				// RefreshStats should be called
-				Expect(artistRepo.IsRefreshStatsCalled()).To(BeTrue(), "Artist stats should be refreshed")
-
-				// Album should be updated with new calculated values
-				Expect(albumRepo.GetPutCallCount()).To(BeNumerically(">", 0), "Album.Put() should be called to refresh album data")
+				Expect(artistSongCount("ar1")).To(Equal(2), "Artist stats should be refreshed")
+				al := getAlbum("album1")
+				Expect(al.SongCount).To(Equal(2))
+				Expect(al.Size).To(Equal(int64(3000)))
+				Expect(al.Duration).To(BeNumerically("==", 380))
 			})
 
 			It("returns error if deletion fails", func() {
-				mfRepo.deleteMissingError = errors.New("delete failed")
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Missing: true})
+				service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{deleteMissing: errors.New("delete failed")}))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("delete failed"))
+				Expect(fileExists("mf1")).To(BeTrue())
 			})
 
 			It("continues even if album tracking fails", func() {
-				mfRepo.SetError(true)
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Missing: true})
+				service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{getAll: errors.New("get failed")}))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
-				// Should not fail, just log warning
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mfRepo.deleteMissingCalled).To(BeTrue())
+				Expect(fileExists("mf1")).To(BeFalse())
 			})
 
 			It("returns error if GC fails", func() {
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "album1", Missing: true},
-				})
-
-				// Set GC to return error
-				ds.GCError = errors.New("gc failed")
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true})
+				service = NewMaintenance(withGCError(ds, errors.New("gc failed")))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
@@ -109,418 +149,411 @@ var _ = Describe("Maintenance", func() {
 
 		Context("album ID extraction", func() {
 			It("extracts unique album IDs from missing files", func() {
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "album1", Missing: true},
-					{ID: "mf2", AlbumID: "album1", Missing: true},
-					{ID: "mf3", AlbumID: "album2", Missing: true},
-				})
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true},
+					model.MediaFile{ID: "mf2", AlbumID: "album1", Missing: true},
+					model.MediaFile{ID: "mf3", AlbumID: "album2", Missing: true},
+					model.MediaFile{ID: "mf4", AlbumID: "album3", Missing: true},
+				)
 
-				err := service.DeleteMissingFiles(ctx, []string{"mf1", "mf2", "mf3"})
+				ids, err := service.(*maintenanceService).getAffectedAlbumIDs(ctx, []string{"mf1", "mf2", "mf3"})
 
 				Expect(err).ToNot(HaveOccurred())
+				Expect(ids).To(ConsistOf("album1", "album2"))
 			})
 
 			It("skips files without album IDs", func() {
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "", Missing: true},
-					{ID: "mf2", AlbumID: "album1", Missing: true},
-				})
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: "mf1", AlbumID: "", Missing: true},
+					model.MediaFile{ID: "mf2", AlbumID: "album1", Missing: true},
+				)
 
-				err := service.DeleteMissingFiles(ctx, []string{"mf1", "mf2"})
+				ids, err := service.(*maintenanceService).getAffectedAlbumIDs(ctx, []string{"mf1", "mf2"})
 
 				Expect(err).ToNot(HaveOccurred())
+				Expect(ids).To(ConsistOf("album1"))
 			})
 		})
 	})
 
 	Describe("DeleteAllMissingFiles", func() {
 		It("deletes all missing files and runs GC", func() {
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "mf1", AlbumID: "album1", Missing: true},
-				{ID: "mf2", AlbumID: "album2", Missing: true},
-				{ID: "mf3", AlbumID: "album3", Missing: true},
-			})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"}, model.Album{ID: "album3"}, model.Album{ID: "album4"})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true},
+				model.MediaFile{ID: "mf2", AlbumID: "album2", Missing: true},
+				model.MediaFile{ID: "mf3", AlbumID: "album3", Missing: true},
+				model.MediaFile{ID: "mf4", AlbumID: "album4"},
+			)
 
 			err := service.DeleteAllMissingFiles(ctx)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.GCCalled).To(BeTrue(), "GC should be called after deletion")
+			for _, id := range []string{"mf1", "mf2", "mf3"} {
+				Expect(fileExists(id)).To(BeFalse())
+			}
+			Expect(fileExists("mf4")).To(BeTrue())
+			Expect(albumExists("album1")).To(BeFalse(), "GC should purge albums left empty by the deletion")
+			Expect(albumExists("album4")).To(BeTrue())
 		})
 
 		It("returns error if deletion fails", func() {
-			mfRepo.SetError(true)
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", Missing: true})
+			service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{deleteAllMissing: errors.New("delete failed")}))
 
 			err := service.DeleteAllMissingFiles(ctx)
 
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("delete failed")))
+			Expect(fileExists("mf1")).To(BeTrue())
 		})
 
 		It("handles empty result gracefully", func() {
-			mfRepo.SetData(model.MediaFiles{})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1"})
 
 			err := service.DeleteAllMissingFiles(ctx)
 
 			Expect(err).ToNot(HaveOccurred())
+			Expect(fileExists("mf1")).To(BeTrue())
 		})
 	})
 
 	Describe("Album refresh logic", func() {
-		var albumRepo *extendedAlbumRepo
-
-		BeforeEach(func() {
-			albumRepo = ds.MockedAlbum.(*extendedAlbumRepo)
-		})
-
 		Context("when album has no tracks after deletion", func() {
 			It("skips the album without updating it", func() {
-				// Setup album with no remaining tracks
-				albumRepo.SetData(model.Albums{
-					{ID: "album1", Name: "Empty Album", SongCount: 1},
-				})
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "album1", Missing: true},
-				})
-
-				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
-
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Empty Album", SongCount: 1})
+				lastUpdate := time.Now().Add(-time.Hour).Truncate(time.Second)
+				_, err := db.Db().Exec("UPDATE album SET updated_at = ? WHERE id = ?", lastUpdate, "album1")
 				Expect(err).ToNot(HaveOccurred())
 
-				// Wait for background goroutines to complete
-				service.(*maintenanceService).wait()
+				Expect(service.(*maintenanceService).refreshAlbums(ctx, []string{"album1"})).To(Succeed())
 
-				// Album should NOT be updated because it has no tracks left
-				Expect(albumRepo.GetPutCallCount()).To(Equal(0), "Album with no tracks should not be updated")
+				al := getAlbum("album1")
+				Expect(al.SongCount).To(Equal(1), "Album with no tracks should not be updated")
+				Expect(al.UpdatedAt).To(BeTemporally("==", lastUpdate))
 			})
 		})
 
 		Context("when Put fails for one album", func() {
 			It("continues processing other albums", func() {
-				albumRepo.SetData(model.Albums{
-					{ID: "album1", Name: "Album 1"},
-					{ID: "album2", Name: "Album 2"},
-				})
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "album1", Missing: true},
-					{ID: "mf2", AlbumID: "album1", Missing: false, Size: 1000, Duration: 180},
-					{ID: "mf3", AlbumID: "album2", Missing: true},
-					{ID: "mf4", AlbumID: "album2", Missing: false, Size: 2000, Duration: 200},
-				})
-
-				// Make Put fail on first call but succeed on subsequent calls
-				albumRepo.putError = errors.New("put failed")
-				albumRepo.failOnce = true
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Album 1"}, model.Album{ID: "album2", Name: "Album 2"})
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: "mf1", AlbumID: "album1", Album: "Album 1", Missing: true},
+					model.MediaFile{ID: "mf2", AlbumID: "album1", Album: "Album 1", Size: 1000, Duration: 180},
+					model.MediaFile{ID: "mf3", AlbumID: "album2", Album: "Album 2", Missing: true},
+					model.MediaFile{ID: "mf4", AlbumID: "album2", Album: "Album 2", Size: 2000, Duration: 200},
+				)
+				service = NewMaintenance(withAlbumPutFailures(ds, 1))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1", "mf3"})
 
-				// Should not fail even if one album's Put fails
 				Expect(err).ToNot(HaveOccurred())
-
-				// Wait for background goroutines to complete
 				service.(*maintenanceService).wait()
 
-				// Put should have been called multiple times
-				Expect(albumRepo.GetPutCallCount()).To(BeNumerically(">", 0), "Put should be attempted")
+				refreshed := 0
+				for _, id := range []string{"album1", "album2"} {
+					if getAlbum(id).SongCount == 1 {
+						refreshed++
+					}
+				}
+				Expect(refreshed).To(Equal(1), "the album whose Put did not fail should still be refreshed")
 			})
 		})
 
 		Context("when media file loading fails", func() {
 			It("logs warning but continues when tracking affected albums fails", func() {
-				// Set up log capturing
 				hook, cleanup := tests.LogHook()
 				defer cleanup()
 
-				albumRepo.SetData(model.Albums{
-					{ID: "album1", Name: "Album 1"},
-				})
-				mfRepo.SetData(model.MediaFiles{
-					{ID: "mf1", AlbumID: "album1", Missing: true},
-				})
-				// Make GetAll fail when loading media files
-				mfRepo.SetError(true)
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Album 1"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "mf1", AlbumID: "album1", Missing: true})
+				service = NewMaintenance(withMediaFileErrors(ds, mediaFileErrors{getAll: errors.New("get failed")}))
 
 				err := service.DeleteMissingFiles(ctx, []string{"mf1"})
 
-				// Deletion should succeed despite the tracking error
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mfRepo.deleteMissingCalled).To(BeTrue())
+				service.(*maintenanceService).wait()
+				Expect(fileExists("mf1")).To(BeFalse())
 
-				// Verify the warning was logged
-				Expect(hook.LastEntry()).ToNot(BeNil())
-				Expect(hook.LastEntry().Level).To(Equal(logrus.WarnLevel))
-				Expect(hook.LastEntry().Message).To(Equal("Error tracking affected albums for refresh"))
+				Expect(hook.AllEntries()).To(ContainElement(SatisfyAll(
+					HaveField("Level", logrus.WarnLevel),
+					HaveField("Message", "Error tracking affected albums for refresh"),
+				)))
 			})
 		})
 	})
 
 	Describe("RemapMissingFile", func() {
 		It("relocates the missing file's identity onto the target and runs GC", func() {
-			created := time.Now().Add(-30 * 24 * time.Hour)
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", Path: "old/song.mp3", AlbumID: "album1", CreatedAt: created, Missing: true},
-				{ID: "t1", Path: "new/song.mp3", AlbumID: "album1", Missing: false},
-			})
+			created := time.Now().Add(-30 * 24 * time.Hour).Truncate(time.Second)
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "orphan"})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", Path: "old/song.mp3", AlbumID: "album1", CreatedAt: created, Missing: true},
+				model.MediaFile{ID: "t1", Path: "new/song.mp3", AlbumID: "album1", Missing: false},
+			)
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			got, err := mfRepo.Get(ctx, "m1")
+			got, err := ds.MediaFile().Get(ctx, "m1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(got.Path).To(Equal("new/song.mp3")) // moved to target's location
+			Expect(got.Path).To(Equal("new/song.mp3"))
 			Expect(got.Missing).To(BeFalse())
-			Expect(got.CreatedAt).To(BeTemporally("==", created)) // created_at preserved
-			exists, _ := mfRepo.Exists(ctx, "t1")
-			Expect(exists).To(BeFalse()) // discarded row removed
-			Expect(ds.GCCalled).To(BeTrue())
+			Expect(got.CreatedAt).To(BeTemporally("==", created))
+			Expect(fileExists("t1")).To(BeFalse())
+			Expect(albumExists("orphan")).To(BeFalse(), "GC should purge empty albums")
 		})
 
 		It("moves the target's annotations, bookmarks and playlist entries onto the surviving id", func() {
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", AlbumID: "album1", Missing: true},
-				{ID: "t1", AlbumID: "album1", Missing: false},
-			})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
+				model.MediaFile{ID: "t1", AlbumID: "album1", Missing: false},
+			)
+			Expect(ds.MediaFile().SetStar(ctx, true, "t1")).To(Succeed())
+			Expect(ds.MediaFile().AddBookmark(ctx, "t1", "here", 42)).To(Succeed())
+			pls := &model.Playlist{Name: "pls", OwnerID: "user1"}
+			Expect(ds.Playlist().Put(ctx, pls)).To(Succeed())
+			_, err := ds.Playlist().Tracks(ctx, pls.ID, false).Add(ctx, []string{"t1"})
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			Expect(mfRepo.ReassignReferencesCalls).To(HaveKeyWithValue("t1", "m1"))
+			got, err := ds.MediaFile().Get(ctx, "m1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Starred).To(BeTrue())
+			bookmarks, err := ds.MediaFile().GetBookmarks(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bookmarks).To(HaveLen(1))
+			Expect(bookmarks[0].Item.ID).To(Equal("m1"))
+			Expect(bookmarks[0].Position).To(Equal(int64(42)))
+			ids, err := ds.Playlist().Tracks(ctx, pls.ID, false).GetMediaFileIDs(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(Equal([]string{"m1"}))
 		})
 
 		It("reassigns album annotations when the old album is emptied", func() {
-			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", AlbumID: "album1", Missing: true},
-				{ID: "t1", AlbumID: "album2", Missing: false},
-			})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
+				model.MediaFile{ID: "t1", AlbumID: "album2", Missing: false},
+			)
+			Expect(ds.Album().SetStar(ctx, true, "album1")).To(Succeed())
 
-			mfRepo.SetCountAll(0)
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotationCalls).To(HaveKeyWithValue("album1", "album2"))
+			Expect(starred("album2")).To(BeTrue())
 		})
 
 		It("does not reassign album annotations when the old album is not emptied", func() {
-			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", AlbumID: "album1", Missing: true},
-				{ID: "m2", AlbumID: "album1", Missing: false},
-				{ID: "t1", AlbumID: "album2", Missing: false},
-			})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1"}, model.Album{ID: "album2"})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
+				model.MediaFile{ID: "m2", AlbumID: "album1", Missing: false},
+				model.MediaFile{ID: "t1", AlbumID: "album2", Missing: false},
+			)
+			Expect(ds.Album().SetStar(ctx, true, "album1")).To(Succeed())
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotationCalls).To(BeEmpty())
+			Expect(starred("album1")).To(BeTrue())
+			Expect(starred("album2")).To(BeFalse())
 		})
 
 		It("does not reassign annotations when the album is unchanged", func() {
-			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", AlbumID: "album1", Missing: true},
-				{ID: "t1", AlbumID: "album1", Missing: false},
-			})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
+				model.MediaFile{ID: "t1", AlbumID: "album1", Missing: false},
+			)
+			spy := &reassignSpy{}
+			service = NewMaintenance(withReassignSpy(ds, spy))
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotationCalls).To(BeEmpty())
+			Expect(spy.calls()).To(BeEmpty())
 		})
 
 		It("returns ErrNotFound when the missing file does not exist", func() {
-			mfRepo.SetData(model.MediaFiles{{ID: "t1", Missing: false}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "t1", Missing: false})
 
 			Expect(service.RemapMissingFile(ctx, "nope", "t1")).To(MatchError(model.ErrNotFound))
 		})
 
 		It("refuses to remap from a file that is not missing", func() {
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", Missing: false},
-				{ID: "t1", Missing: false},
-			})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", Missing: false},
+				model.MediaFile{ID: "t1", Missing: false},
+			)
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ErrNotMissing))
 		})
 
 		It("refuses to remap a file onto itself", func() {
-			mfRepo.SetData(model.MediaFiles{{ID: "m1", Missing: true}})
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "m1", Missing: true})
 
 			Expect(service.RemapMissingFile(ctx, "m1", "m1")).To(MatchError(ErrSameFile))
 		})
 
 		It("refuses to remap onto a target that is itself missing", func() {
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", Missing: true},
-				{ID: "t1", Missing: true},
-			})
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", Missing: true},
+				model.MediaFile{ID: "t1", Missing: true},
+			)
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ErrTargetMissing))
 		})
 
 		It("refreshes artist and album stats right after the remap", func() {
-			artistRepo := ds.MockedArtist.(*extendedArtistRepo)
-			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
-			albumRepo.SetData(model.Albums{
-				{ID: "album1", Name: "Old Album", SongCount: 2, Size: 1100, Duration: 110},
-				{ID: "album2", Name: "New Album", SongCount: 1, Size: 2000, Duration: 200},
-			})
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", Path: "old/1.mp3", Album: "Old Album", AlbumID: "album1", Missing: true, Size: 100, Duration: 10},
-				{ID: "k1", Path: "old/2.mp3", Album: "Old Album", AlbumID: "album1", Missing: false, Size: 1000, Duration: 100},
-				{ID: "t1", Path: "new/1.mp3", Album: "New Album", AlbumID: "album2", Missing: false, Size: 2000, Duration: 200},
-			})
+			artist := model.Participants{model.RoleArtist: {putArtist("ar1")}}
+			persistencetest.PutAlbums(ctx, ds,
+				model.Album{ID: "album1", Name: "Old Album", SongCount: 2, Size: 1100, Duration: 110},
+				model.Album{ID: "album2", Name: "New Album", SongCount: 1, Size: 2000, Duration: 200, Participants: artist},
+			)
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", Path: "old/1.mp3", Album: "Old Album", AlbumID: "album1", Missing: true, Size: 100, Duration: 10},
+				model.MediaFile{ID: "k1", Path: "old/2.mp3", Album: "Old Album", AlbumID: "album1", Missing: false, Size: 1000, Duration: 100},
+				model.MediaFile{ID: "t1", Path: "new/1.mp3", Album: "New Album", AlbumID: "album2", Missing: false, Size: 2000, Duration: 200, Participants: artist},
+			)
+			Expect(artistSongCount("ar1")).To(BeZero())
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			Expect(artistRepo.IsRefreshStatsCalled()).To(BeTrue(), "Artist stats should be refreshed")
+			Expect(artistSongCount("ar1")).To(Equal(1), "Artist stats should be refreshed")
 
-			// The old album lost the remapped track, so its stats are recalculated from the remaining one
-			oldAlbum, err := albumRepo.Get(ctx, "album1")
-			Expect(err).ToNot(HaveOccurred())
+			oldAlbum := getAlbum("album1")
 			Expect(oldAlbum.SongCount).To(Equal(1))
 			Expect(oldAlbum.Size).To(Equal(int64(1000)))
 			Expect(oldAlbum.Duration).To(BeNumerically("==", 100))
 
-			// The target album keeps the track, now under the missing file's ID
-			newAlbum, err := albumRepo.Get(ctx, "album2")
-			Expect(err).ToNot(HaveOccurred())
+			newAlbum := getAlbum("album2")
 			Expect(newAlbum.SongCount).To(Equal(1))
 			Expect(newAlbum.Size).To(Equal(int64(2000)))
 			Expect(newAlbum.Duration).To(BeNumerically("==", 200))
 		})
 
 		It("returns an error if GC fails", func() {
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", AlbumID: "album1", Missing: true},
-				{ID: "t1", AlbumID: "album1", Missing: false},
-			})
-			ds.GCError = errors.New("gc failed")
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
+				model.MediaFile{ID: "t1", AlbumID: "album1", Missing: false},
+			)
+			service = NewMaintenance(withGCError(ds, errors.New("gc failed")))
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ContainSubstring("gc failed")))
 		})
 
 		It("preserves the target's participants on the remapped track", func() {
-			participant := model.Participant{
-				Artist: model.Artist{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"},
-			}
-			mfRepo.SetData(model.MediaFiles{
-				{ID: "m1", AlbumID: "album1", Missing: true},
-				{ID: "t1", AlbumID: "album2", Missing: false, Participants: model.Participants{
+			Expect(ds.Artist().Put(ctx, &model.Artist{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"})).To(Succeed())
+			participant := model.Participant{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"}
+			stored := model.Participant{ID: "a1", Name: "Artist"}
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: "m1", AlbumID: "album1", Missing: true},
+				model.MediaFile{ID: "t1", AlbumID: "album2", Missing: false, Participants: model.Participants{
 					model.RoleArtist: model.ParticipantList{participant},
 				}},
-			})
+			)
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			// The surviving row is the missing file's ID, holding the target's data
-			got, err := mfRepo.GetWithParticipants(ctx, "m1")
+			got, err := ds.MediaFile().GetWithParticipants(ctx, "m1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(got.Participants).To(HaveKeyWithValue(model.RoleArtist, model.ParticipantList{participant}))
+			Expect(got.Participants).To(HaveKeyWithValue(model.RoleArtist, model.ParticipantList{stored}))
 		})
 	})
 })
 
-// Test helper to create a mock DataStore with controllable behavior
-func createTestDataStore() *tests.MockDataStore {
-	ds := &tests.MockDataStore{}
+type mediaFileErrors struct {
+	getAll, deleteMissing, deleteAllMissing error
+}
 
-	// Create extended album repo with Put tracking
-	albumRepo := &extendedAlbumRepo{
-		MockAlbumRepo: tests.CreateMockAlbumRepo(),
+func withMediaFileErrors(ds model.DataStore, errs mediaFileErrors) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+		return &mediaFileErrorsRepo{MediaFileRepository: r, errs: errs}
+	}})
+}
+
+type mediaFileErrorsRepo struct {
+	model.MediaFileRepository
+	errs mediaFileErrors
+}
+
+func (r *mediaFileErrorsRepo) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
+	if r.errs.getAll != nil {
+		return nil, r.errs.getAll
 	}
-	ds.MockedAlbum = albumRepo
+	return r.MediaFileRepository.GetAll(ctx, options...)
+}
 
-	// Create extended artist repo with RefreshStats tracking
-	artistRepo := &extendedArtistRepo{
-		MockArtistRepo: tests.CreateMockArtistRepo(),
+func (r *mediaFileErrorsRepo) DeleteMissing(ctx context.Context, ids []string) error {
+	if r.errs.deleteMissing != nil {
+		return r.errs.deleteMissing
 	}
-	ds.MockedArtist = artistRepo
+	return r.MediaFileRepository.DeleteMissing(ctx, ids)
+}
 
-	// Create extended media file repo with DeleteMissing support
-	mfRepo := &extendedMediaFileRepo{
-		MockMediaFileRepo: tests.CreateMockMediaFileRepo(),
+func (r *mediaFileErrorsRepo) DeleteAllMissing(ctx context.Context) (int64, error) {
+	if r.errs.deleteAllMissing != nil {
+		return 0, r.errs.deleteAllMissing
 	}
-	ds.MockedMediaFile = mfRepo
-
-	return ds
+	return r.MediaFileRepository.DeleteAllMissing(ctx)
 }
 
-// Extension of MockMediaFileRepo to add DeleteMissing method
-type extendedMediaFileRepo struct {
-	*tests.MockMediaFileRepo
-	deleteMissingCalled bool
-	deletedIDs          []string
-	deleteMissingError  error
+func withGCError(ds model.DataStore, err error) model.DataStore {
+	return persistencetest.Overlay(ds, func(ds model.DataStore) model.DataStore {
+		return &gcErrorDS{DataStore: ds, err: err}
+	})
 }
 
-func (m *extendedMediaFileRepo) DeleteMissing(ctx context.Context, ids []string) error {
-	m.deleteMissingCalled = true
-	m.deletedIDs = ids
-	if m.deleteMissingError != nil {
-		return m.deleteMissingError
+type gcErrorDS struct {
+	model.DataStore
+	err error
+}
+
+func (d *gcErrorDS) GC(context.Context, ...int) error { return d.err }
+
+// withAlbumPutFailures makes the first n album Puts fail, across every Album() call and transaction.
+func withAlbumPutFailures(ds model.DataStore, n int32) model.DataStore {
+	remaining := &atomic.Int32{}
+	remaining.Store(n)
+	return persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+		return &albumPutFailuresRepo{AlbumRepository: r, remaining: remaining}
+	}})
+}
+
+type albumPutFailuresRepo struct {
+	model.AlbumRepository
+	remaining *atomic.Int32
+}
+
+func (r *albumPutFailuresRepo) Put(ctx context.Context, al *model.Album) error {
+	if r.remaining.Add(-1) >= 0 {
+		return errors.New("put failed")
 	}
-	// Actually delete from the mock data
-	for _, id := range ids {
-		delete(m.Data, id)
-	}
-	return nil
+	return r.AlbumRepository.Put(ctx, al)
 }
 
-// Extension of MockAlbumRepo to track Put calls
-type extendedAlbumRepo struct {
-	*tests.MockAlbumRepo
-	mu           sync.RWMutex
-	putCallCount int
-	lastPutData  *model.Album
-	putError     error
-	failOnce     bool
+// reassignSpy records album annotation reassignments, which are no-ops in the DB when both IDs are equal.
+type reassignSpy struct {
+	mu  sync.Mutex
+	got []string
 }
 
-func (m *extendedAlbumRepo) Put(ctx context.Context, album *model.Album) error {
-	m.mu.Lock()
-	m.putCallCount++
-	m.lastPutData = album
-
-	// Handle failOnce behavior
-	var err error
-	if m.putError != nil {
-		if m.failOnce {
-			err = m.putError
-			m.putError = nil // Clear error after first failure
-			m.mu.Unlock()
-			return err
-		}
-		err = m.putError
-		m.mu.Unlock()
-		return err
-	}
-	m.mu.Unlock()
-
-	return m.MockAlbumRepo.Put(ctx, album)
+func (s *reassignSpy) calls() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.got
 }
 
-func (m *extendedAlbumRepo) GetPutCallCount() int {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.putCallCount
+func withReassignSpy(ds model.DataStore, spy *reassignSpy) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
+		return &reassignSpyRepo{AlbumRepository: r, spy: spy}
+	}})
 }
 
-// Extension of MockArtistRepo to track RefreshStats calls
-type extendedArtistRepo struct {
-	*tests.MockArtistRepo
-	mu                 sync.RWMutex
-	refreshStatsCalled bool
-	refreshStatsError  error
+type reassignSpyRepo struct {
+	model.AlbumRepository
+	spy *reassignSpy
 }
 
-func (m *extendedArtistRepo) RefreshStats(ctx context.Context, allArtists bool) (int64, error) {
-	m.mu.Lock()
-	m.refreshStatsCalled = true
-	err := m.refreshStatsError
-	m.mu.Unlock()
-
-	if err != nil {
-		return 0, err
-	}
-	return m.MockArtistRepo.RefreshStats(ctx, allArtists)
-}
-
-func (m *extendedArtistRepo) IsRefreshStatsCalled() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.refreshStatsCalled
+func (r *reassignSpyRepo) ReassignAnnotation(ctx context.Context, prevID, newID string) error {
+	r.spy.mu.Lock()
+	r.spy.got = append(r.spy.got, prevID+"->"+newID)
+	r.spy.mu.Unlock()
+	return r.AlbumRepository.ReassignAnnotation(ctx, prevID, newID)
 }

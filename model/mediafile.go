@@ -3,6 +3,7 @@ package model
 import (
 	"cmp"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -104,6 +105,7 @@ type MediaFile struct {
 	BirthTime time.Time `structs:"birth_time" json:"birthTime" hash:"ignore"` // Time of file creation (ctime)
 	CreatedAt time.Time `structs:"created_at" json:"createdAt" hash:"ignore"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt" hash:"ignore"` // Time of file last update (mtime)
+	AddedAt   time.Time `structs:"-" json:"addedAt,omitzero" hash:"ignore"`   // RecentlyAddedAt(), filled on DB reads
 }
 
 func (mf MediaFile) FullTitle() string {
@@ -238,7 +240,7 @@ func (mf MediaFile) Hash() string {
 	sum.Write(fmt.Appendf(nil, "%d", hash))
 	sum.Write(mf.Tags.Hash())
 	sum.Write(mf.Participants.Hash())
-	return fmt.Sprintf("%x", sum.Sum(nil))
+	return hex.EncodeToString(sum.Sum(nil))
 }
 
 // Equals compares two MediaFiles by their hash. It does not consider the ID, PID, Path and other identifier fields.
@@ -387,7 +389,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
-		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
+		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
+		a.BirthTime = older(a.BirthTime, m.BirthTime)
 		a.Missing = a.Missing && m.Missing
 	}
 
@@ -459,6 +462,32 @@ func mostFrequentPtr(items []*float64) *float64 {
 	return &best
 }
 
+// RecentlyAddedAt is the song counterpart of Album.RecentlyAddedAt.
+func (mf MediaFile) RecentlyAddedAt() time.Time {
+	return recentlyAddedAt(mf.BirthTime, mf.CreatedAt, mf.UpdatedAt, mf.BirthTime)
+}
+
+// recentlyAddedAt picks the RecentlyAddedBy timestamp, then the others in a fixed order, then fallback.
+func recentlyAddedAt(birth, created, updated, fallback time.Time) time.Time {
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
+		return firstNonZero(updated, created, fallback)
+	case consts.RecentlyAddedByBirth:
+		return firstNonZero(birth, created, updated, fallback)
+	default:
+		return firstNonZero(created, updated, fallback)
+	}
+}
+
+func firstNonZero(candidates ...time.Time) time.Time {
+	for _, t := range candidates {
+		if !t.IsZero() {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
 func newer(t1, t2 time.Time) time.Time {
 	if t1.After(t2) {
 		return t1
@@ -524,9 +553,9 @@ func firstArtPath(currentPath string, currentDisc int, m MediaFile) (string, int
 func (mfs MediaFiles) ToM3U8(title string, absolutePaths bool) string {
 	buf := strings.Builder{}
 	buf.WriteString("#EXTM3U\n")
-	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", title))
+	fmt.Fprintf(&buf, "#PLAYLIST:%s\n", title)
 	for _, t := range mfs {
-		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		fmt.Fprintf(&buf, "#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title)
 		if absolutePaths {
 			buf.WriteString(t.AbsolutePath() + "\n")
 		} else {

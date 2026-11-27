@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -307,7 +308,7 @@ func formatPluginList(list model.Plugins, format string) (string, error) {
 		_ = w.Write([]string{"id", "name", "version", "enabled", "last error"})
 		for _, p := range list {
 			name, version := manifestSummary(p)
-			_ = w.Write([]string{p.ID, name, version, fmt.Sprintf("%t", p.Enabled), p.LastError})
+			_ = w.Write([]string{p.ID, name, version, strconv.FormatBool(p.Enabled), p.LastError})
 		}
 		w.Flush()
 		return sb.String(), w.Error()
@@ -440,7 +441,7 @@ func readConfigFile(ctx context.Context, path string) string {
 func applyPluginEdit(ctx context.Context, mgr pluginManager, cur *model.Plugin, opts pluginEditOptions) error {
 	if opts.config == nil && opts.users == nil && opts.allUsers == nil &&
 		opts.libraries == nil && opts.allLibraries == nil && opts.writeAccess == nil {
-		return fmt.Errorf("nothing to update: provide at least one of --config/--users/--libraries/--write-access")
+		return errors.New("nothing to update: provide at least one of --config/--users/--libraries/--write-access")
 	}
 	id := cur.ID
 	if opts.config != nil {
@@ -499,18 +500,18 @@ func usersToJSON(value string) (string, error) {
 	}
 	if strings.HasPrefix(strings.TrimSpace(value), "[") {
 		if !json.Valid([]byte(value)) {
-			return "", fmt.Errorf("invalid JSON in --users")
+			return "", errors.New("invalid JSON in --users")
 		}
 		return value, nil
 	}
 	var names []string
-	for _, u := range strings.Split(value, ",") {
+	for u := range strings.SplitSeq(value, ",") {
 		if u = strings.TrimSpace(u); u != "" {
 			names = append(names, u)
 		}
 	}
-	b, _ := json.Marshal(names)
-	return string(b), nil
+	b, err := json.Marshal(names)
+	return string(b), err
 }
 
 // librariesToJSON accepts either a JSON array (starts with '[') or a
@@ -521,12 +522,12 @@ func librariesToJSON(value string) (string, error) {
 	}
 	if strings.HasPrefix(strings.TrimSpace(value), "[") {
 		if !json.Valid([]byte(value)) {
-			return "", fmt.Errorf("invalid JSON in --libraries")
+			return "", errors.New("invalid JSON in --libraries")
 		}
 		return value, nil
 	}
 	ids := []int{}
-	for _, l := range strings.Split(value, ",") {
+	for l := range strings.SplitSeq(value, ",") {
 		if l = strings.TrimSpace(l); l != "" {
 			id, err := strconv.Atoi(l)
 			if err != nil {
@@ -535,8 +536,8 @@ func librariesToJSON(value string) (string, error) {
 			ids = append(ids, id)
 		}
 	}
-	b, _ := json.Marshal(ids)
-	return string(b), nil
+	b, err := json.Marshal(ids)
+	return string(b), err
 }
 
 var pluginRescanCmd = &cobra.Command{

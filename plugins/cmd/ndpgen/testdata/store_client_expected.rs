@@ -28,9 +28,9 @@ struct StoreSaveResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn store_save(input: Json<StoreSaveRequest>) -> Json<StoreSaveResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn store_save(input: u64) -> u64;
 }
 
 /// Calls the store_save host function.
@@ -44,15 +44,13 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn save(item: Item) -> Result<String, Error> {
-    let response = unsafe {
-        store_save(Json(StoreSaveRequest {
-            item: item,
-        }))?
-    };
+    let response: StoreSaveResponse = unsafe { nd_pdk_types::hostcall::call(store_save, &StoreSaveRequest {
+        item: item,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.id)
+    Ok(response.id)
 }

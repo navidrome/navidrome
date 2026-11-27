@@ -53,11 +53,11 @@ struct SchedulerCancelScheduleResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn scheduler_scheduleonetime(input: Json<SchedulerScheduleOneTimeRequest>) -> Json<SchedulerScheduleOneTimeResponse>;
-    fn scheduler_schedulerecurring(input: Json<SchedulerScheduleRecurringRequest>) -> Json<SchedulerScheduleRecurringResponse>;
-    fn scheduler_cancelschedule(input: Json<SchedulerCancelScheduleRequest>) -> Json<SchedulerCancelScheduleResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn scheduler_scheduleonetime(input: u64) -> u64;
+    fn scheduler_schedulerecurring(input: u64) -> u64;
+    fn scheduler_cancelschedule(input: u64) -> u64;
 }
 
 /// ScheduleOneTime schedules a one-time event to be triggered after the specified delay.
@@ -81,19 +81,17 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn schedule_one_time(delay_seconds: i32, payload: &str, schedule_id: &str) -> Result<String, Error> {
-    let response = unsafe {
-        scheduler_scheduleonetime(Json(SchedulerScheduleOneTimeRequest {
-            delay_seconds: delay_seconds,
-            payload: payload.to_owned(),
-            schedule_id: schedule_id.to_owned(),
-        }))?
-    };
+    let response: SchedulerScheduleOneTimeResponse = unsafe { nd_pdk_types::hostcall::call(scheduler_scheduleonetime, &SchedulerScheduleOneTimeRequest {
+        delay_seconds: delay_seconds,
+        payload: payload.to_owned(),
+        schedule_id: schedule_id.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.new_schedule_id)
+    Ok(response.new_schedule_id)
 }
 
 /// ScheduleRecurring schedules a recurring event using a cron expression.
@@ -117,19 +115,17 @@ pub fn schedule_one_time(delay_seconds: i32, payload: &str, schedule_id: &str) -
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn schedule_recurring(cron_expression: &str, payload: &str, schedule_id: &str) -> Result<String, Error> {
-    let response = unsafe {
-        scheduler_schedulerecurring(Json(SchedulerScheduleRecurringRequest {
-            cron_expression: cron_expression.to_owned(),
-            payload: payload.to_owned(),
-            schedule_id: schedule_id.to_owned(),
-        }))?
-    };
+    let response: SchedulerScheduleRecurringResponse = unsafe { nd_pdk_types::hostcall::call(scheduler_schedulerecurring, &SchedulerScheduleRecurringRequest {
+        cron_expression: cron_expression.to_owned(),
+        payload: payload.to_owned(),
+        schedule_id: schedule_id.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.new_schedule_id)
+    Ok(response.new_schedule_id)
 }
 
 /// CancelSchedule cancels a scheduled job identified by its schedule ID.
@@ -145,13 +141,11 @@ pub fn schedule_recurring(cron_expression: &str, payload: &str, schedule_id: &st
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn cancel_schedule(schedule_id: &str) -> Result<(), Error> {
-    let response = unsafe {
-        scheduler_cancelschedule(Json(SchedulerCancelScheduleRequest {
-            schedule_id: schedule_id.to_owned(),
-        }))?
-    };
+    let response: SchedulerCancelScheduleResponse = unsafe { nd_pdk_types::hostcall::call(scheduler_cancelschedule, &SchedulerCancelScheduleRequest {
+        schedule_id: schedule_id.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 

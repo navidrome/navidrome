@@ -102,7 +102,7 @@ var _ = Describe("IgnoreChecker", func() {
 			It("should add patterns to stack", func() {
 				err := ic.Push(ctx, ".")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(1))
+				Expect(ic.patternStack).To(HaveLen(1))
 				Expect(ic.currentPatterns).To(ContainElement("*.txt"))
 			})
 
@@ -117,14 +117,14 @@ var _ = Describe("IgnoreChecker", func() {
 				Expect(err).ToNot(HaveOccurred())
 				err = ic.Push(ctx, "folder1")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(2))
+				Expect(ic.patternStack).To(HaveLen(2))
 				Expect(ic.currentPatterns).To(ConsistOf("*.txt", "*.mp3"))
 			})
 
 			It("should handle push when no .ndignore exists", func() {
 				err := ic.Push(ctx, "nonexistent")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(1))
+				Expect(ic.patternStack).To(HaveLen(1))
 				Expect(ic.currentPatterns).To(BeEmpty())
 			})
 		})
@@ -136,7 +136,7 @@ var _ = Describe("IgnoreChecker", func() {
 				err = ic.Push(ctx, "folder1")
 				Expect(err).ToNot(HaveOccurred())
 				ic.Pop()
-				Expect(len(ic.patternStack)).To(Equal(1))
+				Expect(ic.patternStack).To(HaveLen(1))
 				Expect(ic.currentPatterns).To(Equal([]string{"*.txt"}))
 			})
 
@@ -208,7 +208,7 @@ var _ = Describe("IgnoreChecker", func() {
 			func(targetPath string, expectedStackDepth int, expectedPatterns []string) {
 				err := ic.PushAllParents(ctx, targetPath)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(expectedStackDepth))
+				Expect(ic.patternStack).To(HaveLen(expectedStackDepth))
 				Expect(ic.currentPatterns).To(ConsistOf(expectedPatterns))
 			},
 			Entry("root path", ".", 1, []string{"root.txt"}),
@@ -228,7 +228,7 @@ var _ = Describe("IgnoreChecker", func() {
 		It("should handle paths with dot", func() {
 			err := ic.PushAllParents(ctx, "./folder1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(ic.patternStack)).To(Equal(2))
+			Expect(ic.patternStack).To(HaveLen(2))
 		})
 
 		Context("when some parent folders have no .ndignore", func() {
@@ -243,7 +243,7 @@ var _ = Describe("IgnoreChecker", func() {
 			It("should still push all parent levels", func() {
 				err := ic.PushAllParents(ctx, "folder1/folder2")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(len(ic.patternStack)).To(Equal(3)) // root, folder1 (empty), folder2
+				Expect(ic.patternStack).To(HaveLen(3)) // root, folder1 (empty), folder2
 				Expect(ic.currentPatterns).To(ConsistOf("root.txt", "level2.txt"))
 			})
 		})

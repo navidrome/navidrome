@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/fatih/structs"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 )
 
@@ -55,7 +56,7 @@ var matchUnderscore = regexp.MustCompile("_([A-Za-z])")
 
 func toCamelCase(str string) string {
 	return matchUnderscore.ReplaceAllStringFunc(str, func(s string) string {
-		return strings.ToUpper(strings.Replace(s, "_", "", -1))
+		return strings.ToUpper(strings.ReplaceAll(s, "_", ""))
 	})
 }
 
@@ -93,7 +94,19 @@ func naturalSort(col string) string {
 	return fmt.Sprintf("(%s collate %s)", col, db.NaturalCollation)
 }
 
-// Convert the order_* columns to a collated sort expression, falling back to the
+// recentlyAddedSort orders album and media_file rows by the RecentlyAddedBy timestamp, with id as tiebreaker.
+func recentlyAddedSort(table string) string {
+	col := "created_at"
+	switch conf.Server().RecentlyAddedBy {
+	case consts.RecentlyAddedByModTime:
+		col = "updated_at"
+	case consts.RecentlyAddedByBirth:
+		col = "birth_time"
+	}
+	return table + "." + col + ", " + table + ".id"
+}
+
+// mapSortOrder converts the order_* columns to a collated sort expression, falling back to the
 // sort_* column when those are preferred. Example:
 // order_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
 // It finds order column names anywhere in the substring

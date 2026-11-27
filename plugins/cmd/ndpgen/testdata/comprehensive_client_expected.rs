@@ -181,18 +181,18 @@ struct ComprehensiveByteSliceResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn comprehensive_simpleparams(input: Json<ComprehensiveSimpleParamsRequest>) -> Json<ComprehensiveSimpleParamsResponse>;
-    fn comprehensive_structparam(input: Json<ComprehensiveStructParamRequest>) -> Json<ComprehensiveStructParamResponse>;
-    fn comprehensive_mixedparams(input: Json<ComprehensiveMixedParamsRequest>) -> Json<ComprehensiveMixedParamsResponse>;
-    fn comprehensive_noerror(input: Json<ComprehensiveNoErrorRequest>) -> Json<ComprehensiveNoErrorResponse>;
-    fn comprehensive_noparams(input: Json<serde_json::Value>) -> Json<ComprehensiveNoParamsResponse>;
-    fn comprehensive_noparamsnoreturns(input: Json<serde_json::Value>) -> Json<ComprehensiveNoParamsNoReturnsResponse>;
-    fn comprehensive_pointerparams(input: Json<ComprehensivePointerParamsRequest>) -> Json<ComprehensivePointerParamsResponse>;
-    fn comprehensive_mapparams(input: Json<ComprehensiveMapParamsRequest>) -> Json<ComprehensiveMapParamsResponse>;
-    fn comprehensive_multiplereturns(input: Json<ComprehensiveMultipleReturnsRequest>) -> Json<ComprehensiveMultipleReturnsResponse>;
-    fn comprehensive_byteslice(input: Json<ComprehensiveByteSliceRequest>) -> Json<ComprehensiveByteSliceResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn comprehensive_simpleparams(input: u64) -> u64;
+    fn comprehensive_structparam(input: u64) -> u64;
+    fn comprehensive_mixedparams(input: u64) -> u64;
+    fn comprehensive_noerror(input: u64) -> u64;
+    fn comprehensive_noparams(input: u64) -> u64;
+    fn comprehensive_noparamsnoreturns(input: u64) -> u64;
+    fn comprehensive_pointerparams(input: u64) -> u64;
+    fn comprehensive_mapparams(input: u64) -> u64;
+    fn comprehensive_multiplereturns(input: u64) -> u64;
+    fn comprehensive_byteslice(input: u64) -> u64;
 }
 
 /// Calls the comprehensive_simpleparams host function.
@@ -207,18 +207,16 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn simple_params(name: &str, count: i32) -> Result<String, Error> {
-    let response = unsafe {
-        comprehensive_simpleparams(Json(ComprehensiveSimpleParamsRequest {
-            name: name.to_owned(),
-            count: count,
-        }))?
-    };
+    let response: ComprehensiveSimpleParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_simpleparams, &ComprehensiveSimpleParamsRequest {
+        name: name.to_owned(),
+        count: count,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// Calls the comprehensive_structparam host function.
@@ -229,13 +227,11 @@ pub fn simple_params(name: &str, count: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn struct_param(user: User2) -> Result<(), Error> {
-    let response = unsafe {
-        comprehensive_structparam(Json(ComprehensiveStructParamRequest {
-            user: user,
-        }))?
-    };
+    let response: ComprehensiveStructParamResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_structparam, &ComprehensiveStructParamRequest {
+        user: user,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -254,18 +250,16 @@ pub fn struct_param(user: User2) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn mixed_params(id: &str, filter: Filter2) -> Result<i32, Error> {
-    let response = unsafe {
-        comprehensive_mixedparams(Json(ComprehensiveMixedParamsRequest {
-            id: id.to_owned(),
-            filter: filter,
-        }))?
-    };
+    let response: ComprehensiveMixedParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_mixedparams, &ComprehensiveMixedParamsRequest {
+        id: id.to_owned(),
+        filter: filter,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// Calls the comprehensive_noerror host function.
@@ -279,17 +273,15 @@ pub fn mixed_params(id: &str, filter: Filter2) -> Result<i32, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn no_error(name: &str) -> Result<String, Error> {
-    let response = unsafe {
-        comprehensive_noerror(Json(ComprehensiveNoErrorRequest {
-            name: name.to_owned(),
-        }))?
-    };
+    let response: ComprehensiveNoErrorResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_noerror, &ComprehensiveNoErrorRequest {
+        name: name.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// Calls the comprehensive_noparams host function.
@@ -297,11 +289,9 @@ pub fn no_error(name: &str) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn no_params() -> Result<(), Error> {
-    let response = unsafe {
-        comprehensive_noparams(Json(serde_json::json!({})))?
-    };
+    let response: ComprehensiveNoParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_noparams, &serde_json::json!({})) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -313,11 +303,9 @@ pub fn no_params() -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn no_params_no_returns() -> Result<(), Error> {
-    let response = unsafe {
-        comprehensive_noparamsnoreturns(Json(serde_json::json!({})))?
-    };
+    let response: ComprehensiveNoParamsNoReturnsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_noparamsnoreturns, &serde_json::json!({})) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -336,18 +324,16 @@ pub fn no_params_no_returns() -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn pointer_params(id: Option<String>, user: Option<User2>) -> Result<Option<User2>, Error> {
-    let response = unsafe {
-        comprehensive_pointerparams(Json(ComprehensivePointerParamsRequest {
-            id: id,
-            user: user,
-        }))?
-    };
+    let response: ComprehensivePointerParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_pointerparams, &ComprehensivePointerParamsRequest {
+        id: id,
+        user: user,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// Calls the comprehensive_mapparams host function.
@@ -361,17 +347,15 @@ pub fn pointer_params(id: Option<String>, user: Option<User2>) -> Result<Option<
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn map_params(data: std::collections::HashMap<String, serde_json::Value>) -> Result<serde_json::Value, Error> {
-    let response = unsafe {
-        comprehensive_mapparams(Json(ComprehensiveMapParamsRequest {
-            data: data,
-        }))?
-    };
+    let response: ComprehensiveMapParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_mapparams, &ComprehensiveMapParamsRequest {
+        data: data,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// Calls the comprehensive_multiplereturns host function.
@@ -385,17 +369,15 @@ pub fn map_params(data: std::collections::HashMap<String, serde_json::Value>) ->
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn multiple_returns(query: &str) -> Result<(Vec<User2>, i32), Error> {
-    let response = unsafe {
-        comprehensive_multiplereturns(Json(ComprehensiveMultipleReturnsRequest {
-            query: query.to_owned(),
-        }))?
-    };
+    let response: ComprehensiveMultipleReturnsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_multiplereturns, &ComprehensiveMultipleReturnsRequest {
+        query: query.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.results, response.0.total))
+    Ok((response.results, response.total))
 }
 
 /// Calls the comprehensive_byteslice host function.
@@ -409,15 +391,13 @@ pub fn multiple_returns(query: &str) -> Result<(Vec<User2>, i32), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn byte_slice(data: Vec<u8>) -> Result<Vec<u8>, Error> {
-    let response = unsafe {
-        comprehensive_byteslice(Json(ComprehensiveByteSliceRequest {
-            data: data,
-        }))?
-    };
+    let response: ComprehensiveByteSliceResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_byteslice, &ComprehensiveByteSliceRequest {
+        data: data,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

@@ -18,9 +18,22 @@ var _ = Describe("RestoreAfterEachSpec", func() {
 		conf.Update(func(c *conf.Options) { c.UIWelcomeMessage = "B" })
 	})
 
+	// Either container can run first: the second one sees the first one's change if it leaks.
+	for _, name := range []string{"first", "second"} {
+		Describe("in the "+name+" Ordered container", Ordered, func() {
+			It("starts with the original value", func() {
+				Expect(conf.Server().UIWelcomeMessage).To(BeEmpty())
+				conf.Update(func(c *conf.Options) { c.UIWelcomeMessage = name })
+			})
+
+			It("keeps the change for the rest of the container", func() {
+				Expect(conf.Server().UIWelcomeMessage).To(Equal(name))
+			})
+		})
+	}
+
 	Describe("in an Ordered container", Ordered, func() {
 		BeforeAll(func() {
-			DeferCleanup(conf.SnapshotConfig())
 			conf.Update(func(c *conf.Options) { c.UIWelcomeMessage = "ordered" })
 		})
 

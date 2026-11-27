@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -96,7 +97,7 @@ var _ = Describe("MediaRepository", func() {
 	It("gets mediafile from the DB", func() {
 		actual, err := mr.Get(ctx, "1004")
 		Expect(err).ToNot(HaveOccurred())
-		actual.CreatedAt = time.Time{}
+		actual.CreatedAt, actual.AddedAt = time.Time{}, time.Time{}
 		Expect(actual).To(Equal(&songAntenna))
 	})
 
@@ -193,7 +194,7 @@ var _ = Describe("MediaRepository", func() {
 			},
 		})
 
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(results).To(HaveLen(3))
 		Expect(results[0].Lyrics).To(Equal(`[{"lang":"xxx","line":[{"value":"This is a set of lyrics"}],"synced":false}]`))
 		for _, item := range results[1:] {
@@ -404,12 +405,12 @@ var _ = Describe("MediaRepository", func() {
 	Context("Annotations", func() {
 		It("increments play count when the tracks does not have annotations", func() {
 			id := "incplay.firsttime"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
@@ -485,38 +486,38 @@ var _ = Describe("MediaRepository", func() {
 
 		It("preserves play date if and only if provided date is older", func() {
 			id := "incplay.playdate"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
 
 			playDateLate := playDate.AddDate(0, 0, 1)
-			Expect(mr.IncPlayCount(ctx, id, playDateLate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateLate)).To(Succeed())
 			mf, err = mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(2)))
 
 			playDateEarly := playDate.AddDate(0, 0, -1)
-			Expect(mr.IncPlayCount(ctx, id, playDateEarly)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateEarly)).To(Succeed())
 			mf, err = mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(3)))
 		})
 
 		It("increments play count on newly starred items", func() {
 			id := "star.incplay"
-			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
-			Expect(mr.SetStar(ctx, true, id)).To(BeNil())
+			Expect(mr.Put(ctx, &model.MediaFile{LibraryID: 1, ID: id})).To(Succeed())
+			Expect(mr.SetStar(ctx, true, id)).To(Succeed())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(Succeed())
 
 			mf, err := mr.Get(ctx, id)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
@@ -569,6 +570,7 @@ var _ = Describe("MediaRepository", func() {
 					map[string]any{
 						"created_at": oldTime,
 						"updated_at": newTime,
+						"birth_time": middleTime,
 					},
 					dbx.HashExp{"id": testMediaFiles[0].ID}).Execute()
 				Expect(err).ToNot(HaveOccurred())
@@ -578,6 +580,7 @@ var _ = Describe("MediaRepository", func() {
 					map[string]any{
 						"created_at": middleTime,
 						"updated_at": middleTime,
+						"birth_time": newTime,
 					},
 					dbx.HashExp{"id": testMediaFiles[1].ID}).Execute()
 				Expect(err).ToNot(HaveOccurred())
@@ -587,6 +590,7 @@ var _ = Describe("MediaRepository", func() {
 					map[string]any{
 						"created_at": newTime,
 						"updated_at": oldTime,
+						"birth_time": oldTime,
 					},
 					dbx.HashExp{"id": testMediaFiles[2].ID}).Execute()
 				Expect(err).ToNot(HaveOccurred())
@@ -599,11 +603,11 @@ var _ = Describe("MediaRepository", func() {
 				}
 			})
 
-			When("RecentlyAddedByModTime is false", func() {
+			When("RecentlyAddedBy is scan", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -641,11 +645,11 @@ var _ = Describe("MediaRepository", func() {
 				})
 			})
 
-			When("RecentlyAddedByModTime is true", func() {
+			When("RecentlyAddedBy is modtime", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByModTime })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -667,8 +671,33 @@ var _ = Describe("MediaRepository", func() {
 				})
 			})
 
+			When("RecentlyAddedBy is birth", func() {
+				It("sorts by birth_time", func() {
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
+					results, err := NewMediaFileRepository(GetDBXBuilder()).GetAll(ctx, model.QueryOptions{
+						Sort:    "recently_added",
+						Order:   "desc",
+						Filters: squirrel.Eq{"media_file.id": []string{testMediaFiles[0].ID, testMediaFiles[1].ID, testMediaFiles[2].ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(3))
+
+					Expect(results[0].Title).To(Equal("Middle Song")) // born 2022
+					Expect(results[1].Title).To(Equal("Old Song"))    // born 2021
+					Expect(results[2].Title).To(Equal("New Song"))    // born 2020
+				})
+
+				It("fills AddedAt with the birth time the sort uses", func() {
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
+					mf, err := NewMediaFileRepository(GetDBXBuilder()).Get(ctx, testMediaFiles[2].ID)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf.AddedAt).To(BeTemporally("==", mf.BirthTime))
+					Expect(mf.AddedAt).ToNot(BeTemporally("==", mf.CreatedAt))
+				})
+			})
+
 			It("breaks ties deterministically when files share the same created_at", func() {
-				conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByScan })
 				ctx := log.NewContext(GinkgoT().Context())
 				ctx = request.WithUser(ctx, model.User{ID: "userid"})
 				repo := NewMediaFileRepository(GetDBXBuilder())
@@ -1278,7 +1307,7 @@ var _ = Describe("MediaRepository", func() {
 		It("does not panic when the cursor yields a dbMediaFile with nil MediaFile", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbMediaFile (where MediaFile is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbMediaFile, error) bool) {
 				var empty dbMediaFile // MediaFile pointer is nil
 				yield(empty, dbErr)
@@ -1373,8 +1402,8 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("keeps the album state independent of the track's own art", func() {
-			mf := model.MediaFile{ID: "mf-2", AlbumID: "al-2"}
-			mf.ImageHash = "aaaaaaaaaaaaaaaa" // the track's own art
+			mf := model.MediaFile{ID: "mf-2", AlbumID: "al-2",
+				ImageHash: "aaaaaaaaaaaaaaaa"} // the track's own art
 			applyItemImage(
 				map[string]model.ItemArtworkInfo{"al-2": {ItemID: "al-2", Hash: "bbbbbbbbbbbbbbbb"}},
 				mf.AlbumID, &mf.AlbumImage,

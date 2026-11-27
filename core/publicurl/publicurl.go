@@ -17,16 +17,24 @@ import (
 	"github.com/navidrome/navidrome/utils/gg"
 )
 
-// ImageURL generates a public URL for artwork images.
-// It creates a signed token for the artwork ID and builds a complete public URL.
+// ImageURL generates a signed public URL for an artwork image.
+// It returns "" when the artwork has no ID, as the public image endpoint would reject the token.
 func ImageURL(ctx context.Context, artID model.ArtworkID, size int) string {
-	token, _ := auth.CreatePublicToken(auth.Claims{ID: artID.String()})
+	id := artID.String()
+	if id == "" {
+		return ""
+	}
+	token, _ := auth.CreatePublicToken(auth.Claims{ID: id})
 	uri := path.Join(consts.URLPathPublicImages, token)
 	params := url.Values{}
 	if size > 0 {
 		params.Add("size", strconv.Itoa(size))
 	}
 	return PublicURL(ctx, uri, params)
+}
+
+func ShareURL(ctx context.Context, id string) string {
+	return PublicURL(ctx, path.Join(consts.URLPathPublic, id), nil)
 }
 
 // PublicURL builds a full URL for public-facing resources.

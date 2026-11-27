@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -11,6 +12,7 @@ import (
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -340,6 +342,24 @@ var _ = Describe("walk_dir_tree", func() {
 	})
 
 	Describe("helper functions", func() {
+		DescribeTable("isLyricsFile",
+			func(name string, expected bool) {
+				conf.Update(func(c *conf.Options) {
+					c.LyricsPriority = ".lrc,.SRT,.\u0130ngilizce.ttml,.fran\u00e7ais.ttml,embedded"
+				})
+				job := &scanJob{lyricsSuffixes: lyrics.FileSuffixes()}
+				Expect(job.isLyricsFile(name)).To(Equal(expected))
+			},
+			Entry("matching suffix", "song.lrc", true),
+			Entry("suffix in another case", "song.SRT", true),
+			Entry("suffix that folds to a different byte length", "song.\u017frt", true),
+			Entry("non-ASCII base name", "Caf\u00e9.lrc", true),
+			Entry("other suffix", "song.txt", false),
+			Entry("name that is only the suffix", ".lrc", false),
+			Entry("suffix whose lowercase does not fold back", "song.\u0130ngilizce.ttml", true),
+			Entry("NFD name for an NFC suffix", "song.franc\u0327ais.ttml", true),
+		)
+
 		dir, _ := os.Getwd()
 		fsys := os.DirFS(dir)
 		baseDir := filepath.Join("tests", "fixtures")
@@ -739,10 +759,7 @@ func (fd *fakeDirFile) ReadDir(int) ([]fs.DirEntry, error) {
 		fd.entries, _ = fd.File.(fs.ReadDirFile).ReadDir(-1)
 	}
 	var dirs []fs.DirEntry
-	for {
-		if fd.pos >= len(fd.entries) {
-			break
-		}
+	for fd.pos < len(fd.entries) {
 		e := fd.entries[fd.pos]
 		fd.pos++
 		if e.Name() == fd.fail {
@@ -754,13 +771,15 @@ func (fd *fakeDirFile) ReadDir(int) ([]fs.DirEntry, error) {
 }
 
 func getDirEntry(baseDir, name string) os.DirEntry {
+	GinkgoHelper()
 	dirEntries, _ := os.ReadDir(baseDir)
 	for _, entry := range dirEntries {
 		if entry.Name() == name {
 			return entry
 		}
 	}
-	panic(fmt.Sprintf("Could not find %s in %s", name, baseDir))
+	Fail(fmt.Sprintf("Could not find %s in %s", name, baseDir))
+	return nil
 }
 
 // newLocalMusicFS returns the production local storage MusicFS rooted at libRoot
@@ -823,7 +842,7 @@ func (m *mockMusicFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	if dirFile, ok := f.(fs.ReadDirFile); ok {
 		return dirFile.ReadDir(-1)
 	}
-	return nil, fmt.Errorf("not a directory")
+	return nil, errors.New("not a directory")
 }
 
 // ReadLink returns the target of the named symbolic link (implements fs.ReadLinkFS).
@@ -834,7 +853,7 @@ func (m *mockMusicFS) ReadLink(name string) (string, error) {
 		return "", &fs.PathError{Op: "readlink", Path: name, Err: fs.ErrNotExist}
 	}
 	if entry.Mode&fs.ModeSymlink == 0 {
-		return "", &fs.PathError{Op: "readlink", Path: name, Err: fmt.Errorf("not a symlink")}
+		return "", &fs.PathError{Op: "readlink", Path: name, Err: errors.New("not a symlink")}
 	}
 	return string(entry.Data), nil
 }

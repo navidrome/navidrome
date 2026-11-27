@@ -8,22 +8,22 @@ replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260913142955
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/andybalholm/cascadia v1.3.5
-	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/bmatcuk/doublestar/v4 v4.10.7
 	github.com/deluan/rest v1.0.1
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36
 	github.com/djherbis/atime v1.1.0
 	github.com/djherbis/fscache v0.10.2-0.20260829235704-6d85d5878c22
-	github.com/djherbis/stream v1.5.1
+	github.com/djherbis/stream v1.5.2
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.1.0
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/structs v1.1.0
 	github.com/gen2brain/webp v0.6.4
-	github.com/getkin/kin-openapi v0.149.0
-	github.com/go-chi/chi/v5 v5.3.2
+	github.com/getkin/kin-openapi v0.153.0
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-chi/cors v1.2.2
-	github.com/go-chi/httprate v0.16.0
+	github.com/go-chi/httprate v0.16.1
 	github.com/go-chi/jwtauth/v5 v5.4.0
 	github.com/go-viper/encoding/ini v0.1.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -36,17 +36,18 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/kardianos/service v1.3.0
 	github.com/kr/pretty v0.3.1
-	github.com/lestrrat-go/jwx/v3 v3.3.0
-	github.com/mattn/go-sqlite3 v1.14.52
+	github.com/lestrrat-go/jwx/v3 v3.4.0
+	github.com/mattn/go-sqlite3 v1.14.53
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
-	github.com/onsi/ginkgo/v2 v2.33.0
+	github.com/oapi-codegen/runtime v1.9.1
+	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/pocketbase/dbx v1.12.0
-	github.com/pressly/goose/v3 v3.28.0
-	github.com/prometheus/client_golang v1.24.1
+	github.com/pressly/goose/v3 v3.30.2
+	github.com/prometheus/client_golang v1.25.0
 	github.com/rjeczalik/notify v0.9.3
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
@@ -56,17 +57,17 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	github.com/tetratelabs/wazero v1.12.0
-	github.com/unrolled/secure v1.17.0
-	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
+	github.com/unrolled/secure v1.18.0
+	github.com/xrash/smetrics v0.0.0-20261013231157-39c47d93efba
 	github.com/zeebo/xxh3 v1.1.0
 	go.senan.xyz/taglib v0.11.1
 	go.uber.org/goleak v1.3.0
-	golang.org/x/image v0.46.0
-	golang.org/x/net v0.59.0
-	golang.org/x/sync v0.23.0
-	golang.org/x/sys v0.48.0
-	golang.org/x/term v0.46.0
-	golang.org/x/text v0.42.0
+	golang.org/x/image v0.48.0
+	golang.org/x/net v0.63.0
+	golang.org/x/sync v0.25.0
+	golang.org/x/sys v0.50.0
+	golang.org/x/term v0.48.0
+	golang.org/x/text v0.44.0
 	golang.org/x/time v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -74,6 +75,7 @@ require (
 require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
+	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/atombender/go-jsonschema v0.20.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -89,7 +91,7 @@ require (
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobwas/glob v1.0.0 // indirect
-	github.com/goccy/go-json v0.10.6 // indirect
+	github.com/goccy/go-json v0.11.2 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260906184651-6331bc6350fe // indirect
@@ -111,21 +113,18 @@ require (
 	github.com/lestrrat-go/httprc/v3 v3.0.6 // indirect
 	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
 	github.com/maruel/natural v1.3.0 // indirect
-	github.com/mfridman/interpolate v0.0.2 // indirect
+	github.com/mfridman/interpolate v0.2.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/oasdiff/yaml v0.1.1 // indirect
-	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/ogier/pflag v0.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.70.1 // indirect
-	github.com/prometheus/procfs v0.22.0 // indirect
+	github.com/prometheus/client_model v0.6.3 // indirect
+	github.com/prometheus/common v0.72.0 // indirect
+	github.com/prometheus/procfs v0.23.0 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/sanity-io/litter v1.5.8 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
-	github.com/sethvargo/go-retry v0.4.0 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -136,11 +135,11 @@ require (
 	github.com/valyala/fastjson v1.6.10 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260908163034-4bcc4b2ee518 // indirect
-	golang.org/x/tools v0.50.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
+	go.yaml.in/yaml/v4 v4.0.0 // indirect
+	golang.org/x/mod v0.42.0 // indirect
+	golang.org/x/telemetry v0.0.0-20261009151841-97e8ea77aa2a // indirect
+	golang.org/x/tools v0.52.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

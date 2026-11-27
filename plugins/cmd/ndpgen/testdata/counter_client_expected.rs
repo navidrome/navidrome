@@ -19,9 +19,9 @@ struct CounterCountResponse {
     value: i32,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn counter_count(input: Json<CounterCountRequest>) -> Json<CounterCountResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn counter_count(input: u64) -> u64;
 }
 
 /// Calls the counter_count host function.
@@ -35,11 +35,9 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn count(name: &str) -> Result<i32, Error> {
-    let response = unsafe {
-        counter_count(Json(CounterCountRequest {
-            name: name.to_owned(),
-        }))?
-    };
+    let response: CounterCountResponse = unsafe { nd_pdk_types::hostcall::call(counter_count, &CounterCountRequest {
+        name: name.to_owned(),
+    }) }?;
 
-    Ok(response.0.value)
+    Ok(response.value)
 }

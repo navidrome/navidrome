@@ -141,7 +141,7 @@ func nullableFloat(value string) *float64 {
 	return &v
 }
 
-// Used for tracks and discs
+// tuple is used for tracks and discs
 func (md Metadata) tuple(key model.TagName) (int, int) {
 	tag := md.first(key)
 	if tag == "" {
@@ -170,7 +170,7 @@ func (md Metadata) date(tagName model.TagName) Date {
 	return Date(md.first(tagName))
 }
 
-// date tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
+// parseDate tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
 func parseDate(filePath string, tagName model.TagName, tagValue string) string {
 	if len(tagValue) < 4 {
 		return ""
@@ -216,6 +216,8 @@ func clean(filePath string, tags model.RawTags) model.Tags {
 		switch mapping.Type {
 		case model.TagTypePair:
 			values = processPairMapping(name, mapping, lowered)
+		case model.TagTypeString, model.TagTypeInteger, model.TagTypeFloat, model.TagTypeDate, model.TagTypeUUID:
+			fallthrough
 		default:
 			values = processRegularMapping(mapping, lowered)
 		}
@@ -409,6 +411,7 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 		// Store the canonical form: uuid.Parse accepts braces, urn: prefixes and any
 		// two-byte wrapper, and a wrapped value would never match an exact-match query
 		value = u.String()
+	case model.TagTypeString, model.TagTypePair:
 	}
 	return value
 }

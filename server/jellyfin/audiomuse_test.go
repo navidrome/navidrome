@@ -21,7 +21,7 @@ var _ = Describe("AudioMuse info", func() {
 	It("lists the sonic endpoints (excluding info) when a provider is present", func() {
 		api := &Router{sonic: &fakeSonicEngine{provider: true}}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/AudioMuseAI/info", nil)
+		r := httptest.NewRequest(http.MethodGet, "/AudioMuseAI/info", nil)
 
 		api.audioMuseInfo(w, r)
 
@@ -39,7 +39,7 @@ var _ = Describe("AudioMuse info", func() {
 	It("returns an empty endpoint list when no provider is loaded", func() {
 		api := &Router{}
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/AudioMuseAI/info", nil)
+		r := httptest.NewRequest(http.MethodGet, "/AudioMuseAI/info", nil)
 
 		api.audioMuseInfo(w, r)
 
@@ -97,7 +97,7 @@ var _ = Describe("AudioMuse health", func() {
 // audioMuseGet drives a GET through normalizeQueryKeys as the given user, mirroring a real request.
 func audioMuseGet(handler http.HandlerFunc, path, query string, user model.User) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", path+"?"+query, nil)
+	r := httptest.NewRequest(http.MethodGet, path+"?"+query, nil)
 	r = r.WithContext(request.WithUser(r.Context(), user))
 	invoke(handler, w, r)
 	return w

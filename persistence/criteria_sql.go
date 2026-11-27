@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"golang.org/x/text/unicode/norm"
@@ -130,11 +132,25 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"random":               {order: "random()"},
 }
 
+// normalizedAlbumPlayCount matches the count the album list reports. The CAST keeps INTEGER
+// affinity, so a quoted threshold ("gt": {"albumPlayCount": "0"}) compares as a number, not TEXT.
+var normalizedAlbumPlayCount = "cast(" + normalizedAlbumPlayCountExpr("album_annotation.play_count", "album") + " as integer)"
+
+// smartPlaylistFieldFor resolves the fields whose SQL value depends on server configuration.
+func smartPlaylistFieldFor(name string) (smartPlaylistField, bool) {
+	field, ok := smartPlaylistFields[name]
+	if ok && name == "albumplaycount" && conf.Server().AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized {
+		field.expr = normalizedAlbumPlayCount
+		field.joinType |= smartPlaylistJoinAlbum
+	}
+	return field, ok
+}
+
 func (c smartPlaylistCriteria) where() (squirrel.Sqlizer, error) {
-	if c.Criteria.Expression == nil {
+	if c.Expression == nil {
 		return squirrel.Expr("1 = 1"), nil
 	}
-	return c.exprSQL(c.Criteria.Expression)
+	return c.exprSQL(c.Expression)
 }
 
 func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqlizer, error) {
@@ -209,7 +225,7 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	field, value, info, ok := singleField(values)
 	if !ok {
 		if len(values) != 1 {
-			return nil, fmt.Errorf("invalid field in criteria: isMissing/isPresent requires exactly one field")
+			return nil, errors.New("invalid field in criteria: isMissing/isPresent requires exactly one field")
 		}
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
@@ -229,7 +245,7 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 		// mbz_* IDs, lyrics) additionally treat empty string — and any field-specific empty
 		// encodings (e.g. '[]' for lyrics) — as missing. The unified flow below handles both:
 		// numeric/boolean fields simply have no empties, so the loops are no-ops.
-		f, ok := smartPlaylistFields[info.Name()]
+		f, ok := smartPlaylistFieldFor(info.Name())
 		if !ok || f.expr == "" {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
@@ -378,7 +394,7 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 	return squirrel.Expr("media_file.id IN ("+subSQL+")", subArgs...), nil
 }
 
-// Filesystems disagree on the Unicode form of a name, so match the path in NFC and NFD.
+// pathVariants returns the path in NFC and NFD, because filesystems disagree on the Unicode form of a name.
 func pathVariants(path string) []string {
 	variants := []string{path}
 	if alt := norm.NFC.String(path); alt != path {
@@ -654,7 +670,7 @@ func sqlFields(values map[string]any) (map[string]any, error) {
 }
 
 func fieldExpr(name string) (string, bool) {
-	field, ok := smartPlaylistFields[strings.ToLower(name)]
+	field, ok := smartPlaylistFieldFor(strings.ToLower(name))
 	return field.expr, ok
 }
 
@@ -679,7 +695,7 @@ var (
 // COALESCE default (playcount, rating, loved). Date annotation columns (lastplayed, dateloved, ...)
 // have no default and return ok=false.
 func annotationField(info criteria.FieldInfo) (smartPlaylistField, bool) {
-	f, ok := smartPlaylistFields[info.Name()]
+	f, ok := smartPlaylistFieldFor(info.Name())
 	if !ok || f.coalesceDefault == nil {
 		return smartPlaylistField{}, false
 	}
@@ -796,7 +812,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 	if !ok {
 		return smartPlaylistJoinNone
 	}
-	field, ok := smartPlaylistFields[info.Name()]
+	field, ok := smartPlaylistFieldFor(info.Name())
 	if !ok {
 		return smartPlaylistJoinNone
 	}
@@ -805,7 +821,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) expressionJoins() smartPlaylistJoinType {
 	var joins smartPlaylistJoinType
-	_ = criteria.Walk(c.Criteria.Expression, func(expr criteria.Expression) error {
+	_ = criteria.Walk(c.Expression, func(expr criteria.Expression) error {
 		for field := range criteria.Fields(expr) {
 			joins |= fieldJoinType(field)
 		}
@@ -816,7 +832,7 @@ func (c smartPlaylistCriteria) expressionJoins() smartPlaylistJoinType {
 
 func (c smartPlaylistCriteria) requiredJoins() smartPlaylistJoinType {
 	joins := c.expressionJoins()
-	for _, name := range c.Criteria.SortFieldNames() {
+	for _, name := range c.SortFieldNames() {
 		joins |= fieldJoinType(name)
 	}
 	return joins
@@ -858,7 +874,7 @@ func (c smartPlaylistCriteria) applyJoins(sq squirrel.SelectBuilder, joins smart
 }
 
 func (c smartPlaylistCriteria) orderBy() string {
-	sortFields := c.Criteria.OrderByFields()
+	sortFields := c.OrderByFields()
 	parts := make([]string, 0, len(sortFields))
 	for _, sf := range sortFields {
 		mapped, ok := sortExpr(sf.Field)
@@ -879,7 +895,7 @@ func sortExpr(sortField string) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	if field, ok := smartPlaylistFields[info.Name()]; ok && field.order != "" {
+	if field, ok := smartPlaylistFieldFor(info.Name()); ok && field.order != "" {
 		return field.order, true
 	}
 	var mapped string
@@ -889,7 +905,7 @@ func sortExpr(sortField string) (string, bool) {
 	case info.IsRole:
 		mapped = "COALESCE(json_extract(media_file.participants, '$." + info.Name() + "[0].name'), '')"
 	default:
-		field, ok := smartPlaylistFields[info.Name()]
+		field, ok := smartPlaylistFieldFor(info.Name())
 		if !ok || field.expr == "" {
 			return "", false
 		}

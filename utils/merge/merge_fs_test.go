@@ -36,10 +36,10 @@ var _ = Describe("FS", func() {
 	It("reads from Base dir if not found in Overlay", func() {
 		_f(baseName, "a.json")
 		file, err := mergedDir.Open("a.json")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		stat, err := file.Stat()
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(stat.Name()).To(Equal("a.json"))
 	})
@@ -49,10 +49,10 @@ var _ = Describe("FS", func() {
 		_f(baseName, "b.json", "overridden")
 
 		file, err := mergedDir.Open("b.json")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		content, err := io.ReadAll(file)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(string(content)).To(Equal("overridden"))
 	})
 
@@ -60,10 +60,10 @@ var _ = Describe("FS", func() {
 		_f(baseName, "test.txt")
 
 		dir, err := mergedDir.Open(".")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		list, err := dir.(fs.ReadDirFile).ReadDir(-1)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Name()).To(Equal("test.txt"))
@@ -74,10 +74,10 @@ var _ = Describe("FS", func() {
 		_f(overlayName, "2222.json")
 
 		dir, err := mergedDir.Open(".")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		list, err := dir.(fs.ReadDirFile).ReadDir(-1)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(list).To(HaveLen(2))
 		Expect(list[0].Name()).To(Equal("1111.txt"))
@@ -90,7 +90,7 @@ var _ = Describe("FS", func() {
 		_f(baseName, "3333.txt")
 
 		dir, err := mergedDir.Open(".")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		list, _ := dir.(fs.ReadDirFile).ReadDir(2)
 		Expect(list).To(HaveLen(2))
@@ -104,11 +104,10 @@ var _ = Describe("FS", func() {
 })
 
 func _f(dir, name string, content ...string) string {
+	GinkgoHelper()
 	path := filepath.Join(dir, name)
 	file, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 	if len(content) > 0 {
 		_, _ = file.WriteString(content[0])
 	}

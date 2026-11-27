@@ -63,7 +63,7 @@ func filtersNeedAnnotation(query SelectBuilder) bool {
 func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, idField string) SelectBuilder {
 	userID := loggedUser(ctx).ID
 	if userID == invalidUserId {
-		return query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
+		return query.Columns(r.tableName + ".average_rating")
 	}
 	query = query.
 		LeftJoin("annotation on ("+
@@ -78,16 +78,20 @@ func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, 
 			"rated_at",
 		)
 	if conf.Server().AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
-		query = query.Columns(
-			fmt.Sprintf("round(coalesce(round(cast(play_count as float) / coalesce(%[1]s.song_count, 1), 1), 0)) as play_count", r.tableName),
-		)
+		query = query.Columns(normalizedAlbumPlayCountExpr("play_count", r.tableName) + " as play_count")
 	} else {
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
 
-	query = query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
+	query = query.Columns(r.tableName + ".average_rating")
 
 	return query
+}
+
+// normalizedAlbumPlayCountExpr divides an album's play count by its song count, for
+// AlbumPlayCountMode=normalized. The album list and smart playlist criteria share it.
+func normalizedAlbumPlayCountExpr(playCountCol, albumTable string) string {
+	return fmt.Sprintf("round(coalesce(round(cast(%s as float) / coalesce(%s.song_count, 1), 1), 0))", playCountCol, albumTable)
 }
 
 func annotationBoolFilter(field string) func(string, any) Sqlizer {

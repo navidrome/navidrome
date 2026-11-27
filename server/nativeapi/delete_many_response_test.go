@@ -14,7 +14,7 @@ var _ = Describe("writeDeleteManyResponse", func() {
 
 	write := func(ids ...string) map[string]any {
 		w = httptest.NewRecorder()
-		writeDeleteManyResponse(w, httptest.NewRequest("DELETE", "/missing", nil), ids)
+		writeDeleteManyResponse(w, httptest.NewRequest(http.MethodDelete, "/missing", nil), ids)
 
 		var body map[string]any
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed(), "response body must be valid JSON: %s", w.Body.String())

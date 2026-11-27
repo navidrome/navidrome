@@ -18,25 +18,26 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 func newGetRequest(queryParams ...string) *http.Request {
-	r := httptest.NewRequest("GET", "/ping?"+strings.Join(queryParams, "&"), nil)
+	r := httptest.NewRequest(http.MethodGet, "/ping?"+strings.Join(queryParams, "&"), nil)
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
 }
 
 func newPostRequest(queryParam string, formFields ...string) *http.Request {
-	r, err := http.NewRequest("POST", "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
-	if err != nil {
-		panic(err)
-	}
+	GinkgoHelper()
+	r, err := http.NewRequest(http.MethodPost, "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
+	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
@@ -52,7 +53,7 @@ var _ = Describe("Middlewares", func() {
 		ctx = GinkgoT().Context()
 		next = &mockHandler{}
 		w = httptest.NewRecorder()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 	})
 
 	Describe("ParsePostForm", func() {
@@ -333,7 +334,7 @@ var _ = Describe("Middlewares", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
 				key = "nds_0123456789abcdefghijkl"
-				Expect(ds.Player().SetAPIKey(ctx, "player-1", key)).To(Succeed())
+				Expect(ds.Player().SetAPIKey(request.WithUser(ctx, *usr), "player-1", key)).To(Succeed())
 			})
 
 			It("authenticates the owner and binds the key's player", func() {
@@ -474,10 +475,11 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not count server errors", func() {
-				userRepo := ds.User().(*tests.MockedUserRepo)
-				userRepo.Error = errors.New("db down")
+				store := &failingAuthStore{}
+				cp = authenticate(store.stub(ds))(next)
+				store.userErr = errors.New("db down")
 				failTimes(5, "u=admin", "p=wordpass")
-				userRepo.Error = nil
+				store.userErr = nil
 
 				serve(newGetRequest("u=admin", "p=wordpass"))
 				Expect(next.called).To(BeTrue())
@@ -485,14 +487,15 @@ var _ = Describe("Middlewares", func() {
 
 			It("does not count server errors when a key is sent as the password", func() {
 				usr, _ := ds.User().FindByUsername(ctx, "admin")
-				playerRepo := ds.Player().(*tests.MockPlayerRepo)
-				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
 				key := "nds_0123456789abcdefghijkl"
-				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+				Expect(ds.Player().SetAPIKey(request.WithUser(ctx, *usr), "player-1", key)).To(Succeed())
+				store := &failingAuthStore{}
+				cp = authenticate(store.stub(ds))(next)
 
-				playerRepo.Error = errors.New("db down")
+				store.playerErr = errors.New("db down")
 				failTimes(5, "u=admin", "p="+key)
-				playerRepo.Error = nil
+				store.playerErr = nil
 
 				serve(newGetRequest("u=admin", "p="+key))
 				Expect(next.called).To(BeTrue())
@@ -531,16 +534,18 @@ var _ = Describe("Middlewares", func() {
 
 			It("throttles a repeated bad key without locking out valid keys from the same IP", func() {
 				usr, _ := ds.User().FindByUsername(ctx, "admin")
-				playerRepo := ds.Player().(*tests.MockPlayerRepo)
-				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				ownerCtx := request.WithUser(ctx, *usr)
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
 				key := "nds_0123456789abcdefghijkl"
-				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+				Expect(ds.Player().SetAPIKey(ownerCtx, "player-1", key)).To(Succeed())
+				badKey := "nds_bad0000000000000000000"
 
 				for range 3 {
-					Expect(serve(newGetRequest("apiKey=nds_bad")).Body.String()).To(ContainSubstring(`code="44"`))
+					Expect(serve(newGetRequest("apiKey=" + badKey)).Body.String()).To(ContainSubstring(`code="44"`))
 				}
-				playerRepo.APIKeys["nds_bad"] = "player-1"
-				rec := serve(newGetRequest("apiKey=nds_bad"))
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-2", UserId: usr.ID})).To(Succeed())
+				Expect(ds.Player().SetAPIKey(ownerCtx, "player-2", badKey)).To(Succeed())
+				rec := serve(newGetRequest("apiKey=" + badKey))
 				Expect(next.called).To(BeFalse())
 				Expect(rec.Body.String()).To(ContainSubstring(`code="44"`))
 
@@ -789,9 +794,7 @@ var _ = Describe("Middlewares", func() {
 
 			var err error
 			usr, err = ur.FindByUsernameWithPassword(ctx, "admin")
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		Context("Plaintext password", func() {
@@ -836,9 +839,7 @@ var _ = Describe("Middlewares", func() {
 				usr = &model.User{UserName: "admin"}
 				var err error
 				validToken, err = auth.CreateToken(usr)
-				if err != nil {
-					panic(err)
-				}
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("authenticates with JWT token based authentication", func() {
@@ -952,3 +953,41 @@ func (g *gatedUserRepo) FindByUsernameWithPassword(ctx context.Context, username
 type countingHandler struct{ calls atomic.Int32 }
 
 func (c *countingHandler) ServeHTTP(http.ResponseWriter, *http.Request) { c.calls.Add(1) }
+
+// failingAuthStore fails the credential lookups while userErr or playerErr is set.
+type failingAuthStore struct {
+	userErr, playerErr error
+}
+
+func (f *failingAuthStore) stub(ds model.DataStore) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{
+		User: func(r model.UserRepository) model.UserRepository { return failingAuthUserRepo{UserRepository: r, f: f} },
+		Player: func(r model.PlayerRepository) model.PlayerRepository {
+			return failingAuthPlayerRepo{PlayerRepository: r, f: f}
+		},
+	})
+}
+
+type failingAuthUserRepo struct {
+	model.UserRepository
+	f *failingAuthStore
+}
+
+func (r failingAuthUserRepo) FindByUsernameWithPassword(ctx context.Context, username string) (*model.User, error) {
+	if r.f.userErr != nil {
+		return nil, r.f.userErr
+	}
+	return r.UserRepository.FindByUsernameWithPassword(ctx, username)
+}
+
+type failingAuthPlayerRepo struct {
+	model.PlayerRepository
+	f *failingAuthStore
+}
+
+func (r failingAuthPlayerRepo) FindByAPIKey(ctx context.Context, key string) (*model.Player, error) {
+	if r.f.playerErr != nil {
+		return nil, r.f.playerErr
+	}
+	return r.PlayerRepository.FindByAPIKey(ctx, key)
+}

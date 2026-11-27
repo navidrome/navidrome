@@ -3,6 +3,7 @@ package conf
 import (
 	"cmp"
 	"encoding"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -70,7 +71,7 @@ type Options struct {
 	DefaultDownsamplingFormat       string
 	Search                          searchOptions  `json:",omitzero"`
 	Matcher                         matcherOptions `json:",omitzero"`
-	RecentlyAddedByModTime          bool
+	RecentlyAddedBy                 string
 	PreferSortTags                  bool
 	EnableNaturalSorting            bool
 	IgnoredArticles                 string
@@ -101,6 +102,7 @@ type Options struct {
 	DefaultUIVolume                 int
 	UISearchDebounceMs              int
 	UICoverArtSize                  int
+	UIAppendRemixers                bool // Whether to show remixers after the track artists in the UI
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	EnableNowPlaying                bool
@@ -142,6 +144,7 @@ type Options struct {
 	DevUIShowConfig                   bool
 	DevNewEventStream                 bool
 	DevOffsetOptimize                 int
+	DevMaxPlaylistTracksPerRequest    int
 	DevArtworkMaxRequests             int
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
@@ -284,11 +287,12 @@ type inspectOptions struct {
 }
 
 type pluginsOptions struct {
-	Enabled    bool
-	Folder     Dir
-	CacheSize  string
-	AutoReload bool
-	LogLevel   string
+	Enabled         bool
+	Folder          Dir
+	CacheSize       string
+	AutoReload      bool
+	LogLevel        string
+	MaxTaskDuration time.Duration
 }
 
 type extAuthOptions struct {
@@ -354,6 +358,7 @@ func Load(noConfigDump bool) {
 			mapDeprecatedOption(o.name, o.replacement)
 		}
 	}
+	mapRecentlyAddedByModTime()
 
 	s := clone(current.Load())
 	err := viper.Unmarshal(s, viper.DecodeHook(
@@ -392,7 +397,7 @@ func Load(noConfigDump bool) {
 	out := os.Stderr
 	if s.LogFile != "" {
 		if mkErr := os.MkdirAll(filepath.Dir(s.LogFile), os.ModePerm); mkErr != nil {
-			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
+			logFatal("Error creating log file directory: " + mkErr.Error())
 		}
 		out, err = os.OpenFile(s.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
@@ -439,7 +444,10 @@ func Load(noConfigDump bool) {
 		s.validateScanSchedule,
 		s.validateBackupSchedule,
 		s.validatePlaylistsPath,
-		s.validatePurgeMissingOption,
+		validateEnum("Scanner.PurgeMissing", &s.Scanner.PurgeMissing,
+			consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull),
+		validateEnum("RecentlyAddedBy", &s.RecentlyAddedBy,
+			consts.RecentlyAddedByScan, consts.RecentlyAddedByBirth, consts.RecentlyAddedByModTime),
 		validateByteSize("MaxImageUploadSize", s.MaxImageUploadSize),
 		validateByteSize("MaxImageSize", s.MaxImageSize),
 		validateURL("ExtAuth.LogoutURL", s.ExtAuth.LogoutURL),
@@ -535,6 +543,7 @@ var deprecatedOptions = []struct{ name, replacement string }{
 	{"CoverJpegQuality", "CoverArtQuality"},
 	{"SimilarSongsMatchThreshold", "Matcher.FuzzyThreshold"},
 	{"EnableTranscodingCancellation", "Transcoding.EnableCancellation"},
+	{"RecentlyAddedByModTime", "RecentlyAddedBy"},
 }
 
 var removedOptions = []string{"Spotify.ID", "Spotify.Secret"}
@@ -612,6 +621,18 @@ func mapDeprecatedOption(legacyName, newName string) {
 	// viper.Set outranks the config file, so an explicit replacement must win over the legacy value
 	if viper.IsSet(legacyName) && !explicitlySet(newName) {
 		viper.Set(newName, viper.Get(legacyName))
+	}
+}
+
+// mapRecentlyAddedByModTime overrides the generic mapping, which would copy the legacy boolean as-is.
+func mapRecentlyAddedByModTime() {
+	if !viper.IsSet("RecentlyAddedByModTime") || explicitlySet("RecentlyAddedBy") {
+		return
+	}
+	if viper.GetBool("RecentlyAddedByModTime") {
+		viper.Set("RecentlyAddedBy", consts.RecentlyAddedByModTime)
+	} else {
+		viper.Set("RecentlyAddedBy", consts.RecentlyAddedByScan)
 	}
 }
 
@@ -728,7 +749,7 @@ func asWrittenInConfigFile(keys []string) []string {
 	})
 }
 
-// Matches keys and section headers in all supported config formats.
+// configFileKeyRx matches keys and section headers in all supported config formats.
 var configFileKeyRx = regexp.MustCompile(`(?m)^\s*\[?\s*"?([\w.]+)"?\s*[]=:]`)
 
 // configKeys maps every accepted option name, lowercased, to its canonical spelling,
@@ -830,15 +851,16 @@ func parseLanguages(lang string) []string {
 	return languages
 }
 
-func (s *Options) validatePurgeMissingOption() error {
-	allowedValues := []string{consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull}
-	valid := slices.Contains(allowedValues, s.Scanner.PurgeMissing)
-	if !valid {
-		err := fmt.Errorf("invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", s.Scanner.PurgeMissing, allowedValues)
-		s.Scanner.PurgeMissing = consts.PurgeMissingNever
+// validateEnum resets value to its first allowed entry when it is not one of them.
+func validateEnum(name string, value *string, allowed ...string) func() error {
+	return func() error {
+		if slices.Contains(allowed, *value) {
+			return nil
+		}
+		err := fmt.Errorf("invalid %s value: '%s'. Must be one of: %v", name, *value, allowed)
+		*value = allowed[0]
 		return err
 	}
-	return nil
 }
 
 func validateByteSize(name, value string) func() error {
@@ -863,7 +885,7 @@ func (s *Options) validateEnforceNonRootUser() error {
 	}
 
 	if getEUID() == 0 {
-		return fmt.Errorf("EnforceNonRootUser is enabled but Navidrome is running as root")
+		return errors.New("EnforceNonRootUser is enabled but Navidrome is running as root")
 	}
 
 	return nil
@@ -995,7 +1017,7 @@ func setViperDefaults() {
 	viper.SetDefault("search.backend", "fts")
 	viper.SetDefault("matcher.preferstarred", true)
 	viper.SetDefault("matcher.fuzzythreshold", 85)
-	viper.SetDefault("recentlyaddedbymodtime", false)
+	viper.SetDefault("recentlyaddedby", consts.RecentlyAddedByScan)
 	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("enablenaturalsorting", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
@@ -1019,6 +1041,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)
 	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
+	viper.SetDefault("uiappendremixers", true)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablenowplaying", true)
@@ -1103,6 +1126,7 @@ func setViperDefaults() {
 	viper.SetDefault("plugins.cachesize", "200MB")
 	viper.SetDefault("plugins.autoreload", false)
 	viper.SetDefault("plugins.loglevel", "")
+	viper.SetDefault("plugins.maxtaskduration", time.Hour)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
@@ -1117,6 +1141,7 @@ func setViperDefaults() {
 	viper.SetDefault("devneweventstream", true)
 	viper.SetDefault("devapiv1", false)
 	viper.SetDefault("devoffsetoptimize", 50000)
+	viper.SetDefault("devmaxplaylisttracksperrequest", 50000)
 	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
 	// scrobbles and the UI. See MaxOpenConns.
 	viper.SetDefault("jellyfin.maxconcurrentstreams", max(2, MaxOpenConns()/2))

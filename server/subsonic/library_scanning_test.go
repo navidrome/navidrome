@@ -3,10 +3,13 @@ package subsonic
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,11 +20,19 @@ var _ = Describe("LibraryScanning", func() {
 	var ctx context.Context
 	var api *Router
 	var ms *tests.MockScanner
+	var ds model.DataStore
+
+	putSecondLibrary := func(name, path string) {
+		GinkgoHelper()
+		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Name: name, Path: path})).To(Succeed())
+	}
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ms = tests.NewMockScanner()
-		api = &Router{scanner: ms}
+		ds = persistence.New(db.Db())
+		putUsers(ctx, ds, model.User{ID: "admin-id", UserName: "admin", IsAdmin: true})
+		api = &Router{scanner: ms, ds: ds}
 	})
 
 	Describe("StartScan", func() {
@@ -33,7 +44,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with no parameters
-			r := httptest.NewRequest("GET", "/rest/startScan", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -60,7 +71,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with fullScan parameter
-			r := httptest.NewRequest("GET", "/rest/startScan?fullScan=true", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?fullScan=true", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -80,11 +91,7 @@ var _ = Describe("LibraryScanning", func() {
 		})
 
 		It("triggers a selective scan with single target parameter", func() {
-			// Setup mocks
-			mockUserRepo := tests.CreateMockUserRepo()
-			_ = mockUserRepo.SetUserLibraries(GinkgoT().Context(), "admin-id", []int{1, 2})
-			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
-			api.ds = mockDS
+			putSecondLibrary("Library 2", "/music2")
 
 			// Create admin user
 			userCtx := request.WithUser(ctx, model.User{
@@ -93,7 +100,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with single target parameter
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Rock", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Rock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -116,11 +123,7 @@ var _ = Describe("LibraryScanning", func() {
 		})
 
 		It("triggers a selective scan with multiple target parameters", func() {
-			// Setup mocks
-			mockUserRepo := tests.CreateMockUserRepo()
-			_ = mockUserRepo.SetUserLibraries(GinkgoT().Context(), "admin-id", []int{1, 2})
-			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
-			api.ds = mockDS
+			putSecondLibrary("Library 2", "/music2")
 
 			// Create admin user
 			userCtx := request.WithUser(ctx, model.User{
@@ -129,7 +132,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with multiple target parameters
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Reggae&target=2:Classical/Bach", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Reggae&target=2:Classical/Bach", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -154,12 +157,6 @@ var _ = Describe("LibraryScanning", func() {
 		})
 
 		It("triggers a selective full scan with target and fullScan parameters", func() {
-			// Setup mocks
-			mockUserRepo := tests.CreateMockUserRepo()
-			_ = mockUserRepo.SetUserLibraries(GinkgoT().Context(), "admin-id", []int{1})
-			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
-			api.ds = mockDS
-
 			// Create admin user
 			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
@@ -167,7 +164,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with target and fullScan parameters
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:Music/Jazz&fullScan=true", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Jazz&fullScan=true", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -196,7 +193,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with invalid target format (missing colon)
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1MusicRock", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1MusicRock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -219,7 +216,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with invalid library ID
-			r := httptest.NewRequest("GET", "/rest/startScan?target=0:Music/Rock", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=0:Music/Rock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -235,11 +232,8 @@ var _ = Describe("LibraryScanning", func() {
 		})
 
 		It("returns error when library does not exist", func() {
-			// Setup mocks - user has access to library 1 and 2 only
-			mockUserRepo := tests.CreateMockUserRepo()
-			_ = mockUserRepo.SetUserLibraries(GinkgoT().Context(), "admin-id", []int{1, 2})
-			mockDS := &tests.MockDataStore{MockedUser: mockUserRepo}
-			api.ds = mockDS
+			// User has access to library 1 and 2 only
+			putSecondLibrary("Library 2", "/music2")
 
 			// Create admin user
 			userCtx := request.WithUser(ctx, model.User{
@@ -248,7 +242,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with library ID that doesn't exist
-			r := httptest.NewRequest("GET", "/rest/startScan?target=999:Music/Rock", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=999:Music/Rock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -264,19 +258,6 @@ var _ = Describe("LibraryScanning", func() {
 		})
 
 		It("calls ScanAll when single library with empty path and only one library exists", func() {
-			// Setup mocks - single library in DB
-			mockUserRepo := tests.CreateMockUserRepo()
-			_ = mockUserRepo.SetUserLibraries(GinkgoT().Context(), "admin-id", []int{1})
-			mockLibraryRepo := &tests.MockLibraryRepo{}
-			mockLibraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Music Library", Path: "/music"},
-			})
-			mockDS := &tests.MockDataStore{
-				MockedUser:    mockUserRepo,
-				MockedLibrary: mockLibraryRepo,
-			}
-			api.ds = mockDS
-
 			// Create admin user
 			userCtx := request.WithUser(ctx, model.User{
 				ID:      "admin-id",
@@ -284,7 +265,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with single library and empty path
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -302,19 +283,7 @@ var _ = Describe("LibraryScanning", func() {
 		})
 
 		It("calls ScanFolders when single library with empty path but multiple libraries exist", func() {
-			// Setup mocks - multiple libraries in DB
-			mockUserRepo := tests.CreateMockUserRepo()
-			_ = mockUserRepo.SetUserLibraries(GinkgoT().Context(), "admin-id", []int{1, 2})
-			mockLibraryRepo := &tests.MockLibraryRepo{}
-			mockLibraryRepo.SetData(model.Libraries{
-				{ID: 1, Name: "Music Library", Path: "/music"},
-				{ID: 2, Name: "Audiobooks", Path: "/audiobooks"},
-			})
-			mockDS := &tests.MockDataStore{
-				MockedUser:    mockUserRepo,
-				MockedLibrary: mockLibraryRepo,
-			}
-			api.ds = mockDS
+			putSecondLibrary("Audiobooks", "/audiobooks")
 
 			// Create admin user
 			userCtx := request.WithUser(ctx, model.User{
@@ -323,7 +292,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with single library and empty path
-			r := httptest.NewRequest("GET", "/rest/startScan?target=1:", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -363,7 +332,7 @@ var _ = Describe("LibraryScanning", func() {
 				IsAdmin: true,
 			})
 
-			r := httptest.NewRequest("GET", "/rest/startScan", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan", nil)
 			r = r.WithContext(userCtx)
 
 			response, err := api.StartScan(r)
@@ -393,7 +362,7 @@ var _ = Describe("LibraryScanning", func() {
 				IsAdmin: true,
 			})
 
-			r := httptest.NewRequest("GET", "/rest/startScan?fullScan=true", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?fullScan=true", nil)
 			r = r.WithContext(userCtx)
 
 			response, err := api.StartScan(r)
@@ -416,7 +385,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request
-			r := httptest.NewRequest("GET", "/rest/getScanStatus", nil)
+			r := httptest.NewRequest(http.MethodGet, "/rest/getScanStatus", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint

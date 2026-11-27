@@ -102,7 +102,7 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 				if err := tx.Album().ReassignAnnotation(ctx, oldAlbumID, newAlbumID); err != nil {
 					return fmt.Errorf("reassign album annotations: %w", err)
 				}
-				if err := tx.Album().CopyAttributes(ctx, oldAlbumID, newAlbumID, "created_at"); err != nil && !errors.Is(err, model.ErrNotFound) {
+				if err := tx.Album().CopyAttributes(ctx, oldAlbumID, newAlbumID, "created_at", "birth_time"); err != nil && !errors.Is(err, model.ErrNotFound) {
 					return fmt.Errorf("copy album attributes: %w", err)
 				}
 			}
@@ -239,9 +239,7 @@ func (s *maintenanceService) refreshAlbumChunk(ctx context.Context, albumIDs []s
 
 		// Only update if something changed (avoid unnecessary writes)
 		if !oldAlbum.Equals(newAlbum) {
-			// Preserve original timestamps
 			newAlbum.UpdatedAt = time.Now()
-			newAlbum.CreatedAt = oldAlbum.CreatedAt
 
 			if err := albumRepo.Put(ctx, &newAlbum); err != nil {
 				log.Error(ctx, "Error updating album during refresh", "albumID", albumID, err)
@@ -310,9 +308,9 @@ func (s *maintenanceService) refreshStatsAsync(ctx context.Context, affectedAlbu
 	})
 }
 
-// Wait waits for all background goroutines to complete.
+// wait waits for all background goroutines to complete.
 // WARNING: This method is ONLY for testing. Never call this in production code.
-// Calling Wait() in production will block until ALL background operations complete
+// Calling wait() in production will block until ALL background operations complete
 // and may cause race conditions with new operations starting.
 func (s *maintenanceService) wait() {
 	s.wg.Wait()

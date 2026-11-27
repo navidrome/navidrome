@@ -2,7 +2,9 @@ package plugins
 
 import (
 	"context"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
@@ -138,7 +140,125 @@ var _ = Describe("callPluginFunction metrics", Ordered, func() {
 			Expect(err).To(MatchError(errNotImplemented))
 
 			calls := partialRecorder.getCalls()
-			Expect(calls).To(HaveLen(0))
+			Expect(calls).To(BeEmpty())
 		})
+	})
+})
+
+func loadedTestPlugin(m *Manager, id string) *plugin {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p := m.plugins[id]
+	Expect(p).ToNot(BeNil(), "plugin %s is not loaded", id)
+	return p
+}
+
+var _ = Describe("callPluginFunction time limits", Ordered, func() {
+	var (
+		ctx      context.Context
+		p        *plugin
+		recorder *mockMetricsRecorder
+	)
+
+	BeforeAll(func() {
+		recorder = &mockMetricsRecorder{}
+		manager, _ := createTestManagerWithPluginsAndMetrics(nil, recorder, "test-streams"+PackageExtension)
+		p = loadedTestPlugin(manager, "test-streams")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		recorder.reset()
+	})
+
+	It("stops a call when its time limit passes and records it as a failure", func() {
+		start := time.Now()
+		_, err := callPluginFunctionWithTimeout[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, struct{}{})
+		Expect(err).To(MatchError(context.DeadlineExceeded))
+		Expect(time.Since(start)).To(BeNumerically("<", 5*time.Second))
+
+		calls := recorder.getCalls()
+		Expect(calls).To(HaveLen(1))
+		Expect(calls[0].plugin).To(Equal("test-streams"))
+		Expect(calls[0].method).To(Equal("spin"))
+		Expect(calls[0].ok).To(BeFalse())
+	})
+
+	It("leaves the time limit out of the Extism manifest", func() {
+		m := buildExtismManifest(&ndpPackage{Manifest: &Manifest{}}, nil)
+		Expect(m.Timeout).To(BeZero())
+	})
+})
+
+var _ = Describe("callPluginFunctionScoped", Ordered, func() {
+	var (
+		ctx context.Context
+		p   *plugin
+	)
+
+	BeforeAll(func() {
+		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		p = loadedTestPlugin(manager, "test-streams")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	It("closes streams left in the scope when the call returns", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		_, err := callPluginFunctionScoped[streamsInput, struct{}](ctx, p, "noop", defaultTimeout, readInput(r, 0), nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(r.closed()).To(BeTrue())
+	})
+
+	It("closes input streams when the export does not exist", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		_, err := callPluginFunctionScoped[streamsInput, struct{}](ctx, p, "missing", defaultTimeout, readInput(r, 0), nil)
+		Expect(err).To(MatchError(errFunctionNotFound))
+		Expect(r.closed()).To(BeTrue())
+	})
+
+	It("runs onOutput before the scope closes", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		var h uint32
+		var got []any
+		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout,
+			func(s *callScope) (struct{}, error) {
+				var err error
+				h, err = s.register(newReadStream(r))
+				return struct{}{}, err
+			},
+			func(s *callScope, _ struct{}) error {
+				var err error
+				got, err = s.transfer(h)
+				return err
+			})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(ConsistOf(BeIdenticalTo(r)))
+		Expect(r.closed()).To(BeFalse())
+	})
+
+	It("closes the scope when the time limit passes", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		_, err := callPluginFunctionScoped[streamsInput, struct{}](ctx, p, "spin", 200*time.Millisecond, readInput(r, 0), nil)
+		Expect(err).To(MatchError(context.DeadlineExceeded))
+		Expect(r.closed()).To(BeTrue())
+	})
+})
+
+var _ = Describe("Plugin unload", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	It("closes the plugin's stream table", func() {
+		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		p := loadedTestPlugin(manager, "test-streams")
+		Expect(manager.unloadPlugin("test-streams")).To(Succeed())
+		_, err := p.streams.newScope(ctx)
+		Expect(err).To(MatchError(errPluginUnloaded))
 	})
 })

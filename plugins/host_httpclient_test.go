@@ -39,7 +39,7 @@ var _ = Describe("httpServiceImpl", func() {
 
 		It("should block requests to loopback IPs", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
+				w.WriteHeader(http.StatusOK)
 			}))
 			_, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "GET",
@@ -52,7 +52,7 @@ var _ = Describe("httpServiceImpl", func() {
 
 		It("should block a symbolic hostname that resolves to loopback (SSRF)", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
+				w.WriteHeader(http.StatusOK)
 			}))
 			// The trailing dot passes the pre-flight string check; only the dial-time guard catches it.
 			_, port, _ := net.SplitHostPort(strings.TrimPrefix(ts.URL, "http://"))
@@ -178,7 +178,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Method).To(Equal("GET"))
 				w.Header().Set("X-Test", "ok")
-				w.WriteHeader(201)
+				w.WriteHeader(http.StatusCreated)
 				_, _ = w.Write([]byte("hello"))
 			}))
 			resp, err := svc.Send(ctx, host.HTTPRequest{
@@ -228,7 +228,7 @@ var _ = Describe("httpServiceImpl", func() {
 		It("should handle DELETE requests", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Method).To(Equal("DELETE"))
-				w.WriteHeader(204)
+				w.WriteHeader(http.StatusNoContent)
 			}))
 			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "DELETE",
@@ -275,7 +275,7 @@ var _ = Describe("httpServiceImpl", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.Method).To(Equal("HEAD"))
 				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(200)
+				w.WriteHeader(http.StatusOK)
 			}))
 			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method:    "HEAD",
@@ -290,7 +290,7 @@ var _ = Describe("httpServiceImpl", func() {
 
 		It("should use default timeout when TimeoutMs is 0", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
+				w.WriteHeader(http.StatusOK)
 			}))
 			resp, err := svc.Send(ctx, host.HTTPRequest{
 				Method: "GET",
@@ -375,7 +375,7 @@ var _ = Describe("httpServiceImpl", func() {
 
 		It("should block requests to non-allowed hosts", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(200)
+				w.WriteHeader(http.StatusOK)
 			}))
 			// httptest server is on 127.0.0.1 which is not in requiredHosts
 			_, err := svc.Send(ctx, host.HTTPRequest{
@@ -528,7 +528,7 @@ var _ = Describe("httpServiceImpl", func() {
 				TimeoutMs: 5000,
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(resp.Body)).To(Equal(httpClientMaxResponseBodyLen))
+			Expect(resp.Body).To(HaveLen(httpClientMaxResponseBodyLen))
 		})
 	})
 

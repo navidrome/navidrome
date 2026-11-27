@@ -63,6 +63,7 @@ type BaseItemDto struct {
 	MediaType      string `json:"MediaType,omitempty"`
 	CollectionType string `json:"CollectionType,omitempty"`
 	LocationType   string `json:"LocationType,omitempty"`
+	ChannelType    string `json:"ChannelType,omitempty"`
 	HasLyrics      *bool  `json:"HasLyrics,omitempty"`
 	// ChannelId is always null for music, but Jellyfin emits it on every item and clients may require it.
 	ChannelId         *string  `json:"ChannelId"`

@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -19,14 +20,12 @@ import (
 
 // serviceContext provides dependencies needed by host service factories.
 type serviceContext struct {
-	pluginName       string
-	manager          *Manager
-	permissions      *Permissions
-	config           map[string]string
-	allowedUsers     []string // User IDs this plugin can access
-	allUsers         bool     // If true, plugin can access all users
-	allowedLibraries []int    // Library IDs this plugin can access
-	allLibraries     bool     // If true, plugin can access all libraries
+	pluginName  string
+	manager     *Manager
+	permissions *Permissions
+	config      map[string]string
+	users       userAccess
+	libraries   libraryAccess
 }
 
 // baseCtx returns the manager's lifecycle context, for host services that
@@ -63,7 +62,7 @@ var hostServices = []hostServiceEntry{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.users)
 			return host.RegisterSubsonicAPIHostFunctions(service), nil, nil
 		},
 	},
@@ -105,7 +104,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Library != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Library
-			service := newLibraryService(ctx.manager.ds, perm, ctx.allowedLibraries, ctx.allLibraries)
+			service := newLibraryService(ctx.manager.ds, perm, ctx.libraries)
 			return host.RegisterLibraryHostFunctions(service), nil, nil
 		},
 	},
@@ -125,7 +124,7 @@ var hostServices = []hostServiceEntry{
 		name:          "Users",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Users != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			service := newUsersService(ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
+			service := newUsersService(ctx.manager.ds, ctx.users)
 			return host.RegisterUsersHostFunctions(service), nil, nil
 		},
 	},
@@ -136,8 +135,8 @@ var hostServices = []hostServiceEntry{
 			hasFilesystemPerm := ctx.permissions.Library != nil && ctx.permissions.Library.Filesystem
 			service := newMatcherService(
 				ctx.manager.ds, hasFilesystemPerm,
-				newUserAccess(ctx.allowedUsers, ctx.allUsers),
-				newLibraryAccess(ctx.allowedLibraries, ctx.allLibraries),
+				ctx.users,
+				ctx.libraries,
 			)
 			return host.RegisterMatcherHostFunctions(service), nil, nil
 		},
@@ -182,7 +181,7 @@ var hostServices = []hostServiceEntry{
 		name:          "ScrobbleRetriever",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.ScrobbleRetriever != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			service := newScrobbleRetrieverService(ctx.manager.ds, newUserAccess(ctx.allowedUsers, ctx.allUsers))
+			service := newScrobbleRetrieverService(ctx.manager.ds, ctx.users)
 			return host.RegisterScrobbleRetrieverHostFunctions(service), nil, nil
 		},
 	},
@@ -193,7 +192,7 @@ var hostServices = []hostServiceEntry{
 // Unlike the old implementation, this does NOT compile the wasm - just reads the manifest JSON.
 func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 	if m.stopped.Load() {
-		return nil, fmt.Errorf("manager is stopped")
+		return nil, errors.New("manager is stopped")
 	}
 
 	manifest, err := ReadManifest(ndpPath)
@@ -215,7 +214,7 @@ func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 // loadEnabledPlugins loads all enabled plugins from the database.
 func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
@@ -295,7 +294,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	ctx := log.NewContext(m.ctx, "plugin", p.ID)
 
 	if m.stopped.Load() {
-		return fmt.Errorf("manager is stopped")
+		return errors.New("manager is stopped")
 	}
 
 	if !validPluginID(p.ID) {
@@ -307,7 +306,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	defer m.loadWg.Done()
 
 	if m.stopped.Load() {
-		return fmt.Errorf("manager is stopped")
+		return errors.New("manager is stopped")
 	}
 
 	// Parse config from JSON
@@ -323,6 +322,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("parsing plugin users: %w", err)
 		}
 	}
+	users := newUserAccess(allowedUsers, p.AllUsers)
 
 	// Parse libraries from JSON
 	var allowedLibraries []int
@@ -331,6 +331,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("parsing plugin libraries: %w", err)
 		}
 	}
+	libraries := newLibraryAccess(allowedLibraries, p.AllLibraries)
 
 	// Open the .ndp package to get manifest and wasm bytes
 	pkg, err := openPackage(p.Path)
@@ -347,11 +348,11 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 		if pkg.Manifest.HasLibraryFilesystemPermission() {
 			adminCtx := adminContext(ctx)
-			libraries, err := m.ds.Library().GetAll(adminCtx)
+			allLibs, err := m.ds.Library().GetAll(adminCtx)
 			if err != nil {
 				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 			}
-			mounts = buildMounts(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
+			mounts = buildMounts(ctx, allLibs, libraries, p.AllowWriteAccess)
 		}
 
 		if pkg.Manifest.HasStoragePermission() {
@@ -367,8 +368,8 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		fsConfig = buildFSConfig(mounts)
 	}
 
-	// Build host functions based on permissions from manifest
-	var hostFunctions []extism.HostFunction
+	// Stream functions are for every plugin; the rest depend on manifest permissions
+	hostFunctions := streamHostFunctions()
 	var closers []io.Closer
 	loaded := false
 	// On success the closers are owned by the registered plugin; on any
@@ -381,14 +382,12 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}()
 
 	svcCtx := &serviceContext{
-		pluginName:       p.ID,
-		manager:          m,
-		permissions:      pkg.Manifest.Permissions,
-		config:           pluginConfig,
-		allowedUsers:     allowedUsers,
-		allUsers:         p.AllUsers,
-		allowedLibraries: allowedLibraries,
-		allLibraries:     p.AllLibraries,
+		pluginName:  p.ID,
+		manager:     m,
+		permissions: pkg.Manifest.Permissions,
+		config:      pluginConfig,
+		users:       users,
+		libraries:   libraries,
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
@@ -434,19 +433,20 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
+	streams := newStreamTable()
 	loadedPlugin := &plugin{
-		name:           p.ID,
-		path:           p.Path,
-		manifest:       pkg.Manifest,
-		compiled:       compiled,
-		capabilities:   capabilities,
-		closers:        closers,
-		metrics:        m.metrics,
-		allowedUserIDs: allowedUsers,
-		allUsers:       p.AllUsers,
-		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
-		fsConfig:       fsConfig,
-		lyricsSem:      make(chan struct{}, maxConcurrentLyricsCalls),
+		name:         p.ID,
+		path:         p.Path,
+		manifest:     pkg.Manifest,
+		compiled:     compiled,
+		capabilities: capabilities,
+		closers:      append(closers, streams),
+		metrics:      m.metrics,
+		users:        users,
+		libraries:    libraries,
+		fsConfig:     fsConfig,
+		lyricsSem:    make(chan struct{}, maxConcurrentLyricsCalls),
+		streams:      streams,
 	}
 	m.mu.Lock()
 	m.plugins[p.ID] = loadedPlugin
@@ -498,12 +498,18 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 	return pluginConfig, nil
 }
 
+// extismMaxMemoryPages caps each plugin memory in 64 KiB pages; 0 means no cap. Tests lower it.
+var extismMaxMemoryPages uint32
+
 // buildExtismManifest describes the plugin to extism. It must never set AllowedPaths (extism would replace our
 // jailed FSConfig) nor AllowedHosts (extism's http_request has no SSRF guard; plugins must use host.HTTPSend).
 func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
-	return extism.Manifest{
-		Wasm:    []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
-		Config:  pluginConfig,
-		Timeout: uint64(defaultTimeout.Milliseconds()),
+	m := extism.Manifest{
+		Wasm:   []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
+		Config: pluginConfig,
 	}
+	if extismMaxMemoryPages > 0 {
+		m.Memory = &extism.ManifestMemory{MaxPages: extismMaxMemoryPages}
+	}
+	return m
 }

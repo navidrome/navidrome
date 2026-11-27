@@ -14,7 +14,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -63,8 +62,8 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Album.FolderIDs = ids
 	}
-	a.Album.RGAlbumGain = a.RgAlbumGain
-	a.Album.RGAlbumPeak = a.RgAlbumPeak
+	a.RGAlbumGain = a.RgAlbumGain
+	a.RGAlbumPeak = a.RgAlbumPeak
 	return nil
 }
 
@@ -79,8 +78,13 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	args["search_participants"] = strings.Join(participantNames, " ")
 	args["search_normalized"] = str.NormalizeForFTS(a.Name, a.AlbumArtist)
 
-	args["tags"] = marshalTags(a.Album.Tags)
-	args["participants"] = marshalParticipants(a.Album.Participants)
+	var err error
+	if args["tags"], err = marshalTags(a.Album.Tags); err != nil {
+		return err
+	}
+	if args["participants"], err = marshalParticipants(a.Album.Participants); err != nil {
+		return err
+	}
 
 	folderIDs, err := json.Marshal(a.Album.FolderIDs)
 	if err != nil {
@@ -114,7 +118,7 @@ func NewAlbumRepository(db dbx.Builder) model.AlbumRepository {
 		// TODO Rename this to just year (or date)
 		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, " + naturalSort("album.name"),
 		"random":         "random",
-		"recently_added": recentlyAddedSort(),
+		"recently_added": recentlyAddedSort("album"),
 		"starred_at":     "starred, starred_at",
 		"rated_at":       "rating, rated_at",
 	})
@@ -148,13 +152,6 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 
 	return filters
 })
-
-func recentlyAddedSort() string {
-	if conf.Server().RecentlyAddedByModTime {
-		return "album.updated_at, album.id"
-	}
-	return "album.created_at, album.id"
-}
 
 func recentlyPlayedFilter(string, any) Sqlizer {
 	return Gt{"play_count": 0}
@@ -207,6 +204,13 @@ func (r *albumRepository) Exists(ctx context.Context, id string) (bool, error) {
 
 func (r *albumRepository) Put(ctx context.Context, al *model.Album) error {
 	al.ImportedAt = time.Now()
+	// The scanner saves a new album before its tracks, so there is no track created_at to aggregate yet.
+	if al.CreatedAt.IsZero() {
+		al.CreatedAt = al.ImportedAt
+	}
+	if al.BirthTime.IsZero() {
+		al.BirthTime = al.CreatedAt
+	}
 	id, err := r.put(ctx, al.ID, &dbAlbum{Album: al})
 	if err != nil {
 		return err
@@ -219,6 +223,7 @@ func (r *albumRepository) Put(ctx context.Context, al *model.Album) error {
 }
 
 // TODO Move external metadata to a separated table
+
 func (r *albumRepository) UpdateExternalInfo(ctx context.Context, al *model.Album) error {
 	_, err := r.put(ctx, al.ID, &dbAlbum{Album: al}, "description", "small_image_url", "medium_image_url", "large_image_url", "external_url", "external_info_updated_at")
 	return err
@@ -340,10 +345,8 @@ func (r *albumRepository) CopyAttributes(ctx context.Context, fromID, toID strin
 	to := make(map[string]any)
 	for _, col := range columns {
 		v := from[col]
-		// created_at is aggregated from song birth_times and must never be
-		// overwritten with a zero/poisoned value, or it propagates forward on
-		// every metadata-driven album ID change.
-		if col == "created_at" && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-")) {
+		// A zero recently-added timestamp would propagate forward on every metadata-driven album ID change.
+		if (col == "created_at" || col == "birth_time") && (!v.Valid || v.String == "" || strings.HasPrefix(v.String, "0001-") || strings.HasPrefix(v.String, "0000-")) {
 			continue
 		}
 		to[col] = v

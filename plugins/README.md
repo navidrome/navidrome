@@ -31,6 +31,7 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Cache](#cache)
   - [KVStore](#kvstore)
   - [Storage](#storage)
+  - [Streams](#streams)
   - [Task](#task)
   - [WebSocket](#websocket)
   - [Library](#library)
@@ -195,6 +196,8 @@ Provides artist and album metadata. All methods are **optional** — implement o
 | `nd_get_similar_songs_by_track`   | `{id, name, artist, ...}`  | `{songs: [{name, artist}]}`      | Similar songs by track   |
 | `nd_get_similar_songs_by_album`   | `{id, name, artist, ...}`  | `{songs: [{name, artist}]}`      | Similar songs by album   |
 | `nd_get_similar_songs_by_artist`  | `{id, name, mbid?, count}` | `{songs: [{name, artist}]}`      | Similar songs by artist  |
+
+Similar-songs requests also carry optional `username` field. It is set only when the plugin has the [`users`](#users) permission and has been granted access to that user, otherwise it is empty. Declaring `users` means an administrator must select users (or enable "Allow all users") before the plugin can be enabled.
 
 To use the plugin as a metadata agent, add it to your config:
 
@@ -632,6 +635,54 @@ entries, err := os.ReadDir(storageDir)
 
 > **Note:** There is no size limit, unlike [KVStore](#kvstore). The directory is not deleted when a plugin is uninstalled.
 
+### Streams
+
+Some host functions return a **stream**: a handle to bytes that stay in Navidrome, like a file or an HTTP body. Plugins read and write streams in small pieces, so memory stays flat even for very large or endless data. No permission is needed; a plugin only gets a stream from a service it already has permission for.
+
+**Rules:**
+
+- A stream belongs to the plugin call that received it. When the call ends, Navidrome closes every stream the plugin did not close or return.
+- A plugin can have at most 64 open streams at a time, across all its running calls.
+- A stream handle from one call does not work in another call.
+
+**Go:**
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/stream"
+
+s := stream.New(handle) // implements io.ReadCloser and io.WriteCloser
+data, err := io.ReadAll(s)
+n, err := stream.Copy(dst, src) // bytes never enter plugin memory
+```
+
+Use one `Stream` per handle; `Close` frees its buffer.
+
+**Rust:**
+
+```rust
+use nd_pdk::types::stream::{self, Stream};
+use std::io::Read;
+
+let mut s = Stream::from_handle(handle); // std::io::Read + Write
+let mut data = Vec::new();
+s.read_to_end(&mut data)?;
+let n = stream::copy(&dst, &src)?; // bytes never enter plugin memory
+```
+
+**Raw functions** (for Python, JavaScript, and other languages). Namespace `extism:host/user`; all params and results are `i64`. `buf` is an Extism memory block the plugin allocated; `len` must be between 1 and the block length.
+
+| Function | Params | Result |
+|---|---|---|
+| `stream_read` | handle, buf, len | bytes placed at the start of `buf`; `0` = end of stream; `-1` = error |
+| `stream_write` | handle, buf, len | bytes written; `-1` = error; less than `len` = error, see `stream_error` |
+| `stream_copy` | dst, src | bytes copied; then call `stream_error` to check for an error |
+| `stream_close` | handle | `0` = OK; `-1` = error |
+| `stream_error` | (none) | pointer to the error message of the most recent stream call (free it after reading); `0` = that call succeeded; `-1` = it failed, but no message could be allocated |
+
+Call `stream_error` right after the call you are checking.
+
+`stream_read` returns at most 1 MiB per call.
+
 ### Task
 
 Background task queue with retry support. Plugins enqueue tasks and process them by exporting the [`nd_task_execute`](#taskworker) capability function.
@@ -643,11 +694,14 @@ Background task queue with retry support. Plugins enqueue tasks and process them
   "permissions": {
     "taskqueue": {
       "reason": "Process audio analysis in the background",
-      "maxConcurrency": 2
+      "maxConcurrency": 2,
+      "maxTaskDuration": 1800
     }
   }
 }
 ```
+
+Each plugin call is limited to 30 seconds. A task execution (`nd_task_execute`) can run up to `maxTaskDuration` seconds (default 30), capped by the server option `Plugins.MaxTaskDuration`.
 
 **Host functions:**
 
@@ -1073,6 +1127,7 @@ Folder = "/path/to/plugins"   # Default: DataFolder/plugins
 AutoReload = true             # Auto-reload on file changes (dev mode)
 LogLevel = "debug"            # Plugin-specific log level
 CacheSize = "200MB"           # Compilation cache size limit
+MaxTaskDuration = "1h"        # Upper limit for a plugin task's maxTaskDuration
 ```
 
 ### Plugin Configuration

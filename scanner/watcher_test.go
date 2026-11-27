@@ -9,7 +9,10 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,7 +22,7 @@ var _ = Describe("Watcher", func() {
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var mockScanner *tests.MockScanner
-	var mockDS *tests.MockDataStore
+	var ds model.DataStore
 	var w *watcher
 	var lib *model.Library
 
@@ -39,16 +42,13 @@ var _ = Describe("Watcher", func() {
 			Path: "fake-watcher:///test/library",
 		}
 
-		// Set up mocks
 		mockScanner = tests.NewMockScanner()
-		mockDS = &tests.MockDataStore{}
-		mockLibRepo := &tests.MockLibraryRepo{}
-		mockLibRepo.SetData(model.Libraries{*lib})
-		mockDS.MockedLibrary = mockLibRepo
+		ds = persistence.New(db.Db())
+		persistencetest.SetLibraries(ctx, ds, lib.Path)
 
 		// Create a new watcher instance (not singleton) for testing
 		w = &watcher{
-			ds:              mockDS,
+			ds:              ds,
 			scanner:         mockScanner,
 			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 10),
@@ -240,8 +240,7 @@ var _ = Describe("Watcher", func() {
 				Path: "fake-watcher:///test/library2",
 			}
 
-			mockLibRepo := mockDS.MockedLibrary.(*tests.MockLibraryRepo)
-			mockLibRepo.SetData(model.Libraries{*lib, *lib2})
+			persistencetest.SetLibraries(ctx, ds, lib.Path, lib2.Path)
 
 			// Start watcher in background
 			go func() {

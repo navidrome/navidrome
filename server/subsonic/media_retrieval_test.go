@@ -2,22 +2,22 @@ package subsonic
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http/httptest"
-	"path/filepath"
-	"slices"
+	"os"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -25,20 +25,14 @@ import (
 var _ = Describe("MediaRetrievalController", func() {
 	var router *Router
 	var ds model.DataStore
-	mockRepo := &mockedMediaFile{MockMediaFileRepo: tests.MockMediaFileRepo{}}
+	var ctx context.Context
 	var artwork *fakeArtwork
 	var w *httptest.ResponseRecorder
 
 	BeforeEach(func() {
-		albumRepo := &tests.MockAlbumRepo{}
-		albumRepo.SetData(model.Albums{{ID: "34"}}) // the id the specs request, made accessible
-		radioRepo := tests.CreateMockedRadioRepo()
-		Expect(radioRepo.Put(GinkgoT().Context(), &model.Radio{ID: "rd1", Name: "Radio"})).To(Succeed())
-		ds = &tests.MockDataStore{
-			MockedMediaFile: mockRepo,
-			MockedAlbum:     albumRepo,
-			MockedRadio:     radioRepo,
-		}
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		useRepoRootAsLibrary(ctx, ds)
 		artwork = &fakeArtwork{data: "image data"}
 		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
 		w = httptest.NewRecorder()
@@ -60,7 +54,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			r := newGetRequest() // No id parameter
 			_, err := router.GetCoverArt(w, r)
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(artwork.recvId).To(BeEmpty())
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
@@ -188,14 +182,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			mockRepo.SetData(model.MediaFiles{
-				{
-					ID:     "1",
-					Artist: "Rick Astley",
-					Title:  "Never Gonna Give You Up",
-					Lyrics: string(lyricsJson),
-				},
-			})
+			putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJson))
 			response, err := router.GetLyrics(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
@@ -210,21 +197,19 @@ var _ = Describe("MediaRetrievalController", func() {
 				{Kind: model.LyricKindMain, Lang: "eng", Line: []model.Line{{Start: &start, Value: "Never gonna let you down"}}},
 			})
 			Expect(err).ToNot(HaveOccurred())
-			mockRepo.SetData(model.MediaFiles{
-				{
-					ID:     "1",
-					Artist: "Rick Astley",
-					Title:  "Never Gonna Give You Up",
-					Lyrics: string(lyricsJSON),
-				},
-			})
+			putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
 			response, err := router.GetLyrics(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response.Lyrics.Value).To(Equal("Never gonna let you down\n"))
 		})
 		It("should return empty subsonic response if the record corresponding to the given artist & title is not found", func() {
 			r := newGetRequest("artist=Dheeraj", "title=Rinkiya+Ke+Papa")
-			mockRepo.SetData(model.MediaFiles{})
+			start := int64(0)
+			lyricsJSON, err := json.Marshal(model.LyricList{
+				{Kind: model.LyricKindMain, Lang: "eng", Line: []model.Line{{Start: &start, Value: "Never gonna give you up"}}},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			putRickAstleySong(ctx, ds, "song.mp3", string(lyricsJSON))
 			response, err := router.GetLyrics(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response.Lyrics.Artist).To(Equal(""))
@@ -233,17 +218,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		})
 		It("should return lyric file when finding mediafile with no embedded lyrics but present on filesystem", func() {
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
-			fixturesDir, err := filepath.Abs("tests/fixtures")
-			Expect(err).ToNot(HaveOccurred())
-			mockRepo.SetData(model.MediaFiles{
-				{
-					LibraryPath: fixturesDir,
-					Path:        "test.mp3",
-					ID:          "1",
-					Artist:      "Rick Astley",
-					Title:       "Never Gonna Give You Up",
-				},
-			})
+			putRickAstleySong(ctx, ds, "tests/fixtures/test.mp3", "")
 			response, err := router.GetLyrics(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
@@ -287,29 +262,24 @@ func (c *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int,
 	}, nil
 }
 
-type mockedMediaFile struct {
-	tests.MockMediaFileRepo
+func useRepoRootAsLibrary(ctx context.Context, ds model.DataStore) {
+	GinkgoHelper()
+	root, err := os.Getwd()
+	Expect(err).ToNot(HaveOccurred())
+	persistencetest.SetLibraries(ctx, ds, root)
 }
 
-func (m *mockedMediaFile) GetAll(ctx context.Context, opts ...model.QueryOptions) (model.MediaFiles, error) {
-	data, err := m.MockMediaFileRepo.GetAll(ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if len(opts) == 0 || opts[0].Sort != "lyrics, updated_at" {
-		return data, nil
-	}
-
-	result := slices.Clone(data)
-	slices.SortFunc(result, func(a, b model.MediaFile) int {
-		diff := cmp.Or(
-			cmp.Compare(a.Lyrics, b.Lyrics),
-			cmp.Compare(a.UpdatedAt.Unix(), b.UpdatedAt.Unix()),
-		)
-		if opts[0].Order == "desc" {
-			return -diff
-		}
-		return diff
+// putRickAstleySong stores "Never Gonna Give You Up" by Rick Astley with ID "1" at path, relative to library 1.
+func putRickAstleySong(ctx context.Context, ds model.DataStore, path, lyrics string) {
+	GinkgoHelper()
+	artist := model.Artist{ID: "ar-rick", Name: "Rick Astley"}
+	Expect(ds.Artist().Put(ctx, &artist)).To(Succeed())
+	persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{
+		ID:           "1",
+		Path:         path,
+		Artist:       "Rick Astley",
+		Title:        "Never Gonna Give You Up",
+		Lyrics:       lyrics,
+		Participants: model.Participants{model.RoleArtist: {{Artist: artist}}},
 	})
-	return result, nil
 }

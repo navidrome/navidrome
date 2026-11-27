@@ -16,6 +16,7 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -57,6 +58,7 @@ type scanJob struct {
 	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
 	targetFolders    []string                          // Specific folders to scan (including all descendants)
 	prevAlbumPIDConf string                            // Album PID spec of the last finished scan, only when it differs from the current one
+	lyricsSuffixes   []string
 	lock             sync.Mutex
 	numFolders       atomic.Int64
 }
@@ -105,6 +107,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 		lastUpdates:      lastUpdates,
 		targetFolders:    targetFolders,
 		prevAlbumPIDConf: prevAlbumPIDConf,
+		lyricsSuffixes:   lyrics.FileSuffixes(),
 	}, nil
 }
 
@@ -439,6 +442,10 @@ func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, en
 		if err := tx.Artwork().DeleteForItems(ctx, model.KindMediaFileArtwork, trackIDs); err != nil {
 			log.Warn(ctx, "Scanner: could not invalidate media_file artwork", err)
 		}
+		// Restart a queued track so an in-flight worker's stale result cannot delete the row.
+		if err := tx.ArtworkQueue().RestartIfQueued(ctx, model.KindMediaFileArtwork, trackIDs...); err != nil {
+			log.Warn(ctx, "Scanner: could not restart queued media_file artwork", err)
+		}
 	}
 
 	// Mark all missing tracks as not available
@@ -492,8 +499,8 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}
 
-	// Keep created_at field from previous instance of the album
-	if err := repo.CopyAttributes(p.ctx, prevID, a.ID, "created_at"); err != nil {
+	// Keep the recently-added timestamps from the previous instance of the album
+	if err := repo.CopyAttributes(p.ctx, prevID, a.ID, "created_at", "birth_time"); err != nil {
 		// Silently ignore when the previous album is not found
 		if !errors.Is(err, model.ErrNotFound) {
 			log.Warn(p.ctx, "Scanner: Could not copy fields", "from", prevID, "to", a.ID, "album", a.Name, err)

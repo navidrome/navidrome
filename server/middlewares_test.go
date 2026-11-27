@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -14,9 +15,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,7 +34,7 @@ var _ = Describe("middlewares", func() {
 		})
 
 		It("returns the robot.txt when requested from root", func() {
-			r := httptest.NewRequest("GET", "/robots.txt", nil)
+			r := httptest.NewRequest(http.MethodGet, "/robots.txt", nil)
 			w := httptest.NewRecorder()
 
 			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
@@ -42,7 +44,7 @@ var _ = Describe("middlewares", func() {
 		})
 
 		It("allows prefixes", func() {
-			r := httptest.NewRequest("GET", "/app/robots.txt", nil)
+			r := httptest.NewRequest(http.MethodGet, "/app/robots.txt", nil)
 			w := httptest.NewRecorder()
 
 			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
@@ -52,7 +54,7 @@ var _ = Describe("middlewares", func() {
 		})
 
 		It("passes through requests for other files", func() {
-			r := httptest.NewRequest("GET", "/this_is_not_a_robots.txt_file", nil)
+			r := httptest.NewRequest(http.MethodGet, "/this_is_not_a_robots.txt_file", nil)
 			w := httptest.NewRecorder()
 
 			robotsTXT(os.DirFS("tests/fixtures"))(http.HandlerFunc(next)).ServeHTTP(w, r)
@@ -84,7 +86,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with no X-Forwarded headers", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest(http.MethodGet, "http://example.com", nil)
 			})
 
 			It("should not modify the request", func() {
@@ -103,7 +105,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Host header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest(http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded.example.com")
 			})
 
@@ -116,7 +118,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Proto header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest(http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Proto", "https")
 			})
 
@@ -129,7 +131,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Scheme header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest(http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Scheme", "https")
 			})
 
@@ -142,7 +144,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with multiple X-Forwarded headers", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest(http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded.example.com")
 				req.Header.Set("X-Forwarded-Proto", "https")
 				req.Header.Set("X-Forwarded-Scheme", "http")
@@ -173,7 +175,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with multiple values in X-Forwarded-Host header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest(http.MethodGet, "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded1.example.com, forwarded2.example.com")
 			})
 
@@ -238,7 +240,7 @@ var _ = Describe("middlewares", func() {
 				It("adds the unique client ID to the request context", func() {
 					middleware.ServeHTTP(rec, req)
 
-					Expect(rec.Result().Cookies()).To(HaveLen(0))
+					Expect(rec.Result().Cookies()).To(BeEmpty())
 
 					clientUniqueId, _ := request.ClientUniqueIdFrom(nextReq.Context())
 					Expect(clientUniqueId).To(Equal("123456"))
@@ -249,7 +251,7 @@ var _ = Describe("middlewares", func() {
 				It("does not add the unique client ID to the request context", func() {
 					middleware.ServeHTTP(rec, req)
 
-					Expect(rec.Result().Cookies()).To(HaveLen(0))
+					Expect(rec.Result().Cookies()).To(BeEmpty())
 
 					clientUniqueId, _ := request.ClientUniqueIdFrom(nextReq.Context())
 					Expect(clientUniqueId).To(BeEmpty())
@@ -279,7 +281,7 @@ var _ = Describe("middlewares", func() {
 				middleware = URLParamsMiddleware(testHandler)
 				router.Mount("/", middleware)
 
-				req, _ := http.NewRequest("GET", "/?user=1", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/?user=1", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -295,7 +297,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test?key=value", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/test?key=value", nil)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal("OK"))
@@ -311,7 +313,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test?key=value", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/test?key=value", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -327,7 +329,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test with space?key=another value", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/test with space?key=another value", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -345,7 +347,7 @@ var _ = Describe("middlewares", func() {
 					r.Get("/", testHandler)
 				})
 
-				req, _ := http.NewRequest("GET", "/test/value?key=other_value", nil)
+				req, _ := http.NewRequest(http.MethodGet, "/test/value?key=other_value", nil)
 				router.ServeHTTP(recorder, req)
 
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -364,7 +366,7 @@ var _ = Describe("middlewares", func() {
 			middleware     func(next http.Handler) http.Handler
 			req            *http.Request
 			ctx            context.Context
-			ds             *tests.MockDataStore
+			ds             model.DataStore
 			id             string
 			lastAccessTime time.Time
 		)
@@ -376,8 +378,8 @@ var _ = Describe("middlewares", func() {
 		BeforeEach(func() {
 			ctx = GinkgoT().Context()
 			id = uuid.NewString()
-			ds = &tests.MockDataStore{}
-			lastAccessTime = time.Now()
+			ds = persistence.New(db.Db())
+			lastAccessTime = time.Now().Add(-time.Hour)
 			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
 				To(Succeed())
 
@@ -400,14 +402,14 @@ var _ = Describe("middlewares", func() {
 
 				callMiddleware(req)
 
-				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				user, _ := ds.User().FindByUsername(ctx, "johndoe")
 				Expect(*user.LastAccessAt).To(BeTemporally(">", lastAccessTime, time.Second))
 			})
 
 			It("skip fast successive requests", func() {
 				// First request
 				callMiddleware(req)
-				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				user, _ := ds.User().FindByUsername(ctx, "johndoe")
 				lastAccessTime = *user.LastAccessAt // Store the last access time
 
 				// Second request
@@ -415,8 +417,8 @@ var _ = Describe("middlewares", func() {
 				callMiddleware(req)
 
 				// The second request should not have changed the last access time
-				user, _ = ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(user.LastAccessAt).To(Equal(&lastAccessTime))
+				user, _ = ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*user.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 		Context("when the request has no user", func() {
@@ -424,8 +426,30 @@ var _ = Describe("middlewares", func() {
 				req = req.WithContext(ctx)
 				callMiddleware(req)
 
-				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+				usr, _ := ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*usr.LastAccessAt).To(BeTemporally("==", lastAccessTime))
+			})
+		})
+		Context("when the request is an internal call (e.g. from a plugin)", func() {
+			BeforeEach(func() {
+				req = req.WithContext(request.WithInternalAuth(req.Context(), "johndoe"))
+			})
+
+			It("calls the next handler", func() {
+				called := false
+				middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					called = true
+				})).ServeHTTP(nil, req)
+				Expect(called).To(BeTrue())
+			})
+
+			It("does not update the last access time", func() {
+				time.Sleep(3 * time.Millisecond)
+
+				callMiddleware(req)
+
+				usr, _ := ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*usr.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 	})
@@ -439,7 +463,7 @@ var _ = Describe("middlewares", func() {
 		}
 		call := func(peer string, headers map[string]string) {
 			resolved, remoteAddr, proxyIP = "", "", nil
-			r := httptest.NewRequest("POST", "/auth/login", nil)
+			r := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
 			r.RemoteAddr = peer
 			for k, v := range headers {
 				r.Header.Set(k, v)
@@ -485,6 +509,51 @@ var _ = Describe("middlewares", func() {
 				Expect(proxyIP).To(Equal("10.0.0.1:1234"))
 			})
 		})
+
+		Context("with a trusted proxy on a unix socket", func() {
+			DescribeTable("uses the forwarded client IP when the peer is the socket",
+				func(trusted string) {
+					conf.Update(func(c *conf.Options) {
+						c.Address = "unix:/tmp/navidrome-test"
+						c.ExtAuth.TrustedSources = trusted
+					})
+					call("@", map[string]string{"X-Forwarded-For": "203.0.113.5"})
+					Expect(resolved).To(Equal("203.0.113.5"))
+					Expect(remoteAddr).To(Equal("203.0.113.5"))
+				},
+				Entry("socket only", "@"),
+				Entry("socket and a CIDR", "@,10.0.0.0/8"),
+			)
+		})
+	})
+
+	Describe("ClientAddr", func() {
+		var ctx context.Context
+		var addr, ip string
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+			conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "10.0.0.0/8" })
+		})
+		call := func(h http.Handler, peer, xff string) {
+			r := httptest.NewRequestWithContext(ctx, "POST", "/auth/login", nil)
+			r.RemoteAddr = peer
+			r.Header.Set("X-Forwarded-For", xff)
+			h.ServeHTTP(httptest.NewRecorder(), r)
+		}
+		capture := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			addr, ip = ClientAddr(r), ClientIP(r)
+		})
+
+		It("returns the full resolved IPv6 address, while ClientIP keeps the /64 for rate limiting", func() {
+			call(realIPMiddleware(capture), "10.0.0.1:1234", "2001:db8:1:2:3:4:5:6")
+			Expect(addr).To(Equal("2001:db8:1:2:3:4:5:6"))
+			Expect(ip).To(Equal("2001:db8:1:2::"))
+		})
+
+		It("falls back to the peer host without the middleware", func() {
+			call(capture, "[2001:db8:1:2:3:4:5:6]:1234", "")
+			Expect(addr).To(Equal("2001:db8:1:2:3:4:5:6"))
+		})
 	})
 
 	Describe("ClientIPRateLimiter", func() {
@@ -494,7 +563,7 @@ var _ = Describe("middlewares", func() {
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })))
 		})
 		attempt := func(peer string, header, value string) int {
-			r := httptest.NewRequest("POST", "/auth/login", nil)
+			r := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
 			r.RemoteAddr = peer
 			r.Header.Set(header, value)
 			w := httptest.NewRecorder()
@@ -513,6 +582,12 @@ var _ = Describe("middlewares", func() {
 			Entry("True-Client-IP", "True-Client-IP"),
 		)
 
+		It("sends the X-RateLimit headers by default", func() {
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), "POST", "/auth/login", nil))
+			Expect(w.Header().Get("X-RateLimit-Limit")).To(Equal("2"))
+		})
+
 		Context("behind a trusted proxy", func() {
 			BeforeEach(func() {
 				conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "10.0.0.0/8" })
@@ -524,5 +599,46 @@ var _ = Describe("middlewares", func() {
 				Expect(attempt("10.0.0.1:4", "X-Forwarded-For", "203.0.113.2")).To(Equal(http.StatusOK))
 			})
 		})
+	})
+})
+
+var _ = Describe("DecodeJSONBody", func() {
+	type payload struct {
+		Name string `json:"name"`
+	}
+	decode := func(body string, limit int64) (*httptest.ResponseRecorder, payload, bool) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+		var v payload
+		ok := DecodeJSONBody(w, r, limit, &v)
+		return w, v, ok
+	}
+
+	It("decodes one JSON value, allowing trailing whitespace", func() {
+		_, v, ok := decode("{\"name\":\"Mix\"}\r\n\t ", 1024)
+		Expect(ok).To(BeTrue())
+		Expect(v.Name).To(Equal("Mix"))
+	})
+
+	DescribeTable("answers 400 with the reason for a body that is not exactly one JSON value",
+		func(body, reason string) {
+			w, _, ok := decode(body, 1024)
+			Expect(ok).To(BeFalse())
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+			Expect(w.Body.String()).To(Equal(reason + "\n"))
+		},
+		Entry("empty body", "", "Request body must not be empty"),
+		Entry("truncated JSON", `{"name":`, "Request body contains badly-formed JSON"),
+		Entry("a syntax error", `{"name":"Mix",}`, "Request body contains badly-formed JSON (at position 15)"),
+		Entry("a wrong field type", `{"name":1}`, `Request body contains an invalid value for the "name" field (at position 9)`),
+		Entry("trailing garbage", `{"name":"Mix"} x`, "Request body must only contain a single JSON value"),
+		Entry("a second JSON value", `{"name":"Mix"}{"name":"Other"}`, "Request body must only contain a single JSON value"),
+	)
+
+	It("answers 413 with the limit for a body over it", func() {
+		w, _, ok := decode(`{"name":"`+strings.Repeat("x", 64)+`"}`, 32)
+		Expect(ok).To(BeFalse())
+		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
+		Expect(w.Body.String()).To(Equal("Request body must not be larger than 32 bytes\n"))
 	})
 })

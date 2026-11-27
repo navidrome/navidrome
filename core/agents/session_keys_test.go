@@ -1,10 +1,14 @@
 package agents
 
 import (
+	"bytes"
 	"context"
+	"os"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -12,30 +16,71 @@ import (
 
 var _ = Describe("SessionKeys", func() {
 	var ctx context.Context
-	user := model.User{ID: "u-1"}
-	ds := &tests.MockDataStore{MockedUserProps: &tests.MockedUserPropsRepo{}}
-	sk := SessionKeys{DataStore: ds, KeyName: "fakeSessionKey"}
+	var ds model.DataStore
+	var sk SessionKeys
+	user := model.User{ID: "u-1", UserName: "u-1"}
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		Expect(ds.User().Put(ctx, &user)).To(Succeed())
+		sk = SessionKeys{DataStore: ds, KeyName: "fakeSessionKey"}
 	})
 
 	It("uses the assigned key name", func() {
-		Expect(sk.KeyName).To(Equal("fakeSessionKey"))
+		other := SessionKeys{DataStore: ds, KeyName: "otherSessionKey"}
+		Expect(sk.Put(ctx, user.ID, "mine")).To(Succeed())
+		Expect(other.Put(ctx, user.ID, "theirs")).To(Succeed())
+
+		Expect(sk.Get(ctx, user.ID)).To(Equal("mine"))
 	})
 	It("stores a value in the DB", func() {
-		Expect(sk.Put(ctx, user.ID, "test-stored-value")).To(BeNil())
+		Expect(sk.Put(ctx, user.ID, "test-stored-value")).To(Succeed())
+
+		Expect(ds.UserProps().Get(ctx, user.ID, "fakeSessionKey")).To(Equal("test-stored-value"))
 	})
 	It("fetches the stored value", func() {
+		Expect(ds.UserProps().Put(ctx, user.ID, "fakeSessionKey", "test-stored-value")).To(Succeed())
+
 		value, err := sk.Get(ctx, user.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(value).To(Equal("test-stored-value"))
 	})
 	It("deletes the stored value", func() {
-		Expect(sk.Delete(ctx, user.ID)).To(BeNil())
+		Expect(ds.UserProps().Put(ctx, user.ID, "fakeSessionKey", "test-stored-value")).To(Succeed())
+
+		Expect(sk.Delete(ctx, user.ID)).To(Succeed())
+
+		_, err := ds.UserProps().Get(ctx, user.ID, "fakeSessionKey")
+		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 	It("handles a not found value", func() {
 		_, err := sk.Get(ctx, "u-2")
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("never logs the session key, but still logs the user id and key name", func() {
+		logged := model.User{ID: "logged-user-id", UserName: "logged-user-id"}
+		Expect(ds.User().Put(ctx, &logged)).To(Succeed())
+		dbKeys := SessionKeys{DataStore: ds, KeyName: "LastFMSessionKey"}
+
+		logs := &bytes.Buffer{}
+		log.SetOutput(logs)
+		log.SetLevel(log.LevelTrace)
+		DeferCleanup(func() {
+			log.SetOutput(os.Stderr)
+			log.SetLevel(log.LevelFatal)
+		})
+
+		Expect(dbKeys.Put(ctx, logged.ID, "inserted-session-key")).To(Succeed())
+		Expect(dbKeys.Put(ctx, logged.ID, "updated-session-key")).To(Succeed())
+
+		Expect(dbKeys.Get(ctx, logged.ID)).To(Equal("updated-session-key"))
+		Expect(logs.String()).To(ContainSubstring("INSERT INTO user_props"))
+		Expect(logs.String()).To(ContainSubstring("UPDATE user_props"))
+		Expect(logs.String()).To(ContainSubstring("logged-user-id"))
+		Expect(logs.String()).To(ContainSubstring("LastFMSessionKey"))
+		Expect(logs.String()).ToNot(ContainSubstring("inserted-session-key"))
+		Expect(logs.String()).ToNot(ContainSubstring("updated-session-key"))
 	})
 })

@@ -34,6 +34,7 @@ const (
 	JWTPublicSecretKey     = "JWTPublicSecret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
+	APIv1GrantIdleExpiry   = 90 * 24 * time.Hour
 	DefaultSmartRefresh    = 5 * time.Second
 	DefaultShareExpiration = 8760 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
@@ -174,6 +175,12 @@ const (
 	PurgeMissingFull   = "full"
 )
 
+const (
+	RecentlyAddedByScan    = "scan"
+	RecentlyAddedByBirth   = "birth"
+	RecentlyAddedByModTime = "modtime"
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []struct {
@@ -212,13 +219,11 @@ var (
 var HTTPUserAgent = "Navidrome/" + Version + " - https://github.com/navidrome"
 
 var (
-	VariousArtists = "Various Artists"
-	// TODO This will be dynamic when using disambiguation
-	VariousArtistsID = "63sqASlAfjbGMuLP4JhnZU"
-	UnknownAlbum     = "[Unknown Album]"
-	UnknownArtist    = "[Unknown Artist]"
-	// TODO This will be dynamic when using disambiguation
-	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
+	VariousArtists      = "Various Artists"
+	VariousArtistsID    = "63sqASlAfjbGMuLP4JhnZU" // TODO This will be dynamic when using disambiguation
+	UnknownAlbum        = "[Unknown Album]"
+	UnknownArtist       = "[Unknown Artist]"
+	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist)) // TODO This will be dynamic when using disambiguation
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ArtistJoiner = " • "

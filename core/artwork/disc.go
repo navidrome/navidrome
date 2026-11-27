@@ -200,7 +200,7 @@ func (d *discArtworkReader) fromDiscSubtitle(ctx context.Context, subtitle strin
 	}
 }
 
-// filepath.Match's '\' escape is excluded on purpose: treating it as a metachar
+// globMetaChars excludes filepath.Match's '\' escape on purpose: treating it as a metachar
 // would misalign the literal-prefix extraction in extractDiscNumber.
 const globMetaChars = "*?["
 

@@ -9,12 +9,14 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"golang.org/x/text/unicode/norm"
 )
 
 // walkDirTree recursively walks the directory tree starting from the given targetFolders.
@@ -173,6 +175,8 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			case model.IsImageFile(name):
 				folder.imageFiles[entry.Name()] = entry
 				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
+			case job.isLyricsFile(entry.Name()):
+				folder.lyricsFiles[entry.Name()] = entry
 			}
 		}
 	}
@@ -273,7 +277,7 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 		return resolved, true
 	}
 	cur := linkPath
-	for hop := 0; hop < maxSymlinkHops; hop++ {
+	for hop := range maxSymlinkHops {
 		target, err := fs.ReadLink(fsys, cur)
 		if err != nil {
 			if hop == 0 {
@@ -310,7 +314,7 @@ func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
 	return true
 }
 
-// List of special directories to ignore
+// ignoredDirs lists special directories to ignore
 var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
@@ -348,4 +352,24 @@ func isDirIgnored(name string) bool {
 // folders sometimes start with ellipses), so all of these return false.
 func isDotEntry(name string) bool {
 	return name != "." && strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
+}
+
+func (j *scanJob) isLyricsFile(name string) bool {
+	name = norm.NFC.String(name)
+	return slices.ContainsFunc(j.lyricsSuffixes, func(suffix string) bool {
+		return hasSuffixFold(name, suffix)
+	})
+}
+
+// hasSuffixFold counts runes, not bytes: case folding can change a rune's byte length (ſ and s).
+func hasSuffixFold(name, suffix string) bool {
+	i := len(name)
+	for range utf8.RuneCountInString(suffix) {
+		if i == 0 {
+			return false
+		}
+		_, size := utf8.DecodeLastRuneInString(name[:i])
+		i -= size
+	}
+	return i > 0 && strings.EqualFold(name[i:], suffix)
 }

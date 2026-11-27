@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -19,13 +18,10 @@ type benchItem struct {
 
 func (b *benchItem) Key() string { return b.key }
 
-// setupBenchCache creates a file cache in a temp directory. Returns the cache and cleanup function.
-func setupBenchCache(b *testing.B, cacheSize string, getReader ReadFunc) (*fileCache, func()) {
+// setupBenchCache creates a file cache in a temp directory.
+func setupBenchCache(b *testing.B, cacheSize string, getReader ReadFunc) *fileCache {
 	b.Helper()
-	tmpDir, err := os.MkdirTemp("", "bench-cache-*")
-	if err != nil {
-		b.Fatal(err)
-	}
+	tmpDir := b.TempDir()
 	b.Cleanup(conf.SnapshotConfig())
 	conf.Update(func(c *conf.Options) { c.CacheFolder = conf.NewDir(tmpDir) })
 
@@ -36,20 +32,16 @@ func setupBenchCache(b *testing.B, cacheSize string, getReader ReadFunc) (*fileC
 		runtime.Gosched() // Yield to allow background init goroutine to run
 	}
 
-	teardown := func() {
-		os.RemoveAll(tmpDir)
-	}
-	return fc, teardown
+	return fc
 }
 
 func BenchmarkCacheWrite(b *testing.B) {
 	// Simulate writing 50KB images (typical 300px JPEG)
 	imageData := strings.Repeat("x", 50*1024)
 
-	fc, cleanup := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
+	fc := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
 		return strings.NewReader(imageData), nil
 	})
-	defer cleanup()
 
 	b.SetBytes(int64(len(imageData)))
 	b.ResetTimer()
@@ -67,10 +59,9 @@ func BenchmarkCacheWrite(b *testing.B) {
 func BenchmarkCacheRead(b *testing.B) {
 	imageData := strings.Repeat("x", 50*1024)
 
-	fc, cleanup := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
+	fc := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
 		return strings.NewReader(imageData), nil
 	})
-	defer cleanup()
 
 	// Pre-populate cache
 	item := &benchItem{key: "read-bench"}
@@ -96,10 +87,9 @@ func BenchmarkCacheRead(b *testing.B) {
 func BenchmarkConcurrentCacheRead(b *testing.B) {
 	imageData := strings.Repeat("x", 50*1024)
 
-	fc, cleanup := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
+	fc := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
 		return strings.NewReader(imageData), nil
 	})
-	defer cleanup()
 
 	// Pre-populate cache
 	item := &benchItem{key: "concurrent-read"}
@@ -139,10 +129,9 @@ func BenchmarkConcurrentCacheMiss(b *testing.B) {
 	concurrencyLevels := []int{1, 10, 50}
 	for _, n := range concurrencyLevels {
 		b.Run(fmt.Sprintf("goroutines_%d", n), func(b *testing.B) {
-			fc, cleanup := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
+			fc := setupBenchCache(b, "100MB", func(ctx context.Context, item Item) (io.Reader, error) {
 				return strings.NewReader(imageData), nil
 			})
-			defer cleanup()
 
 			b.SetBytes(int64(len(imageData)))
 			b.ResetTimer()

@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -35,7 +38,7 @@ func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) 
 		}
 	}
 	if f.panicVal != nil {
-		panic(f.panicVal)
+		panic(f.panicVal) //nolint:forbidigo
 	}
 	if f.err != nil {
 		return nil, f.err
@@ -47,21 +50,19 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 	return nil, nil
 }
 
-func p(ms int64) *int64 { return &ms }
-
 var _ = Describe("getLyrics", func() {
 	var ctx context.Context
 	var api *Router
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var fake *fakeLyricsService
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
-		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: testID("s1"), Title: "Song", LibraryID: 1},
-			{ID: testID("s2"), Title: "Silent Song", LibraryID: 1},
-		})
+		ds = persistence.New(db.Db())
+		persistencetest.PutMediaFiles(ctx, ds,
+			model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1},
+			model.MediaFile{ID: testID("s2"), Title: "Silent Song", LibraryID: 1},
+		)
 		fake = &fakeLyricsService{lyrics: map[string]model.LyricList{}}
 		api = &Router{
 			ds:     ds,
@@ -73,7 +74,7 @@ var _ = Describe("getLyrics", func() {
 		w := httptest.NewRecorder()
 		// Clients send hex-encoded ids (matching real traffic and the other handler tests).
 		enc := dto.EncodeID(id)
-		r := httptest.NewRequest("GET", "/Audio/"+enc+"/Lyrics", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
+		r := httptest.NewRequest(http.MethodGet, "/Audio/"+enc+"/Lyrics", nil).WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", enc)
 		invoke(api.getLyrics, w, r)
 		return w
@@ -81,7 +82,7 @@ var _ = Describe("getLyrics", func() {
 
 	It("returns 200 with a LyricDto for a track with synced lyrics", func() {
 		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "hello"}}},
 		}
 		w := doRequest(testID("s1"))
 
@@ -96,8 +97,8 @@ var _ = Describe("getLyrics", func() {
 
 	It("serves the main-kind lyric when a translation is also present", func() {
 		fake.lyrics[testID("s1")] = model.LyricList{
-			{Kind: "translation", Synced: true, Line: []model.Line{{Start: p(1000), Value: "bonjour"}}},
-			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
+			{Kind: "translation", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "bonjour"}}},
+			{Kind: "main", Synced: true, Line: []model.Line{{Start: new(int64(1000)), Value: "hello"}}},
 		}
 		w := doRequest(testID("s1"))
 

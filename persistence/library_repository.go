@@ -25,6 +25,14 @@ var (
 	libLock  sync.RWMutex
 )
 
+// ClearLibraryPathCache drops the cached library paths. Call it after rewriting the library table
+// without the repository, as test suites do when they restore a database snapshot.
+func ClearLibraryPathCache() {
+	libLock.Lock()
+	defer libLock.Unlock()
+	clear(libCache)
+}
+
 func NewLibraryRepository(db dbx.Builder) model.LibraryRepository {
 	r := &libraryRepository{}
 	r.db = db
@@ -133,8 +141,8 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 	return nil
 }
 
+// StoreMusicFolder is a temporary method to store the music folder path from the config in the DB
 // TODO Remove this method when we have a proper UI to add libraries
-// This is a temporary method to store the music folder path from the config in the DB
 func (r *libraryRepository) StoreMusicFolder(ctx context.Context) error {
 	changed := And{Eq{"id": model.DefaultLibraryID}, NotEq{"path": conf.Server().MusicFolder}}
 	// An UPDATE takes the write lock even when nothing matches, and a startup scan may be holding it

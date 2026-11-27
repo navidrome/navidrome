@@ -2,10 +2,13 @@ package apiv1
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -15,7 +18,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,15 +31,20 @@ import (
 func TestAPIv1(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
+	persistencetest.Init(t)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "API v1 Suite")
 }
 
 var _ = configtest.RestoreAfterEachSpec()
+var _ = persistencetest.ResetBeforeEachSpec()
 
+var realDS model.DataStore
 var specRouter routers.Router
 
 var _ = BeforeSuite(func() {
+	realDS = persistence.New(db.Db())
+
 	doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
 	Expect(err).ToNot(HaveOccurred())
 	specRouter, err = gorillamux.NewRouter(doc)
@@ -47,6 +59,65 @@ func serve(h http.Handler, req *http.Request) *httptest.ResponseRecorder {
 	root.ServeHTTP(w, req)
 	validateAgainstSpec(req, w)
 	return w
+}
+
+// testClient drives a router end to end through serve, so every response is also checked against the spec.
+type testClient struct {
+	ctx    context.Context
+	router http.Handler
+}
+
+func (c testClient) call(method, path, bearer string, body any) *httptest.ResponseRecorder {
+	if body == nil {
+		return c.callRaw(method, path, bearer, "")
+	}
+	b, err := json.Marshal(body)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	return c.callRaw(method, path, bearer, string(b))
+}
+
+// callRaw sends body verbatim, for JSON a map cannot express, like keys differing only in case.
+func (c testClient) callRaw(method, path, bearer, body string) *httptest.ResponseRecorder {
+	var req *http.Request
+	if body != "" {
+		req = httptest.NewRequestWithContext(c.ctx, method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req = httptest.NewRequestWithContext(c.ctx, method, path, nil)
+	}
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
+	}
+	return serve(c.router, req)
+}
+
+func (c testClient) setup() GrantCreated {
+	w := c.call(http.MethodPost, "/api/v1/auth/setup", "", creds("admin", "pw"))
+	ExpectWithOffset(1, w.Code).To(Equal(http.StatusCreated), w.Body.String())
+	var gc GrantCreated
+	decodeJSON(w, &gc)
+	return gc
+}
+
+// login signs in as the admin created by setup; nil scopes asks for all of them.
+func (c testClient) login(scopes []string) GrantCreated {
+	body := creds("admin", "pw")
+	if scopes != nil {
+		body["scopes"] = scopes
+	}
+	w := c.call(http.MethodPost, "/api/v1/auth/login", "", body)
+	ExpectWithOffset(1, w.Code).To(Equal(http.StatusOK), w.Body.String())
+	var gc GrantCreated
+	decodeJSON(w, &gc)
+	return gc
+}
+
+func creds(user, pw string) map[string]any {
+	return map[string]any{"username": user, "password": pw, "client": "TestApp", "clientVersion": "1.0"}
+}
+
+func decodeJSON(w *httptest.ResponseRecorder, v any) {
+	ExpectWithOffset(1, json.Unmarshal(w.Body.Bytes(), v)).To(Succeed(), w.Body.String())
 }
 
 func validateAgainstSpec(req *http.Request, w *httptest.ResponseRecorder) {

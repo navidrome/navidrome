@@ -262,14 +262,15 @@ jobs:
           go-version-file: go.mod
 
       - uses: msys2/setup-msys2@v2
+        id: msys2
         with:
-          msystem: MINGW64
-          install: mingw-w64-x86_64-gcc
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-gcc
           update: false
 
-      - name: Add mingw64 to PATH
+      - name: Add MSYS2 UCRT64 to PATH
         shell: bash
-        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+        run: echo "${{ steps.msys2.outputs.msys2-location }}/ucrt64/bin" >> $GITHUB_PATH
 
       - name: Cache ffmpeg
         id: ffmpeg-cache

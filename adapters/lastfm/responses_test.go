@@ -14,7 +14,7 @@ var _ = Describe("LastFM responses", func() {
 			var resp Response
 			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.getinfo.json")
 			err := json.Unmarshal(body, &resp)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resp.Artist.Name).To(Equal("U2"))
 			Expect(resp.Artist.MBID).To(Equal("a3cb23fc-acd3-4ce0-8f36-1e5aa6a18432"))
@@ -28,7 +28,7 @@ var _ = Describe("LastFM responses", func() {
 			var resp Response
 			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.getsimilar.json")
 			err := json.Unmarshal(body, &resp)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resp.SimilarArtists.Artists).To(HaveLen(2))
 			Expect(resp.SimilarArtists.Artists[0].Name).To(Equal("Passengers"))
@@ -41,7 +41,7 @@ var _ = Describe("LastFM responses", func() {
 			var resp Response
 			body, _ := os.ReadFile("tests/fixtures/lastfm.artist.gettoptracks.json")
 			err := json.Unmarshal(body, &resp)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resp.TopTracks.Track).To(HaveLen(2))
 			Expect(resp.TopTracks.Track[0].Name).To(Equal("Beautiful Day"))
@@ -56,7 +56,7 @@ var _ = Describe("LastFM responses", func() {
 			var error Response
 			body := []byte(`{"error":3,"message":"Invalid Method - No method with that name in this package"}`)
 			err := json.Unmarshal(body, &error)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(error.Error).To(Equal(3))
 			Expect(error.Message).To(Equal("Invalid Method - No method with that name in this package"))

@@ -61,7 +61,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 
 	hasher := xxh3.New()
 	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
-	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
+	if err := s.parseM3U(ctx, pls, nil, reader, noEntryLimit); err != nil {
 		return nil, err
 	}
 	pls.ImportedHash = fingerprint(hasher)
@@ -71,7 +71,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	return pls, nil
 }
 
-var errNotInLibrary = fmt.Errorf("path not in any library")
+var errNotInLibrary = errors.New("path not in any library")
 
 func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folder, error) {
 	libs, err := s.ds.Library().GetAll(ctx)
@@ -110,14 +110,48 @@ func (s *playlists) importFromFolder(ctx context.Context, folder *model.Folder, 
 	return pls, err
 }
 
+// noEntryLimit is passed to parseM3U for on-disk playlists.
+const noEntryLimit = 0
+
+// ErrTooManyEntries is returned by ImportM3U when the playlist has more than MaxTracksPerRequest entries.
+var ErrTooManyEntries = errors.New("playlist has too many entries")
+
+// importM3USlot runs one upload import at a time, so concurrent uploads cannot stack their memory use.
+var importM3USlot = make(chan struct{}, 1)
+
+// errReader keeps the first read error, which the line scanner in parseM3U drops.
+type errReader struct {
+	r   io.Reader
+	err error
+}
+
+func (e *errReader) Read(p []byte) (int, error) {
+	n, err := e.r.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) && e.err == nil {
+		e.err = err
+	}
+	return n, err
+}
+
 func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error) {
+	select {
+	case importM3USlot <- struct{}{}:
+		defer func() { <-importM3USlot }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 	owner, _ := request.UserFrom(ctx)
 	pls := &model.Playlist{
 		OwnerID: owner.ID,
 		Public:  false,
 		Sync:    false,
 	}
-	err := s.parseM3U(ctx, pls, nil, reader)
+	body := &errReader{r: reader}
+	// Uploads only: on-disk playlists in the scanner can legitimately be larger.
+	err := s.parseM3U(ctx, pls, nil, body, MaxTracksPerRequest())
+	if err == nil {
+		err = body.err
+	}
 	if err != nil {
 		log.Error(ctx, "Error parsing playlist", err)
 		return nil, err
@@ -150,7 +184,7 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	case ".nsp":
 		err = s.parseNSP(ctx, pls, reader)
 	default:
-		err = s.parseM3U(ctx, pls, folder, reader)
+		err = s.parseM3U(ctx, pls, folder, reader, noEntryLimit)
 	}
 	if err != nil {
 		return pls, err

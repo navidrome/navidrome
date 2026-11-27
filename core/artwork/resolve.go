@@ -180,8 +180,9 @@ func chainFetchesExternal(priority string) bool {
 	return false
 }
 
-// Album and artist fetches stop here when the resolver is local-only, rather than at each point in
-// the chain walk; resolvePlaylist gates the third network path, the m3u image URL, itself.
+// fetchExternalAlbum and fetchExternalArtist are where album and artist fetches stop when the resolver is
+// local-only, rather than at each point in the chain walk; resolvePlaylist gates the third network path,
+// the m3u image URL, itself.
 func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, error) {
 	if r.ext == nil {
 		return nil, "", nil
@@ -515,11 +516,14 @@ func resolveEmbedded(ctx context.Context, lib libraryView, ffm ffmpeg.FFmpeg, em
 		return resolution{}, false
 	}
 	abs := lib.Abs(embedRel)
+	// Stat before extracting: an edit landing in between must leave refMtime older than the bytes,
+	// so the serve-time mtime check re-resolves instead of trusting stale bytes.
+	refMtime := mtimeViaFS(lib.FS, embedRel)
 	var unreadable bool
 	for _, sf := range []sourceFunc{fromTag(ctx, lib.FS, embedRel), fromFFmpegTag(ctx, ffm, abs)} {
 		r, _, err := sf()
 		if r != nil {
-			return resolution{reader: r, source: "embedded", sourcePath: abs, refMtime: mtimeViaFS(lib.FS, embedRel)}, true
+			return resolution{reader: r, source: "embedded", sourcePath: abs, refMtime: refMtime}, true
 		}
 		unreadable = unreadable || errors.Is(err, errSourceUnreadable)
 	}
@@ -533,7 +537,7 @@ func resolveFolderSource(lib libraryView, sf sourceFunc) (resolution, bool) {
 	if r == nil {
 		return resolution{localError: errors.Is(err, errSourceUnreadable)}, false
 	}
-	return resolution{reader: r, source: "folder", sourcePath: lib.Abs(path), refMtime: mtimeViaFS(lib.FS, path)}, true
+	return resolution{reader: r, source: "folder", sourcePath: lib.Abs(path), refMtime: openedMtime(r)}, true
 }
 
 func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, pattern string) (resolution, bool) {
@@ -569,7 +573,7 @@ func resolveArtistFolderPattern(ctx context.Context, lib libraryView, artistFold
 	if r == nil {
 		return resolution{localError: errors.Is(err, errSourceUnreadable)}, false
 	}
-	return resolution{reader: r, source: "folder", sourcePath: path, refMtime: mtimeOf(path)}, true
+	return resolution{reader: r, source: "folder", sourcePath: path, refMtime: openedMtime(r)}, true
 }
 
 // resolveLocalFile opens an absolute path directly. A missing path is "no source"; any other
@@ -584,11 +588,17 @@ func resolveLocalFile(path, source string) (resolution, bool) {
 		// still name what faulted in the trace.
 		return resolution{source: source, localError: !errors.Is(err, fs.ErrNotExist)}, false
 	}
-	return resolution{reader: f, source: source, sourcePath: path, refMtime: mtimeOf(path)}, true
+	return resolution{reader: f, source: source, sourcePath: path, refMtime: openedMtime(f)}, true
 }
 
-func mtimeOf(path string) int64 {
-	info, err := os.Stat(path)
+// openedMtime stats the open handle, so a file renamed over the path cannot lend its mtime to the old
+// bytes. A reader with no Stat returns 0, which turns off openOriginal's mtime check for that item.
+func openedMtime(r io.Reader) int64 {
+	f, ok := r.(interface{ Stat() (fs.FileInfo, error) })
+	if !ok {
+		return 0
+	}
+	info, err := f.Stat()
 	if err != nil {
 		return 0
 	}

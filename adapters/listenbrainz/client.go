@@ -162,7 +162,10 @@ func (c *client) path(endpoint string) (string, error) {
 }
 
 func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
-	b, _ := json.Marshal(r.Body)
+	b, err := json.Marshal(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("encoding request body: %w", err)
+	}
 	uri, err := c.path(endpoint)
 	if err != nil {
 		return nil, err
@@ -171,7 +174,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 
 	if r.ApiKey != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))
+		req.Header.Add("Authorization", "Token "+r.ApiKey)
 	}
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz %s request", req.Method), "url", req.URL)
@@ -188,7 +191,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 
 	var response listenBrainzResponse
 	jsonErr := decoder.Decode(&response)
-	if resp.StatusCode != 200 && jsonErr != nil {
+	if resp.StatusCode != http.StatusOK && jsonErr != nil {
 		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
 	}
 	if jsonErr != nil {
@@ -223,7 +226,7 @@ func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint
 	}
 
 	// On a 200 code, there is no code. Decode using using error message if it exists
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusTooManyRequests {
 			return nil, retryLaterErr(resp.Header)

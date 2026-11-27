@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -180,11 +181,18 @@ func realIPMiddleware(next http.Handler) http.Handler {
 		return fromPeer
 	}
 
+	// ClientIPFromXFF ignores the header unless the peer is in a trusted CIDR, which a socket peer
+	// ("@") never is. dispatch already checked the peer, so trust the hop the local proxy wrote.
+	xff := middleware.ClientIPFromXFFTrustedProxies(1)
+	if prefixes := trustedProxyPrefixes(trusted); len(prefixes) > 0 && !strings.HasPrefix(conf.Server().Address, "unix:") {
+		xff = middleware.ClientIPFromXFF(prefixes...)
+	}
+
 	// Last match wins, so this order reproduces RealIP's precedence: True-Client-IP, X-Real-IP,
 	// X-Forwarded-For, peer. Only X-Forwarded-For is checked against the trusted list.
 	fromProxy := chi.Chain(
 		middleware.ClientIPFromRemoteAddr,
-		middleware.ClientIPFromXFF(trustedProxyPrefixes(trusted)...),
+		xff,
 		middleware.ClientIPFromHeader("X-Real-IP"),
 		middleware.ClientIPFromHeader("True-Client-IP"),
 	).Handler(mirrorClientIP(next))
@@ -219,11 +227,10 @@ func peerHost(r *http.Request) string {
 }
 
 // trustedProxyPrefixes returns the CIDR entries of a trusted sources list, skipping non-CIDR
-// entries such as the "@" unix socket marker. An empty result makes ClientIPFromXFF trust
-// exactly one hop.
+// entries such as the "@" unix socket marker.
 func trustedProxyPrefixes(list string) []string {
 	var prefixes []string
-	for _, entry := range strings.Split(list, ",") {
+	for entry := range strings.SplitSeq(list, ",") {
 		entry = strings.TrimSpace(entry)
 		if _, err := netip.ParsePrefix(entry); err == nil {
 			prefixes = append(prefixes, entry)
@@ -234,16 +241,21 @@ func trustedProxyPrefixes(list string) []string {
 
 // ClientIPRateLimiter returns a rate limiter keyed by ClientIP, so spoofed forwarding headers
 // cannot be rotated for a fresh bucket.
-func ClientIPRateLimiter(requestLimit int, windowLength time.Duration) func(http.Handler) http.Handler {
+func ClientIPRateLimiter(requestLimit int, windowLength time.Duration, opts ...httprate.Option) func(http.Handler) http.Handler {
 	return httprate.LimitBy(requestLimit, windowLength, func(r *http.Request) (string, error) {
 		return ClientIP(r), nil
-	})
+	}, opts...)
 }
 
 // ClientIP returns the canonical client IP resolved by realIPMiddleware, for keying rate limits. The
 // peer address fallback degrades a missing middleware to per-peer limiting, not one shared bucket.
 func ClientIP(r *http.Request) string {
-	return httprate.CanonicalizeIP(cmp.Or(middleware.GetClientIP(r.Context()), peerHost(r)))
+	return httprate.CanonicalizeIP(ClientAddr(r))
+}
+
+// ClientAddr returns the client IP resolved by realIPMiddleware unmasked, for recording who made a request.
+func ClientAddr(r *http.Request) string {
+	return cmp.Or(middleware.GetClientIP(r.Context()), peerHost(r))
 }
 
 // reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key
@@ -374,7 +386,9 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			usr, ok := request.UserFrom(ctx)
-			if ok {
+			// Internal calls (e.g. plugins) are not user activity: skip the last access update.
+			_, internal := request.InternalAuthFrom(ctx)
+			if ok && !internal {
 				userAccessLimiter.Do(usr.ID, func() {
 					start := time.Now()
 					ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -392,5 +406,43 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 			}
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// DecodeJSONBody decodes exactly one JSON value of at most limit bytes into v, answering 413 or 400 itself on failure.
+func DecodeJSONBody(w http.ResponseWriter, r *http.Request, limit int64, v any) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
+	if err := dec.Decode(v); err != nil {
+		status, msg := jsonBodyError(err)
+		http.Error(w, msg, status)
+		return false
+	}
+	// Decode alone would ignore anything after the first value.
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		status, msg := jsonBodyError(err)
+		if status == http.StatusBadRequest {
+			msg = "Request body must only contain a single JSON value"
+		}
+		http.Error(w, msg, status)
+		return false
+	}
+	return true
+}
+
+func jsonBodyError(err error) (int, string) {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	var sizeErr *http.MaxBytesError
+	switch {
+	case errors.As(err, &sizeErr):
+		return http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body must not be larger than %d bytes", sizeErr.Limit)
+	case errors.Is(err, io.EOF):
+		return http.StatusBadRequest, "Request body must not be empty"
+	case errors.As(err, &syntaxErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxErr.Offset)
+	case errors.As(err, &typeErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", typeErr.Field, typeErr.Offset)
+	default:
+		return http.StatusBadRequest, "Request body contains badly-formed JSON"
 	}
 }

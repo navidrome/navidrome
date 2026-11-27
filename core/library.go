@@ -111,7 +111,7 @@ func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, li
 func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error {
 	user, ok := request.UserFrom(ctx)
 	if !ok {
-		return fmt.Errorf("user not found in context")
+		return errors.New("user not found in context")
 	}
 
 	// Admin users have access to all libraries
@@ -157,7 +157,7 @@ func (r *libraryRepositoryWrapper) Save(ctx context.Context, lib *model.Library)
 		return "", err
 	}
 
-	err := r.LibraryRepository.Put(ctx, lib)
+	err := r.Put(ctx, lib)
 	if err != nil {
 		return "", r.mapError(err)
 	}
@@ -205,7 +205,7 @@ func (r *libraryRepositoryWrapper) Update(ctx context.Context, id string, entity
 	pidChanged := (updatesColumn(cols, "pidAlbum") && originalLib.PIDAlbum != lib.PIDAlbum) ||
 		(updatesColumn(cols, "pidTrack") && originalLib.PIDTrack != lib.PIDTrack)
 
-	err = r.LibraryRepository.Put(ctx, lib, cols...)
+	err = r.Put(ctx, lib, cols...)
 	if err != nil {
 		return r.mapError(err)
 	}
@@ -350,7 +350,7 @@ func updatesColumn(cols []string, col string) bool {
 func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, library *model.Library) error {
 	// Validate path format
 	if !filepath.IsAbs(library.Path) {
-		return fmt.Errorf("library path must be absolute")
+		return errors.New("library path must be absolute")
 	}
 
 	// Clean the path to normalize it
@@ -377,7 +377,7 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 	}
 
 	if !info.IsDir() {
-		return fmt.Errorf("resources.library.validation.pathNotDirectory")
+		return errors.New("resources.library.validation.pathNotDirectory")
 	}
 
 	return nil

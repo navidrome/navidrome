@@ -87,7 +87,7 @@ const firstFixtureLine = "Should auld acquaintance be forgot,"
 // Shared test state
 var (
 	ctx         context.Context
-	ds          *tests.MockDataStore
+	ds          model.DataStore
 	router      *subsonic.Router
 	streamerSpy *harness.SpyStreamer
 	goldenDB    *harness.DB
@@ -278,9 +278,8 @@ func doRawReqWithUser(user model.User, endpoint string, params ...string) *httpt
 
 // buildReq creates a GET request with Subsonic auth params (u, p, v, c, f=json).
 func buildReq(user model.User, endpoint string, params ...string) *http.Request {
-	if len(params)%2 != 0 {
-		panic("buildReq: odd number of parameters")
-	}
+	GinkgoHelper()
+	Expect(len(params)%2).To(BeZero(), "buildReq: odd number of parameters")
 	q := url.Values{}
 	q.Add("u", user.UserName)
 	q.Add("p", "password")
@@ -290,13 +289,13 @@ func buildReq(user model.User, endpoint string, params ...string) *http.Request 
 	for i := 0; i < len(params); i += 2 {
 		q.Add(params[i], params[i+1])
 	}
-	return httptest.NewRequest("GET", "/"+endpoint+"?"+q.Encode(), nil)
+	return httptest.NewRequest(http.MethodGet, "/"+endpoint+"?"+q.Encode(), nil)
 }
 
 // buildPostReq creates a POST request with a JSON body and Subsonic auth params in the query string.
 func buildPostReq(user model.User, endpoint string, body string, params ...string) *http.Request {
 	getReq := buildReq(user, endpoint, params...)
-	r := httptest.NewRequest("POST", getReq.URL.RequestURI(), bytes.NewReader([]byte(body)))
+	r := httptest.NewRequest(http.MethodPost, getReq.URL.RequestURI(), bytes.NewReader([]byte(body)))
 	r.Header.Set("Content-Type", "application/json")
 	return r
 }
@@ -429,15 +428,20 @@ func setupTestDB() {
 	// Restore DB to golden state (no scan needed)
 	goldenDB.Restore()
 
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds = persistence.New(db.Db())
 	auth.Init(ds)
 
-	// Create the Subsonic Router with real DS, streamer spy, and real Decider and Archiver
 	streamerSpy = &harness.SpyStreamer{}
+	router = newRouter(nil)
+}
+
+// newRouter builds a Subsonic Router with real DS, streamer spy, and real Decider and Archiver.
+// Call it after any config change the routes depend on, such as Jukebox.Enabled.
+func newRouter(pb playback.PlaybackServer) *subsonic.Router {
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	s := scanner.New(ctx, ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
-	router = subsonic.New(
+	return subsonic.New(
 		ds,
 		noopArtwork{},
 		streamerSpy,
@@ -449,7 +453,7 @@ func setupTestDB() {
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
-		playback.PlaybackServer(nil),
+		pb,
 		metrics.NewNoopInstance(),
 		lyrics.NewLyrics(ds, nil),
 		decider,

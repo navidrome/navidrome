@@ -293,7 +293,7 @@ func parseProbeOutput(data []byte) (*AudioProbeResult, error) {
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("no audio stream found in ffprobe output")
+	return nil, errors.New("no audio stream found in ffprobe output")
 }
 
 func (e *ffmpeg) CmdPath() (string, error) {
@@ -490,7 +490,7 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 // buildTemplateArgs handles user-customized command templates, with dynamic injection
 // of sample rate, channels, and bit depth when requested by the transcode decision.
 // Values in opts have already been clamped to codec limits upstream (see
-// core/stream/codec.go codecMax* helpers), so injecting them unconditionally is safe —
+// core/stream/codec.go), so injecting them unconditionally is safe —
 // ffmpeg honors the last occurrence of a duplicate flag.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
@@ -552,7 +552,7 @@ func bitDepthToSampleFmt(bitDepth int) string {
 	}
 }
 
-// Path will always be an absolute path
+// createFFmpegCommand expects path to always be an absolute path
 func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 	var args []string
 	for _, s := range fixCmd(cmd) {
@@ -643,6 +643,7 @@ func (p *encoderProbe) has(cmdPath, encoder string) bool {
 		return true
 	case encoderProbeUnavailable:
 		return false
+	case encoderProbeUnknown:
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

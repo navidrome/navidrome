@@ -29,7 +29,7 @@ var _ = Describe("Translations", func() {
 				var out map[string]any
 
 				Expect(filepath.Ext(filePath)).To(Equal(".json"), filePath)
-				Expect(json.Unmarshal(data, &out)).To(BeNil(), filePath)
+				Expect(json.Unmarshal(data, &out)).To(Succeed(), filePath)
 				Expect(out["languageName"]).ToNot(BeEmpty(), filePath)
 			}
 		})
@@ -39,11 +39,11 @@ var _ = Describe("Translations", func() {
 		It("loads a translation file correctly", func() {
 			fs := os.DirFS("ui/src")
 			tr, err := loadTranslation(fs, "en.json")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(tr.ID).To(Equal("en"))
 			Expect(tr.Name).To(Equal("English"))
 			var out map[string]any
-			Expect(json.Unmarshal([]byte(tr.Data), &out)).To(BeNil())
+			Expect(json.Unmarshal([]byte(tr.Data), &out)).To(Succeed())
 		})
 
 		It("counts only non-empty leaf terms", func() {
@@ -53,7 +53,7 @@ var _ = Describe("Translations", func() {
 				},
 			}
 			tr, err := loadTranslation(fsys, "test.json")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(tr.TermCount).To(Equal(3))
 		})
 	})

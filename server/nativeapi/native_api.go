@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"context"
+	"mime"
 	"net/http"
 	"strconv"
 	"time"
@@ -125,9 +126,10 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 
 	r.Route("/playlist", func(r chi.Router) {
 		r.Get("/", rest.GetAll(repo))
+		createJSON := limitPlaylistJSON(rest.Post(repo))
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("Content-type") == "application/json" {
-				rest.Post(repo)(w, r)
+			if mediaType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mediaType == "application/json" {
+				createJSON.ServeHTTP(w, r)
 				return
 			}
 			createPlaylistFromM3U(api.playlists)(w, r)
@@ -136,7 +138,7 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(repo))
-			r.Put("/", rest.Put(repo))
+			r.With(limitPlaylistJSON).Put("/", rest.Put(repo))
 			r.Delete("/", rest.Delete(repo))
 			r.Post("/image", uploadPlaylistImage(api.playlists))
 			r.Delete("/image", deletePlaylistImage(api.playlists))
@@ -247,7 +249,7 @@ func (api *Router) addInsightsRoute(r chi.Router) {
 	})
 }
 
-// Middleware to ensure only admin users can access endpoints
+// adminOnlyMiddleware ensures only admin users can access endpoints
 func adminOnlyMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, ok := request.UserFrom(r.Context())

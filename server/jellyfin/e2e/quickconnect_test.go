@@ -54,7 +54,7 @@ var _ = Describe("QuickConnect", func() {
 		Expect(res.SessionInfo).ToNot(BeNil())
 		Expect(res.SessionInfo.DeviceId).To(Equal("other-device"))
 
-		r := httptest.NewRequest("GET", "/Users/Me", nil)
+		r := httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
 		r.Header.Set("X-Emby-Token", res.AccessToken)
 		me := httptest.NewRecorder()
 		router.ServeHTTP(me, r)

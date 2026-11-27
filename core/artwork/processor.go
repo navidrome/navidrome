@@ -45,6 +45,8 @@ func (o outcome) String() string {
 		return "foundStale"
 	case outcomeAbsent:
 		return "absent"
+	case outcomeFailed:
+		fallthrough
 	default:
 		return "failed"
 	}

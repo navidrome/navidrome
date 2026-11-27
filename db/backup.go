@@ -60,11 +60,11 @@ func copyDatabase(ctx context.Context, dest, source *sql.DB) error {
 		return sourceConn.Raw(func(rawSource any) error {
 			sqliteDest, destOk := rawDest.(*sqlite3.SQLiteConn)
 			if !destOk {
-				return fmt.Errorf("error trying to convert destination to sqlite connection")
+				return errors.New("error trying to convert destination to sqlite connection")
 			}
 			sqliteSource, sourceOk := rawSource.(*sqlite3.SQLiteConn)
 			if !sourceOk {
-				return fmt.Errorf("error trying to convert source to sqlite connection")
+				return errors.New("error trying to convert source to sqlite connection")
 			}
 
 			backupOp, err := sqliteDest.Backup("main", sqliteSource, "main")
@@ -80,7 +80,7 @@ func copyDatabase(ctx context.Context, dest, source *sql.DB) error {
 				return fmt.Errorf("error during backup step: %w", err)
 			}
 			if !done {
-				return fmt.Errorf("backup not done with step -1")
+				return errors.New("backup not done with step -1")
 			}
 
 			err = backupOp.Finish()

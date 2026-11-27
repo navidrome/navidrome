@@ -42,6 +42,7 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 		ci.TranscodingProfiles = []Profile{
 			{Container: targetFormat, AudioCodec: targetFormat, Protocol: ProtocolHTTP},
 		}
+		ci.AllowLossyToLossless = reqFormat != ""
 		if reqBitRate > 0 {
 			ci.MaxAudioBitrate = reqBitRate
 			ci.MaxTranscodingAudioBitrate = reqBitRate

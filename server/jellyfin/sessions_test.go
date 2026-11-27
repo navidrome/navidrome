@@ -9,10 +9,11 @@ import (
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -67,13 +68,13 @@ var _ = Describe("Sessions", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		pt = &fakePlayTracker{}
-		api = &Router{ds: &tests.MockDataStore{}, scrobbler: pt}
+		api = &Router{ds: persistence.New(db.Db()), scrobbler: pt}
 	})
 
 	Describe("reportPlaybackStart", func() {
 		It("reports playback start with the item id and position", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":10000000}`)))
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":10000000}`)))
 
 			invoke(api.reportPlaybackStart, w, r)
 
@@ -86,9 +87,21 @@ var _ = Describe("Sessions", func() {
 			Expect(pt.reported[0].ClientName).To(Equal("Finamp"))
 		})
 
+		It("ignores a body over the size limit, still answering 204", func() {
+			w := httptest.NewRecorder()
+			body := `{"ItemId":"` + dto.EncodeID(testID("s1")) + `","Pad":"` + strings.Repeat("x", maxPlaybackReportBody) + `"}`
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing", strings.NewReader(body)))
+
+			invoke(api.reportPlaybackStart, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(pt.reported).To(HaveLen(1))
+			Expect(pt.reported[0].MediaId).To(BeEmpty())
+		})
+
 		It("falls back to the ItemId query param when the body has none", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing?ItemId="+dto.EncodeID(testID("s2")), nil))
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing?ItemId="+dto.EncodeID(testID("s2")), nil))
 
 			invoke(api.reportPlaybackStart, w, r)
 
@@ -99,7 +112,7 @@ var _ = Describe("Sessions", func() {
 
 		It("still reports (with an empty MediaId) for a malformed ItemId, rather than failing the request", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing", strings.NewReader(`{"ItemId":"not-a-valid-id","PositionTicks":10000000}`)))
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing", strings.NewReader(`{"ItemId":"not-a-valid-id","PositionTicks":10000000}`)))
 
 			invoke(api.reportPlaybackStart, w, r)
 
@@ -112,7 +125,7 @@ var _ = Describe("Sessions", func() {
 	Describe("reportPlaybackProgress", func() {
 		It("reports the playing state when not paused", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":20000000,"IsPaused":false}`)))
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":20000000,"IsPaused":false}`)))
 
 			invoke(api.reportPlaybackProgress, w, r)
 
@@ -124,7 +137,7 @@ var _ = Describe("Sessions", func() {
 
 		It("reports the paused state when IsPaused is true", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":20000000,"IsPaused":true}`)))
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":20000000,"IsPaused":true}`)))
 
 			invoke(api.reportPlaybackProgress, w, r)
 
@@ -137,7 +150,7 @@ var _ = Describe("Sessions", func() {
 	Describe("reportPlaybackStopped", func() {
 		It("reports the stopped state and lets the scrobbler apply its play threshold", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Stopped", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":600000000}`)))
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Playing/Stopped", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":600000000}`)))
 
 			invoke(api.reportPlaybackStopped, w, r)
 
@@ -157,7 +170,7 @@ var _ = Describe("Sessions", func() {
 	Describe("acknowledge", func() {
 		It("returns 204 No Content and does not touch the scrobbler", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Capabilities", strings.NewReader(`{"SupportsMediaControl":true}`)))
+			r := authed(httptest.NewRequest(http.MethodPost, "/Sessions/Capabilities", strings.NewReader(`{"SupportsMediaControl":true}`)))
 
 			api.acknowledge(w, r)
 
@@ -174,7 +187,7 @@ var _ = Describe("withPlayer middleware", func() {
 
 	BeforeEach(func() {
 		fp = &fakePlayers{}
-		api = &Router{ds: &tests.MockDataStore{}, players: fp}
+		api = &Router{ds: struct{ model.DataStore }{}, players: fp}
 	})
 
 	It("registers a player from the Emby device info and injects it into the context", func() {
@@ -186,7 +199,7 @@ var _ = Describe("withPlayer middleware", func() {
 		})
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Sessions/Playing", nil)
+		r := httptest.NewRequest(http.MethodPost, "/Sessions/Playing", nil)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Finamp", Device="Pixel", DeviceId="dev1", Version="1.0"`)
 
 		api.withPlayer(next).ServeHTTP(w, r)
@@ -206,7 +219,7 @@ var _ = Describe("withPlayer middleware", func() {
 		})
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "/Sessions/Playing", nil)
+		r := httptest.NewRequest(http.MethodPost, "/Sessions/Playing", nil)
 
 		api.withPlayer(next).ServeHTTP(w, r)
 
@@ -220,7 +233,7 @@ var _ = Describe("withPlayer middleware", func() {
 		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/socket?api_key=tok", nil)
+		r := httptest.NewRequest(http.MethodGet, "/socket?api_key=tok", nil)
 
 		api.withPlayer(next).ServeHTTP(w, r)
 
