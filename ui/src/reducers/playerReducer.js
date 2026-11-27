@@ -268,7 +268,9 @@ export const playerReducer = (previousState = initialState, payload) => {
     case PLAYER_REMOVE_FROM_QUEUE:
       return {
         ...previousState,
-        queue: previousState.queue.filter((item) => item.trackId !== payload.data),
+        queue: previousState.queue.filter(
+          (item) => item.trackId !== payload.data,
+        ),
         clear: true,
       }
     default:

@@ -62,11 +62,20 @@ export const useRating = (resource, record) => {
     subsonic
       .setRating(id, val)
       .then(() => {
-        if (config.skipLowRatingInShuffle && queue?.length > 0 && !record.playlistId) {
+        if (
+          config.skipLowRatingInShuffle &&
+          queue?.length > 0 &&
+          !record.playlistId
+        ) {
           const inQueue = queue.some((item) => item.trackId === trackId)
           if (val === 1 && inQueue) {
             dispatch(removeFromQueue(trackId))
-          } else if (rating === 1 && val !== 1 && !inQueue && queue.length < 500) {
+          } else if (
+            rating === 1 &&
+            val !== 1 &&
+            !inQueue &&
+            queue.length < 500
+          ) {
             dispatch(addTracks({ [trackId]: record }))
           }
         }
