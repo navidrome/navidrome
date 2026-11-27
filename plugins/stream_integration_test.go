@@ -117,6 +117,32 @@ func callStreams(ctx context.Context, p *plugin, fn string, timeout time.Duratio
 	return callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, fn, timeout, prepare, nil)
 }
 
+// errOnlyCtx reports Canceled from Err once stopped, but never closes Done, so wazero does not see the stop.
+type errOnlyCtx struct {
+	context.Context
+	stopped atomic.Bool
+}
+
+func (c *errOnlyCtx) Err() error {
+	if c.stopped.Load() {
+		return context.Canceled
+	}
+	return c.Context.Err()
+}
+
+type stopAtEOF struct {
+	io.Reader
+	ctx *errOnlyCtx
+}
+
+func (r stopAtEOF) Read(p []byte) (int, error) {
+	n, err := r.Reader.Read(p)
+	if errors.Is(err, io.EOF) {
+		r.ctx.stopped.Store(true)
+	}
+	return n, err
+}
+
 // enteredReader signals when its first Read starts, so tests act only once the host is blocked in I/O.
 type enteredReader struct {
 	*io.PipeReader
@@ -262,11 +288,7 @@ var _ = Describe("Plugin streams", Ordered, func() {
 			stop()
 			var res callResult
 			Eventually(results).WithTimeout(5 * time.Second).Should(Receive(&res))
-			// The plugin may finish its export before wazero sees the stop, so a clean return is also valid.
-			Expect(res.err).To(Or(Not(HaveOccurred()), MatchError(wantErr)))
-			if res.err == nil {
-				Expect(res.out.Error).ToNot(BeEmpty())
-			}
+			Expect(res.err).To(MatchError(wantErr))
 			_, err := pw.Write([]byte("x"))
 			Expect(err).To(MatchError(io.ErrClosedPipe))
 		}
@@ -311,6 +333,13 @@ var _ = Describe("Plugin streams", Ordered, func() {
 			r, pw := newEnteredPipe()
 			results := startCall("read_all", ctx, 2*time.Second, readInput(r, 16))
 			expectUnblocked(r, pw, results, func() {}, context.DeadlineExceeded)
+		})
+
+		It("reports a cancel even when the plugin returns cleanly", func() {
+			callCtx := &errOnlyCtx{Context: ctx}
+			r := io.NopCloser(stopAtEOF{Reader: strings.NewReader("cut off"), ctx: callCtx})
+			_, err := callStreams(callCtx, p, "read_all", defaultTimeout, readInput(r, 16))
+			Expect(err).To(MatchError(context.Canceled))
 		})
 
 		It("unblocks a stream_copy when the call is cancelled", func() {

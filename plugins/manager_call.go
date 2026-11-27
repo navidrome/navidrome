@@ -90,17 +90,20 @@ func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *p
 	startCall := time.Now()
 	exit, output, err := p.CallWithContext(ctx, funcName, inputBytes)
 	elapsed := time.Since(startCall)
+	// Checked even on success: a stop closes the call's streams, and the plugin can return cleanly with
+	// cut-off data before wazero sees the stop. Only the caller's cancellation is not the plugin's fault.
+	if parentCtx.Err() != nil {
+		log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed)
+		return result, parentCtx.Err()
+	}
+	if ctx.Err() != nil {
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		log.Trace(ctx, "Plugin call timed out", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start))
+		return result, ctx.Err()
+	}
 	if err != nil {
-		// Only the caller's cancellation is not the plugin's fault; running out of our time limit is.
-		if parentCtx.Err() != nil {
-			log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed)
-			return result, parentCtx.Err()
-		}
 		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
 		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
-		if ctx.Err() != nil {
-			return result, ctx.Err()
-		}
 		return result, fmt.Errorf("plugin call failed: %w", err)
 	}
 	if exit != 0 {
