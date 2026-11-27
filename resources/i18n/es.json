@@ -83,7 +83,8 @@
         "mood": "Estado de ánimo",
         "date": "Fecha de grabación",
         "missing": "Faltante",
-        "libraryName": "Biblioteca"
+        "libraryName": "Biblioteca",
+        "played": "Reproducido"
       },
       "actions": {
         "playAll": "Reproducir",
@@ -93,7 +94,8 @@
         "addToPlaylist": "Agregar a la lista",
         "download": "Descargar",
         "info": "Obtener información",
-        "share": "Compartir"
+        "share": "Compartir",
+        "refresh": "Actualizar metadatos"
       },
       "lists": {
         "all": "Todos",
@@ -155,11 +157,13 @@
         "newPassword": "Nueva contraseña",
         "token": "Token",
         "lastAccessAt": "Último acceso",
-        "libraries": "Bibliotecas"
+        "libraries": "Bibliotecas",
+        "scrobbleFilter": "Filtro de scrobbling"
       },
       "helperTexts": {
         "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión",
-        "libraries": "Selecciona bibliotecas específicas para este usuario o déjalo vacío para usar las bibliotecas por defecto"
+        "libraries": "Selecciona bibliotecas específicas para este usuario o déjalo vacío para usar las bibliotecas por defecto",
+        "scrobbleFilter": "Las canciones que coincidan con estas reglas de listas de reproducción inteligentes no se enviarán a Last.fm, ListenBrainz ni a los plugins de scrobbling. Se utiliza la misma sintaxis JSON y el mismo comportamiento que en las listas de reproducción inteligentes. Ejemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Déjalo vacío para registrar todas las escuchas. Los recuentos de reproducciones locales no se ven afectados."
       },
       "notifications": {
         "created": "Usuario creado",
@@ -173,7 +177,8 @@
         "adminAutoLibraries": "Los usuarios administradores tienen acceso a todas las bibliotecas automáticamente"
       },
       "validation": {
-        "librariesRequired": "Se debe seleccionar al menos una biblioteca para los usuarios que no sean administradores"
+        "librariesRequired": "Se debe seleccionar al menos una biblioteca para los usuarios que no sean administradores",
+        "invalidScrobbleFilter": "Deben ser reglas válidas para listas de reproducción inteligentes. No se admiten «limit», «offset» ni «refresh delay»."
       }
     },
     "player": {
@@ -186,7 +191,30 @@
         "userName": "Usuario",
         "lastSeen": "Última conexión",
         "reportRealPath": "Reporta la ruta absoluta",
-        "scrobbleEnabled": "Envía los scrobbles a servicios externos"
+        "scrobbleEnabled": "Envía los scrobbles a servicios externos",
+        "hasApiKey": "Clave API"
+      },
+      "menuName": "Reproductores y claves API",
+      "actions": {
+        "generateApiKey": "Generar clave API",
+        "regenerateApiKey": "Regenerar",
+        "revokeApiKey": "Revocar",
+        "copyApiKey": "Copiar"
+      },
+      "message": {
+        "apiKeyActive": "Este reproductor tiene una clave API. Úsala en tu aplicación como clave API o como contraseña si la aplicación no admite autenticación mediante tokens.",
+        "apiKeyNone": "No hay ninguna clave API. Genera una para conectar una aplicación a este reproductor.",
+        "apiKeyNoneOther": "No hay ninguna clave API.",
+        "apiKeyPending": "Copia esta clave ahora. Se guardará cuando hagas clic en Guardar y no volverá a mostrarse.",
+        "apiKeyRevokePending": "La clave API se eliminará al guardar.",
+        "deleteWithKeyTitle": "Eliminar reproductor",
+        "deleteWithKeyContent": "Este reproductor tiene una clave API. Las aplicaciones que la utilicen dejarán de funcionar."
+      },
+      "notifications": {
+        "apiKeyCopied": "Clave API copiada al portapapeles"
+      },
+      "validation": {
+        "apiKeyFormat": "Formato de clave API no válido"
       }
     },
     "transcoding": {
@@ -196,6 +224,9 @@
         "targetFormat": "Formato de destino",
         "defaultBitRate": "Tasa de bits por defecto",
         "command": "Comando"
+      },
+      "choices": {
+        "noDefaultBitRate": "Ninguna"
       }
     },
     "playlist": {
@@ -210,7 +241,8 @@
         "songCount": "Canciones",
         "comment": "Comentario",
         "sync": "Auto-importados",
-        "path": "Importados de"
+        "path": "Importados de",
+        "starred": "Favorita"
       },
       "actions": {
         "selectPlaylist": "Seleccione una lista:",
@@ -297,11 +329,14 @@
         "totalDuration": "Duración",
         "defaultNewUsers": "Por defecto para nuevos usuarios",
         "createdAt": "Creado",
-        "updatedAt": "Actualizado"
+        "updatedAt": "Actualizado",
+        "pidAlbum": "Agrupación de álbumes",
+        "pidTrack": "Identidad de las pistas"
       },
       "sections": {
         "basic": "Información básica",
-        "statistics": "Estadísticas"
+        "statistics": "Estadísticas",
+        "pid": "Identificadores persistentes"
       },
       "actions": {
         "scan": "Escanear biblioteca",
@@ -331,7 +366,17 @@
       "messages": {
         "deleteConfirm": "¿Estás seguro/a de que quieres eliminar esta biblioteca? Esto eliminará todos los datos asociados y el acceso de les usuaries.",
         "scanInProgress": "Escaneo en curso...",
-        "noLibrariesAssigned": "No hay bibliotecas asignadas a este usuario"
+        "noLibrariesAssigned": "No hay bibliotecas asignadas a este usuario",
+        "pidChangeTitle": "¿Cambiar los identificadores persistentes?",
+        "pidChangeConfirm": "Esta acción volverá a agrupar los álbumes y las pistas de esta biblioteca e iniciará un escaneo completo. Se conservarán los favoritos, las valoraciones y los recuentos de reproducciones de las pistas. Los favoritos y las valoraciones de los álbumes se transferirán a los nuevos álbumes cuando exista una correspondencia entre el álbum anterior y el nuevo."
+      },
+      "pid": {
+        "global": "Usar la configuración global (%{value})",
+        "folder": "Carpeta (un álbum por carpeta)",
+        "custom": "Personalizado",
+        "spec": "Especificación del PID",
+        "help": "Etiquetas y atributos que identifican un elemento. Consulta la documentación para conocer la sintaxis:",
+        "docs": "Identificadores persistentes"
       }
     },
     "plugin": {
@@ -403,7 +448,8 @@
         "requiredHosts": "Hosts requeridos",
         "configValidationError": "La validación de la configuración falló:",
         "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del complemento no sea válido.",
-        "allowWriteAccessHelp": "Cuando está activado, el plugin puede modificar archivos en los directorios de la biblioteca. Por defecto, los plugins tienen acceso de solo lectura."
+        "allowWriteAccessHelp": "Cuando está activado, el plugin puede modificar archivos en los directorios de la biblioteca. Por defecto, los plugins tienen acceso de solo lectura.",
+        "idHelp": "El ID del plugin se obtiene del nombre de su archivo. Utilízalo al hacer referencia al plugin en opciones de configuración, como Agents."
       },
       "placeholders": {
         "configKey": "clave",
@@ -599,7 +645,11 @@
     "coverUploaded": "Portada actualizada",
     "coverRemoved": "Portada eliminada",
     "coverUploadError": "Error al subir la portada",
-    "coverRemoveError": "Error al eliminar la portada"
+    "coverRemoveError": "Error al eliminar la portada",
+    "metadataRefreshStarted": "Actualizando los metadatos en segundo plano",
+    "quickConnectApproved": "%{app} ha iniciado sesión en %{device}",
+    "quickConnectInvalidCode": "Código no válido o caducado",
+    "quickConnectError": "No se pudo aprobar el código"
   },
   "menu": {
     "library": "Biblioteca",
@@ -622,7 +672,12 @@
           "album": "Ganancia del álbum",
           "track": "Ganancia de pista"
         },
-        "lastfmNotConfigured": "La clave API de Last.fm no está configurada"
+        "lastfmNotConfigured": "La clave API de Last.fm no está configurada",
+        "dateFormat": "Formato de fecha",
+        "dateFormats": {
+          "language": "Según el idioma",
+          "browser": "Según el navegador"
+        }
       }
     },
     "albumList": "Álbumes",
@@ -634,7 +689,16 @@
       "multipleLibraries": "%{selected} de %{total} bibliotecas",
       "selectLibraries": "Seleccionar bibliotecas",
       "none": "Ninguno"
-    }
+    },
+    "quickConnect": {
+      "name": "Conexión rápida",
+      "code": "Código",
+      "help": "Introduce el código que muestra una aplicación de Jellyfin para iniciar sesión en tu cuenta",
+      "confirm": "¿Quieres iniciar sesión en tu cuenta con %{app} %{version} en %{device}?",
+      "continue": "Continuar",
+      "approve": "Aprobar"
+    },
+    "onlyFavourites": "Mostrar solo favoritos"
   },
   "player": {
     "playListsText": "Fila de reproducción",
