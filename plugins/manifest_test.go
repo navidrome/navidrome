@@ -158,6 +158,18 @@ var _ = Describe("Manifest", func() {
 			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
 			Expect(err.Error()).To(ContainSubstring("users"))
 		})
+
+		It("reads taskqueue.maxTaskDuration and defaults it to 30", func() {
+			m, err := ParseManifest([]byte(`{"name":"t","author":"a","version":"1.0.0",
+				"permissions":{"taskqueue":{"maxTaskDuration":600}}}`))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Permissions.Taskqueue.MaxTaskDuration).To(Equal(600))
+
+			m, err = ParseManifest([]byte(`{"name":"t","author":"a","version":"1.0.0",
+				"permissions":{"taskqueue":{}}}`))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Permissions.Taskqueue.MaxTaskDuration).To(Equal(30))
+		})
 	})
 
 	Describe("Validate", func() {

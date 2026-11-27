@@ -31,14 +31,44 @@ func callPluginFunctionNoOutput[I any](ctx context.Context, plugin *plugin, func
 	return err
 }
 
-// callPluginFunction is a helper to call a plugin function with input and output types.
-// It handles JSON marshalling/unmarshalling and error checking.
-// The context is used for cancellation - if cancelled during the call, the plugin
-// instance will be terminated and context.Canceled or context.DeadlineExceeded will be returned.
+// callPluginFunction calls a plugin export with the default time limit.
 func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcName string, input I) (O, error) {
+	return callPluginFunctionWithTimeout[I, O](ctx, plugin, funcName, defaultTimeout, input)
+}
+
+// callPluginFunctionWithTimeout calls a plugin export, handling JSON and errors. The deadline is set on ctx,
+// not in the Extism manifest, so host functions and anything watching ctx see it.
+func callPluginFunctionWithTimeout[I any, O any](ctx context.Context, plugin *plugin, funcName string, timeout time.Duration, input I) (O, error) {
+	return callPluginFunctionScoped[I, O](ctx, plugin, funcName, timeout,
+		func(*callScope) (I, error) { return input, nil }, nil)
+}
+
+// callPluginFunctionScoped runs one call in its own stream scope. buildInput registers input streams, which the
+// scope owns from then on and closes on every exit; onOutput runs after a successful decode, before the scope closes.
+func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *plugin, funcName string, timeout time.Duration,
+	buildInput func(*callScope) (I, error), onOutput func(*callScope, O) error) (O, error) {
 	start := time.Now()
 
 	var result O
+
+	ctx, cancel := context.WithTimeout(parentCtx, timeout)
+	defer cancel()
+
+	scope, err := plugin.streams.newScope(ctx)
+	if err != nil {
+		return result, err
+	}
+	stopClose := context.AfterFunc(ctx, scope.close)
+	defer func() {
+		stopClose()
+		scope.close()
+	}()
+	ctx = withCallScope(ctx, scope)
+
+	input, err := buildInput(scope)
+	if err != nil {
+		return result, fmt.Errorf("preparing input: %w", err)
+	}
 
 	// Create plugin instance with context for cancellation support
 	p, err := plugin.instance(ctx)
@@ -60,12 +90,18 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 	startCall := time.Now()
 	exit, output, err := p.CallWithContext(ctx, funcName, inputBytes)
 	elapsed := time.Since(startCall)
+	// Checked even on success: a stop closes the call's streams, and the plugin can return cleanly with
+	// cut-off data before wazero sees the stop. Only the caller's cancellation is not the plugin's fault.
+	if parentCtx.Err() != nil {
+		log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed)
+		return result, parentCtx.Err()
+	}
+	if ctx.Err() != nil {
+		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
+		log.Trace(ctx, "Plugin call timed out", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start))
+		return result, ctx.Err()
+	}
 	if err != nil {
-		// If context was cancelled, return that error instead of the plugin error
-		if ctx.Err() != nil {
-			log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed)
-			return result, ctx.Err()
-		}
 		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
 		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
 		return result, fmt.Errorf("plugin call failed: %w", err)
@@ -86,6 +122,9 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 		if err != nil {
 			log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
 		}
+	}
+	if err == nil && onOutput != nil {
+		err = onOutput(scope, result)
 	}
 
 	// Record metrics for successful calls (or JSON unmarshal failures)
