@@ -228,6 +228,10 @@ type TaskQueuePermission struct {
 	// Maximum total concurrent workers across all queues. Default: 1
 	MaxConcurrency int `json:"maxConcurrency,omitempty" yaml:"maxConcurrency,omitempty" mapstructure:"maxConcurrency,omitempty"`
 
+	// Maximum run time of one task execution, in seconds. Capped by the server option
+	// Plugins.MaxTaskDuration. Default: 30
+	MaxTaskDuration int `json:"maxTaskDuration,omitempty" yaml:"maxTaskDuration,omitempty" mapstructure:"maxTaskDuration,omitempty"`
+
 	// Explanation for why task queue access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
@@ -248,6 +252,12 @@ func (j *TaskQueuePermission) UnmarshalJSON(value []byte) error {
 	}
 	if 1 > plain.MaxConcurrency {
 		return fmt.Errorf("field %s: must be >= %v", "maxConcurrency", 1)
+	}
+	if v, ok := raw["maxTaskDuration"]; !ok || v == nil {
+		plain.MaxTaskDuration = 30.0
+	}
+	if 1 > plain.MaxTaskDuration {
+		return fmt.Errorf("field %s: must be >= %v", "maxTaskDuration", 1)
 	}
 	*j = TaskQueuePermission(plain)
 	return nil

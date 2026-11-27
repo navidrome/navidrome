@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod stream;
 pub mod hostcall;
 use std::collections::HashMap;
 
