@@ -402,6 +402,14 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 				}
 			}
 		}
+		for _, e := range def.Embedded {
+			if len(streamUses(e, nil, nil)) > 0 {
+				return nil, nil, fmt.Errorf("shared type %s embeds %s: %w", canonical, e, errStreamInShared)
+			}
+			if c, ok := nestedSharedCanonical(e, shared); ok {
+				queue = append(queue, c)
+			}
+		}
 	}
 
 	var out []SharedAlias
@@ -693,7 +701,8 @@ func streamUses(goType string, aliases map[string]TypeAlias, structs map[string]
 		st, isStruct := structs[t]
 		switch {
 		case strings.HasPrefix(t, "*"):
-			walk(t[1:], u, false, fieldsDirect, alias)
+			// Stream structs are converted through at most one pointer.
+			walk(t[1:], u, false, fieldsDirect && !strings.HasPrefix(t[1:], "*"), alias)
 		case strings.HasPrefix(t, "map["):
 			key, value := splitMapType(t)
 			walk(key, u, false, false, alias)
@@ -705,14 +714,16 @@ func streamUses(goType string, aliases map[string]TypeAlias, structs map[string]
 		case strings.HasPrefix(t, "io."):
 			u.Type, u.Direct = cmp.Or(alias, t), leafDirect && alias == ""
 			uses = append(uses, u)
-		case isAlias:
-			walk(a.Type, u, false, false, cmp.Or(alias, t))
-		case isStruct:
+		case isAlias || isStruct:
 			v := visit{t, fieldsDirect, u.TopField, u.Embedded}
 			if seen[v] {
 				return
 			}
 			seen[v] = true
+			if isAlias {
+				walk(a.Type, u, false, false, cmp.Or(alias, t))
+				return
+			}
 			for _, f := range st.Fields {
 				fu := u
 				fu.Holder = fieldRef{t, f.Name}
@@ -1149,9 +1160,15 @@ func parseMethod(name string, funcType *ast.FuncType, annotation map[string]stri
 		}
 	}
 
-	for _, p := range slices.Concat(m.Params, m.Returns) {
+	for _, p := range m.Params {
 		if slices.Contains(reservedParamNames, p.Name) {
 			return Method{}, fmt.Errorf("parameter name %q is reserved by generated code", p.Name)
+		}
+	}
+	// The host wrapper binds results under their lowercased names.
+	for _, r := range m.Returns {
+		if slices.Contains(reservedParamNames, r.Name) || slices.Contains(reservedParamNames, strings.ToLower(r.Name)) {
+			return Method{}, fmt.Errorf("parameter name %q is reserved by generated code", r.Name)
 		}
 	}
 

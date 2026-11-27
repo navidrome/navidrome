@@ -487,6 +487,16 @@ type Outer struct {
 }
 `, `Put(ctx context.Context, outer Outer) error`)),
 			Entry("slice of stream structs", blobService(upload, `List(ctx context.Context) ([]Upload, error)`)),
+			Entry("double pointer to a stream struct", blobService(upload, `Put(ctx context.Context, upload **Upload) error`)),
+		)
+
+		DescribeTable("stops at recursive defined types",
+			func(decl string) {
+				_, err := parseService(header + blobService(decl, `Put(ctx context.Context, c Chain) error`))
+				Expect(err).NotTo(HaveOccurred())
+			},
+			Entry("slice", "type Chain []Chain\n"),
+			Entry("map", "type Chain map[string]Chain\n"),
 		)
 
 		It("rejects a stream method without an error result", func() {
@@ -503,6 +513,7 @@ type Outer struct {
 			Entry("named stream result", blobService("", `Open(ctx context.Context, name string) (conv io.ReadCloser, err error)`), "conv"),
 			Entry("plain method", blobService("", `Get(ctx context.Context, service string) (response string, err error)`), "service"),
 			Entry("stream param shadowing the stream package", blobService("", `Save(ctx context.Context, name string, stream io.ReadCloser) error`), "stream"),
+			Entry("result bound under its lowercased name", blobService("", `Open(ctx context.Context, name string) (Conv io.ReadCloser, err error)`), "Conv"),
 		)
 
 		Describe("shared types", func() {
@@ -517,6 +528,14 @@ import "io"
 
 type Blob struct {
 	Body io.ReadCloser
+}
+
+type EmbedsStream struct {
+	io.ReadCloser
+}
+
+type EmbedsBlob struct {
+	Blob
 }
 `), 0600)).To(Succeed())
 				var err error
@@ -539,6 +558,8 @@ import (
 					Expect(err).To(MatchError(ContainSubstring("streams are not supported in shared types")))
 				},
 				Entry("as a direct param", blobService("", `Put(ctx context.Context, blob types.Blob) error`)),
+				Entry("embedding a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsStream) error`)),
+				Entry("embedding a shared struct with a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsBlob) error`)),
 				Entry("through a local struct field", blobService(`
 type Wrapper struct {
 	B types.Blob
