@@ -29,6 +29,16 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		repo = NewPlaylistRepository(GetDBXBuilder())
 	})
 
+	trackIDsOf := func(rules *criteria.Criteria) []string {
+		newPls := model.Playlist{Name: "Track IDs", OwnerID: "userid", Rules: rules}
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
+
+		pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
+		Expect(err).ToNot(HaveOccurred())
+		return slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })
+	}
+
 	Context("Smart Playlists", func() {
 		var rules *criteria.Criteria
 		BeforeEach(func() {
@@ -530,16 +540,6 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 		})
 
-		trackIDsOf := func(rules *criteria.Criteria) []string {
-			newPls := model.Playlist{Name: "Album Aggregates", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(ctx, &newPls)).To(Succeed())
-			DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
-
-			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
-			Expect(err).ToNot(HaveOccurred())
-			return slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })
-		}
-
 		It("filters on albumSongCount", func() {
 			// albumMultiDisc (ID "104") is the only fixture album with SongCount > 3
 			rules := &criteria.Criteria{Expression: criteria.All{criteria.Gt{"albumSongCount": 3}}}
@@ -591,58 +591,24 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			}
 		})
 
-		trackIDsOf := func(rules *criteria.Criteria) []string {
-			newPls := model.Playlist{Name: "Album Play Count", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(ctx, &newPls)).To(Succeed())
-			DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
-
-			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
-			Expect(err).ToNot(HaveOccurred())
-			return slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })
-		}
-
-		It("matches the normalized album play count when AlbumPlayCountMode is normalized", func() {
-			conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized })
-
-			rules := &criteria.Criteria{Expression: criteria.All{
-				criteria.Is{"album": "Normalized Album"},
-				criteria.Is{"albumPlayCount": 1},
-			}}
-			Expect(trackIDsOf(rules)).To(ConsistOf(songIDs))
-		})
-
-		It("compares a quoted numeric threshold as a number in normalized mode", func() {
-			conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized })
-
-			// Rules loaded from JSON keep numbers that were quoted as strings.
-			range0 := &criteria.Criteria{Expression: criteria.All{
-				criteria.Is{"album": "Normalized Album"},
-				criteria.Gt{"albumPlayCount": "0"},
-			}}
-			Expect(trackIDsOf(range0)).To(ConsistOf(songIDs))
-
-			equals1 := &criteria.Criteria{Expression: criteria.All{
-				criteria.Is{"album": "Normalized Album"},
-				criteria.Is{"albumPlayCount": "1"},
-			}}
-			Expect(trackIDsOf(equals1)).To(ConsistOf(songIDs))
-		})
-
-		It("matches the stored album play count when AlbumPlayCountMode is absolute", func() {
-			conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute })
-
-			stored := &criteria.Criteria{Expression: criteria.All{
-				criteria.Is{"album": "Normalized Album"},
-				criteria.Is{"albumPlayCount": 4},
-			}}
-			Expect(trackIDsOf(stored)).To(ConsistOf(songIDs))
-
-			normalized := &criteria.Criteria{Expression: criteria.All{
-				criteria.Is{"album": "Normalized Album"},
-				criteria.Is{"albumPlayCount": 1},
-			}}
-			Expect(trackIDsOf(normalized)).To(BeEmpty())
-		})
+		// Rules loaded from JSON keep numbers that were quoted as strings, so the quoted entries
+		// check that the threshold still compares as a number.
+		DescribeTable("filters on albumPlayCount",
+			func(mode string, cond criteria.Expression, matches bool) {
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = mode })
+				rules := &criteria.Criteria{Expression: criteria.All{criteria.Is{"album": "Normalized Album"}, cond}}
+				if matches {
+					Expect(trackIDsOf(rules)).To(ConsistOf(songIDs))
+				} else {
+					Expect(trackIDsOf(rules)).To(BeEmpty())
+				}
+			},
+			Entry("normalized: matches the normalized count", consts.AlbumPlayCountModeNormalized, criteria.Is{"albumPlayCount": 1}, true),
+			Entry("normalized: quoted > threshold", consts.AlbumPlayCountModeNormalized, criteria.Gt{"albumPlayCount": "0"}, true),
+			Entry("normalized: quoted = threshold", consts.AlbumPlayCountModeNormalized, criteria.Is{"albumPlayCount": "1"}, true),
+			Entry("absolute: matches the stored count", consts.AlbumPlayCountModeAbsolute, criteria.Is{"albumPlayCount": 4}, true),
+			Entry("absolute: ignores the normalized count", consts.AlbumPlayCountModeAbsolute, criteria.Is{"albumPlayCount": 1}, false),
+		)
 	})
 
 	Describe("Smart Playlists with Tag Criteria", func() {

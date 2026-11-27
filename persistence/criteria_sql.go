@@ -132,23 +132,18 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"random":               {order: "random()"},
 }
 
-// normalizedAlbumPlayCount is the same normalization withAnnotation applies to the album's own
-// play_count, so a filter or sort sees the number the album list reports. The CAST gives the
-// expression INTEGER affinity, which the bare column had: a quoted numeric threshold in a rule
-// ("gt": {"albumPlayCount": "0"}) still compares as a number instead of as TEXT.
-const normalizedAlbumPlayCount = "cast(round(coalesce(round(cast(album_annotation.play_count as float) / coalesce(album.song_count, 1), 1), 0)) as integer)"
+// normalizedAlbumPlayCount matches the count the album list reports. The CAST keeps INTEGER
+// affinity, so a quoted threshold ("gt": {"albumPlayCount": "0"}) compares as a number, not TEXT.
+var normalizedAlbumPlayCount = "cast(" + normalizedAlbumPlayCountExpr("album_annotation.play_count", "album") + " as integer)"
 
 // smartPlaylistFieldFor resolves the fields whose SQL value depends on server configuration.
 func smartPlaylistFieldFor(name string) (smartPlaylistField, bool) {
 	field, ok := smartPlaylistFields[name]
-	if !ok {
-		return smartPlaylistField{}, false
-	}
-	if name == "albumplaycount" && conf.Server().AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized {
+	if ok && name == "albumplaycount" && conf.Server().AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized {
 		field.expr = normalizedAlbumPlayCount
 		field.joinType |= smartPlaylistJoinAlbum
 	}
-	return field, true
+	return field, ok
 }
 
 func (c smartPlaylistCriteria) where() (squirrel.Sqlizer, error) {
