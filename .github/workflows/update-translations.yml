@@ -17,7 +17,7 @@ jobs:
         run: |
           .github/workflows/update-translations.sh 2> title.tmp
           title=$(cat title.tmp)
-          echo "::set-output name=title::$title"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
           rm title.tmp
       - name: Show changes, if any
         run: |
