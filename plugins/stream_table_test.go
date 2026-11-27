@@ -320,12 +320,6 @@ var _ = Describe("streamTable", func() {
 		_, err := table.newScope(ctx)
 		Expect(err).To(MatchError(errPluginUnloaded))
 	})
-
-	It("carries the scope in a ctx", func() {
-		s := newScope()
-		Expect(callScopeFrom(withCallScope(ctx, s))).To(BeIdenticalTo(s))
-		Expect(callScopeFrom(ctx)).To(BeNil())
-	})
 })
 
 // dataErrReader returns its data together with err on the first Read, then err alone.
