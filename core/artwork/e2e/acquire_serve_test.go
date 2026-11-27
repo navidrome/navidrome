@@ -20,7 +20,6 @@ import (
 	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/tests/harness"
 	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -91,12 +90,11 @@ var _ = Describe("Acquisition → serve loop", func() {
 			c.DevArtworkWorkerConcurrency = 1
 		})
 
-		harness.TruncateDB(GinkgoT().Context(), userTables)
 		ds = persistence.New(db.Db())
 		artRepo = ds.Artwork()
 		u := admin
 		Expect(ds.User().Put(ctx, &u)).To(Succeed())
-		Expect(ds.Library().Put(ctx, &model.Library{ID: model.DefaultLibraryID, Name: "Music", Path: repoRoot})).To(Succeed())
+		persistencetest.SetLibraries(ctx, ds, repoRoot)
 		ffm := tests.NewMockFFmpeg("")
 		store = artwork.NewImageStore(GinkgoT().TempDir())
 		// size=0 requests stream originals, so this reader is never called (serving_test covers resizing).
