@@ -387,6 +387,42 @@ var _ = Describe("Configuration", func() {
 
 	})
 
+	DescribeTable("NormalizePlaylistsPattern",
+		func(input, expected string) {
+			Expect(conf.NormalizePlaylistsPattern(input)).To(Equal(expected))
+		},
+		Entry("forward slashes unchanged", "Playlists/navidrome", "Playlists/navidrome"),
+		Entry("backslash separators", `Playlists\navidrome`, "Playlists/navidrome"),
+		Entry("trailing backslash", `Playlists\navidrome\`, "Playlists/navidrome"),
+		Entry("escaped brackets kept", `\[Mix\]`, `\[Mix\]`),
+		Entry("escaped glob then separator", `\[Mix\]\**`, `\[Mix\]/**`),
+		Entry("backslash before a wildcard", `Playlists\**`, "Playlists/**"),
+		Entry("escaped backslash kept", `a\\b`, `a\\b`),
+		Entry("separator before a bracket class", `Playlists\[0-9]*`, "Playlists/[0-9]*"),
+		Entry("escaped hyphen inside a class kept", `Playlists/[a\-z]`, `Playlists/[a\-z]`),
+		Entry("escaped bracket inside a class kept", `Playlists/[\]x]`, `Playlists/[\]x]`),
+		Entry("separator after a class", `Playlists\[QR]ock\navidrome`, "Playlists/[QR]ock/navidrome"),
+		Entry("separator before a brace alternation", `Playlists\{Rock,Jazz}`, "Playlists/{Rock,Jazz}"),
+		Entry("escaped braces kept", `\{Live\}`, `\{Live\}`),
+		Entry("unclosed escaped bracket kept", `\[Mix`, `\[Mix`),
+		Entry("root pattern kept", "/", "/"),
+		Entry("current dir", ".", "."),
+	)
+
+	Describe("validatePlaylistsPath", func() {
+		It("accepts a Windows path with a trailing backslash", func() {
+			Expect(conf.ValidatePlaylistsPath(&conf.Options{PlaylistsPath: `Playlists\navidrome\`})).To(Succeed())
+		})
+
+		It("accepts escaped glob characters", func() {
+			Expect(conf.ValidatePlaylistsPath(&conf.Options{PlaylistsPath: `\[Mix\]`})).To(Succeed())
+		})
+
+		It("rejects an invalid pattern", func() {
+			Expect(conf.ValidatePlaylistsPath(&conf.Options{PlaylistsPath: "Playlists/[navidrome"})).To(MatchError(ContainSubstring("invalid PlaylistsPath")))
+		})
+	})
+
 	Describe("ValidateByteSize", func() {
 		DescribeTable("accepts valid size values",
 			func(input string) {
