@@ -298,14 +298,17 @@ var _ = Describe("streamTable", func() {
 		})
 	})
 
-	It("stops issuing handles at 2^31-1", func() {
-		s := newScope()
+	It("wraps handles around after 2^31-1 and skips the live ones", func() {
+		a, b := newScope(), newScope()
+		_, b1 := reader()
+		_, b2 := reader()
+		Expect(mustRegister(a, b1)).To(Equal(uint32(1)))
+		Expect(mustRegister(b, b2)).To(Equal(uint32(2)))
 		table.next = math.MaxInt32 - 1
 		_, backend := reader()
-		Expect(mustRegister(s, backend)).To(Equal(uint32(math.MaxInt32)))
+		Expect(mustRegister(a, backend)).To(Equal(uint32(math.MaxInt32)))
 		_, backend = reader()
-		_, err := s.register(backend)
-		Expect(err).To(MatchError(errStreamHandlesExhausted))
+		Expect(mustRegister(a, backend)).To(Equal(uint32(3)))
 	})
 
 	It("closes all live scopes when the table closes", func() {

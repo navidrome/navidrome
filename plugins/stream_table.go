@@ -14,12 +14,11 @@ import (
 const maxOpenStreams = 64
 
 var (
-	errUnknownStream          = errors.New("unknown stream handle")
-	errTooManyStreams         = errors.New("too many open streams")
-	errStreamHandlesExhausted = errors.New("stream handles exhausted")
-	errCallEnded              = errors.New("plugin call has ended")
-	errPluginUnloaded         = errors.New("plugin is unloaded")
-	errDuplicateStream        = errors.New("stream handle returned more than once")
+	errUnknownStream   = errors.New("unknown stream handle")
+	errTooManyStreams  = errors.New("too many open streams")
+	errCallEnded       = errors.New("plugin call has ended")
+	errPluginUnloaded  = errors.New("plugin is unloaded")
+	errDuplicateStream = errors.New("stream handle returned more than once")
 )
 
 // streamTable holds the stream handles of one loaded plugin. One mutex guards the table and all its scopes,
@@ -103,13 +102,30 @@ func (s *callScope) insert(b *streamBackend) (uint32, error) {
 	if t.open >= maxOpenStreams {
 		return 0, errTooManyStreams
 	}
-	if t.next >= math.MaxInt32 {
-		return 0, errStreamHandlesExhausted
-	}
-	t.next++
-	s.entries[t.next] = b
+	h := t.nextHandleLocked()
+	s.entries[h] = b
 	t.open++
-	return t.next, nil
+	return h, nil
+}
+
+// nextHandleLocked wraps around after 2^31-1 and skips live handles. At most maxOpenStreams are live, so
+// the loop ends.
+func (t *streamTable) nextHandleLocked() uint32 {
+	for {
+		t.next = t.next%math.MaxInt32 + 1
+		if !t.liveLocked(t.next) {
+			return t.next
+		}
+	}
+}
+
+func (t *streamTable) liveLocked(h uint32) bool {
+	for s := range t.scopes {
+		if _, ok := s.entries[h]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *callScope) lookup(h uint32, need streamRights) (*streamBackend, error) {
