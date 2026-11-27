@@ -14,10 +14,10 @@ func init() {
 	goose.AddMigrationContext(upFixAlbumComments, downFixAlbumComments)
 }
 
-func upFixAlbumComments(_ context.Context, tx *sql.Tx) error {
+func upFixAlbumComments(ctx context.Context, tx *sql.Tx) error {
 	//nolint:gosec
-	rows, err := tx.Query(`
-	SELECT album.id, group_concat(media_file.comment, '` + consts.Zwsp + `') FROM album, media_file WHERE media_file.album_id = album.id GROUP BY album.id;
+	rows, err := tx.QueryContext(ctx, `
+	SELECT album.id, group_concat(media_file.comment, '`+consts.Zwsp+`') FROM album, media_file WHERE media_file.album_id = album.id GROUP BY album.id;
 	   `)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func upFixAlbumComments(_ context.Context, tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downFixAlbumComments(_ context.Context, tx *sql.Tx) error {
+func downFixAlbumComments(_ context.Context, _ *sql.Tx) error {
 	return nil
 }
 

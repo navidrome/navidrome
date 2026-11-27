@@ -14,24 +14,43 @@ const (
 	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on&synchronous=normal"
 	InitialSetupFlagKey           = "InitialSetup"
 	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
+	// PlaylistsImportPendingFlagKey marks that playlist import was deferred because
+	// no admin user existed yet; the next scan with an admin imports them.
+	PlaylistsImportPendingFlagKey = "PlaylistsImportPending"
 	LastScanErrorKey              = "LastScanError"
 	LastScanTypeKey               = "LastScanType"
 	LastScanStartTimeKey          = "LastScanStartTime"
+	LastDBAnalyzeAtKey            = "LastDBAnalyzeAt"
+	LastDBAnalyzeAttemptAtKey     = "LastDBAnalyzeAttemptAt"
+	DBAnalyzePendingKey           = "DBAnalyzePending"
+	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
+	// ArtConfFingerprintPropertyKey is the model.PropertyRepository key the artwork config check
+	// compares against to detect artwork-affecting config changes across restarts.
+	ArtConfFingerprintPropertyKey = "ArtConfFingerprint"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
 	JWTSecretKey           = "JWTSecret"
+	JWTPublicSecretKey     = "JWTPublicSecret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
+	APIv1GrantIdleExpiry   = 90 * 24 * time.Hour
+	DefaultSmartRefresh    = 5 * time.Second
+	DefaultShareExpiration = 8760 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
-	OptimizeDBSchedule = "@every 24h"
+	DBAnalyzeCheckSchedule = "@every 30m"
+	DBAnalyzeMaxAge        = 24 * time.Hour
+
+	ArtworkEnqueueMissingSchedule = "@every 1h"
+	ArtworkPruneSchedule          = "@daily"
 
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
 	DefaultEncryptionKey  = "just for obfuscation"
 	PasswordsEncryptedKey = "PasswordsEncryptedKey"
 	PasswordAutogenPrefix = "__NAVIDROME_AUTOGEN__" //nolint:gosec
+	APIKeyPrefix          = "nds_"
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
@@ -41,6 +60,12 @@ const (
 	URLPathSubsonicAPI  = "/rest"
 	URLPathPublic       = "/share"
 	URLPathPublicImages = URLPathPublic + "/img"
+	URLPathJellyfinAPI  = "/jellyfin"
+	URLPathAPIv1        = "/api/v1"
+
+	// JellyfinServerIDKey is the Property key for the stable, persisted server Id reported by the
+	// Jellyfin API. Jellyfin clients cache this value, so it must survive process restarts.
+	JellyfinServerIDKey = "JellyfinServerID"
 
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
 	// available at https://unsplash.com/collections/20072696/navidrome
@@ -51,12 +76,15 @@ const (
 	DefaultUILoginBackgroundURLOffline = "data:image/png;base64," + DefaultUILoginBackgroundOffline
 	DefaultMaxSidebarPlaylists         = 100
 
+	DefaultAuthWindowLength       = 20 * time.Second
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
 	ServerReadHeaderTimeout = 3 * time.Second
 
 	DefaultInfoLanguage = "en"
+
+	DefaultMinScrobbleDuration = 30 * time.Second
 
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
@@ -65,7 +93,11 @@ const (
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
+	NoMediaFile    = ".nomedia"
 	ArtworkFolder  = "artwork"
+	// HashedArtworkFolder is a subtree of ArtworkFolder, kept apart from the name-addressed
+	// upload folders beside it so Prune's sweep never reaches them.
+	HashedArtworkFolder = "hashed"
 
 	PlaceholderArtistArt            = "artist-placeholder.webp"
 	PlaceholderAlbumArt             = "album-placeholder.webp"
@@ -83,11 +115,15 @@ const (
 	DefaultScannerExtractor = "taglib"
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
+
+	DefaultActivityPanelUpdateRate  = 300 * time.Millisecond
+	DefaultPluginCompilationTimeout = time.Minute
 )
 
 const (
 	DefaultUICoverArtSize     = 300
 	DefaultMaxImageUploadSize = "10MB"
+	DefaultMaxImageSize       = "20MB"
 )
 
 // Prometheus options
@@ -122,10 +158,8 @@ const (
 
 const (
 	//DefaultAlbumPID = "album_legacy"
-	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,albumversion,releasedate"
+	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,albumversion"
 	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
-	PIDAlbumKey     = "PIDAlbum"
-	PIDTrackKey     = "PIDTrack"
 )
 
 const (
@@ -141,6 +175,12 @@ const (
 	PurgeMissingFull   = "full"
 )
 
+const (
+	RecentlyAddedByScan    = "scan"
+	RecentlyAddedByBirth   = "birth"
+	RecentlyAddedByModTime = "modtime"
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []struct {
@@ -153,39 +193,37 @@ var (
 			Name:           "mp3 audio",
 			TargetFormat:   "mp3",
 			DefaultBitRate: 192,
-			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			Name:           "opus audio",
 			TargetFormat:   "opus",
 			DefaultBitRate: 128,
-			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
 			Name:           "aac audio",
 			TargetFormat:   "aac",
 			DefaultBitRate: 256,
-			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 		{
 			Name:           "flac audio",
 			TargetFormat:   "flac",
 			DefaultBitRate: 0,
-			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -v 0 -c:a flac -f flac -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -f flac -",
 		},
 	}
 )
 
-var HTTPUserAgent = "Navidrome" + "/" + Version
+var HTTPUserAgent = "Navidrome/" + Version + " - https://github.com/navidrome"
 
 var (
-	VariousArtists = "Various Artists"
-	// TODO This will be dynamic when using disambiguation
-	VariousArtistsID = "63sqASlAfjbGMuLP4JhnZU"
-	UnknownAlbum     = "[Unknown Album]"
-	UnknownArtist    = "[Unknown Artist]"
-	// TODO This will be dynamic when using disambiguation
-	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
+	VariousArtists      = "Various Artists"
+	VariousArtistsID    = "63sqASlAfjbGMuLP4JhnZU" // TODO This will be dynamic when using disambiguation
+	UnknownAlbum        = "[Unknown Album]"
+	UnknownArtist       = "[Unknown Artist]"
+	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist)) // TODO This will be dynamic when using disambiguation
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ArtistJoiner = " • "

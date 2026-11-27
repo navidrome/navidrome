@@ -473,6 +473,9 @@ export default {
           },
         },
       },
+      currentPageButton: {
+        border: `1px solid ${bLight['300']}`,
+      },
       actions: {
         '@global': {
           '.next-page': {

@@ -1,0 +1,18 @@
+MusicFolder = "/toml/music"
+
+# Valid option, but written at the root level instead of under Scanner
+ArtistSplitExceptions = ["AC/DC", "Tyler, the creator"]
+
+# Misspelled option
+EnableDownlods = true
+
+# Unknown section
+[Whatever]
+Foo = "bar"
+
+# Valid options, must not be reported
+[Scanner]
+ArtistJoiner = " • "
+
+[Tags.custom]
+aliases = ["toml", "test"]

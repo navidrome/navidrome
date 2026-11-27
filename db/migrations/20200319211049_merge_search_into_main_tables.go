@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200319211049, Down20200319211049)
 }
 
-func Up20200319211049(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200319211049(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table media_file
 	add full_text varchar(255) default '';
 create index if not exists media_file_full_text
@@ -33,10 +33,10 @@ drop table if exists search;
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan will be performed!")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan will be performed!")
+	return forceFullRescan(ctx, tx)
 }
 
-func Down20200319211049(_ context.Context, tx *sql.Tx) error {
+func Down20200319211049(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

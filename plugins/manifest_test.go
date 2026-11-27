@@ -117,76 +117,6 @@ var _ = Describe("Manifest", func() {
 		})
 	})
 
-	Describe("HasExperimentalThreads", func() {
-		It("returns false when no experimental section", func() {
-			m := &Manifest{}
-			Expect(m.HasExperimentalThreads()).To(BeFalse())
-		})
-
-		It("returns false when experimental section has no threads", func() {
-			m := &Manifest{
-				Experimental: &Experimental{},
-			}
-			Expect(m.HasExperimentalThreads()).To(BeFalse())
-		})
-
-		It("returns true when threads feature is present", func() {
-			m := &Manifest{
-				Experimental: &Experimental{
-					Threads: &ThreadsFeature{},
-				},
-			}
-			Expect(m.HasExperimentalThreads()).To(BeTrue())
-		})
-
-		It("returns true when threads feature has a reason", func() {
-			m := &Manifest{
-				Experimental: &Experimental{
-					Threads: &ThreadsFeature{
-						Reason: new("Required for concurrent processing"),
-					},
-				},
-			}
-			Expect(m.HasExperimentalThreads()).To(BeTrue())
-		})
-
-		It("parses experimental.threads from JSON", func() {
-			data := []byte(`{
-				"name": "Threaded Plugin",
-				"author": "Test Author",
-				"version": "1.0.0",
-				"experimental": {
-					"threads": {
-						"reason": "To use multi-threaded WASM module"
-					}
-				}
-			}`)
-
-			var m Manifest
-			err := json.Unmarshal(data, &m)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(m.HasExperimentalThreads()).To(BeTrue())
-			Expect(m.Experimental.Threads.Reason).ToNot(BeNil())
-			Expect(*m.Experimental.Threads.Reason).To(Equal("To use multi-threaded WASM module"))
-		})
-
-		It("parses experimental.threads without reason from JSON", func() {
-			data := []byte(`{
-				"name": "Threaded Plugin",
-				"author": "Test Author",
-				"version": "1.0.0",
-				"experimental": {
-					"threads": {}
-				}
-			}`)
-
-			var m Manifest
-			err := json.Unmarshal(data, &m)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(m.HasExperimentalThreads()).To(BeTrue())
-		})
-	})
-
 	Describe("ParseManifest", func() {
 		It("parses a valid manifest with users permission", func() {
 			data := []byte(`{
@@ -228,6 +158,18 @@ var _ = Describe("Manifest", func() {
 			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
 			Expect(err.Error()).To(ContainSubstring("users"))
 		})
+
+		It("reads taskqueue.maxTaskDuration and defaults it to 30", func() {
+			m, err := ParseManifest([]byte(`{"name":"t","author":"a","version":"1.0.0",
+				"permissions":{"taskqueue":{"maxTaskDuration":600}}}`))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Permissions.Taskqueue.MaxTaskDuration).To(Equal(600))
+
+			m, err = ParseManifest([]byte(`{"name":"t","author":"a","version":"1.0.0",
+				"permissions":{"taskqueue":{}}}`))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(m.Permissions.Taskqueue.MaxTaskDuration).To(Equal(30))
+		})
 	})
 
 	Describe("Validate", func() {
@@ -259,6 +201,67 @@ var _ = Describe("Manifest", func() {
 			err := m.Validate()
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("subsonicapi"))
+		})
+
+		It("validates manifest with matcher and library permissions", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Matcher: &MatcherPermission{},
+					Library: &LibraryPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when matcher without library permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					Matcher: &MatcherPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("matcher"))
+			Expect(err.Error()).To(ContainSubstring("library"))
+		})
+
+		It("validates manifest with scrobbleRetriever and users permissions", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					ScrobbleRetriever: &ScrobbleRetrieverPermission{},
+					Users:             &UsersPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when scrobbleRetriever without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					ScrobbleRetriever: &ScrobbleRetrieverPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("scrobbleRetriever"))
 		})
 
 		It("validates manifest without subsonicapi", func() {
@@ -462,5 +465,29 @@ var _ = Describe("Manifest", func() {
 			err := ValidateWithCapabilities(m, []Capability{})
 			Expect(err).ToNot(HaveOccurred())
 		})
+	})
+})
+
+var _ = Describe("Permissions.DeclaredNames", func() {
+	It("returns nil for a nil receiver", func() {
+		var p *Permissions
+		Expect(p.DeclaredNames()).To(BeEmpty())
+	})
+
+	It("returns declared names sorted", func() {
+		p := &Permissions{
+			Subsonicapi: &SubsonicAPIPermission{},
+			Users:       &UsersPermission{},
+		}
+		Expect(p.DeclaredNames()).To(Equal([]string{"subsonicapi", "users"}))
+	})
+
+	It("returns all declared names sorted regardless of field order", func() {
+		p := &Permissions{
+			Http:    &HTTPPermission{},
+			Artwork: &ArtworkPermission{},
+			Cache:   &CachePermission{},
+		}
+		Expect(p.DeclaredNames()).To(Equal([]string{"artwork", "cache", "http"}))
 	})
 })

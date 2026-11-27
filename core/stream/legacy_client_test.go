@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,7 +22,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("sets transcoding profile for explicit format without bitrate", func() {
-		ci := buildLegacyClientInfo(mf, "mp3", 0)
+		ci := buildLegacyClientInfo(mf, "mp3", 0, 0)
 
 		Expect(ci.Name).To(Equal("legacy"))
 		Expect(ci.TranscodingProfiles).To(HaveLen(1))
@@ -34,7 +35,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("does not add direct play profile when explicit format differs from source (no bitrate)", func() {
-		ci := buildLegacyClientInfo(mf, "opus", 0)
+		ci := buildLegacyClientInfo(mf, "opus", 0, 0)
 
 		Expect(ci.TranscodingProfiles).To(HaveLen(1))
 		Expect(ci.TranscodingProfiles[0].Container).To(Equal("opus"))
@@ -42,7 +43,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("adds direct play profile when explicit format matches source format", func() {
-		ci := buildLegacyClientInfo(mf, "flac", 0)
+		ci := buildLegacyClientInfo(mf, "flac", 0, 0)
 
 		Expect(ci.TranscodingProfiles).To(HaveLen(1))
 		Expect(ci.TranscodingProfiles[0].Container).To(Equal("flac"))
@@ -52,7 +53,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("sets transcoding profile and bitrate for explicit format with bitrate", func() {
-		ci := buildLegacyClientInfo(mf, "mp3", 192)
+		ci := buildLegacyClientInfo(mf, "mp3", 192, 0)
 
 		Expect(ci.TranscodingProfiles).To(HaveLen(1))
 		Expect(ci.TranscodingProfiles[0].Container).To(Equal("mp3"))
@@ -63,7 +64,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("returns direct play profile when no format and no bitrate", func() {
-		ci := buildLegacyClientInfo(mf, "", 0)
+		ci := buildLegacyClientInfo(mf, "", 0, 0)
 
 		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
 		Expect(ci.DirectPlayProfiles[0].Containers).To(BeEmpty())
@@ -74,10 +75,9 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("uses default downsampling format for bitrate-only downsampling", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DefaultDownsamplingFormat = "opus"
+		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
-		ci := buildLegacyClientInfo(mf, "", 128)
+		ci := buildLegacyClientInfo(mf, "", 128, 0)
 
 		Expect(ci.TranscodingProfiles).To(HaveLen(1))
 		Expect(ci.TranscodingProfiles[0].Container).To(Equal("opus"))
@@ -91,7 +91,7 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("returns direct play when bitrate >= source bitrate", func() {
-		ci := buildLegacyClientInfo(mf, "", 960)
+		ci := buildLegacyClientInfo(mf, "", 960, 0)
 
 		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
 		Expect(ci.DirectPlayProfiles[0].Containers).To(BeEmpty())
@@ -99,6 +99,47 @@ var _ = Describe("buildLegacyClientInfo", func() {
 		Expect(ci.DirectPlayProfiles[0].Protocols).To(Equal([]string{ProtocolHTTP}))
 		Expect(ci.TranscodingProfiles).To(BeEmpty())
 		Expect(ci.MaxAudioBitrate).To(BeZero())
+	})
+
+	It("uses default downsampling format when player MaxBitRate is below source and no format/bitrate", func() {
+		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
+
+		ci := buildLegacyClientInfo(mf, "", 0, 256)
+
+		Expect(ci.TranscodingProfiles).To(HaveLen(1))
+		Expect(ci.TranscodingProfiles[0].Container).To(Equal("opus"))
+		Expect(ci.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
+		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
+		Expect(ci.DirectPlayProfiles[0].Containers).To(Equal([]string{"flac"}))
+	})
+
+	It("does not downsample when player MaxBitRate is >= source bitrate", func() {
+		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
+
+		ci := buildLegacyClientInfo(mf, "", 0, 960)
+
+		Expect(ci.TranscodingProfiles).To(BeEmpty())
+		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
+		Expect(ci.DirectPlayProfiles[0].Containers).To(BeEmpty())
+	})
+
+	It("does not downsample when DefaultDownsamplingFormat is empty even with player cap", func() {
+		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "" })
+
+		ci := buildLegacyClientInfo(mf, "", 0, 256)
+
+		Expect(ci.TranscodingProfiles).To(BeEmpty())
+		Expect(ci.DirectPlayProfiles).To(HaveLen(1))
+		Expect(ci.DirectPlayProfiles[0].Containers).To(BeEmpty())
+	})
+
+	It("prefers explicit request format over player cap", func() {
+		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
+
+		ci := buildLegacyClientInfo(mf, "mp3", 0, 256)
+
+		Expect(ci.TranscodingProfiles).To(HaveLen(1))
+		Expect(ci.TranscodingProfiles[0].Container).To(Equal("mp3"))
 	})
 })
 
@@ -110,10 +151,7 @@ var _ = Describe("ResolveRequest", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds := &tests.MockDataStore{
-			MockedProperty:    &tests.MockedPropertyRepo{},
-			MockedTranscoding: &tests.MockTranscodingRepo{},
-		}
+		ds := persistence.New(db.Db())
 		ff := tests.NewMockFFmpeg("")
 		auth.Init(ds)
 		svc = NewTranscodeDecider(ds, ff)
@@ -138,7 +176,7 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("transcodes to requested format", func() {
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "opus", 0, 0)
@@ -147,7 +185,7 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("transcodes to requested format with bitrate limit", func() {
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "mp3", 128, 0)
@@ -166,10 +204,9 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("downsamples when only bitrate is specified below source", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DefaultDownsamplingFormat = "opus"
+		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "", 128, 0)
@@ -179,7 +216,7 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("passes offset through", func() {
-		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 		decider := svc.(*deciderService)
 		req := decider.ResolveRequest(ctx, mf, "opus", 128, 30)
@@ -243,8 +280,18 @@ var _ = Describe("ResolveRequest", func() {
 			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
 
 			Expect(req.Format).To(Equal("mp3"))
-			// With no cap, lossless→lossy uses format default bitrate (160 for mp3 from mock)
-			Expect(req.BitRate).To(Equal(160))
+			// With no cap, lossless→lossy uses the mp3 default bitrate stored in the DB
+			Expect(req.BitRate).To(Equal(192))
+		})
+
+		It("serves a lossy source raw when the override targets a lossless format", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "flac", DefaultBitRate: 0})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("raw"))
 		})
 
 		It("does not apply override when no transcoding is in context", func() {
@@ -257,9 +304,43 @@ var _ = Describe("ResolveRequest", func() {
 		})
 	})
 
+	Context("lossy source with an explicitly requested lossless format", func() {
+		var mf *model.MediaFile
+
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
+			mf = withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", Codec: "Vorbis", BitRate: 320, Channels: 2, SampleRate: 44100})
+		})
+
+		It("transcodes to the requested format", func() {
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(ctx, mf, "flac", 0, 0)
+
+			Expect(req.Format).To(Equal("flac"))
+			Expect(req.BitRate).To(BeZero())
+			Expect(req.BitDepth).To(Equal(16))
+		})
+
+		It("falls back to DefaultDownsamplingFormat when a bitrate limit is also requested", func() {
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(ctx, mf, "flac", 1000, 0)
+
+			Expect(req.Format).To(Equal("opus"))
+		})
+
+		It("falls back to DefaultDownsamplingFormat when the player has a bitrate cap", func() {
+			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 1000})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(playerCtx, mf, "flac", 0, 0)
+
+			Expect(req.Format).To(Equal("opus"))
+		})
+	})
+
 	Context("Player MaxBitRate cap", func() {
 		It("applies player MaxBitRate cap when client has no limit", func() {
-			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 320})
 
 			decider := svc.(*deciderService)
@@ -270,7 +351,7 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("uses client limit when it is more restrictive than player MaxBitRate", func() {
-			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 500})
 
 			decider := svc.(*deciderService)
@@ -289,12 +370,36 @@ var _ = Describe("ResolveRequest", func() {
 
 			Expect(req.Format).To(Equal("raw"))
 		})
+
+		It("downsamples using DefaultDownsamplingFormat when only player MaxBitRate is set (no format/bitrate)", func() {
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
+
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 256})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(playerCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("opus"))
+			Expect(req.BitRate).To(Equal(256))
+		})
+
+		It("serves raw when only player MaxBitRate is set but no DefaultDownsamplingFormat", func() {
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "" })
+
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+			playerCtx := request.WithPlayer(ctx, model.Player{MaxBitRate: 256})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(playerCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("raw"))
+		})
 	})
 
 	Context("fallback for unknown format", func() {
 		It("falls back to DefaultDownsamplingFormat", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DefaultDownsamplingFormat = "opus"
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
 
@@ -305,8 +410,7 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("falls back to raw when DefaultDownsamplingFormat is empty", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DefaultDownsamplingFormat = ""
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
 
@@ -317,8 +421,7 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("falls back to raw when DefaultDownsamplingFormat is also invalid", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DefaultDownsamplingFormat = "xyz"
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "xyz" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
 
@@ -329,10 +432,9 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("preserves bitrate when falling back to DefaultDownsamplingFormat", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DefaultDownsamplingFormat = "opus"
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
-			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: 16})
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
 			decider := svc.(*deciderService)
 			req := decider.ResolveRequest(ctx, mf, "xyz", 128, 0)
@@ -340,5 +442,71 @@ var _ = Describe("ResolveRequest", func() {
 			Expect(req.Format).To(Equal("opus"))
 			Expect(req.BitRate).To(Equal(128))
 		})
+	})
+})
+
+var _ = Describe("ResolveClientRequest", func() {
+	var (
+		svc TranscodeDecider
+		ctx context.Context
+	)
+	mp3Target := []Profile{{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP}}
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		ds := persistence.New(db.Db())
+		auth.Init(ds)
+		svc = NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))
+	})
+
+	It("direct plays a source matching a profile through container aliases", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2, SampleRate: 44100})
+		ci := &ClientInfo{
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"mp4"}, AudioCodecs: []string{"aac"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		req := svc.ResolveClientRequest(ctx, mf, ci, 5)
+
+		Expect(req.Format).To(Equal("raw"))
+		Expect(req.Offset).To(Equal(5))
+	})
+
+	It("transcodes to the client's transcoding profile when no direct play profile matches", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+		ci := &ClientInfo{
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"mp3"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		Expect(svc.ResolveClientRequest(ctx, mf, ci, 0).Format).To(Equal("mp3"))
+	})
+
+	It("transcodes a direct-playable source over the bitrate cap to the client's target", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+		ci := &ClientInfo{
+			MaxAudioBitrate:     128,
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"flac"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		req := svc.ResolveClientRequest(ctx, mf, ci, 0)
+
+		Expect(req.Format).To(Equal("mp3"))
+		Expect(req.BitRate).To(Equal(128))
+	})
+
+	It("applies the player's MaxBitRate cap", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+		ctx = request.WithPlayer(ctx, model.Player{MaxBitRate: 192})
+		ci := &ClientInfo{
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"flac"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		req := svc.ResolveClientRequest(ctx, mf, ci, 0)
+
+		Expect(req.Format).To(Equal("mp3"))
+		Expect(req.BitRate).To(Equal(192))
 	})
 })

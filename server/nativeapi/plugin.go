@@ -15,17 +15,15 @@ import (
 )
 
 func (api *Router) addPluginRoute(r chi.Router) {
-	constructor := func(ctx context.Context) rest.Repository {
-		return api.ds.Plugin(ctx)
-	}
+	repo := api.ds.Plugin()
 
 	r.Route("/plugin", func(r chi.Router) {
 		r.Use(pluginsEnabledMiddleware)
-		r.Get("/", rest.GetAll(constructor))
+		r.Get("/", rest.GetAll(repo))
 		r.Post("/rescan", api.rescanPlugins)
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
-			r.Get("/", rest.Get(constructor))
+			r.Get("/", rest.Get(repo))
 			r.Put("/", api.updatePlugin)
 		})
 	})
@@ -43,10 +41,10 @@ func (api *Router) rescanPlugins(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Middleware to check if plugins feature is enabled
+// pluginsEnabledMiddleware checks if the plugins feature is enabled
 func pluginsEnabledMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !conf.Server.Plugins.Enabled {
+		if !conf.Server().Plugins.Enabled {
 			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}
@@ -65,13 +63,16 @@ type PluginUpdateRequest struct {
 	AllowWriteAccess *bool   `json:"allowWriteAccess,omitempty"`
 }
 
+// maxPluginUpdateBody leaves room for large plugin configs.
+const maxPluginUpdateBody = 1 << 20
+
 func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	ctx := r.Context()
-	repo := api.ds.Plugin(ctx)
+	repo := api.ds.Plugin()
 
 	// Get existing plugin to verify it exists
-	if _, err := repo.Get(id); err != nil {
+	if _, err := repo.Get(ctx, id); err != nil {
 		if errors.Is(err, rest.ErrPermissionDenied) {
 			http.Error(w, "Access denied: admin privileges required", http.StatusForbidden)
 			return
@@ -87,9 +88,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 
 	// Parse update request
 	var req PluginUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error(ctx, "Error decoding request", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if !server.DecodeJSONBody(w, r, maxPluginUpdateBody, &req) {
 		return
 	}
 
@@ -123,7 +122,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 			if enableErr := api.pluginManager.EnablePlugin(ctx, id); enableErr != nil {
 				log.Error(ctx, "Error enabling plugin", "id", id, enableErr)
 				// Refresh plugin from DB to get the error
-				plugin, err := repo.Get(id)
+				plugin, err := repo.Get(ctx, id)
 				if err != nil {
 					log.Error(ctx, "Error getting updated plugin after enable failure", "id", id, err)
 					http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -140,7 +139,9 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnprocessableEntity)
-				_ = json.NewEncoder(w).Encode(errorResponse)
+				if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+					log.Error(ctx, "Error encoding enable plugin error response", "id", id, err)
+				}
 				return
 			}
 		} else {
@@ -153,7 +154,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Refresh and return updated plugin
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(ctx, id)
 	if err != nil {
 		log.Error(ctx, "Error getting updated plugin", "id", id, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -188,7 +189,9 @@ func validateAndUpdateConfig(ctx context.Context, pm PluginManager, id, configJS
 		w.WriteHeader(http.StatusBadRequest)
 		// Try to return structured validation errors if available
 		response := map[string]any{"message": err.Error()}
-		_ = json.NewEncoder(w).Encode(response)
+		if encErr := json.NewEncoder(w).Encode(response); encErr != nil {
+			log.Error(ctx, "Error encoding config validation response", "id", id, encErr)
+		}
 		return err
 	}
 
@@ -204,7 +207,7 @@ func validateAndUpdateConfig(ctx context.Context, pm PluginManager, id, configJS
 // Returns an error if validation or update fails (error response already written).
 func validateAndUpdateUsers(ctx context.Context, pm PluginManager, repo model.PluginRepository, id string, req PluginUpdateRequest, w http.ResponseWriter) error {
 	// Get current values if not provided in request
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(ctx, id)
 	if err != nil {
 		log.Error(ctx, "Error getting plugin for users update", "id", id, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -237,7 +240,7 @@ func validateAndUpdateUsers(ctx context.Context, pm PluginManager, repo model.Pl
 // Returns an error if validation or update fails (error response already written).
 func validateAndUpdateLibraries(ctx context.Context, pm PluginManager, repo model.PluginRepository, id string, req PluginUpdateRequest, w http.ResponseWriter) error {
 	// Get current values if not provided in request
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(ctx, id)
 	if err != nil {
 		log.Error(ctx, "Error getting plugin for libraries update", "id", id, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

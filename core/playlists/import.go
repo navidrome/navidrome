@@ -8,13 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/ioutils"
+	"github.com/zeebo/xxh3"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -38,7 +39,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 		}
 		if pls.ID != "" && pls.Sync != sync {
 			pls.Sync = sync
-			if putErr := s.ds.Playlist(ctx).Put(pls); putErr != nil {
+			if putErr := s.ds.Playlist().Put(ctx, pls); putErr != nil {
 				return nil, putErr
 			}
 		}
@@ -58,30 +59,32 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	}
 	defer file.Close()
 
-	reader := ioutils.UTF8Reader(file)
-	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
+	hasher := xxh3.New()
+	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
+	if err := s.parseM3U(ctx, pls, nil, reader, noEntryLimit); err != nil {
 		return nil, err
 	}
+	pls.ImportedHash = fingerprint(hasher)
 	if err := s.updatePlaylist(ctx, pls, sync); err != nil {
 		return nil, err
 	}
 	return pls, nil
 }
 
-var errNotInLibrary = fmt.Errorf("path not in any library")
+var errNotInLibrary = errors.New("path not in any library")
 
 func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folder, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	matcher := newLibraryMatcher(libs)
-	lib, ok := matcher.findLibrary(dir)
+	matcher := model.NewLibraryMatcher(libs)
+	lib, ok := matcher.FindLibrary(dir)
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", errNotInLibrary, dir)
 	}
 
-	folder, err := s.ds.Folder(ctx).GetByPath(lib, dir)
+	folder, err := s.ds.Folder().GetByPath(ctx, lib, dir)
 	if err != nil {
 		return nil, fmt.Errorf("resolving folder for path %s: %w", dir, err)
 	}
@@ -107,19 +110,53 @@ func (s *playlists) importFromFolder(ctx context.Context, folder *model.Folder, 
 	return pls, err
 }
 
+// noEntryLimit is passed to parseM3U for on-disk playlists.
+const noEntryLimit = 0
+
+// ErrTooManyEntries is returned by ImportM3U when the playlist has more than MaxTracksPerRequest entries.
+var ErrTooManyEntries = errors.New("playlist has too many entries")
+
+// importM3USlot runs one upload import at a time, so concurrent uploads cannot stack their memory use.
+var importM3USlot = make(chan struct{}, 1)
+
+// errReader keeps the first read error, which the line scanner in parseM3U drops.
+type errReader struct {
+	r   io.Reader
+	err error
+}
+
+func (e *errReader) Read(p []byte) (int, error) {
+	n, err := e.r.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) && e.err == nil {
+		e.err = err
+	}
+	return n, err
+}
+
 func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error) {
+	select {
+	case importM3USlot <- struct{}{}:
+		defer func() { <-importM3USlot }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 	owner, _ := request.UserFrom(ctx)
 	pls := &model.Playlist{
 		OwnerID: owner.ID,
 		Public:  false,
 		Sync:    false,
 	}
-	err := s.parseM3U(ctx, pls, nil, reader)
+	body := &errReader{r: reader}
+	// Uploads only: on-disk playlists in the scanner can legitimately be larger.
+	err := s.parseM3U(ctx, pls, nil, body, MaxTracksPerRequest())
+	if err == nil {
+		err = body.err
+	}
 	if err != nil {
 		log.Error(ctx, "Error parsing playlist", err)
 		return nil, err
 	}
-	err = s.ds.Playlist(ctx).Put(pls)
+	err = s.ds.Playlist().Put(ctx, pls)
 	if err != nil {
 		log.Error(ctx, "Error saving playlist", err)
 		return nil, err
@@ -139,28 +176,38 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	}
 	defer file.Close()
 
-	reader := ioutils.UTF8Reader(file)
+	// Hash the bytes the parser consumes, giving every imported playlist a content fingerprint
+	hasher := xxh3.New()
+	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
 		err = s.parseNSP(ctx, pls, reader)
 	default:
-		err = s.parseM3U(ctx, pls, folder, reader)
+		err = s.parseM3U(ctx, pls, folder, reader, noEntryLimit)
 	}
-	return pls, err
+	if err != nil {
+		return pls, err
+	}
+	pls.ImportedHash = fingerprint(hasher)
+	return pls, nil
+}
+
+func fingerprint(h *xxh3.Hasher) string {
+	return id.Encode(h.Sum128().Bytes())
 }
 
 // findByPathNormalized looks up a playlist by path, trying both NFC and NFD Unicode
 // normalization forms to handle cross-platform filesystem differences.
 func (s *playlists) findByPathNormalized(ctx context.Context, path string) (*model.Playlist, error) {
-	pls, err := s.ds.Playlist(ctx).FindByPath(path)
+	pls, err := s.ds.Playlist().FindByPath(ctx, path)
 	if errors.Is(err, model.ErrNotFound) {
 		altPath := norm.NFD.String(path)
 		if altPath == path {
 			altPath = norm.NFC.String(path)
 		}
 		if altPath != path {
-			pls, err = s.ds.Playlist(ctx).FindByPath(altPath)
+			pls, err = s.ds.Playlist().FindByPath(ctx, altPath)
 		}
 	}
 	return pls, err
@@ -180,6 +227,12 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 	}
 
 	if err == nil {
+		// Only smart playlists skip on an unchanged file; M3U must re-run so newly-added tracks resolve.
+		if !forceSync && newPls.IsSmartPlaylist() && newPls.ImportedHash != "" && newPls.ImportedHash == pls.ImportedHash {
+			log.Trace(ctx, "Playlist file unchanged since last import, skipping", "playlist", pls.Name, "path", pls.Path)
+			*newPls = *pls // callers must see the stored record, so e.g. ImportFile can still flip Sync
+			return nil
+		}
 		log.Info(ctx, "Updating synced playlist", "playlist", pls.Name, "path", newPls.Path)
 		newPls.ID = pls.ID
 		newPls.Name = pls.Name
@@ -187,14 +240,20 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		newPls.OwnerID = pls.OwnerID
 		newPls.Public = pls.Public
 		newPls.UploadedImage = pls.UploadedImage // Preserve manual upload
-		newPls.EvaluatedAt = &time.Time{}
+		newPls.EvaluatedAt = nil                 // force re-evaluation on next read
+		if newPls.IsSmartPlaylist() {
+			// Tracks aren't materialized at parse time; carry the stored counters so callers see real values
+			newPls.SongCount = pls.SongCount
+			newPls.Duration = pls.Duration
+			newPls.Size = pls.Size
+		}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
 		// For NSP files, Public may already be set from the file; for M3U, use server default
 		if !newPls.IsSmartPlaylist() {
-			newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
+			newPls.Public = conf.Server().DefaultPlaylistPublicVisibility
 		}
 	}
-	return s.ds.Playlist(ctx).Put(newPls)
+	return s.ds.Playlist().Put(ctx, newPls)
 }

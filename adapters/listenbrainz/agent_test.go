@@ -8,12 +8,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,9 +32,10 @@ var _ = Describe("listenBrainzAgent", func() {
 	var track *model.MediaFile
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
-		ctx = context.Background()
-		_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		Expect(ds.User().Put(ctx, &model.User{ID: "user-1", UserName: "user-1"})).To(Succeed())
+		Expect(ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")).To(Succeed())
 		httpClient = &tests.FakeHttpClient{}
 		agent = listenBrainzConstructor(ds)
 		agent.client = newClient("http://localhost:8080", httpClient)
@@ -46,8 +51,8 @@ var _ = Describe("listenBrainzAgent", func() {
 			Duration:          142.2,
 			Participants: map[model.Role]model.ParticipantList{
 				model.RoleArtist: []model.Participant{
-					{Artist: model.Artist{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"}},
-					{Artist: model.Artist{ID: "ar-2", Name: "Artist 2", MbzArtistID: "mbz-222"}},
+					{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"},
+					{ID: "ar-2", Name: "Artist 2", MbzArtistID: "mbz-222"},
 				},
 			},
 		}
@@ -80,7 +85,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 	Describe("NowPlaying", func() {
 		It("updates NowPlaying successfully", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: http.StatusOK}
 
 			err := agent.NowPlaying(ctx, "user-1", track, 0)
 			Expect(err).ToNot(HaveOccurred())
@@ -100,14 +105,14 @@ var _ = Describe("listenBrainzAgent", func() {
 		})
 
 		It("sends a Scrobble successfully", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: http.StatusOK}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("sets the Timestamp properly", func() {
-			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: 200}
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: http.StatusOK}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).ToNot(HaveOccurred())
@@ -128,7 +133,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrRetryLater on error 503", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 503, "error": "Cannot submit listens to queue, please try again later."}`)),
-				StatusCode: 503,
+				StatusCode: http.StatusServiceUnavailable,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
@@ -138,7 +143,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrRetryLater on error 500", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 500, "error": "Something went wrong. Please try again."}`)),
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
@@ -148,7 +153,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrRetryLater on http errors", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad Gateway`)),
-				StatusCode: 500,
+				StatusCode: http.StatusInternalServerError,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
@@ -158,11 +163,24 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns ErrUnrecoverable on other errors", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400, "error": "BadRequest: Invalid JSON document submitted."}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+		})
+
+		It("keeps a 429 scrobble for retry and carries the delay", func() {
+			httpClient.Res = http.Response{
+				StatusCode: http.StatusTooManyRequests,
+				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"7"}},
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code":429,"error":"rate limited"}`)),
+			}
+			err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+			Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
+			Expect(ok).To(BeTrue())
+			Expect(retry.RetryIn).To(Equal(7 * time.Second))
 		})
 	})
 
@@ -178,7 +196,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns artist url when MBID present", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.homepage.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			Expect(agent.GetArtistURL(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56")).To(Equal("http://projectmili.com/"))
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist_mbids")).To(Equal("d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"))
@@ -186,7 +204,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns error when url not present", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.artist.metadata.no_homepage.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
 			Expect(err).To(HaveOccurred())
 			Expect(httpClient.RequestCount).To(Equal(1))
@@ -204,7 +222,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns error when ListenBrainz returns an error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 400,"error": "artist mbid 1 is not valid."}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetArtistURL(ctx, "", "", "7c2cc610-f998-43ef-a08f-dae3344b8973")
 			Expect(err).To(HaveOccurred())
@@ -234,7 +252,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns an error on listenbrainz error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code":400,"error":"artist_mbid: '1' is not a valid uuid"}`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetArtistTopSongs(ctx, "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
@@ -244,50 +262,76 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns all tracks when asked", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			data, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 2)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]agents.Song{
 				{
-					ID:         "",
-					Name:       "world.execute(me);",
-					MBID:       "9980309d-3480-4e7e-89ce-fce971a452be",
-					Artist:     "Mili",
-					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
-					Album:      "Miracle Milk",
-					AlbumMBID:  "38a8f6e1-0e34-4418-a89d-78240a367408",
-					Duration:   211912,
+					ID:        "",
+					Name:      "world.execute(me);",
+					MBID:      "9980309d-3480-4e7e-89ce-fce971a452be",
+					Artists:   []agents.Artist{{Name: "Mili", MBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"}},
+					Album:     "Miracle Milk",
+					AlbumMBID: "38a8f6e1-0e34-4418-a89d-78240a367408",
+					Duration:  211912,
 				},
 				{
-					ID:         "",
-					Name:       "String Theocracy",
-					MBID:       "afa2c83d-b17f-4029-b9da-790ea9250cf9",
-					Artist:     "Mili",
-					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
-					Album:      "String Theocracy",
-					AlbumMBID:  "d79a38e3-7016-4f39-a31a-f495ce914b8e",
-					Duration:   174000,
+					ID:        "",
+					Name:      "String Theocracy",
+					MBID:      "afa2c83d-b17f-4029-b9da-790ea9250cf9",
+					Artists:   []agents.Artist{{Name: "Mili", MBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"}},
+					Album:     "String Theocracy",
+					AlbumMBID: "d79a38e3-7016-4f39-a31a-f495ce914b8e",
+					Duration:  174000,
 				},
 			}))
 		})
 
 		It("returns only one track when prompted", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.popularity.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 			data, err := agent.GetArtistTopSongs(ctx, "", "", "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56", 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]agents.Song{
 				{
-					ID:         "",
-					Name:       "world.execute(me);",
-					MBID:       "9980309d-3480-4e7e-89ce-fce971a452be",
-					Artist:     "Mili",
-					ArtistMBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56",
-					Album:      "Miracle Milk",
-					AlbumMBID:  "38a8f6e1-0e34-4418-a89d-78240a367408",
-					Duration:   211912,
+					ID:        "",
+					Name:      "world.execute(me);",
+					MBID:      "9980309d-3480-4e7e-89ce-fce971a452be",
+					Artists:   []agents.Artist{{Name: "Mili", MBID: "d2a92ee2-27ce-4e71-bfc5-12e34fe8ef56"}},
+					Album:     "Miracle Milk",
+					AlbumMBID: "38a8f6e1-0e34-4418-a89d-78240a367408",
+					Duration:  211912,
 				},
 			}))
+		})
+
+		It("maps a multi-artist top song to one named artist plus MBID-only collaborators", func() {
+			body := `[{
+				"recording_name": "Collab",
+				"recording_mbid": "rec-1",
+				"artist_name": "Drake feat. Future",
+				"artist_mbids": ["mbid-drake", "mbid-future"],
+				"release_name": "Album",
+				"release_mbid": "rel-1",
+				"length": 200000
+			}]`
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(body)), StatusCode: http.StatusOK}
+			data, err := agent.GetArtistTopSongs(ctx, "", "", "mbid-drake", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).To(HaveLen(1))
+			Expect(data[0].Artists).To(Equal([]agents.Artist{
+				{Name: "Drake feat. Future", MBID: "mbid-drake"},
+				{MBID: "mbid-future"},
+			}))
+		})
+
+		It("leaves Artists nil when the top song carries no name or MBIDs", func() {
+			body := `[{"recording_name": "Anon", "recording_mbid": "rec-1", "artist_name": "", "artist_mbids": []}]`
+			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(body)), StatusCode: http.StatusOK}
+			data, err := agent.GetArtistTopSongs(ctx, "", "", "x", 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).To(HaveLen(1))
+			Expect(data[0].Artists).To(BeNil())
 		})
 	})
 
@@ -315,7 +359,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns an error on listenbrainz error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetSimilarArtists(ctx, "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
@@ -325,7 +369,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns all data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -339,7 +383,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns subset of data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarArtists(ctx, "", "", "db92a151-1ac2-438b-bc43-b82e149ddd50", 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -375,7 +419,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("returns an error on listenbrainz error", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`Bad request`)),
-				StatusCode: 400,
+				StatusCode: http.StatusBadRequest,
 			}
 			_, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", "1", 1)
 			Expect(err).To(HaveOccurred())
@@ -385,7 +429,7 @@ var _ = Describe("listenBrainzAgent", func() {
 
 		It("returns all data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 2)
 			Expect(err).ToNot(HaveOccurred())
@@ -393,33 +437,31 @@ var _ = Describe("listenBrainzAgent", func() {
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
 			Expect(resp).To(Equal([]agents.Song{
 				{
-					ID:         "",
-					Name:       "Take On Me",
-					MBID:       "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
-					ISRC:       "",
-					Artist:     "a‐ha",
-					ArtistMBID: "",
-					Album:      "Hunting High and Low",
-					AlbumMBID:  "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
-					Duration:   0,
+					ID:        "",
+					Name:      "Take On Me",
+					MBID:      "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					ISRC:      "",
+					Artists:   []agents.Artist{{Name: "a‐ha"}},
+					Album:     "Hunting High and Low",
+					AlbumMBID: "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Duration:  0,
 				},
 				{
-					ID:         "",
-					Name:       "Wake Me Up Before You Go‐Go",
-					MBID:       "80033c72-aa19-4ba8-9227-afb075fec46e",
-					ISRC:       "",
-					Artist:     "Wham!",
-					ArtistMBID: "",
-					Album:      "Make It Big",
-					AlbumMBID:  "c143d542-48dc-446b-b523-1762da721638",
-					Duration:   0,
+					ID:        "",
+					Name:      "Wake Me Up Before You Go‐Go",
+					MBID:      "80033c72-aa19-4ba8-9227-afb075fec46e",
+					ISRC:      "",
+					Artists:   []agents.Artist{{Name: "Wham!"}},
+					Album:     "Make It Big",
+					AlbumMBID: "c143d542-48dc-446b-b523-1762da721638",
+					Duration:  0,
 				},
 			}))
 		})
 
 		It("returns subset of data on call", func() {
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
-			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+			httpClient.Res = http.Response{Body: f, StatusCode: http.StatusOK}
 
 			resp, err := agent.GetSimilarSongsByTrack(ctx, "", "", "", mbid, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -427,17 +469,56 @@ var _ = Describe("listenBrainzAgent", func() {
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(baseUrl + mbid))
 			Expect(resp).To(Equal([]agents.Song{
 				{
-					ID:         "",
-					Name:       "Take On Me",
-					MBID:       "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
-					ISRC:       "",
-					Artist:     "a‐ha",
-					ArtistMBID: "",
-					Album:      "Hunting High and Low",
-					AlbumMBID:  "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
-					Duration:   0,
+					ID:        "",
+					Name:      "Take On Me",
+					MBID:      "12f65dca-de8f-43fe-a65d-f12a02aaadf3",
+					ISRC:      "",
+					Artists:   []agents.Artist{{Name: "a‐ha"}},
+					Album:     "Hunting High and Low",
+					AlbumMBID: "4ec07fe8-e7c6-3106-a0aa-fdf92f13f7fc",
+					Duration:  0,
 				},
 			}))
+		})
+	})
+})
+
+var _ = Describe("register", func() {
+	var ds model.DataStore
+
+	BeforeEach(func() {
+		ds = struct{ model.DataStore }{}
+		delete(agents.Map, listenBrainzAgentName)
+		scrobbler.Unregister(listenBrainzAgentName)
+	})
+
+	When("ListenBrainz is disabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = false })
+			register()
+		})
+
+		It("still registers the builtin name", func() {
+			Expect(scrobbler.IsBuiltinScrobbler(listenBrainzAgentName)).To(BeTrue())
+			Expect(agents.Map).To(HaveKey(listenBrainzAgentName))
+		})
+
+		It("builds no scrobbler and no agent", func() {
+			// TypeOf is nil only for an untyped nil; a typed nil would pass callers' != nil checks
+			Expect(reflect.TypeOf(newScrobbler(ds))).To(BeNil())
+			Expect(reflect.TypeOf(agents.Map[listenBrainzAgentName](ds))).To(BeNil())
+		})
+	})
+
+	When("ListenBrainz is enabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.Enabled = true })
+			register()
+		})
+
+		It("builds the scrobbler and the agent", func() {
+			Expect(newScrobbler(ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
+			Expect(agents.Map[listenBrainzAgentName](ds)).To(BeAssignableToTypeOf(&listenBrainzAgent{}))
 		})
 	})
 })

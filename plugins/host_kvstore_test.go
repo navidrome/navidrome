@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -15,9 +13,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -33,8 +29,7 @@ var _ = Describe("KVStoreService", func() {
 		tmpDir, err = os.MkdirTemp("", "kvstore-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 		// Create service with 1KB limit for testing
 		service, err = newKVStoreService(ctx, "test_plugin", &KVStorePermission{MaxSize: new("1KB")})
@@ -700,22 +695,20 @@ var _ = Describe("KVStoreService Integration", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+			c.DataFolder = conf.NewDir(tmpDir)
+		})
 
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-kvstore",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+		})
 
 		// Create and start manager
 		manager = &Manager{

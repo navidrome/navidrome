@@ -22,7 +22,7 @@ func stripPunct(col string) string {
 }
 
 func upAddFts5Search(ctx context.Context, tx *sql.Tx) error {
-	notice(tx, "Adding FTS5 full-text search indexes. This may take a moment on large libraries.")
+	notice(ctx, tx, "Adding FTS5 full-text search indexes. This may take a moment on large libraries.")
 
 	// Step 1: Add search_participants and search_normalized columns to media_file, album, and artist
 	_, err := tx.ExecContext(ctx, `ALTER TABLE media_file ADD COLUMN search_participants TEXT NOT NULL DEFAULT ''`)

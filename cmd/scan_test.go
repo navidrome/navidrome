@@ -5,9 +5,23 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/scanner"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var _ = Describe("trackScanInteractively", func() {
+	It("reports changes and scan errors", func() {
+		progress := make(chan *scanner.ProgressInfo, 2)
+		progress <- &scanner.ProgressInfo{ChangesDetected: true}
+		progress <- &scanner.ProgressInfo{Error: "scan failed"}
+		close(progress)
+
+		changesDetected, err := trackScanInteractively(GinkgoT().Context(), progress)
+		Expect(changesDetected).To(BeTrue())
+		Expect(err).To(MatchError("scan failed"))
+	})
+})
 
 var _ = Describe("readTargetsFromFile", func() {
 	var tempDir string

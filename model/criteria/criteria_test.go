@@ -3,6 +3,7 @@ package criteria
 import (
 	"bytes"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
@@ -60,9 +61,7 @@ var _ = Describe("Criteria", func() {
 	"offset": 10
 }
 `))
-			if err != nil {
-				panic(err)
-			}
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			jsonObj = b.String()
 		})
 		It("marshals to JSON", func() {
@@ -78,6 +77,28 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(string(j)).To(gomega.Equal(jsonObj))
 		})
+	})
+
+	Context("with both top-level 'all' and 'any'", func() {
+		It("returns an error instead of silently dropping one of the groups", func() {
+			jsonStr := `{"any":[{"inPlaylist":{"path":"a.nsp"}}],"all":[{"notInPlaylist":{"path":"b.nsp"}}]}`
+			var c Criteria
+			err := json.Unmarshal([]byte(jsonStr), &c)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(err.Error()).To(gomega.And(gomega.ContainSubstring("all"), gomega.ContainSubstring("any")))
+		})
+
+		DescribeTable("rejects both keys even when one group is present but empty",
+			func(jsonStr string) {
+				var c Criteria
+				err := json.Unmarshal([]byte(jsonStr), &c)
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(err.Error()).To(gomega.And(gomega.ContainSubstring("all"), gomega.ContainSubstring("any")))
+			},
+			Entry("empty any", `{"any":[],"all":[{"is":{"loved":true}}]}`),
+			Entry("empty all", `{"all":[],"any":[{"is":{"loved":true}}]}`),
+			Entry("null any", `{"any":null,"all":[{"is":{"loved":true}}]}`),
+		)
 	})
 
 	Describe("LimitPercent", func() {
@@ -233,21 +254,90 @@ var _ = Describe("Criteria", func() {
 		})
 	})
 
+	Describe("refreshDelay", func() {
+		newCriteria := func(extra string) []byte {
+			return []byte(`{"all":[{"is":{"loved":true}}]` + extra + `}`)
+		}
+
+		It("unmarshals a valid refreshDelay", func() {
+			var c Criteria
+			gomega.Expect(json.Unmarshal(newCriteria(`,"refreshDelay":"1d"`), &c)).To(gomega.Succeed())
+			gomega.Expect(c.RefreshDelay).To(gomega.Equal(24 * time.Hour))
+		})
+
+		It("supports week units", func() {
+			var c Criteria
+			gomega.Expect(json.Unmarshal(newCriteria(`,"refreshDelay":"1w"`), &c)).To(gomega.Succeed())
+			gomega.Expect(c.RefreshDelay).To(gomega.Equal(7 * 24 * time.Hour))
+		})
+
+		It("leaves RefreshDelay zero when absent", func() {
+			var c Criteria
+			gomega.Expect(json.Unmarshal(newCriteria(``), &c)).To(gomega.Succeed())
+			gomega.Expect(c.RefreshDelay).To(gomega.BeZero())
+		})
+
+		It("rejects an invalid refreshDelay", func() {
+			var c Criteria
+			err := json.Unmarshal(newCriteria(`,"refreshDelay":"tomorrow"`), &c)
+			gomega.Expect(err).To(gomega.MatchError(gomega.ContainSubstring("refreshDelay")))
+		})
+
+		It("rejects a negative refreshDelay", func() {
+			var c Criteria
+			err := json.Unmarshal(newCriteria(`,"refreshDelay":"-1h"`), &c)
+			gomega.Expect(err).To(gomega.MatchError(gomega.ContainSubstring("refreshDelay")))
+		})
+
+		It("marshals RefreshDelay back as a duration string", func() {
+			c := Criteria{
+				Expression:   All{Is{"loved": true}},
+				RefreshDelay: 24 * time.Hour,
+			}
+			j, err := json.Marshal(c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(string(j)).To(gomega.ContainSubstring(`"refreshDelay":"1d"`))
+		})
+
+		It("omits refreshDelay from JSON when zero", func() {
+			c := Criteria{Expression: All{Is{"loved": true}}}
+			j, err := json.Marshal(c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(string(j)).ToNot(gomega.ContainSubstring("refreshDelay"))
+		})
+
+		It("round-trips through marshal and unmarshal", func() {
+			c := Criteria{
+				Expression:   All{Is{"loved": true}},
+				RefreshDelay: 36 * time.Hour,
+			}
+			j, err := json.Marshal(c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			var c2 Criteria
+			gomega.Expect(json.Unmarshal(j, &c2)).To(gomega.Succeed())
+			gomega.Expect(c2.RefreshDelay).To(gomega.Equal(36 * time.Hour))
+		})
+	})
+
 	Context("with child playlists", func() {
 		var (
-			topLevelInPlaylistID     string
-			topLevelNotInPlaylistID  string
-			nestedAnyInPlaylistID    string
-			nestedAnyNotInPlaylistID string
-			nestedAllInPlaylistID    string
-			nestedAllNotInPlaylistID string
+			topLevelInPlaylistID       string
+			topLevelInPlaylistPath     string
+			topLevelNotInPlaylistID    string
+			nestedAnyInPlaylistID      string
+			nestedAnyNotInPlaylistID   string
+			nestedAllInPlaylistID      string
+			nestedAllNotInPlaylistID   string
+			nestedAnyNotInPlaylistPath string
 		)
 		BeforeEach(func() {
 			topLevelInPlaylistID = uuid.NewString()
+			topLevelInPlaylistPath = "./test.nsp"
 			topLevelNotInPlaylistID = uuid.NewString()
 
 			nestedAnyInPlaylistID = uuid.NewString()
 			nestedAnyNotInPlaylistID = uuid.NewString()
+			nestedAnyNotInPlaylistPath = "../not-in-playlist.m3u"
 
 			nestedAllInPlaylistID = uuid.NewString()
 			nestedAllNotInPlaylistID = uuid.NewString()
@@ -255,10 +345,12 @@ var _ = Describe("Criteria", func() {
 			goObj = Criteria{
 				Expression: All{
 					InPlaylist{"id": topLevelInPlaylistID},
+					InPlaylist{"path": topLevelInPlaylistPath},
 					NotInPlaylist{"id": topLevelNotInPlaylistID},
 					Any{
 						InPlaylist{"id": nestedAnyInPlaylistID},
 						NotInPlaylist{"id": nestedAnyNotInPlaylistID},
+						NotInPlaylist{"path": nestedAnyNotInPlaylistPath},
 					},
 					All{
 						InPlaylist{"id": nestedAllInPlaylistID},
@@ -270,6 +362,18 @@ var _ = Describe("Criteria", func() {
 		It("extracts all child smart playlist IDs from expression criteria", func() {
 			ids := goObj.ChildPlaylistIds()
 			gomega.Expect(ids).To(gomega.ConsistOf(topLevelInPlaylistID, topLevelNotInPlaylistID, nestedAnyInPlaylistID, nestedAnyNotInPlaylistID, nestedAllInPlaylistID, nestedAllNotInPlaylistID))
+		})
+		It("extracts all child smart playlist paths from expression criteria", func() {
+			paths := goObj.ChildPlaylistPaths()
+			gomega.Expect(paths).To(gomega.ConsistOf(topLevelInPlaylistPath, nestedAnyNotInPlaylistPath))
+		})
+		It("ignores empty child playlist paths", func() {
+			c := Criteria{Expression: All{InPlaylist{"path": ""}, NotInPlaylist{"path": ""}}}
+			gomega.Expect(c.ChildPlaylistPaths()).To(gomega.BeEmpty())
+		})
+		It("ignores empty child playlist ids", func() {
+			c := Criteria{Expression: All{InPlaylist{"id": ""}, NotInPlaylist{"id": ""}}}
+			gomega.Expect(c.ChildPlaylistIds()).To(gomega.BeEmpty())
 		})
 		It("extracts child smart playlist IDs from deeply nested expression", func() {
 			goObj = Criteria{
@@ -317,4 +421,16 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(ids).To(gomega.Equal([]string{sharedID}))
 		})
 	})
+
+	DescribeTable("empty nested groups",
+		func(input, expected string) {
+			var c Criteria
+			gomega.Expect(json.Unmarshal([]byte(input), &c)).To(gomega.Succeed())
+			out, err := json.Marshal(c)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(string(out)).To(gomega.Equal(expected))
+		},
+		Entry("keeps a nested empty group", `{"all":[{"all":[]}]}`, `{"all":[{"all":[]}]}`),
+		Entry("keeps a nested empty any group", `{"all":[{"any":[]}]}`, `{"all":[{"any":[]}]}`),
+	)
 })

@@ -4,40 +4,42 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/pl"
+	"github.com/navidrome/navidrome/utils/singleton"
 	"golang.org/x/time/rate"
 )
 
 var (
-	ErrAlreadyScanning = errors.New("already scanning")
+	ErrAlreadyScanning = model.ErrAlreadyScanning
 )
 
-func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
+func New(rootCtx context.Context, ds model.DataStore, broker events.Broker,
 	pls playlists.Playlists, m metrics.Metrics) model.Scanner {
 	c := &controller{
 		rootCtx:            rootCtx,
 		ds:                 ds,
-		cw:                 cw,
 		broker:             broker,
 		pls:                pls,
 		metrics:            m,
-		devExternalScanner: conf.Server.DevExternalScanner,
+		devExternalScanner: conf.Server().DevExternalScanner,
 	}
 	if !c.devExternalScanner {
-		c.limiter = new(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
+		c.limiter = new(rate.Sometimes{Interval: conf.Server().DevActivityPanelUpdateRate})
 	}
 	return c
 }
@@ -46,7 +48,7 @@ func (s *controller) getScanner() scanner {
 	if s.devExternalScanner {
 		return &scannerExternal{}
 	}
-	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
+	return &scannerImpl{ds: s.ds, pls: s.pls}
 }
 
 // CallScan starts an in-process scan of specific library/folder pairs.
@@ -63,7 +65,7 @@ func CallScan(ctx context.Context, ds model.DataStore, pls playlists.Playlists, 
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
+		scanner := &scannerImpl{ds: ds, pls: pls}
 		scanner.scanFolders(ctx, fullScan, targets, progress)
 	}()
 	return progress, nil
@@ -92,9 +94,8 @@ type scanner interface {
 }
 
 type controller struct {
-	rootCtx            context.Context
+	rootCtx            context.Context //nolint:containedctx // scanner lifecycle ctx
 	ds                 model.DataStore
-	cw                 artwork.CacheWarmer
 	broker             events.Broker
 	metrics            metrics.Metrics
 	pls                playlists.Playlists
@@ -107,7 +108,7 @@ type controller struct {
 
 // getLastScanTime returns the most recent scan time across all libraries
 func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
-	libs, err := s.ds.Library(ctx).GetAll(model.QueryOptions{
+	libs, err := s.ds.Library().GetAll(ctx, model.QueryOptions{
 		Sort:  "last_scan_at",
 		Order: "desc",
 		Max:   1,
@@ -125,9 +126,9 @@ func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
 
 // getScanInfo retrieves scan status from the database
 func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed time.Duration, lastErr string) {
-	lastErr, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
-	scanType, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
-	startTimeStr, _ := s.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+	lastErr, _ = s.ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "")
+	scanType, _ = s.ds.Property().DefaultGet(ctx, consts.LastScanTypeKey, "")
+	startTimeStr, _ := s.ds.Property().DefaultGet(ctx, consts.LastScanStartTimeKey, "")
 
 	if startTimeStr != "" {
 		startTime, err := time.Parse(time.RFC3339, startTimeStr)
@@ -184,7 +185,7 @@ func (s *controller) Status(ctx context.Context) (*model.ScannerStatus, error) {
 }
 
 func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("library count: %w", err)
 	}
@@ -211,6 +212,16 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = auth.WithAdminUser(ctx, s.ds)
 
+	// A quick scan is promoted to a full one when it resumes an interrupted full scan; that happens
+	// inside the scanner (possibly in a subprocess), so mirror it here for the analysis gate. Must
+	// be read before the scan: ScanEnd clears the flag.
+	effectiveFullScan := EffectiveFullScan(ctx, s.ds, fullScan, targets)
+	if effectiveFullScan || s.includesUnscannedLibrary(ctx, targets) {
+		if err := db.MarkOptimizePending(ctx); err != nil {
+			log.Error(ctx, "Scanner: Error marking DB analysis pending", err)
+		}
+	}
+
 	// Send the initial scan status event
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 	progress := make(chan *ProgressInfo, 100)
@@ -223,11 +234,20 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	// Wait for the scan to finish, sending progress events to all connected clients
 	scanWarnings, scanError := s.trackProgress(ctx, progress)
 	for _, w := range scanWarnings {
-		log.Warn(ctx, fmt.Sprintf("Scan warning: %s", w))
+		log.Warn(ctx, "Scan warning: "+w)
 	}
 	// Store scan error in database so it can be displayed in the UI
 	if scanError != nil {
-		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
+		_ = s.ds.Property().Put(ctx, consts.LastScanErrorKey, scanError.Error())
+	}
+	// Refresh the query-planner statistics after a successful full scan. This must run in the
+	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the
+	// server's pooled connections; their shared schema cache keeps the old statistics until the
+	// process restarts.
+	if effectiveFullScan && scanError == nil {
+		if err := db.Optimize(ctx); err != nil {
+			log.Error(ctx, "Scanner: Error analyzing DB", err)
+		}
 	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
@@ -255,16 +275,71 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 
 // This is a global variable that is used to prevent multiple scans from running at the same time.
 // "There can be only one" - https://youtu.be/sqcLjcSloXs?si=VlsjEOjTJZ68zIyg
-var running atomic.Bool
+var (
+	running            atomic.Bool
+	scanMaintenanceMux sync.Mutex
+)
 
 func lockScan(ctx context.Context) (func(), error) {
 	if !running.CompareAndSwap(false, true) {
 		log.Debug(ctx, "Scanner already running, ignoring request")
 		return func() {}, ErrAlreadyScanning
 	}
+	scanMaintenanceMux.Lock()
 	return func() {
+		scanMaintenanceMux.Unlock()
 		running.Store(false)
 	}, nil
+}
+
+// LockForMaintenance prevents a scan from starting while database maintenance is running.
+func LockForMaintenance() (func(), bool) {
+	if !scanMaintenanceMux.TryLock() {
+		return func() {}, false
+	}
+	if running.Load() {
+		scanMaintenanceMux.Unlock()
+		return func() {}, false
+	}
+	return scanMaintenanceMux.Unlock, true
+}
+
+// EffectiveFullScan reports whether a scan was requested as full, will resume an interrupted full scan,
+// or will rescan a library in full because its PID config changed, in one of the included libraries.
+func EffectiveFullScan(ctx context.Context, ds model.DataStore, fullScan bool, targets []model.ScanTarget) bool {
+	if fullScan {
+		return true
+	}
+	return anyIncludedLibrary(ctx, ds, targets, func(library model.Library) bool {
+		return library.FullScanInProgress || library.NeedsPIDRescan()
+	})
+}
+
+func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []model.ScanTarget) bool {
+	return anyIncludedLibrary(ctx, s.ds, targets, func(library model.Library) bool {
+		return library.LastScanAt.IsZero()
+	})
+}
+
+// anyIncludedLibrary reports whether any library included in the scan (all of them when targets is
+// empty) matches pred.
+func anyIncludedLibrary(ctx context.Context, ds model.DataStore, targets []model.ScanTarget, pred func(model.Library) bool) bool {
+	libraries, err := ds.Library().GetAll(ctx)
+	if err != nil {
+		return false
+	}
+	if len(targets) == 0 {
+		return slices.ContainsFunc(libraries, pred)
+	}
+
+	targeted := make(map[int]struct{}, len(targets))
+	for _, target := range targets {
+		targeted[target.LibraryID] = struct{}{}
+	}
+	return slices.ContainsFunc(libraries, func(library model.Library) bool {
+		_, ok := targeted[library.ID]
+		return ok && pred(library)
+	})
 }
 
 func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) ([]string, error) {
@@ -312,4 +387,13 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 
 func (s *controller) sendMessage(ctx context.Context, status *events.ScanStatus) {
 	s.broker.SendBroadcastMessage(ctx, status)
+}
+
+// GetInstance returns the scanner singleton: Status reads the progress counters of the controller
+// running the scan, and scheduler, watcher and signal scans do not start from the API's injector.
+func GetInstance(rootCtx context.Context, ds model.DataStore, broker events.Broker,
+	pls playlists.Playlists, m metrics.Metrics) model.Scanner {
+	return singleton.GetInstance(func() *controller {
+		return New(rootCtx, ds, broker, pls, m).(*controller)
+	})
 }

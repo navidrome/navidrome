@@ -19,7 +19,7 @@ const debounceDuration = 2 * time.Second
 // startWatcher starts the file watcher for the plugins folder.
 // It watches for CREATE, WRITE, and REMOVE events on .wasm files.
 func (m *Manager) startWatcher() error {
-	folder := conf.Server.Plugins.Folder.String()
+	folder := conf.Server().Plugins.Folder.String()
 	if folder == "" {
 		return nil
 	}
@@ -89,7 +89,11 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 		return
 	}
 
-	pluginName := strings.TrimSuffix(filepath.Base(path), PackageExtension)
+	pluginName, ok := pluginIDFromPath(path)
+	if !ok {
+		log.Warn(m.ctx, "Ignoring plugin file with unusable name", "path", path)
+		return
+	}
 
 	log.Trace(m.ctx, "Plugin file event", "plugin", pluginName, "event", event.Event(), "path", path)
 
@@ -146,25 +150,25 @@ func (m *Manager) processPluginEvent(pluginName string) {
 	delete(m.debounceTimers, pluginName)
 	m.debounceMu.Unlock()
 
-	folder := conf.Server.Plugins.Folder.String()
+	folder := conf.Server().Plugins.Folder.String()
 	ndpPath := filepath.Join(folder, pluginName+PackageExtension)
 
 	action := determinePluginAction(ndpPath)
 	log.Debug(m.ctx, "Plugin event action", "plugin", pluginName, "action", action, "path", ndpPath)
 
 	ctx := adminContext(m.ctx)
-	repo := m.ds.Plugin(ctx)
+	repo := m.ds.Plugin()
 
 	switch action {
 	case actionUpdate:
 		// File changed - check SHA256 first, then extract manifest if needed
-		sha256Hash, err := computeFileSHA256(ndpPath)
+		sha256Hash, err := ComputeFileSHA256(ndpPath)
 		if err != nil {
 			log.Error(m.ctx, "Failed to compute SHA256 for changed plugin", "plugin", pluginName, err)
 			return
 		}
 
-		dbPlugin, err := repo.Get(pluginName)
+		dbPlugin, err := repo.Get(ctx, pluginName)
 		if err != nil {
 			// Plugin not in DB yet, need full manifest extraction to add it
 			metadata, extractErr := m.extractManifest(ndpPath)
@@ -172,7 +176,7 @@ func (m *Manager) processPluginEvent(pluginName string) {
 				log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, extractErr)
 				return
 			}
-			if addErr := m.addPluginToDB(m.ctx, repo, pluginName, ndpPath, metadata); addErr != nil {
+			if addErr := m.addPluginToDB(ctx, repo, pluginName, ndpPath, metadata); addErr != nil {
 				log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, addErr)
 			}
 			return
@@ -194,24 +198,25 @@ func (m *Manager) processPluginEvent(pluginName string) {
 				_ = m.unloadPlugin(pluginName)
 				dbPlugin.Enabled = false
 			}
-			_ = repo.Put(dbPlugin)
+			_ = repo.Put(ctx, dbPlugin)
 			return
 		}
 
-		if err := m.updatePluginInDB(m.ctx, repo, dbPlugin, ndpPath, metadata); err != nil {
+		if err := m.updatePluginInDB(ctx, repo, dbPlugin, ndpPath, metadata); err != nil {
 			log.Error(m.ctx, "Failed to update plugin in DB", "plugin", pluginName, err)
 		}
 
 	case actionRemove:
 		// File removed - unload if enabled, delete from DB
-		dbPlugin, err := repo.Get(pluginName)
+		dbPlugin, err := repo.Get(ctx, pluginName)
 		if err != nil {
 			log.Debug(m.ctx, "Removed plugin not in DB", "plugin", pluginName)
 			return
 		}
 
-		if err := m.removePluginFromDB(m.ctx, repo, dbPlugin); err != nil {
+		if err := m.removePluginFromDB(ctx, repo, dbPlugin); err != nil {
 			log.Error(m.ctx, "Failed to delete plugin from DB", "plugin", pluginName, err)
 		}
+	case actionNone:
 	}
 }

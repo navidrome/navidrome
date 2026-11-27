@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"golang.org/x/net/html"
 )
 
@@ -48,20 +49,19 @@ type lastfmAgent struct {
 	getInfoMutex sync.Mutex
 }
 
+func lastFMEnabled() bool {
+	return conf.Server().LastFM.Enabled && conf.Server().LastFM.ApiKey != "" && conf.Server().LastFM.Secret != ""
+}
+
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
-	if !conf.Server.LastFM.Enabled || conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
-		return nil
-	}
 	l := &lastfmAgent{
 		ds:          ds,
-		languages:   conf.Server.LastFM.Languages,
-		apiKey:      conf.Server.LastFM.ApiKey,
-		secret:      conf.Server.LastFM.Secret,
+		languages:   conf.Server().LastFM.Languages,
+		apiKey:      conf.Server().LastFM.ApiKey,
+		secret:      conf.Server().LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
-	hc := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.httpClient = chc
 	l.client = newClient(l.apiKey, l.secret, chc)
@@ -93,7 +93,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 	var resp agents.AlbumInfo
 	for _, lang := range l.languages {
 		var err error
-		a, err = l.callAlbumGetInfo(ctx, name, artist, mbid, lang)
+		a, err = l.callAlbumGetInfo(ctx, name, artist, lang)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 }
 
 func (l *lastfmAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
-	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid, l.languages[0])
+	a, err := l.callAlbumGetInfo(ctx, name, artist, l.languages[0])
 	if err != nil {
 		return nil, err
 	}
@@ -231,10 +231,9 @@ func (l *lastfmAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, arti
 	res := make([]agents.Song, 0, len(resp))
 	for _, t := range resp {
 		res = append(res, agents.Song{
-			Name:       t.Name,
-			MBID:       t.MBID,
-			Artist:     t.Artist.Name,
-			ArtistMBID: t.Artist.MBID,
+			Name:    t.Name,
+			MBID:    t.MBID,
+			Artists: []agents.Artist{{Name: t.Artist.Name, MBID: t.Artist.MBID}},
 		})
 	}
 	return res, nil
@@ -243,6 +242,10 @@ func (l *lastfmAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, arti
 var (
 	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
+
+	// errNoArtistPage is not a RetryLaterError on purpose: parking the agent would also stall its
+	// API-backed methods, which the page block does not affect.
+	errNoArtistPage = errors.New("no artist image in Last.fm page")
 )
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
@@ -269,7 +272,9 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	var res []agents.ExternalImage
 	n := cascadia.Query(node, artistOpenGraphQuery)
 	if n == nil {
-		return res, nil
+		// A real artist page always has og:image; its absence means a bot challenge or a redesign.
+		log.Warn(ctx, "Last.fm did not return a usable artist page", "name", name, "url", a.URL)
+		return nil, errNoArtistPage
 	}
 	for _, attr := range n.Attr {
 		if attr.Key != "content" {
@@ -287,22 +292,18 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	return res, nil
 }
 
-func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid string, lang string) (*Album, error) {
-	a, err := l.client.albumGetInfo(ctx, name, artist, mbid, lang)
-	var lfErr *lastFMError
-	isLastFMError := errors.As(err, &lfErr)
-
-	if mbid != "" && (isLastFMError && lfErr.Code == 6) {
-		log.Debug(ctx, "LastFM/album.getInfo could not find album by mbid, trying again", "album", name, "mbid", mbid)
-		return l.callAlbumGetInfo(ctx, name, artist, "", lang)
-	}
-
+// callAlbumGetInfo matches on name+artist only. Last.fm's album.getInfo by MBID is unreliable —
+// a correct MBID can return a different album (or none) — so the MBID is deliberately not passed.
+func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, lang string) (*Album, error) {
+	a, err := l.client.albumGetInfo(ctx, name, artist, "", lang)
 	if err != nil {
-		if isLastFMError && lfErr.Code == 6 {
-			log.Debug(ctx, "Album not found", "album", name, "mbid", mbid, err)
-		} else {
-			log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "mbid", mbid, err)
+		if lfErr, ok := errors.AsType[*lastFMError](err); ok && lfErr.Code == 6 {
+			// A not-found is a definitive absence, not a fault: return the shared sentinel so the
+			// artwork worker's breaker/transient checks don't retry it, and log it at Debug.
+			log.Debug(ctx, "Album not found in Last.fm", "album", name, "artist", artist)
+			return nil, agents.ErrNotFound
 		}
+		log.Error(ctx, "Error calling LastFM/album.getInfo", "album", name, "artist", artist, err)
 		return nil, err
 	}
 	return a, nil
@@ -314,6 +315,12 @@ func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, lang s
 
 	a, err := l.client.artistGetInfo(ctx, name, lang)
 	if err != nil {
+		if lfErr, ok := errors.AsType[*lastFMError](err); ok && lfErr.Code == 6 {
+			// A not-found is a definitive absence, not a fault: return the shared sentinel so it
+			// doesn't trip the artwork worker's breaker, and log at Debug instead of Error.
+			log.Debug(ctx, "Artist not found in Last.fm", "artist", name)
+			return nil, agents.ErrNotFound
+		}
 		log.Error(ctx, "Error calling LastFM/artist.getInfo", "artist", name, err)
 		return nil, err
 	}
@@ -348,7 +355,7 @@ func (l *lastfmAgent) callTrackGetSimilar(ctx context.Context, name, artist stri
 }
 
 func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile, role model.Role, displayName string) string {
-	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
+	if conf.Server().LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
 		return track.Participants[role][0].Name
 	}
 	return displayName
@@ -370,7 +377,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 		albumArtist: l.getArtistForScrobble(track, model.RoleAlbumArtist, track.AlbumArtist),
 	})
 	if err != nil {
-		log.Warn(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
+		log.Debug(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
 		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
@@ -382,10 +389,11 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
-	if s.Duration <= 30 {
+	if s.Duration <= float32(conf.Server().LastFM.MinScrobbleDuration.Seconds()) {
 		log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
 		return nil
 	}
+
 	err = l.client.scrobble(ctx, sk, ScrobbleInfo{
 		artist:      l.getArtistForScrobble(&s.MediaFile, model.RoleArtist, s.Artist),
 		track:       s.Title,
@@ -405,7 +413,8 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		log.Warn(ctx, "Last.fm client.scrobble returned error", "track", s.Title, err)
 		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
-	if lfErr.Code == 11 || lfErr.Code == 16 {
+	// 11: service offline; 16: temporarily unavailable. Rate limiting is mapped by the client.
+	if lfErr.Code == 11 || lfErr.Code == 16 || errors.Is(err, scrobbler.ErrRetryLater) {
 		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
 	return errors.Join(err, scrobbler.ErrUnrecoverable)
@@ -423,22 +432,16 @@ func (l *lastfmAgent) PlaybackReport(context.Context, scrobbler.PlaybackSession)
 func init() {
 	conf.AddHook(func() {
 		agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
-			// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*lastfmAgent)(nil)
-			// See https://go.dev/doc/faq#nil_error
-			a := lastFMConstructor(ds)
-			if a != nil {
-				return a
+			if !lastFMEnabled() {
+				return nil
 			}
-			return nil
+			return lastFMConstructor(ds)
 		})
 		scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-			// Same as above - this is a workaround for the fact that a (Scrobbler)(nil) is not the same as a (*lastfmAgent)(nil)
-			// See https://go.dev/doc/faq#nil_error
-			a := lastFMConstructor(ds)
-			if a != nil {
-				return a
+			if !lastFMEnabled() {
+				return nil
 			}
-			return nil
+			return lastFMConstructor(ds)
 		})
 	})
 }

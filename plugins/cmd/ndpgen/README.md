@@ -7,7 +7,7 @@ This tool is the unified code generator that handle both host function wrappers 
 ## Usage
 
 ```bash
-ndpgen -input <dir> -output <dir> [-package <name>] [-v] [-dry-run] [-host-only] [-go] [-python] [-rust]
+ndpgen -input <dir> -output <dir> [-package <name>] [-v] [-dry-run] [-host-only] [-go] [-rust]
 ```
 
 ### Flags
@@ -21,10 +21,9 @@ ndpgen -input <dir> -output <dir> [-package <name>] [-v] [-dry-run] [-host-only]
 | `-dry-run`   | Parse and validate without writing files                       | `false`              |
 | `-host-only` | Generate only host function wrappers (capability support TBD)  | `true`               |
 | `-go`        | Generate Go client wrappers                                    | `true`*              |
-| `-python`    | Generate Python client wrappers                                | `false`              |
 | `-rust`      | Generate Rust client wrappers                                  | `false`              |
 
-\* `-go` is enabled by default when neither `-python` nor `-rust` is specified. Use combinations like `-go -python -rust` to generate multiple languages.
+\* `-go` is enabled by default when `-rust` is not specified. Use `-go -rust` to generate both languages.
 
 ### Example
 
@@ -149,10 +148,6 @@ func TestMyPluginFunction(t *testing.T) {
 **Resetting mocks between tests:**
 
 If you need to reset mock state between tests, testify's mock doesn't have a built-in reset. Either use separate test functions (testify automatically resets between test runs), or create a helper to set up fresh expectations.
-
-### Python Client Library
-
-When using `-python`, Python client files are generated in a `python/` subdirectory.
 
 ### Rust Client Library
 

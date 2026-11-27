@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -9,62 +7,101 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-const testDataDir = "plugins/testdata"
+const (
+	testDataDir    = "plugins/testdata"
+	wazeroCacheDir = ".wazero-cache"
+)
 
 // Shared test state initialized in BeforeSuite
 var (
 	testdataDir   string // Path to testdata folder with test plugin .ndp packages
 	tmpPluginsDir string // Temp directory for plugin tests that modify files
 	testManager   *Manager
+	// testManagerPlugins are testManager's DB rows, for Ordered specs that need them after a reset
+	testManagerPlugins model.Plugins
 )
 
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
-	buildTestPlugins(t, testDataDir)
 
-	// Create a shared wazero compilation cache directory.
-	// All test managers will point CacheFolder here so that WASM compilation
-	// is done once per binary and then reused from disk cache.
-	sharedCacheDir, err := os.MkdirTemp("", "plugins-shared-cache-*")
-	if err != nil {
-		t.Fatalf("Failed to create shared cache dir: %v", err)
-	}
-	t.Cleanup(func() { os.RemoveAll(sharedCacheDir) })
-
-	// Set CacheFolder globally so all tests (including those using
-	// configtest.SetupConfig) inherit it without needing to set it manually.
-	conf.Server.CacheFolder = conf.NewDir(sharedCacheDir)
+	// Set globally so every spec's config snapshot inherits it. The cache
+	// persists between runs; entries are content-addressed, so a stale one only misses.
+	conf.Update(func(c *conf.Options) {
+		c.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
+		c.Plugins.CacheSize = "1GB"
+	}) // the default evicts the cache mid-run
 
 	log.SetLevel(log.LevelFatal)
+	persistencetest.Init(t)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
 }
 
-func buildTestPlugins(t *testing.T, path string) {
-	t.Helper()
-	start := time.Now()
-	t.Logf("[BeforeSuite] Current working directory: %s", path)
-	cmd := exec.Command("make", "-C", path)
-	out, err := cmd.CombinedOutput()
-	t.Logf("[BeforeSuite] Make output: %s elapsed: %s", string(out), time.Since(start))
-	if err != nil {
-		t.Fatalf("Failed to build test plugins: %v", err)
+var _ = configtest.RestoreAfterEachSpec()
+var _ = persistencetest.ResetBeforeEachSpec()
+
+// newTestDataStore stores the plugin rows in the real database and returns a DataStore over it.
+func newTestDataStore(plugins ...model.Plugin) model.DataStore {
+	GinkgoHelper()
+	ds := persistence.New(db.Db())
+	ctx := adminContext(GinkgoT().Context())
+	for i := range plugins {
+		Expect(ds.Plugin().Put(ctx, &plugins[i])).To(Succeed())
 	}
+	return ds
+}
+
+// putUsers stores users, giving non-admins access to the libraries marked for new users.
+func putUsers(ds model.DataStore, users ...model.User) {
+	GinkgoHelper()
+	ctx := GinkgoT().Context()
+	for i := range users {
+		Expect(ds.User().Put(ctx, &users[i])).To(Succeed())
+	}
+}
+
+// putLibraries stores libs, including library 1's path and the stats columns Put does not write.
+func putLibraries(ds model.DataStore, libs ...model.Library) {
+	GinkgoHelper()
+	ctx := adminContext(GinkgoT().Context())
+	for i := range libs {
+		lib := libs[i]
+		if lib.ID == model.DefaultLibraryID {
+			// Library().Put refuses to change library 1's path; StoreMusicFolder is the only way.
+			restore := conf.SnapshotConfig()
+			conf.Update(func(c *conf.Options) { c.MusicFolder = lib.Path })
+			Expect(ds.Library().StoreMusicFolder(ctx)).To(Succeed())
+			restore()
+		}
+		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
+		_, err := db.Db().Exec(`UPDATE library SET total_songs = ?, total_albums = ?, total_artists = ?,
+			total_size = ?, total_duration = ? WHERE id = ?`,
+			lib.TotalSongs, lib.TotalAlbums, lib.TotalArtists, lib.TotalSize, lib.TotalDuration, lib.ID)
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
+
+// stubLocalhostDNS resolves "localhost." without real DNS: the trailing dot never matches /etc/hosts.
+func stubLocalhostDNS() {
+	dialResolver = tests.StubResolver(map[string]string{"localhost.": "127.0.0.1"})
+	DeferCleanup(func() { dialResolver = nil })
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
@@ -81,59 +118,54 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	return createTestManagerWithPluginsAndMetrics(pluginConfig, noopMetricsRecorder{}, plugins...)
 }
 
+// installTestPlugins copies the given .ndp packages into dir and returns their
+// enabled DB rows, so callers can grant whatever access the test needs.
+func installTestPlugins(dir string, plugins ...string) model.Plugins {
+	var rows model.Plugins
+	for _, plugin := range plugins {
+		data, err := os.ReadFile(filepath.Join(testdataDir, plugin))
+		Expect(err).ToNot(HaveOccurred())
+		destPath := filepath.Join(dir, plugin)
+		Expect(os.WriteFile(destPath, data, 0600)).To(Succeed())
+
+		hash := sha256.Sum256(data)
+		rows = append(rows, model.Plugin{
+			ID:      strings.TrimSuffix(plugin, PackageExtension),
+			Path:    destPath,
+			SHA256:  hex.EncodeToString(hash[:]),
+			Enabled: true,
+		})
+	}
+	return rows
+}
+
 // createTestManagerWithPluginsAndMetrics creates a new plugin Manager with the given plugin config,
-// metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
-// Returns the manager and temp directory path.
+// metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins,
+// and starts the manager. Returns the manager and temp directory path.
 func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]string, metrics PluginMetricsRecorder, plugins ...string) (*Manager, string) {
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
 	Expect(err).ToNot(HaveOccurred())
 
-	// Copy test plugins to temp dir and build plugin list with SHA256
-	var enabledPlugins model.Plugins
-	for _, plugin := range plugins {
-		srcPath := filepath.Join(testdataDir, plugin)
-		destPath := filepath.Join(tmpDir, plugin)
-		data, err := os.ReadFile(srcPath)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(destPath, data, 0600)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Compute SHA256 for the plugin
-		hash := sha256.Sum256(data)
-		hashHex := hex.EncodeToString(hash[:])
-		pluginName := plugin[:len(plugin)-len(PackageExtension)] // Remove .ndp extension
-
-		// Build config JSON if provided
-		configJSON := ""
-		if pluginConfig != nil && pluginConfig[pluginName] != nil {
-			// Encode config to JSON
-			configBytes, err := json.Marshal(pluginConfig[pluginName])
+	enabledPlugins := installTestPlugins(tmpDir, plugins...)
+	for i, p := range enabledPlugins {
+		enabledPlugins[i].AllUsers = true // Allow all users by default in tests
+		if pluginConfig[p.ID] != nil {
+			configBytes, err := json.Marshal(pluginConfig[p.ID])
 			Expect(err).ToNot(HaveOccurred())
-			configJSON = string(configBytes)
+			enabledPlugins[i].Config = string(configBytes)
 		}
-
-		enabledPlugins = append(enabledPlugins, model.Plugin{
-			ID:       pluginName,
-			Path:     destPath,
-			SHA256:   hashHex,
-			Enabled:  true,
-			Config:   configJSON,
-			AllUsers: true, // Allow all users by default in tests
-		})
 	}
 
 	// Setup config
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 
-	// Setup mock DataStore with pre-enabled plugins
-	mockPluginRepo := tests.CreateMockPluginRepo()
-	mockPluginRepo.Permitted = true
-	mockPluginRepo.SetData(enabledPlugins)
-	dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+	dataStore := newTestDataStore(enabledPlugins...)
 
 	// Create and start manager
 	manager := &Manager{
@@ -153,7 +185,10 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	return manager, tmpDir
 }
 
-var _ = BeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func() {
+	// Build once: the testdata Makefile is not safe to run concurrently.
+	buildTestPlugins(testDataDir)
+}, func() {
 	// Get testdata directory (where test plugin .ndp packages live)
 	_, currentFile, _, ok := runtime.Caller(0)
 	Expect(ok).To(BeTrue())
@@ -161,6 +196,9 @@ var _ = BeforeSuite(func() {
 
 	// Create shared manager for most tests
 	testManager, tmpPluginsDir = createTestManager(nil)
+	var err error
+	testManagerPlugins, err = testManager.ds.Plugin().GetAll(adminContext(GinkgoT().Context()))
+	Expect(err).ToNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
@@ -176,3 +214,23 @@ var _ = AfterSuite(func() {
 type noopMetricsRecorder struct{}
 
 func (noopMetricsRecorder) RecordPluginRequest(context.Context, string, string, bool, int64) {}
+
+// failingUsers makes the user lookups host services run fail with err.
+func failingUsers(ds model.DataStore, err error) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+		return failingUserRepo{UserRepository: r, err: err}
+	}})
+}
+
+type failingUserRepo struct {
+	model.UserRepository
+	err error
+}
+
+func (r failingUserRepo) GetAll(context.Context, ...model.QueryOptions) (model.Users, error) {
+	return nil, r.err
+}
+
+func (r failingUserRepo) FindByUsername(context.Context, string) (*model.User, error) {
+	return nil, r.err
+}

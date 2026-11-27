@@ -1,8 +1,11 @@
 package persistence
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -12,23 +15,76 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
+// rawColumn returns a column exactly as stored, bypassing go-sqlite3's decoding of
+// `datetime` columns into time.Time.
+func rawColumn(ctx context.Context, r sqlRepository, id, column string) string {
+	var res struct{ Value string }
+	sel := squirrel.Select("cast(" + column + " as text) as value").
+		From(r.tableName).Where(squirrel.Eq{"id": id})
+	ExpectWithOffset(1, r.queryOne(ctx, sel, &res)).To(Succeed())
+	return res.Value
+}
+
 var _ = Describe("AlbumRepository", func() {
 	var albumRepo *albumRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
-		albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
+		albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
+	})
+
+	Describe("natural sorting", func() {
+		var ids []string
+
+		BeforeEach(func() {
+			ids = nil
+			for _, n := range []string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"} {
+				aid := "nat-" + n
+				ids = append(ids, aid)
+				Expect(albumRepo.Put(ctx, &model.Album{
+					ID: aid, LibraryID: 1, Name: n, OrderAlbumName: n,
+				})).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": ids}))
+			})
+		})
+
+		DescribeTable("sorts albums by name",
+			func(naturalSorting, preferSortTags bool, expected []string) {
+				conf.Update(func(c *conf.Options) {
+					c.EnableNaturalSorting = naturalSorting
+					c.PreferSortTags = preferSortTags
+				})
+				albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
+				albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
+					Sort: "name", Filters: squirrel.Eq{"album.id": ids},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(albums, func(a model.Album) string { return a.Name })).To(Equal(expected))
+			},
+			Entry("lexicographically by default", false, false,
+				[]string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"}),
+			Entry("by number value when natural sorting is enabled", true, false,
+				[]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}),
+			Entry("by number value with sort tags preferred too", true, true,
+				[]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}),
+		)
 	})
 
 	Describe("Get", func() {
 		var Get = func(id string) (*model.Album, error) {
-			album, err := albumRepo.Get(id)
+			album, err := albumRepo.Get(ctx, id)
 			if album != nil {
 				album.ImportedAt = time.Time{}
+				album.CreatedAt = time.Time{}
+				album.BirthTime = time.Time{}
 			}
 			return album, err
 		}
@@ -41,37 +97,183 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("Put", func() {
+		BeforeEach(func() {
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": "put-new"}))
+			})
+		})
+
+		It("stamps a new album without track timestamps with its import time", func() {
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "put-new")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally("~", got.ImportedAt, time.Millisecond))
+			Expect(got.BirthTime).To(BeTemporally("~", got.ImportedAt, time.Millisecond))
+		})
+
+		It("keeps the first created_at and birth_time on later saves", func() {
+			first := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1, CreatedAt: first, BirthTime: first})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "put-new", Name: "new", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "put-new")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally("~", first, time.Second))
+			Expect(got.BirthTime).To(BeTemporally("~", first, time.Second))
+		})
+	})
+
 	Describe("CopyAttributes", func() {
 		var srcTime, dstTime time.Time
 		BeforeEach(func() {
 			srcTime = time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
 			dstTime = time.Date(2024, 6, 7, 8, 9, 10, 0, time.UTC)
-			Expect(albumRepo.Put(&model.Album{ID: "copy-src", Name: "src", LibraryID: 1, CreatedAt: srcTime})).To(Succeed())
-			Expect(albumRepo.Put(&model.Album{ID: "copy-dst", Name: "dst", LibraryID: 1, CreatedAt: dstTime})).To(Succeed())
-			Expect(albumRepo.Put(&model.Album{ID: "copy-zero", Name: "zero", LibraryID: 1})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-src", Name: "src", LibraryID: 1, CreatedAt: srcTime})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-dst", Name: "dst", LibraryID: 1, CreatedAt: dstTime})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "copy-zero", Name: "zero", LibraryID: 1})).To(Succeed())
+			_, err := albumRepo.executeSQL(ctx, squirrel.Update("album").Where(squirrel.Eq{"id": "copy-zero"}).
+				Set("created_at", "0001-01-01 00:00:00+00:00").Set("birth_time", "0000-00-00 00:00:00"))
+			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"copy-src", "copy-dst", "copy-zero"}}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"copy-src", "copy-dst", "copy-zero"}}))
 			})
 		})
 		It("copies a valid created_at from source to destination", func() {
-			Expect(albumRepo.CopyAttributes("copy-src", "copy-dst", "created_at")).To(Succeed())
-			got, err := albumRepo.Get("copy-dst")
+			Expect(albumRepo.CopyAttributes(ctx, "copy-src", "copy-dst", "created_at")).To(Succeed())
+			got, err := albumRepo.Get(ctx, "copy-dst")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", srcTime, time.Second))
 		})
-		It("leaves destination untouched when source created_at is zero", func() {
-			Expect(albumRepo.CopyAttributes("copy-zero", "copy-dst", "created_at")).To(Succeed())
-			got, err := albumRepo.Get("copy-dst")
+		It("leaves destination untouched when source timestamps are zero", func() {
+			Expect(albumRepo.CopyAttributes(ctx, "copy-zero", "copy-dst", "created_at", "birth_time")).To(Succeed())
+			got, err := albumRepo.Get(ctx, "copy-dst")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.CreatedAt).To(BeTemporally("~", dstTime, time.Second))
+			Expect(got.BirthTime).To(BeTemporally("~", dstTime, time.Second))
+		})
+		It("returns not found and leaves destination untouched when source does not exist", func() {
+			err := albumRepo.CopyAttributes(ctx, "copy-missing", "copy-dst", "created_at")
+			Expect(errors.Is(err, model.ErrNotFound)).To(BeTrue())
+			got, getErr := albumRepo.Get(ctx, "copy-dst")
+			Expect(getErr).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally("~", dstTime, time.Second))
+		})
+		It("keeps the copied created_at in the driver's space-separated format", func() {
+			// Copying through a Go string would rewrite it as RFC3339 ("2020-01-02T03:04:05Z"),
+			// which string-sorts above every space-format timestamp and pins the album to the
+			// top of "Recently Added".
+			Expect(albumRepo.CopyAttributes(ctx, "copy-src", "copy-dst", "created_at")).To(Succeed())
+			Expect(rawColumn(ctx, albumRepo.sqlRepository, "copy-dst", "created_at")).
+				To(Equal(rawColumn(ctx, albumRepo.sqlRepository, "copy-src", "created_at")))
+			Expect(rawColumn(ctx, albumRepo.sqlRepository, "copy-dst", "created_at")).ToNot(ContainSubstring("T"))
+		})
+	})
+
+	Describe("GetCursor", func() {
+		It("yields the same albums as GetAll", func() {
+			opts := model.QueryOptions{Sort: "name"}
+			want, err := albumRepo.GetAll(ctx, opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(albumRepo.GetCursor(ctx, opts))).To(Equal([]model.Album(want)))
+		})
+
+		It("honors Max/Offset like GetAll", func() {
+			opts := model.QueryOptions{Sort: "name", Max: 2, Offset: 1}
+			want, err := albumRepo.GetAll(ctx, opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(collectCursor(albumRepo.GetCursor(ctx, opts))).To(Equal([]model.Album(want)))
+		})
+	})
+
+	Describe("getAllIDs", func() {
+		It("returns the same id set as GetAll", func() {
+			want, err := albumRepo.GetAll(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).ToNot(BeEmpty())
+			ids, err := albumRepo.getAllIDs(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(slice.Map(want, func(a model.Album) string { return a.ID })))
+		})
+	})
+
+	Describe("GetSoleAlbumArtistIDsInSubtrees", func() {
+		It("returns the sole album artists of albums with folders in the subtree", func() {
+			folderRepo := newFolderRepository(GetDBXBuilder())
+			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			inTree := model.NewFolder(*lib, "SubtreeAlbums/Artist")
+			outTree := model.NewFolder(*lib, "OtherTree/Artist")
+			Expect(folderRepo.Put(ctx, inTree)).To(Succeed())
+			Expect(folderRepo.Put(ctx, outTree)).To(Succeed())
+
+			// album_artist_id is deliberately wrong: the artist must come from participants
+			inAl := model.Album{ID: "subtree-in-al", Name: "In", LibraryID: 1, AlbumArtistID: "999", FolderIDs: []string{inTree.ID},
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
+			outAl := model.Album{ID: "subtree-out-al", Name: "Out", LibraryID: 1, AlbumArtistID: "3", FolderIDs: []string{outTree.ID},
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistBeatles}}}}
+			duoAl := model.Album{ID: "subtree-duo-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "5", FolderIDs: []string{inTree.ID},
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistPunctuation}, {Artist: artistBeatles}}}}
+			for _, al := range []model.Album{inAl, outAl, duoAl} {
+				Expect(albumRepo.Put(ctx, &al)).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM album WHERE id LIKE 'subtree-%'").Execute()
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM folder WHERE path LIKE 'SubtreeAlbums%' OR path LIKE 'OtherTree%'").Execute()
+			})
+
+			ids, err := albumRepo.GetSoleAlbumArtistIDsInSubtrees(ctx, *lib, "SubtreeAlbums")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf("2")) // sole artist in the subtree; the duo and the outside album are excluded
+		})
+
+		It("stays under SQLite's expression tree depth limit with many paths", func() {
+			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			paths := make([]string, 200)
+			for i := range paths {
+				paths[i] = fmt.Sprintf("DepthProbe/Folder%d", i)
+			}
+
+			_, err = albumRepo.GetSoleAlbumArtistIDsInSubtrees(ctx, *lib, paths...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns nothing when given no paths", func() {
+			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			ids, err := albumRepo.GetSoleAlbumArtistIDsInSubtrees(ctx, *lib)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(BeEmpty())
+		})
+	})
+
+	Describe("SoleAlbumArtistFilter", func() {
+		It("matches only albums where the artist is the sole album artist", func() {
+			// album_artist_id is deliberately wrong: matching must come from participation
+			sole := model.Album{ID: "sole-artist-al", Name: "Sole", LibraryID: 1, AlbumArtistID: "999",
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
+			duo := model.Album{ID: "duo-artist-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "999",
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}, {Artist: artistBeatles}}}}
+			Expect(albumRepo.Put(ctx, &sole)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &duo)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM album WHERE id IN ('sole-artist-al', 'duo-artist-al')").Execute()
+			})
+
+			als, err := albumRepo.GetAll(ctx, model.QueryOptions{Filters: SoleAlbumArtistFilter("2")})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(als).To(HaveLen(1))
+			Expect(als[0].ID).To(Equal(sole.ID))
 		})
 	})
 
 	Describe("GetAll", func() {
 		var GetAll = func(opts ...model.QueryOptions) (model.Albums, error) {
-			albums, err := albumRepo.GetAll(opts...)
+			albums, err := albumRepo.GetAll(ctx, opts...)
 			for i := range albums {
 				albums[i].ImportedAt = time.Time{}
+				albums[i].CreatedAt = time.Time{}
+				albums[i].BirthTime = time.Time{}
 			}
 			return albums, err
 		}
@@ -112,49 +314,66 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("recently_added sort", func() {
-		It("sorts correctly regardless of timestamp format (T-format vs space-format)", func() {
-			// Both timestamps share the same date prefix "2024-01-15" so the T vs space
-			// character at position 10 determines sort order in raw string comparison.
-			// Without normalization, 'T' (ASCII 84) > ' ' (ASCII 32) makes the older
-			// T-format timestamp sort AFTER the newer space-format one.
+		AfterEach(func() {
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").
+				Where(squirrel.Like{"id": "ra-%"}))
+		})
 
-			// Older album: morning of Jan 15, stored in T-format
-			olderAlbum := &model.Album{LibraryID: 1, ID: "ts-older", Name: "Older Album"}
-			Expect(albumRepo.Put(olderAlbum)).To(Succeed())
-			_, err := albumRepo.executeSQL(squirrel.Update("album").
-				Set("created_at", "2024-01-15T08:00:00Z").
-				Where(squirrel.Eq{"id": "ts-older"}))
-			Expect(err).ToNot(HaveOccurred())
-
-			// Newer album: evening of Jan 15, stored in space-format
-			newerAlbum := &model.Album{LibraryID: 1, ID: "ts-newer", Name: "Newer Album"}
-			Expect(albumRepo.Put(newerAlbum)).To(Succeed())
-			_, err = albumRepo.executeSQL(squirrel.Update("album").
-				Set("created_at", "2024-01-15 20:00:00+00:00").
-				Where(squirrel.Eq{"id": "ts-newer"}))
-			Expect(err).ToNot(HaveOccurred())
-
-			albums, err := albumRepo.GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc"})
-			Expect(err).ToNot(HaveOccurred())
-
-			// Find positions of our test albums
-			olderIdx, newerIdx := -1, -1
+		// Sub-second precision must survive, and ties must break deterministically
+		// so the order is independent of any filter (issue #5673).
+		indexOf := func(albums model.Albums, id string) int {
 			for i, a := range albums {
-				switch a.ID {
-				case "ts-older":
-					olderIdx = i
-				case "ts-newer":
-					newerIdx = i
+				if a.ID == id {
+					return i
 				}
 			}
-			Expect(olderIdx).To(BeNumerically(">=", 0), "older album not found in results")
-			Expect(newerIdx).To(BeNumerically(">=", 0), "newer album not found in results")
-			// Newer album (evening, space-format) should come before older album (morning, T-format) in desc order
-			Expect(newerIdx).To(BeNumerically("<", olderIdx),
-				"Newer album (20:00 space-format) should sort before older album (08:00 T-format) in desc order")
+			return -1
+		}
 
-			// Clean up
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"ts-older", "ts-newer"}}))
+		It("orders by sub-second precision, not truncated to the second", func() {
+			// Same second, different nanoseconds: datetime() would tie these.
+			earlier := &model.Album{LibraryID: 1, ID: "ra-earlier", Name: "Earlier"}
+			later := &model.Album{LibraryID: 1, ID: "ra-later", Name: "Later"}
+			Expect(albumRepo.Put(ctx, earlier)).To(Succeed())
+			Expect(albumRepo.Put(ctx, later)).To(Succeed())
+			_, err := albumRepo.executeSQL(ctx, squirrel.Update("album").
+				Set("created_at", "2024-01-15 10:00:00.100000000+00:00").
+				Where(squirrel.Eq{"id": "ra-earlier"}))
+			Expect(err).ToNot(HaveOccurred())
+			_, err = albumRepo.executeSQL(ctx, squirrel.Update("album").
+				Set("created_at", "2024-01-15 10:00:00.900000000+00:00").
+				Where(squirrel.Eq{"id": "ra-later"}))
+			Expect(err).ToNot(HaveOccurred())
+
+			albums, err := albumRepo.GetAll(ctx, model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(indexOf(albums, "ra-later")).To(BeNumerically("<", indexOf(albums, "ra-earlier")),
+				".900 should sort before .100 in desc order")
+		})
+
+		It("breaks ties deterministically and consistently across filters", func() {
+			// All sharing one created_at: the relative order of any subset must
+			// match the unfiltered order (the inversion mechanism in #5673).
+			ids := []string{"ra-t1", "ra-t2", "ra-t3", "ra-t4"}
+			for _, aid := range ids {
+				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: aid, Name: aid})).To(Succeed())
+			}
+			_, err := albumRepo.executeSQL(ctx, squirrel.Update("album").
+				Set("created_at", "2024-02-20 12:00:00+00:00").
+				Where(squirrel.Eq{"id": ids}))
+			Expect(err).ToNot(HaveOccurred())
+
+			all, err := albumRepo.GetAll(ctx, model.QueryOptions{Sort: "recently_added", Order: "desc"})
+			Expect(err).ToNot(HaveOccurred())
+
+			subset, err := albumRepo.GetAll(ctx, model.QueryOptions{
+				Sort: "recently_added", Order: "desc",
+				Filters: squirrel.Eq{"album.id": []string{"ra-t1", "ra-t3"}}})
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(indexOf(all, "ra-t1") < indexOf(all, "ra-t3")).
+				To(Equal(indexOf(subset, "ra-t1") < indexOf(subset, "ra-t3")),
+					"tied albums must keep the same relative order with and without a filter")
 		})
 	})
 
@@ -164,20 +383,20 @@ var _ = Describe("AlbumRepository", func() {
 		BeforeEach(func() {
 			// Create album without any annotation (no star, no rating)
 			albumWithoutAnnotation = model.Album{ID: "no-annotation-album", Name: "No Annotation", LibraryID: 1}
-			Expect(albumRepo.Put(&albumWithoutAnnotation)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &albumWithoutAnnotation)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
 		})
 
 		Describe("starred", func() {
 			It("false includes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"starred": "false"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				var found bool
 				for _, a := range albums {
@@ -190,11 +409,11 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("true excludes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"starred": "true"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				for _, a := range albums {
 					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
@@ -204,11 +423,11 @@ var _ = Describe("AlbumRepository", func() {
 
 		Describe("has_rating", func() {
 			It("false includes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"has_rating": "false"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				var found bool
 				for _, a := range albums {
@@ -221,14 +440,88 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("true excludes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"has_rating": "true"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				for _, a := range albums {
 					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
+				}
+			})
+		})
+
+		Describe("played", func() {
+			var playedAlbum model.Album
+
+			BeforeEach(func() {
+				playedAlbum = model.Album{ID: "played-album", Name: "Played Album", LibraryID: 1, SongCount: 1}
+				Expect(albumRepo.Put(ctx, &playedAlbum)).To(Succeed())
+				Expect(albumRepo.IncPlayCount(ctx, playedAlbum.ID, time.Now())).To(Succeed())
+			})
+
+			AfterEach(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": playedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": playedAlbum.ID}))
+			})
+
+			It("false includes items without annotations", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				var found bool
+				for _, a := range albums {
+					if a.ID == albumWithoutAnnotation.ID {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "Album without annotation should be included in played=false filter")
+			})
+
+			It("true excludes items without annotations", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				for _, a := range albums {
+					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
+				}
+			})
+
+			It("true includes items with play count", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				var found bool
+				for _, a := range albums {
+					if a.ID == playedAlbum.ID {
+						found = true
+						Expect(a.PlayCount).To(BeNumerically(">", 0))
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "Album with play count should be included in played=true filter")
+			})
+
+			It("false excludes items with play count", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				for _, a := range albums {
+					Expect(a.ID).ToNot(Equal(playedAlbum.ID))
 				}
 			})
 		})
@@ -238,15 +531,15 @@ var _ = Describe("AlbumRepository", func() {
 		// Implementation is in withAnnotation() method
 		DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute })
 
 				newID := id.NewRandom()
-				Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
+				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
 				for range playCount {
-					Expect(albumRepo.IncPlayCount(newID, time.Now())).To(Succeed())
+					Expect(albumRepo.IncPlayCount(ctx, newID, time.Now())).To(Succeed())
 				}
 
-				album, err := albumRepo.Get(newID)
+				album, err := albumRepo.Get(ctx, newID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(album.PlayCount).To(Equal(int64(expected)))
 			},
@@ -261,15 +554,15 @@ var _ = Describe("AlbumRepository", func() {
 
 		DescribeTable("normalizes play count when AlbumPlayCountMode is normalized",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized })
 
 				newID := id.NewRandom()
-				Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
+				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
 				for range playCount {
-					Expect(albumRepo.IncPlayCount(newID, time.Now())).To(Succeed())
+					Expect(albumRepo.IncPlayCount(ctx, newID, time.Now())).To(Succeed())
 				}
 
-				album, err := albumRepo.Get(newID)
+				album, err := albumRepo.Get(ctx, newID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(album.PlayCount).To(Equal(int64(expected)))
 			},
@@ -286,83 +579,79 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("Album.AverageRating", func() {
 		It("returns 0 when no ratings exist", func() {
 			newID := id.NewRandom()
-			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "no ratings album"})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "no ratings album"})).To(Succeed())
 
-			album, err := albumRepo.Get(newID)
+			album, err := albumRepo.Get(ctx, newID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(0.0))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("returns the user's rating as average when only one user rated", func() {
 			newID := id.NewRandom()
-			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "single rating album"})).To(Succeed())
-			Expect(albumRepo.SetRating(4, newID)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "single rating album"})).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, newID)).To(Succeed())
 
-			album, err := albumRepo.Get(newID)
+			album, err := albumRepo.Get(ctx, newID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(4.0))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("calculates average across multiple users", func() {
 			newID := id.NewRandom()
-			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "multi rating album"})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "multi rating album"})).To(Succeed())
 
-			Expect(albumRepo.SetRating(4, newID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, newID)).To(Succeed())
 
 			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
-			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
-			Expect(user2Repo.SetRating(5, newID)).To(Succeed())
+			Expect(albumRepo.SetRating(user2Ctx, 5, newID)).To(Succeed())
 
-			album, err := albumRepo.Get(newID)
+			album, err := albumRepo.Get(ctx, newID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(4.5))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("excludes zero ratings from average calculation", func() {
 			newID := id.NewRandom()
-			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "zero rating excluded album"})).To(Succeed())
-			Expect(albumRepo.SetRating(3, newID)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "zero rating excluded album"})).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 3, newID)).To(Succeed())
 
 			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
-			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
-			Expect(user2Repo.SetRating(0, newID)).To(Succeed())
+			Expect(albumRepo.SetRating(user2Ctx, 0, newID)).To(Succeed())
 
-			album, err := albumRepo.Get(newID)
+			album, err := albumRepo.Get(ctx, newID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(3.0))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("rounds to 2 decimal places", func() {
 			newID := id.NewRandom()
-			Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "rounding test album"})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "rounding test album"})).To(Succeed())
 
-			Expect(albumRepo.SetRating(5, newID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 5, newID)).To(Succeed())
 
 			user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
-			user2Repo := NewAlbumRepository(user2Ctx, GetDBXBuilder()).(*albumRepository)
-			Expect(user2Repo.SetRating(4, newID)).To(Succeed())
+			Expect(albumRepo.SetRating(user2Ctx, 4, newID)).To(Succeed())
 
 			user3Ctx := request.WithUser(GinkgoT().Context(), thirdUser)
-			user3Repo := NewAlbumRepository(user3Ctx, GetDBXBuilder()).(*albumRepository)
-			Expect(user3Repo.SetRating(4, newID)).To(Succeed())
+			Expect(albumRepo.SetRating(user3Ctx, 4, newID)).To(Succeed())
 
-			album, err := albumRepo.Get(newID)
+			album, err := albumRepo.Get(ctx, newID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(4.33)) // (5 + 4 + 4) / 3 = 4.333...
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 	})
 
@@ -393,11 +682,11 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(dba.Album.Participants).To(HaveLen(2))
 				Expect(dba.Album.Participants).To(HaveKeyWithValue(
 					model.RoleFromString("composer"),
-					model.ParticipantList{{Artist: model.Artist{ID: "1", Name: "Composer 1"}}},
+					model.ParticipantList{{ID: "1", Name: "Composer 1"}},
 				))
 				Expect(dba.Album.Participants).To(HaveKeyWithValue(
 					model.RoleFromString("artist"),
-					model.ParticipantList{{Artist: model.Artist{ID: "2", Name: "Artist 2"}}, {Artist: model.Artist{ID: "3", Name: "Artist 3"}, SubRole: "subRole"}},
+					model.ParticipantList{{ID: "2", Name: "Artist 2"}, {ID: "3", Name: "Artist 3", SubRole: "subRole"}},
 				))
 			})
 
@@ -439,7 +728,7 @@ var _ = Describe("AlbumRepository", func() {
 			It("maps participants correctly", func() {
 				dba.Album.Participants = model.Participants{
 					model.RoleAlbumArtist: model.ParticipantList{_p("AA1", "AlbumArtist1")},
-					model.RoleComposer:    model.ParticipantList{{Artist: model.Artist{ID: "C1", Name: "Composer1"}, SubRole: "composer"}},
+					model.RoleComposer:    model.ParticipantList{{ID: "C1", Name: "Composer1", SubRole: "composer"}},
 				}
 				Expect(dba.PostMapArgs(args)).To(Succeed())
 				Expect(args).To(HaveKeyWithValue(
@@ -466,34 +755,31 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("dbAlbums.toModels", func() {
 		It("converts dbAlbums to model.Albums", func() {
 			dba := dbAlbums{
-				{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, Annotations: model.Annotations{PlayCount: 4}}},
-				{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, Annotations: model.Annotations{PlayCount: 6}}},
+				{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, PlayCount: 4}},
+				{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, PlayCount: 6}},
 			}
 			albums := dba.toModels()
 			for i := range dba {
-				Expect(albums[i].ID).To(Equal(dba[i].Album.ID))
-				Expect(albums[i].Name).To(Equal(dba[i].Album.Name))
-				Expect(albums[i].SongCount).To(Equal(dba[i].Album.SongCount))
-				Expect(albums[i].PlayCount).To(Equal(dba[i].Album.PlayCount))
+				Expect(albums[i].ID).To(Equal(dba[i].ID))
+				Expect(albums[i].Name).To(Equal(dba[i].Name))
+				Expect(albums[i].SongCount).To(Equal(dba[i].SongCount))
+				Expect(albums[i].PlayCount).To(Equal(dba[i].PlayCount))
 			}
 		})
 	})
 
 	Describe("artistRoleFilter", func() {
 		DescribeTable("creates correct SQL expressions for artist roles",
-			func(filterName, artistID, expectedSQL string) {
+			func(filterName, artistID, expectedRole string) {
 				sqlizer := artistRoleFilter(filterName, artistID)
 				sql, args, err := sqlizer.ToSql()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(sql).To(Equal(expectedSQL))
-				Expect(args).To(Equal([]any{artistID}))
+				Expect(sql).To(Equal("album.id IN (SELECT album_id FROM album_artists WHERE artist_id = ? AND role IN (?))"))
+				Expect(args).To(Equal([]any{artistID, expectedRole}))
 			},
-			Entry("artist role", "role_artist_id", "123",
-				"exists (select 1 from json_tree(participants, '$.artist') where value = ?)"),
-			Entry("albumartist role", "role_albumartist_id", "456",
-				"exists (select 1 from json_tree(participants, '$.albumartist') where value = ?)"),
-			Entry("composer role", "role_composer_id", "789",
-				"exists (select 1 from json_tree(participants, '$.composer') where value = ?)"),
+			Entry("artist role", "role_artist_id", "123", "artist"),
+			Entry("albumartist role", "role_albumartist_id", "456", "albumartist"),
+			Entry("composer role", "role_composer_id", "789", "composer"),
 		)
 
 		It("works with the actual filter map", func() {
@@ -507,8 +793,8 @@ var _ = Describe("AlbumRepository", func() {
 				sqlizer := filterFunc(filterName, "test-id")
 				sql, args, err := sqlizer.ToSql()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(sql).To(Equal(fmt.Sprintf("exists (select 1 from json_tree(participants, '$.%s') where value = ?)", roleName)))
-				Expect(args).To(Equal([]any{"test-id"}))
+				Expect(sql).To(Equal("album.id IN (SELECT album_id FROM album_artists WHERE artist_id = ? AND role IN (?))"))
+				Expect(args).To(Equal([]any{"test-id", roleName}))
 			}
 		})
 
@@ -534,10 +820,11 @@ var _ = Describe("AlbumRepository", func() {
 		}
 
 		var artistRepo *artistRepository
+		var artistCtx context.Context
 
 		BeforeEach(func() {
-			ctx := request.WithUser(GinkgoT().Context(), adminUser)
-			artistRepo = NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+			artistCtx = request.WithUser(ctx, adminUser)
+			artistRepo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)
 		})
 
 		// Helper to verify album_artists records
@@ -549,7 +836,7 @@ var _ = Describe("AlbumRepository", func() {
 				Where(squirrel.Eq{"album_id": albumID}).
 				OrderBy("role", "artist_id", "sub_role")
 
-			err := albumRepo.queryAll(sq, &actual)
+			err := albumRepo.queryAll(ctx, sq, &actual)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(Equal(expected))
 		}
@@ -562,7 +849,7 @@ var _ = Describe("AlbumRepository", func() {
 				OrderArtistName: "real artist",
 				SortArtistName:  "Artist, Real",
 			}
-			err := createArtistWithLibrary(artistRepo, artist, 1)
+			err := createArtistWithLibrary(artistCtx, artistRepo, artist, 1)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Create an album with participants that reference the real artist
@@ -574,16 +861,16 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Real Artist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "real-artist-1", Name: "Real Artist"}},
+						{ID: "real-artist-1", Name: "Real Artist"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "real-artist-1", Name: "Real Artist"}, SubRole: "primary"},
+						{ID: "real-artist-1", Name: "Real Artist", SubRole: "primary"},
 					},
 				},
 			}
 
 			// Insert the album
-			err = albumRepo.Put(album)
+			err = albumRepo.Put(ctx, album)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify that participant records were actually inserted into album_artists table
@@ -594,8 +881,76 @@ var _ = Describe("AlbumRepository", func() {
 			verifyAlbumArtists(album.ID, expected)
 
 			// Clean up the test artist and album created for this test
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+		})
+
+		It("finds albums through the participant-based filters", func() {
+			artist := &model.Artist{ID: "filter-artist-1", Name: "Filter Artist", OrderArtistName: "filter artist"}
+			Expect(createArtistWithLibrary(artistCtx, artistRepo, artist, 1)).To(Succeed())
+
+			album := &model.Album{
+				LibraryID:     1,
+				ID:            "filter-album-1",
+				Name:          "Filter Album",
+				AlbumArtistID: artist.ID,
+				AlbumArtist:   artist.Name,
+				Participants: model.Participants{
+					model.RoleAlbumArtist: {{ID: artist.ID, Name: artist.Name}},
+					model.RoleComposer:    {{ID: artist.ID, Name: artist.Name}},
+				},
+			}
+			Expect(albumRepo.Put(ctx, album)).To(Succeed())
+
+			byArtist, err := albumRepo.GetAll(ctx, model.QueryOptions{Filters: artistFilter("artist_id", artist.ID)})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(byArtist).To(HaveLen(1))
+			Expect(byArtist[0].ID).To(Equal(album.ID))
+
+			byComposer, err := albumRepo.GetAll(ctx, model.QueryOptions{Filters: artistRoleFilter("role_composer_id", artist.ID)})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(byComposer).To(HaveLen(1))
+
+			byLyricist, err := albumRepo.GetAll(ctx, model.QueryOptions{Filters: artistRoleFilter("role_lyricist_id", artist.ID)})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(byLyricist).To(BeEmpty())
+
+			byAnyRole, err := albumRepo.GetAll(ctx, model.QueryOptions{Filters: allRolesFilter("role_total_id", artist.ID)})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(byAnyRole).To(HaveLen(1))
+
+			count, err := albumRepo.CountAll(ctx, model.QueryOptions{Filters: artistFilter("artist_id", artist.ID)})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(1)))
+
+			_, _ = artistRepo.executeSQL(artistCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+		})
+
+		It("clears album_artists rows when saved with empty participants", func() {
+			artist := &model.Artist{ID: "clear-artist-1", Name: "Clear Artist", OrderArtistName: "clear artist"}
+			Expect(createArtistWithLibrary(artistCtx, artistRepo, artist, 1)).To(Succeed())
+
+			album := &model.Album{
+				LibraryID:     1,
+				ID:            "clear-album-1",
+				Name:          "Clear Album",
+				AlbumArtistID: artist.ID,
+				AlbumArtist:   artist.Name,
+				Participants: model.Participants{
+					model.RoleAlbumArtist: {{ID: artist.ID, Name: artist.Name}},
+				},
+			}
+			DeferCleanup(func() {
+				_, _ = artistRepo.executeSQL(artistCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			})
+			Expect(albumRepo.Put(ctx, album)).To(Succeed())
+			verifyAlbumArtists(album.ID, []albumArtistRecord{{ArtistID: artist.ID, Role: "albumartist", SubRole: ""}})
+
+			album.Participants = model.Participants{}
+			Expect(albumRepo.Put(ctx, album)).To(Succeed())
+			verifyAlbumArtists(album.ID, []albumArtistRecord{})
 		})
 
 		It("filters out invalid artist IDs leaving only valid participants in database", func() {
@@ -610,9 +965,9 @@ var _ = Describe("AlbumRepository", func() {
 				Name:            "Real Artist 2",
 				OrderArtistName: "real artist 2",
 			}
-			err := createArtistWithLibrary(artistRepo, artist1, 1)
+			err := createArtistWithLibrary(artistCtx, artistRepo, artist1, 1)
 			Expect(err).ToNot(HaveOccurred())
-			err = createArtistWithLibrary(artistRepo, artist2, 1)
+			err = createArtistWithLibrary(artistCtx, artistRepo, artist2, 1)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Create an album with mix of valid and invalid artist IDs
@@ -624,19 +979,19 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Real Artist 1",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "real-artist-mix-1", Name: "Real Artist 1"}},
-						{Artist: model.Artist{ID: "non-existent-mix-1", Name: "Non Existent 1"}},
-						{Artist: model.Artist{ID: "real-artist-mix-2", Name: "Real Artist 2"}},
+						{ID: "real-artist-mix-1", Name: "Real Artist 1"},
+						{ID: "non-existent-mix-1", Name: "Non Existent 1"},
+						{ID: "real-artist-mix-2", Name: "Real Artist 2"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "non-existent-mix-2", Name: "Non Existent 2"}},
-						{Artist: model.Artist{ID: "real-artist-mix-1", Name: "Real Artist 1"}},
+						{ID: "non-existent-mix-2", Name: "Non Existent 2"},
+						{ID: "real-artist-mix-1", Name: "Real Artist 1"},
 					},
 				},
 			}
 
 			// This should not fail - only valid artists should be inserted
-			err = albumRepo.Put(album)
+			err = albumRepo.Put(ctx, album)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify that only valid artist IDs were inserted into album_artists table
@@ -650,8 +1005,8 @@ var _ = Describe("AlbumRepository", func() {
 
 			// Clean up the test artists and album created for this test
 			artistIDs := []string{artist1.ID, artist2.ID}
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("handles complex nested JSON with multiple roles and sub-roles", func() {
@@ -664,7 +1019,7 @@ var _ = Describe("AlbumRepository", func() {
 			}
 
 			for _, artist := range artists {
-				err := createArtistWithLibrary(artistRepo, artist, 1)
+				err := createArtistWithLibrary(artistCtx, artistRepo, artist, 1)
 				Expect(err).ToNot(HaveOccurred())
 			}
 
@@ -677,21 +1032,21 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Lead Vocalist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "complex-artist-1", Name: "Lead Vocalist"}},
-						{Artist: model.Artist{ID: "complex-artist-2", Name: "Guitarist"}, SubRole: "lead guitar"},
-						{Artist: model.Artist{ID: "complex-artist-2", Name: "Guitarist"}, SubRole: "rhythm guitar"},
+						{ID: "complex-artist-1", Name: "Lead Vocalist"},
+						{ID: "complex-artist-2", Name: "Guitarist", SubRole: "lead guitar"},
+						{ID: "complex-artist-2", Name: "Guitarist", SubRole: "rhythm guitar"},
 					},
 					model.RoleProducer: {
-						{Artist: model.Artist{ID: "complex-artist-3", Name: "Producer"}, SubRole: "executive"},
+						{ID: "complex-artist-3", Name: "Producer", SubRole: "executive"},
 					},
 					model.RoleEngineer: {
-						{Artist: model.Artist{ID: "complex-artist-4", Name: "Engineer"}, SubRole: "mixing"},
-						{Artist: model.Artist{ID: "complex-artist-4", Name: "Engineer"}, SubRole: "mastering"},
+						{ID: "complex-artist-4", Name: "Engineer", SubRole: "mixing"},
+						{ID: "complex-artist-4", Name: "Engineer", SubRole: "mastering"},
 					},
 				},
 			}
 
-			err := albumRepo.Put(album)
+			err := albumRepo.Put(ctx, album)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify complex JSON structure was correctly parsed and inserted
@@ -710,8 +1065,8 @@ var _ = Describe("AlbumRepository", func() {
 			for i, artist := range artists {
 				artistIDs[i] = artist.ID
 			}
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("handles albums with non-existent artist IDs without constraint errors", func() {
@@ -727,22 +1082,22 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Non Existent Album Artist",
 				Participants: model.Participants{
 					model.RoleArtist: {
-						{Artist: model.Artist{ID: "non-existent-artist-1", Name: "Non Existent Artist 1"}},
-						{Artist: model.Artist{ID: "non-existent-artist-2", Name: "Non Existent Artist 2"}},
+						{ID: "non-existent-artist-1", Name: "Non Existent Artist 1"},
+						{ID: "non-existent-artist-2", Name: "Non Existent Artist 2"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "non-existent-composer-1", Name: "Non Existent Composer 1"}},
-						{Artist: model.Artist{ID: "non-existent-composer-2", Name: "Non Existent Composer 2"}},
+						{ID: "non-existent-composer-1", Name: "Non Existent Composer 1"},
+						{ID: "non-existent-composer-2", Name: "Non Existent Composer 2"},
 					},
 					model.RoleAlbumArtist: {
-						{Artist: model.Artist{ID: "non-existent-album-artist-1", Name: "Non Existent Album Artist 1"}},
+						{ID: "non-existent-album-artist-1", Name: "Non Existent Album Artist 1"},
 					},
 				},
 			}
 
 			// This should not fail with foreign key constraint error
 			// The updateParticipants method should handle non-existent artist IDs gracefully
-			err := albumRepo.Put(album)
+			err := albumRepo.Put(ctx, album)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify that no participant records were inserted since all artist IDs were invalid
@@ -750,7 +1105,7 @@ var _ = Describe("AlbumRepository", func() {
 			verifyAlbumArtists(album.ID, []albumArtistRecord{})
 
 			// Clean up the test album created for this test
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("removes stale role associations when artist role changes", func() {
@@ -764,7 +1119,7 @@ var _ = Describe("AlbumRepository", func() {
 				Name:            "Role Change Artist",
 				OrderArtistName: "role change artist",
 			}
-			err := createArtistWithLibrary(artistRepo, artist, 1)
+			err := createArtistWithLibrary(artistCtx, artistRepo, artist, 1)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Create album with artist as both albumartist and composer
@@ -776,15 +1131,15 @@ var _ = Describe("AlbumRepository", func() {
 				AlbumArtist:   "Role Change Artist",
 				Participants: model.Participants{
 					model.RoleAlbumArtist: {
-						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+						{ID: "role-change-artist-1", Name: "Role Change Artist"},
 					},
 					model.RoleComposer: {
-						{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+						{ID: "role-change-artist-1", Name: "Role Change Artist"},
 					},
 				},
 			}
 
-			err = albumRepo.Put(album)
+			err = albumRepo.Put(ctx, album)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify initial state: artist has both albumartist and composer roles
@@ -797,11 +1152,11 @@ var _ = Describe("AlbumRepository", func() {
 			// Now update album so artist is ONLY a composer (remove albumartist role)
 			album.Participants = model.Participants{
 				model.RoleComposer: {
-					{Artist: model.Artist{ID: "role-change-artist-1", Name: "Role Change Artist"}},
+					{ID: "role-change-artist-1", Name: "Role Change Artist"},
 				},
 			}
 
-			err = albumRepo.Put(album)
+			err = albumRepo.Put(ctx, album)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify that the albumartist role was removed - only composer should remain
@@ -813,8 +1168,67 @@ var _ = Describe("AlbumRepository", func() {
 			verifyAlbumArtists(album.ID, expectedAfter)
 
 			// Clean up
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+		})
+	})
+
+	Describe("GetYears", func() {
+		It("returns distinct album years ascending, excluding zero", func() {
+			years, err := albumRepo.GetYears(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			// Sorted ascending, no duplicates, no zero-year entries.
+			Expect(sort.IsSorted(sort.IntSlice(years))).To(BeTrue())
+			Expect(years).ToNot(ContainElement(0))
+			for i := 1; i < len(years); i++ {
+				Expect(years[i]).To(BeNumerically(">", years[i-1])) // strictly increasing = distinct
+			}
+		})
+
+		It("deduplicates repeated years", func() {
+			// Regression test: verify that DISTINCT is applied in the SQL.
+			// Insert two albums with the same non-zero max_year (2005).
+			album1 := &model.Album{LibraryID: 1, ID: "dedup-test-1", Name: "Album 1", MaxYear: 2005}
+			album2 := &model.Album{LibraryID: 1, ID: "dedup-test-2", Name: "Album 2", MaxYear: 2005}
+			Expect(albumRepo.Put(ctx, album1)).To(Succeed())
+			Expect(albumRepo.Put(ctx, album2)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"dedup-test-1", "dedup-test-2"}}))
+			})
+
+			years, err := albumRepo.GetYears(ctx)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Count occurrences of 2005 in the result
+			count := 0
+			for _, y := range years {
+				if y == 2005 {
+					count++
+				}
+			}
+			Expect(count).To(Equal(1), "year 2005 should appear exactly once despite two albums having it")
+		})
+
+		It("scopes years to the given libraries", func() {
+			all, err := albumRepo.GetYears(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			// A library with no albums yields no years.
+			scoped, err := albumRepo.GetYears(ctx, 99999)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(scoped).To(BeEmpty())
+			Expect(all).ToNot(BeEmpty())
+		})
+
+		It("excludes years that belong only to missing albums", func() {
+			gone := &model.Album{LibraryID: 1, ID: "missing-year-1", Name: "Gone", MaxYear: 1911, Missing: true}
+			Expect(albumRepo.Put(ctx, gone)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": "missing-year-1"}))
+			})
+
+			years, err := albumRepo.GetYears(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(years).ToNot(ContainElement(1911))
 		})
 	})
 
@@ -822,7 +1236,7 @@ var _ = Describe("AlbumRepository", func() {
 		It("does not panic when the cursor yields a dbAlbum with nil Album", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbAlbum (where Album is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbAlbum, error) bool) {
 				var empty dbAlbum // Album pointer is nil
 				yield(empty, dbErr)
@@ -837,7 +1251,7 @@ var _ = Describe("AlbumRepository", func() {
 				}
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
-			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil album"))
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil model.Album"))
 			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 
@@ -857,12 +1271,85 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(albums[0].ID).To(Equal("a1"))
 		})
 	})
+
+	Describe("ReplayGain", func() {
+		BeforeEach(func() {
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"rg-1", "rg-2"}}))
+			})
+		})
+		It("round-trips album ReplayGain gain and peak", func() {
+			Expect(albumRepo.Put(ctx, &model.Album{
+				ID: "rg-1", Name: "rg", LibraryID: 1,
+				RGAlbumGain: new(-7.5), RGAlbumPeak: new(0.98),
+			})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "rg-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.RGAlbumGain).ToNot(BeNil())
+			Expect(*got.RGAlbumGain).To(Equal(-7.5))
+			Expect(got.RGAlbumPeak).ToNot(BeNil())
+			Expect(*got.RGAlbumPeak).To(Equal(0.98))
+		})
+		It("reads nil when ReplayGain is unset", func() {
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "rg-2", Name: "rg2", LibraryID: 1})).To(Succeed())
+			got, err := albumRepo.Get(ctx, "rg-2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.RGAlbumGain).To(BeNil())
+			Expect(got.RGAlbumPeak).To(BeNil())
+		})
+	})
+
+	// Exists must apply the same library filter as Get/GetAll/CountAll.
+	Describe("Exists library visibility", func() {
+		It("hides an album the user has no library access to", func() {
+			Expect(albumRepo.Put(ctx, &model.Album{ID: "vis-album", Name: "Vis", LibraryID: 1})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": "vis-album"}))
+			})
+
+			Expect(albumRepo.Exists(ctx, "vis-album")).To(BeTrue(), "admin sees it")
+
+			restricted := model.User{ID: "restricted_album_user", UserName: "ra", Name: "RA", Email: "ra@t.com"}
+			rctx := request.WithUser(GinkgoT().Context(), restricted)
+			Expect(albumRepo.Exists(rctx, "vis-album")).To(BeFalse())
+		})
+
+		It("keeps per-user library visibility separate on a shared repository", func() {
+			adminCtx := request.WithUser(ctx, adminUser)
+			adminCount, err := albumRepo.CountAll(adminCtx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(adminCount).To(BeNumerically(">", 0))
+
+			// A user with no library grants, so its visibility can't drift with other specs
+			restrictedCtx := request.WithUser(ctx, model.User{ID: "shared-repo-restricted"})
+			restrictedCount, err := albumRepo.CountAll(restrictedCtx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(restrictedCount).To(BeZero())
+
+			var wg sync.WaitGroup
+			for i := range 20 {
+				wg.Add(1)
+				go func(i int) {
+					defer GinkgoRecover()
+					defer wg.Done()
+					c, want := adminCtx, adminCount
+					if i%2 == 1 {
+						c, want = restrictedCtx, restrictedCount
+					}
+					got, err := albumRepo.CountAll(c)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(got).To(Equal(want))
+				}(i)
+			}
+			wg.Wait()
+		})
+	})
 })
 
 func _p(id, name string, sortName ...string) model.Participant {
-	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
+	p := model.Participant{ID: id, Name: name}
 	if len(sortName) > 0 {
-		p.Artist.SortArtistName = sortName[0]
+		p.SortArtistName = sortName[0]
 	}
 	return p
 }

@@ -75,6 +75,6 @@ create table playqueue_dg_tmp(
 	return err
 }
 
-func downPlayQueueCurrentToIndex(ctx context.Context, tx *sql.Tx) error {
+func downPlayQueueCurrentToIndex(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

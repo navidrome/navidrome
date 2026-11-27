@@ -46,9 +46,9 @@ struct CodecEncodeResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn codec_encode(input: Json<CodecEncodeRequest>) -> Json<CodecEncodeResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn codec_encode(input: u64) -> u64;
 }
 
 /// Calls the codec_encode host function.
@@ -62,15 +62,13 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn encode(data: Vec<u8>) -> Result<Vec<u8>, Error> {
-    let response = unsafe {
-        codec_encode(Json(CodecEncodeRequest {
-            data: data,
-        }))?
-    };
+    let response: CodecEncodeResponse = unsafe { nd_pdk_types::hostcall::call(codec_encode, &CodecEncodeRequest {
+        data: data,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

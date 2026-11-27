@@ -84,4 +84,4 @@ Rust plugins must be compiled to WebAssembly:
 cargo build --target wasm32-wasip1 --release
 ```
 
-See the [webhook-rs](../../examples/webhook-rs/) example for a complete plugin implementation.
+See the [webhook-rs](../../../examples/webhook-rs/) example for a complete plugin implementation.

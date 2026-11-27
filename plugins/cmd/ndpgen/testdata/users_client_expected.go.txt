@@ -55,6 +55,7 @@ func UsersGet(id *string, filter *User) (*User, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response usersGetResponse

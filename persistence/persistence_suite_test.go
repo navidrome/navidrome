@@ -1,13 +1,17 @@
 package persistence
 
 import (
+	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -23,12 +27,14 @@ func TestPersistence(t *testing.T) {
 
 	//os.Remove("./test-123.db")
 	//conf.Server.DbPath = "./test-123.db"
-	conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
-	defer db.Init(context.Background())()
+	conf.Update(func(c *conf.Options) { c.DbPath = "file::memory:?cache=shared&_foreign_keys=on" })
+	defer db.Init(t.Context())()
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}
@@ -37,7 +43,7 @@ func mf(mf model.MediaFile) model.MediaFile {
 	mf.LibraryName = "Music Library"
 	mf.Participants = model.Participants{
 		model.RoleArtist: model.ParticipantList{
-			model.Participant{Artist: model.Artist{ID: mf.ArtistID, Name: mf.Artist}},
+			model.Participant{ID: mf.ArtistID, Name: mf.Artist},
 		},
 	}
 	if mf.Lyrics == "" {
@@ -157,54 +163,60 @@ var (
 	testUsers   = model.Users{adminUser, regularUser, thirdUser}
 )
 
+var (
+	firstScrobble  = model.Scrobble{ID: 1, MediaFileID: "1001", UserID: "userid", SubmissionTime: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	secondScrobble = model.Scrobble{ID: 2, MediaFileID: "1003", UserID: "2222", SubmissionTime: time.Date(1970, 2, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	thirdScrobble  = model.Scrobble{ID: 3, MediaFileID: "1002", UserID: "userid", SubmissionTime: time.Date(1970, 3, 1, 0, 0, 0, 0, time.UTC).Unix()}
+	scrobbles      = model.Scrobbles{firstScrobble, secondScrobble, thirdScrobble}
+)
+
 func p(path string) string {
 	return filepath.FromSlash(path)
 }
 
+// restrictedFixture creates a second library plus a non-admin user granted library 1 only, so
+// specs can assert that a query filters by library. Cleans itself up after the spec.
+func restrictedFixture(name string) (context.Context, model.Library, model.User) {
+	adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+	db := GetDBXBuilder()
+
+	lib := model.Library{Name: name + " Library", Path: "/" + name}
+	lr := NewLibraryRepository(db)
+	Expect(lr.Put(adminCtx, &lib)).To(Succeed())
+
+	user := createUserWithLibraries(name+"-restricted", []int{1})
+	ur := NewUserRepository(db)
+	Expect(ur.Put(adminCtx, &user)).To(Succeed())
+	Expect(ur.SetUserLibraries(adminCtx, user.ID, []int{1})).To(Succeed())
+
+	DeferCleanup(func() {
+		_ = NewUserRepository(db).Delete(adminCtx, user.ID)
+		_ = NewLibraryRepository(db).(*libraryRepository).delete(adminCtx, squirrel.Eq{"id": lib.ID})
+	})
+	return adminCtx, lib, user
+}
+
 var _ = BeforeSuite(func() {
 	conn := GetDBXBuilder()
-	ctx := log.NewContext(context.TODO())
+	ctx := log.NewContext(GinkgoT().Context())
 	ctx = request.WithUser(ctx, adminUser)
 
-	ur := NewUserRepository(ctx, conn)
+	ur := NewUserRepository(conn)
 	for i := range testUsers {
-		err := ur.Put(&testUsers[i])
-		if err != nil {
-			panic(err)
-		}
+		Expect(ur.Put(ctx, &testUsers[i])).To(Succeed())
+		Expect(ur.SetUserLibraries(ctx, testUsers[i].ID, []int{1})).To(Succeed())
 	}
 
-	// Associate users with library 1 (default test library)
-	for i := range testUsers {
-		err := ur.SetUserLibraries(testUsers[i].ID, []int{1})
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
+	alr := NewAlbumRepository(conn).(*albumRepository)
 	for i := range testAlbums {
-		err := alr.Put(new(testAlbums[i]))
-		if err != nil {
-			panic(err)
-		}
+		Expect(alr.Put(ctx, new(testAlbums[i]))).To(Succeed())
 	}
 
-	arr := NewArtistRepository(ctx, conn)
+	arr := NewArtistRepository(conn)
+	lr := NewLibraryRepository(conn)
 	for i := range testArtists {
-		err := arr.Put(new(testArtists[i]))
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Associate artists with library 1 (default test library)
-	lr := NewLibraryRepository(ctx, conn)
-	for i := range testArtists {
-		err := lr.AddArtist(1, testArtists[i].ID)
-		if err != nil {
-			panic(err)
-		}
+		Expect(arr.Put(ctx, new(testArtists[i]))).To(Succeed())
+		Expect(lr.AddArtist(ctx, 1, testArtists[i].ID)).To(Succeed())
 	}
 
 	// Populate album_artists based on the AlbumArtistID relationships in testAlbums
@@ -217,31 +229,23 @@ var _ = BeforeSuite(func() {
 		if a.AlbumArtistID == "" || !artistIDs[a.AlbumArtistID] {
 			continue
 		}
-		_, err := alr.executeSQL(squirrel.Insert("album_artists").SetMap(map[string]any{
+		_, err := alr.executeSQL(ctx, squirrel.Insert("album_artists").SetMap(map[string]any{
 			"album_id":  a.ID,
 			"artist_id": a.AlbumArtistID,
 			"role":      "artist",
 			"sub_role":  "",
 		}))
-		if err != nil {
-			panic(err)
-		}
+		Expect(err).ToNot(HaveOccurred())
 	}
 
-	mr := NewMediaFileRepository(ctx, conn)
+	mr := NewMediaFileRepository(conn)
 	for i := range testSongs {
-		err := mr.Put(&testSongs[i])
-		if err != nil {
-			panic(err)
-		}
+		Expect(mr.Put(ctx, &testSongs[i])).To(Succeed())
 	}
 
-	rar := NewRadioRepository(ctx, conn)
+	rar := NewRadioRepository(conn)
 	for i := range testRadios {
-		err := rar.Put(new(testRadios[i]))
-		if err != nil {
-			panic(err)
-		}
+		Expect(rar.Put(ctx, new(testRadios[i]))).To(Succeed())
 	}
 
 	plsBest = model.Playlist{
@@ -257,55 +261,80 @@ var _ = BeforeSuite(func() {
 	plsCool.AddMediaFilesByID([]string{"1004"})
 	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 
-	pr := NewPlaylistRepository(ctx, conn)
+	pr := NewPlaylistRepository(conn)
 	for i := range testPlaylists {
-		err := pr.Put(testPlaylists[i])
-		if err != nil {
-			panic(err)
-		}
+		Expect(pr.Put(ctx, testPlaylists[i])).To(Succeed())
 	}
 
 	// Prepare annotations
-	if err := arr.SetStar(true, artistBeatles.ID); err != nil {
-		panic(err)
-	}
-	ar, err := arr.Get(artistBeatles.ID)
-	if err != nil {
-		panic(err)
-	}
-	if ar == nil {
-		panic("artist not found after SetStar")
-	}
+	Expect(arr.SetStar(ctx, true, artistBeatles.ID)).To(Succeed())
+	ar, err := arr.Get(ctx, artistBeatles.ID)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ar).ToNot(BeNil(), "artist not found after SetStar")
 	artistBeatles.Starred = true
 	artistBeatles.StarredAt = ar.StarredAt
 	testArtists[1] = artistBeatles
 
-	if err := alr.SetStar(true, albumRadioactivity.ID); err != nil {
-		panic(err)
-	}
-	al, err := alr.Get(albumRadioactivity.ID)
-	if err != nil {
-		panic(err)
-	}
-	if al == nil {
-		panic("album not found after SetStar")
-	}
+	Expect(alr.SetStar(ctx, true, albumRadioactivity.ID)).To(Succeed())
+	al, err := alr.Get(ctx, albumRadioactivity.ID)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(al).ToNot(BeNil(), "album not found after SetStar")
 	albumRadioactivity.Starred = true
 	albumRadioactivity.StarredAt = al.StarredAt
 	testAlbums[2] = albumRadioactivity
 
-	if err := mr.SetStar(true, songComeTogether.ID); err != nil {
-		panic(err)
-	}
-	mf, err := mr.Get(songComeTogether.ID)
-	if err != nil {
-		panic(err)
-	}
+	Expect(mr.SetStar(ctx, true, songComeTogether.ID)).To(Succeed())
+	mf, err := mr.Get(ctx, songComeTogether.ID)
+	Expect(err).ToNot(HaveOccurred())
 	songComeTogether.Starred = true
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
+
+	scrobbleRepo := NewScrobbleRepository(conn).(*scrobbleRepository)
+	for _, s := range scrobbles {
+		_, err := scrobbleRepo.executeSQL(ctx, squirrel.Insert("scrobbles").SetMap(map[string]any{
+			"media_file_id":   s.MediaFileID,
+			"user_id":         s.UserID,
+			"submission_time": s.SubmissionTime,
+		}))
+		Expect(err).ToNot(HaveOccurred())
+	}
 })
+
+// captureTraceLogs sends trace logs, SQL included, to a buffer for the rest of the spec.
+func captureTraceLogs() *bytes.Buffer {
+	buf := &bytes.Buffer{}
+	log.SetOutput(buf)
+	log.SetLevel(log.LevelTrace)
+	DeferCleanup(func() {
+		log.SetOutput(os.Stderr)
+		log.SetLevel(log.LevelFatal)
+	})
+	return buf
+}
 
 func GetDBXBuilder() *dbx.DB {
 	return dbx.NewFromDB(db.Db(), db.Dialect)
+}
+
+// storedRows reads playlist_tracks without joining media_file, so it also shows rows pointing to no track.
+func storedRows(playlistID string) []string {
+	GinkgoHelper()
+	var rows []string
+	Expect(GetDBXBuilder().NewQuery("SELECT id || ':' || media_file_id FROM playlist_tracks WHERE playlist_id = {:id} ORDER BY id").
+		Bind(dbx.Params{"id": playlistID}).Column(&rows)).To(Succeed())
+	return rows
+}
+
+// collectCursor takes the cursor's underlying func type so the named cursor types
+// (model.AlbumCursor, ...) infer T.
+func collectCursor[T any](cursor func(func(T, error) bool), err error) []T {
+	GinkgoHelper()
+	Expect(err).ToNot(HaveOccurred())
+	var out []T
+	for item, err := range cursor {
+		Expect(err).ToNot(HaveOccurred())
+		out = append(out, item)
+	}
+	return out
 }

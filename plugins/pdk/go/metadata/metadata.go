@@ -9,7 +9,26 @@ package metadata
 
 import (
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// Deprecated: use types.SongRef.
+type SongRef = types.SongRef
+
+// MetadataAgentError represents an error type for metadata agent operations.
+type MetadataAgentError string
+
+const (
+	// MetadataAgentErrorRetryLater indicates the provider is throttling; retry later.
+	// Append ":<seconds>" inside the parentheses to request a specific delay.
+	MetadataAgentErrorRetryLater MetadataAgentError = "agent(retry_later)"
+)
+
+// Error implements the error interface for MetadataAgentError.
+func (e MetadataAgentError) Error() string { return string(e) }
 
 // AlbumImagesResponse is the response for GetAlbumImages.
 type AlbumImagesResponse struct {
@@ -65,16 +84,6 @@ type ArtistMBIDResponse struct {
 	MBID string `json:"mbid"`
 }
 
-// ArtistRef is a reference to an artist with name and optional MBID.
-type ArtistRef struct {
-	// ID is the internal Navidrome artist ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the artist name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the artist.
-	MBID string `json:"mbid,omitempty"`
-}
-
 // ArtistRequest is the common request for artist-related functions.
 type ArtistRequest struct {
 	// ID is the internal Navidrome artist ID.
@@ -114,7 +123,7 @@ type SimilarArtistsRequest struct {
 // SimilarArtistsResponse is the response for GetSimilarArtists.
 type SimilarArtistsResponse struct {
 	// Artists is the list of similar artists.
-	Artists []ArtistRef `json:"artists"`
+	Artists []types.ArtistRef `json:"artists"`
 }
 
 // SimilarSongsByAlbumRequest is the request for GetSimilarSongsByAlbum.
@@ -129,6 +138,9 @@ type SimilarSongsByAlbumRequest struct {
 	MBID string `json:"mbid,omitempty"`
 	// Count is the maximum number of similar songs to return.
 	Count int32 `json:"count"`
+	// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+	// lacks the users permission or access to that user.
+	Username string `json:"username,omitempty"`
 }
 
 // SimilarSongsByArtistRequest is the request for GetSimilarSongsByArtist.
@@ -141,6 +153,9 @@ type SimilarSongsByArtistRequest struct {
 	MBID string `json:"mbid,omitempty"`
 	// Count is the maximum number of similar songs to return.
 	Count int32 `json:"count"`
+	// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+	// lacks the users permission or access to that user.
+	Username string `json:"username,omitempty"`
 }
 
 // SimilarSongsByTrackRequest is the request for GetSimilarSongsByTrack.
@@ -155,34 +170,15 @@ type SimilarSongsByTrackRequest struct {
 	MBID string `json:"mbid,omitempty"`
 	// Count is the maximum number of similar songs to return.
 	Count int32 `json:"count"`
+	// Username is the user who requested similar songs. Empty when there is no user, or the plugin
+	// lacks the users permission or access to that user.
+	Username string `json:"username,omitempty"`
 }
 
 // SimilarSongsResponse is the response for GetSimilarSongsBy* functions.
 type SimilarSongsResponse struct {
 	// Songs is the list of similar songs.
-	Songs []SongRef `json:"songs"`
-}
-
-// SongRef is a reference to a song with metadata for matching.
-type SongRef struct {
-	// ID is the internal Navidrome mediafile ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the song name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the song.
-	MBID string `json:"mbid,omitempty"`
-	// ISRC is the International Standard Recording Code for the song.
-	ISRC string `json:"isrc,omitempty"`
-	// Artist is the artist name.
-	Artist string `json:"artist,omitempty"`
-	// ArtistMBID is the MusicBrainz artist ID.
-	ArtistMBID string `json:"artistMbid,omitempty"`
-	// Album is the album name.
-	Album string `json:"album,omitempty"`
-	// AlbumMBID is the MusicBrainz release ID.
-	AlbumMBID string `json:"albumMbid,omitempty"`
-	// Duration is the song duration in seconds.
-	Duration float32 `json:"duration,omitempty"`
+	Songs []types.SongRef `json:"songs"`
 }
 
 // TopSongsRequest is the request for GetArtistTopSongs.
@@ -200,7 +196,7 @@ type TopSongsRequest struct {
 // TopSongsResponse is the response for GetArtistTopSongs.
 type TopSongsResponse struct {
 	// Songs is the list of top songs.
-	Songs []SongRef `json:"songs"`
+	Songs []types.SongRef `json:"songs"`
 }
 
 // Metadata is the marker interface for metadata plugins.
@@ -211,6 +207,9 @@ type TopSongsResponse struct {
 //
 // Plugins implementing this capability can choose which methods to implement.
 // Each method is optional - plugins only need to provide the functionality they support.
+//
+// To say "no data for this item", return a nil response and a nil error. Return an error only when
+// the plugin itself failed, because Navidrome retries failed calls with backoff.
 type Metadata interface{}
 
 // ArtistMBIDProvider provides the GetArtistMBID function.

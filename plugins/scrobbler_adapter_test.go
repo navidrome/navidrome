@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -7,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -78,39 +77,9 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 		})
 	})
 
-	Describe("isUserAllowed", func() {
-		It("returns true when allUsers is true", func() {
-			sp := &ScrobblerPlugin{allUsers: true}
-			Expect(sp.isUserAllowed("any-user")).To(BeTrue())
-		})
-
-		It("returns false when allowedUserIDs is empty and allUsers is false", func() {
-			sp := &ScrobblerPlugin{allUsers: false, allowedUserIDs: []string{}}
-			Expect(sp.isUserAllowed("user-1")).To(BeFalse())
-		})
-
-		It("returns false when allowedUserIDs is nil and allUsers is false", func() {
-			sp := &ScrobblerPlugin{allUsers: false}
-			Expect(sp.isUserAllowed("user-1")).To(BeFalse())
-		})
-
-		It("returns true when user is in allowedUserIDs", func() {
-			sp := &ScrobblerPlugin{
-				allUsers:       false,
-				allowedUserIDs: []string{"user-1", "user-2"},
-				userIDMap:      map[string]struct{}{"user-1": {}, "user-2": {}},
-			}
-			Expect(sp.isUserAllowed("user-1")).To(BeTrue())
-		})
-
-		It("returns false when user is not in allowedUserIDs", func() {
-			sp := &ScrobblerPlugin{
-				allUsers:       false,
-				allowedUserIDs: []string{"user-1", "user-2"},
-				userIDMap:      map[string]struct{}{"user-1": {}, "user-2": {}},
-			}
-			Expect(sp.isUserAllowed("user-3")).To(BeFalse())
-		})
+	It("IsAuthorized rejects a user the plugin was not granted, without calling the plugin", func() {
+		sp := &ScrobblerPlugin{plugin: &plugin{users: newUserAccess([]string{"user-2"}, false)}}
+		Expect(sp.IsAuthorized(ctxWithUser(), "user-1")).To(BeFalse())
 	})
 
 	Describe("NowPlaying", func() {
@@ -125,8 +94,8 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 				TrackNumber: 1,
 				DiscNumber:  1,
 				Participants: model.Participants{
-					model.RoleArtist:      {{Artist: model.Artist{ID: "artist-1", Name: "Test Artist"}}},
-					model.RoleAlbumArtist: {{Artist: model.Artist{ID: "album-artist-1", Name: "Test Album Artist"}}},
+					model.RoleArtist:      {{ID: "artist-1", Name: "Test Artist"}},
+					model.RoleAlbumArtist: {{ID: "album-artist-1", Name: "Test Album Artist"}},
 				},
 			}
 
@@ -159,19 +128,17 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 	Describe("Scrobble", func() {
 		It("successfully calls the plugin", func() {
 			sc := scrobbler.Scrobble{
-				MediaFile: model.MediaFile{
-					ID:          "track-1",
-					Title:       "Test Song",
-					Album:       "Test Album",
-					Artist:      "Test Artist",
-					AlbumArtist: "Test Album Artist",
-					Duration:    180,
-					TrackNumber: 1,
-					DiscNumber:  1,
-					Participants: model.Participants{
-						model.RoleArtist:      {{Artist: model.Artist{ID: "artist-1", Name: "Test Artist"}}},
-						model.RoleAlbumArtist: {{Artist: model.Artist{ID: "album-artist-1", Name: "Test Album Artist"}}},
-					},
+				ID:          "track-1",
+				Title:       "Test Song",
+				Album:       "Test Album",
+				Artist:      "Test Artist",
+				AlbumArtist: "Test Album Artist",
+				Duration:    180,
+				TrackNumber: 1,
+				DiscNumber:  1,
+				Participants: model.Participants{
+					model.RoleArtist:      {{ID: "artist-1", Name: "Test Artist"}},
+					model.RoleAlbumArtist: {{ID: "album-artist-1", Name: "Test Album Artist"}},
 				},
 				TimeStamp: time.Now(),
 			}
@@ -195,7 +162,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 			It("returns ErrNotAuthorized", func() {
 				scrobble := scrobbler.Scrobble{
-					MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
+					ID: "track-1", Title: "Test Song",
 					TimeStamp: time.Now(),
 				}
 				err := notAuthScrobbler.Scrobble(ctxWithUser(), "user-1", scrobble)
@@ -219,7 +186,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 			It("returns ErrUnrecoverable", func() {
 				scrobble := scrobbler.Scrobble{
-					MediaFile: model.MediaFile{ID: "track-1", Title: "Test Song"},
+					ID: "track-1", Title: "Test Song",
 					TimeStamp: time.Now(),
 				}
 				err := unrecoverableScrobbler.Scrobble(ctxWithUser(), "user-1", scrobble)
@@ -242,8 +209,8 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 					TrackNumber: 1,
 					DiscNumber:  1,
 					Participants: model.Participants{
-						model.RoleArtist:      {{Artist: model.Artist{ID: "artist-1", Name: "Test Artist"}}},
-						model.RoleAlbumArtist: {{Artist: model.Artist{ID: "album-artist-1", Name: "Test Album Artist"}}},
+						model.RoleArtist:      {{ID: "artist-1", Name: "Test Artist"}},
+						model.RoleAlbumArtist: {{ID: "album-artist-1", Name: "Test Album Artist"}},
 					},
 				},
 				Username:     "testuser",
@@ -340,7 +307,7 @@ var _ = Describe("ScrobblerPlugin", Ordered, func() {
 
 var _ = Describe("mapScrobblerError", func() {
 	It("returns nil for nil error", func() {
-		Expect(mapScrobblerError(nil)).ToNot(HaveOccurred())
+		Expect(mapScrobblerError(nil)).To(Succeed())
 	})
 
 	It("returns ErrNotAuthorized for error containing 'not_authorized'", func() {
@@ -361,5 +328,26 @@ var _ = Describe("mapScrobblerError", func() {
 	It("returns ErrUnrecoverable for unknown error", func() {
 		err := mapScrobblerError(errors.New("some unknown error"))
 		Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+	})
+
+	DescribeTable("mapScrobblerError retry-later",
+		func(msg string, wantDelay time.Duration) {
+			err := mapScrobblerError(errors.New(msg))
+			Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
+			retry, _ := errors.AsType[*agents.RetryLaterError](err)
+			d := retry.RetryIn
+			Expect(d).To(Equal(wantDelay))
+		},
+		Entry("bare token", "scrobbler(retry_later)", time.Duration(0)),
+		Entry("with seconds", "scrobbler(retry_later:30)", 30*time.Second),
+		Entry("capped at 1h", "scrobbler(retry_later:999999)", time.Hour),
+		// Scaling to nanoseconds before capping wraps past 2^64, landing on ~0.29s.
+		Entry("capped before it can overflow", "scrobbler(retry_later:18446744074)", time.Hour),
+		Entry("wrapped in context", "plugin xyz: scrobbler(retry_later:5)", 5*time.Second),
+	)
+
+	It("still maps unknown errors to unrecoverable", func() {
+		err := mapScrobblerError(errors.New("scrobbler(retry_later_garbage"))
+		Expect(errors.Is(err, scrobbler.ErrUnrecoverable)).To(BeTrue())
 	})
 })

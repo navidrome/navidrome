@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 	"github.com/navidrome/navidrome/plugins/pdk/go/sonicsimilarity"
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
 
 func init() {
@@ -35,7 +36,7 @@ func (t *testSonicSimilarity) GetSonicSimilarTracks(input sonicsimilarity.GetSon
 	matches := make([]sonicsimilarity.SonicMatch, 0, count)
 	for i := range count {
 		matches = append(matches, sonicsimilarity.SonicMatch{
-			Song: sonicsimilarity.SongRef{
+			Song: types.SongRef{
 				ID:     "similar-track-" + strconv.Itoa(i+1),
 				Name:   "Similar to " + input.Song.Name + " #" + strconv.Itoa(i+1),
 				Artist: input.Song.Artist,
@@ -57,7 +58,7 @@ func (t *testSonicSimilarity) FindSonicPath(input sonicsimilarity.FindSonicPathR
 	matches := make([]sonicsimilarity.SonicMatch, 0, count)
 	for i := range count {
 		matches = append(matches, sonicsimilarity.SonicMatch{
-			Song: sonicsimilarity.SongRef{
+			Song: types.SongRef{
 				ID:     "path-track-" + strconv.Itoa(i+1),
 				Name:   "Path " + input.StartSong.Name + " to " + input.EndSong.Name + " #" + strconv.Itoa(i+1),
 				Artist: input.StartSong.Artist,

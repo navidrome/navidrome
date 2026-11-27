@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { baseUrl } from '../utils'
 import config from '../config'
 import { jwtDecode } from 'jwt-decode'
-import { removeHomeCache } from '../utils/removeHomeCache'
 
 const customAuthorizationHeader = 'X-ND-Authorization'
 export const clientUniqueIdHeader = 'X-ND-Client-Unique-Id'
@@ -27,7 +26,6 @@ const httpClient = (url, options = {}) => {
       localStorage.setItem('userId', decoded.uid)
       // Avoid going to create admin dialog after logout/login without a refresh
       config.firstTime = false
-      removeHomeCache()
     }
     return response
   })

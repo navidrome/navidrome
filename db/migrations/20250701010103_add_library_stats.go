@@ -43,6 +43,6 @@ update library set
 	return err
 }
 
-func downAddLibraryStats(ctx context.Context, tx *sql.Tx) error {
+func downAddLibraryStats(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

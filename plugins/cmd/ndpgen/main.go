@@ -19,7 +19,7 @@
 //
 // Output directories:
 //   - Host wrappers:   $input/<servicename>_gen.go (server-side, used by Navidrome)
-//   - Host functions:  $output/go/host/, $output/python/host/, $output/rust/host/
+//   - Host functions:  $output/go/host/, $output/rust/host/
 //   - Capabilities:    $output/go/<capability>/ (e.g., $output/go/metadata/)
 //   - Schemas:         $input/<capability>.yaml (co-located with Go sources)
 //
@@ -32,8 +32,7 @@
 //	-host-only       Generate PDK client wrappers for calling host functions
 //	-capability-only Generate only capability export wrappers
 //	-schemas         Generate XTP YAML schemas from capabilities
-//	-go              Generate Go client wrappers (default: true when not using -python/-rust)
-//	-python          Generate Python client wrappers (default: false)
+//	-go              Generate Go client wrappers (default: true when not using -rust)
 //	-rust            Generate Rust client wrappers (default: false)
 //	-v               Verbose output
 //	-dry-run         Preview generated code without writing files
@@ -43,8 +42,10 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/plugins/cmd/ndpgen/internal"
@@ -55,16 +56,16 @@ type config struct {
 	inputDir         string
 	outputDir        string // Base output directory (e.g., plugins/pdk)
 	goOutputDir      string // Go output: $outputDir/go/host (for host-only)
-	pythonOutputDir  string // Python output: $outputDir/python/host
 	rustOutputDir    string // Rust output: $outputDir/rust/host
 	pkgName          string
 	hostOnly         bool
 	hostWrappers     bool // Generate host wrappers (used by Navidrome server)
 	capabilityOnly   bool
-	schemasOnly      bool // Generate XTP schemas from capabilities (output goes to inputDir)
-	pdkOnly          bool // Generate PDK abstraction layer wrapper
+	schemasOnly      bool   // Generate XTP schemas from capabilities (output goes to inputDir)
+	pdkOnly          bool   // Generate PDK abstraction layer wrapper
+	sharedTypes      bool   // Generate the shared types package
+	sharedDir        string // Directory of shared types to load as a registry
 	generateGoClient bool
-	generatePyClient bool
 	generateRsClient bool
 	verbose          bool
 	dryRun           bool
@@ -79,6 +80,14 @@ func main() {
 
 	if cfg.schemasOnly {
 		if err := runSchemaGeneration(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if cfg.sharedTypes {
+		if err := runSharedTypesGeneration(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -155,6 +164,69 @@ func runSchemaGeneration(cfg *config) error {
 	}
 
 	return generateSchemas(cfg, capabilities)
+}
+
+// writeGenerated creates dir (if needed) and writes content to name inside it.
+// In dry-run mode it prints the content instead.
+func writeGenerated(dir, name string, content []byte, dryRun, verbose bool) error {
+	path := filepath.Join(dir, name)
+	if dryRun {
+		fmt.Printf("=== %s ===\n%s\n", path, content)
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("creating output directory %s: %w", dir, err)
+	}
+	if err := os.WriteFile(path, content, 0600); err != nil {
+		return fmt.Errorf("writing %s: %w", path, err)
+	}
+	if verbose {
+		fmt.Printf("Generated: %s\n", path)
+	}
+	return nil
+}
+
+// runSharedTypesGeneration handles shared types package generation.
+func runSharedTypesGeneration(cfg *config) error {
+	structs, err := internal.LoadSharedTypes(cfg.inputDir)
+	if err != nil {
+		return err
+	}
+	if len(structs) == 0 {
+		return nil
+	}
+	list := slices.Collect(maps.Values(structs))
+	if cfg.generateGoClient {
+		code, err := internal.GenerateSharedTypesGo(list, "types")
+		if err != nil {
+			return fmt.Errorf("generating Go types: %w", err)
+		}
+		formatted, err := format.Source(code)
+		if err != nil {
+			return fmt.Errorf("formatting Go types: %w\n%s", err, code)
+		}
+		dir := filepath.Join(cfg.outputDir, "go", "types")
+		if err := writeGenerated(dir, "types.go", formatted, cfg.dryRun, cfg.verbose); err != nil {
+			return err
+		}
+	}
+	if cfg.generateRsClient {
+		if err := generateSharedTypesRust(list, cfg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// generateSharedTypesRust writes the nd-pdk-types crate root to
+// <outputDir>/rust/nd-pdk-types/src/lib.rs.
+func generateSharedTypesRust(structs []internal.StructDef, cfg *config) error {
+	code, err := internal.GenerateSharedTypesRust(structs)
+	if err != nil {
+		return fmt.Errorf("generating Rust types: %w", err)
+	}
+	dir := filepath.Join(cfg.outputDir, "rust", "nd-pdk-types", "src")
+	return writeGenerated(dir, "lib.rs", code, cfg.dryRun, cfg.verbose)
 }
 
 // runPDKGeneration handles PDK abstraction layer code generation.
@@ -315,8 +387,9 @@ func parseConfig() (*config, error) {
 		capabilityOnly = flag.Bool("capability-only", false, "Generate only capability export wrappers")
 		schemasOnly    = flag.Bool("schemas", false, "Generate XTP YAML schemas from capabilities (output to input directory)")
 		pdkOnly        = flag.Bool("extism-pdk", false, "Generate PDK abstraction layer by parsing extism/go-pdk")
+		sharedTypes    = flag.Bool("shared-types", false, "Generate the shared types package")
+		shared         = flag.String("shared", "", "Directory of shared types to load as a registry")
 		goClient       = flag.Bool("go", false, "Generate Go client wrappers")
-		pyClient       = flag.Bool("python", false, "Generate Python client wrappers")
 		rsClient       = flag.Bool("rust", false, "Generate Rust client wrappers")
 		verbose        = flag.Bool("v", false, "Verbose output")
 		dryRun         = flag.Bool("dry-run", false, "Preview generated code without writing files")
@@ -340,6 +413,9 @@ func parseConfig() (*config, error) {
 	if *pdkOnly {
 		modeCount++
 	}
+	if *sharedTypes {
+		modeCount++
+	}
 
 	// Default to host-only if no mode is specified
 	if modeCount == 0 {
@@ -348,7 +424,7 @@ func parseConfig() (*config, error) {
 
 	// Cannot specify multiple modes
 	if modeCount > 1 {
-		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas, -pdk)")
+		return nil, fmt.Errorf("cannot specify multiple modes (-host-only, -host-wrappers, -capability-only, -schemas, -extism-pdk, -shared-types)")
 	}
 
 	if *outputDir == "" {
@@ -372,23 +448,28 @@ func parseConfig() (*config, error) {
 		return nil, fmt.Errorf("resolving output path: %w", err)
 	}
 
+	absShared := ""
+	if *shared != "" {
+		absShared, err = filepath.Abs(*shared)
+		if err != nil {
+			return nil, fmt.Errorf("resolving shared path: %w", err)
+		}
+	}
+
 	// Set output directories for each language
 	// Go host wrappers: $output/go/host/
-	// Python host wrappers: $output/python/host/
 	// Rust host wrappers: $output/rust/nd-pdk-host/ (renamed crate)
 	absGoOutput := filepath.Join(absOutput, "go", "host")
-	absPythonOutput := filepath.Join(absOutput, "python", "host")
 	absRustOutput := filepath.Join(absOutput, "rust", "nd-pdk-host")
 
 	// Determine what to generate
 	// Default: generate Go clients if no language flag is specified
-	anyLangFlag := *goClient || *pyClient || *rsClient
+	anyLangFlag := *goClient || *rsClient
 
 	return &config{
 		inputDir:         absInput,
 		outputDir:        absOutput,
 		goOutputDir:      absGoOutput,
-		pythonOutputDir:  absPythonOutput,
 		rustOutputDir:    absRustOutput,
 		pkgName:          *pkgName,
 		hostOnly:         *hostOnly,
@@ -396,8 +477,9 @@ func parseConfig() (*config, error) {
 		capabilityOnly:   *capabilityOnly,
 		schemasOnly:      *schemasOnly,
 		pdkOnly:          *pdkOnly,
+		sharedTypes:      *sharedTypes,
+		sharedDir:        absShared,
 		generateGoClient: *goClient || !anyLangFlag,
-		generatePyClient: *pyClient,
 		generateRsClient: *rsClient,
 		verbose:          *verbose,
 		dryRun:           *dryRun,
@@ -412,20 +494,21 @@ func parseServices(cfg *config) ([]internal.Service, error) {
 		if cfg.generateGoClient {
 			fmt.Printf("Go output directory: %s\n", cfg.goOutputDir)
 		}
-		if cfg.generatePyClient {
-			fmt.Printf("Python output directory: %s\n", cfg.pythonOutputDir)
-		}
 		if cfg.generateRsClient {
 			fmt.Printf("Rust output directory: %s\n", cfg.rustOutputDir)
 		}
 		fmt.Printf("Package name: %s\n", cfg.pkgName)
 		fmt.Printf("Host-only mode: %v\n", cfg.hostOnly)
 		fmt.Printf("Generate Go client code: %v\n", cfg.generateGoClient)
-		fmt.Printf("Generate Python client code: %v\n", cfg.generatePyClient)
 		fmt.Printf("Generate Rust client code: %v\n", cfg.generateRsClient)
 	}
 
-	services, err := internal.ParseDirectory(cfg.inputDir)
+	shared, err := internal.LoadSharedTypes(cfg.sharedDir)
+	if err != nil {
+		return nil, fmt.Errorf("loading shared types: %w", err)
+	}
+
+	services, err := internal.ParseDirectoryWithShared(cfg.inputDir, shared)
 	if err != nil {
 		return nil, fmt.Errorf("parsing source files: %w", err)
 	}
@@ -455,7 +538,12 @@ func parseCapabilities(cfg *config) ([]internal.Capability, error) {
 		fmt.Printf("Capability-only mode: %v\n", cfg.capabilityOnly)
 	}
 
-	capabilities, err := internal.ParseCapabilities(cfg.inputDir)
+	shared, err := internal.LoadSharedTypes(cfg.sharedDir)
+	if err != nil {
+		return nil, fmt.Errorf("loading shared types: %w", err)
+	}
+
+	capabilities, err := internal.ParseCapabilitiesWithShared(cfg.inputDir, shared)
 	if err != nil {
 		return nil, fmt.Errorf("parsing capability files: %w", err)
 	}
@@ -619,11 +707,6 @@ func generateAllCode(cfg *config, services []internal.Service) error {
 				return fmt.Errorf("generating Go client code for %s: %w", svc.Name, err)
 			}
 		}
-		if cfg.generatePyClient {
-			if err := generatePythonClientCode(svc, cfg.pythonOutputDir, cfg.dryRun, cfg.verbose); err != nil {
-				return fmt.Errorf("generating Python client code for %s: %w", svc.Name, err)
-			}
-		}
 		if cfg.generateRsClient {
 			if err := generateRustClientCode(svc, cfg.rustOutputDir, cfg.dryRun, cfg.verbose); err != nil {
 				return fmt.Errorf("generating Rust client code for %s: %w", svc.Name, err)
@@ -753,36 +836,6 @@ func generateGoClientStubCode(svc internal.Service, outputDir, pkgName string, d
 
 	if verbose {
 		fmt.Printf("Generated Go client stub: %s\n", stubFile)
-	}
-	return nil
-}
-
-// generatePythonClientCode generates Python client-side code for a service.
-func generatePythonClientCode(svc internal.Service, outputDir string, dryRun, verbose bool) error {
-	code, err := internal.GenerateClientPython(svc)
-	if err != nil {
-		return fmt.Errorf("generating code: %w", err)
-	}
-
-	// Python code goes directly in the output directory
-	clientFile := filepath.Join(outputDir, "nd_host_"+strings.ToLower(svc.Name)+".py")
-
-	if dryRun {
-		fmt.Printf("=== %s ===\n%s\n", clientFile, code)
-		return nil
-	}
-
-	// Create output directory if needed
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("creating python client directory: %w", err)
-	}
-
-	if err := os.WriteFile(clientFile, code, 0600); err != nil {
-		return fmt.Errorf("writing file: %w", err)
-	}
-
-	if verbose {
-		fmt.Printf("Generated Python client code: %s\n", clientFile)
 	}
 	return nil
 }

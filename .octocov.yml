@@ -1,0 +1,44 @@
+# Code coverage reporting for pull requests. See https://github.com/k1LoW/octocov
+# The 30s default is not enough: scanning this repo's artifacts for the baseline
+# eats most of it, leaving none for the report upload.
+timeout: 5m
+coverage:
+  # A single pre-merged profile: octocov reports statements for one path, but
+  # switches to line counting when it merges several itself.
+  paths:
+    - coverage.out
+  # Not code under test: tests/ holds the mocks and helpers, *_gen.go is generated.
+  # Both patterns need the '**/' prefix: the comment workflow has no source tree,
+  # so octocov cannot shorten the profile's import paths to repo-relative ones.
+  exclude:
+    - '**/tests/**'
+    - '**/*_gen.go'
+codeToTestRatio:
+  # Needs the pull request's own source, which the comment workflow must not
+  # check out: it holds a write token.
+  if: env.COVERAGE_COMMENT != 'true'
+  code:
+    - '**/*.go'
+    - '!**/*_test.go'
+    - '!**/*_gen.go'
+  test:
+    - '**/*_test.go'
+testExecutionTime:
+  if: true
+  steps:
+    - Test with coverage
+    - Test plugins
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+comment:
+  # Only the 'Report coverage on PR' workflow sets this: a pull_request run from
+  # a fork gets a read-only token, so commenting from here 403s.
+  if: env.COVERAGE_COMMENT == 'true'
+  updatePrevious: true
+summary:
+  if: true
+report:
+  if: is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}

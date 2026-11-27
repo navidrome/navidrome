@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -9,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,10 +18,8 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -39,18 +36,13 @@ var _ = Describe("TaskQueueService", func() {
 		tmpDir, err = os.MkdirTemp("", "taskqueue-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
-		// Create a mock manager with context
-		managerCtx, cancel := context.WithCancel(ctx)
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
-			ctx:     managerCtx,
 		}
-		DeferCleanup(cancel)
 
-		service, err = newTaskQueueService("test_plugin", manager, 5)
+		service, err = newTaskQueueService(ctx, "test_plugin", manager, 5)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -506,7 +498,7 @@ var _ = Describe("TaskQueueService", func() {
 
 		It("stores error message on failure", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
-				return "", fmt.Errorf("something went wrong")
+				return "", errors.New("something went wrong")
 			}
 
 			err := service.CreateQueue(ctx, "msg-fail", host.QueueConfig{
@@ -532,7 +524,7 @@ var _ = Describe("TaskQueueService", func() {
 
 		It("uses explicit message over error message on failure", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
-				return "partial progress made", fmt.Errorf("timeout exceeded")
+				return "partial progress made", errors.New("timeout exceeded")
 			}
 
 			err := service.CreateQueue(ctx, "msg-fail-with-msg", host.QueueConfig{
@@ -563,7 +555,7 @@ var _ = Describe("TaskQueueService", func() {
 
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return "", fmt.Errorf("task failed")
+				return "", errors.New("task failed")
 			}
 
 			err := service.CreateQueue(ctx, "retry-test", host.QueueConfig{
@@ -595,7 +587,7 @@ var _ = Describe("TaskQueueService", func() {
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, attempt int32) (string, error) {
 				callCount.Add(1)
 				if attempt == 1 {
-					return "", fmt.Errorf("temporary error")
+					return "", errors.New("temporary error")
 				}
 				return "success", nil
 			}
@@ -627,7 +619,7 @@ var _ = Describe("TaskQueueService", func() {
 
 			service.invokeCallbackFn = func(_ context.Context, _, _ string, _ []byte, _ int32) (string, error) {
 				callCount.Add(1)
-				return "", fmt.Errorf("always fail")
+				return "", errors.New("always fail")
 			}
 
 			err := service.CreateQueue(ctx, "backoff-overflow", host.QueueConfig{
@@ -695,11 +687,12 @@ var _ = Describe("TaskQueueService", func() {
 			copy(times, dispatchTimes)
 			mu.Unlock()
 
-			// Consecutive dispatches should have at least ~160ms gap (80% of 200ms)
+			// Wake-up latency varies per worker, so check offsets from the first dispatch, not gaps.
 			for i := 1; i < len(times); i++ {
-				gap := times[i].Sub(times[i-1])
-				Expect(gap).To(BeNumerically(">=", 160*time.Millisecond),
-					fmt.Sprintf("gap between dispatch %d and %d was %v, expected >= 160ms", i-1, i, gap))
+				offset := times[i].Sub(times[0])
+				minOffset := time.Duration(i)*200*time.Millisecond - 50*time.Millisecond
+				Expect(offset).To(BeNumerically(">=", minOffset),
+					fmt.Sprintf("dispatch %d ran %v after the first, expected >= %v", i, offset, minOffset))
 			}
 		})
 	})
@@ -730,14 +723,11 @@ var _ = Describe("TaskQueueService", func() {
 			service.Close()
 
 			// Create a new service pointing to the same DB
-			managerCtx2, cancel2 := context.WithCancel(ctx)
-			DeferCleanup(cancel2)
 			manager2 := &Manager{
 				plugins: make(map[string]*plugin),
-				ctx:     managerCtx2,
 			}
 
-			service, err = newTaskQueueService("test_plugin", manager2, 5)
+			service, err = newTaskQueueService(ctx, "test_plugin", manager2, 5)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Override callback to succeed
@@ -775,14 +765,11 @@ var _ = Describe("TaskQueueService", func() {
 
 	Describe("Plugin isolation", func() {
 		It("uses separate databases for different plugins", func() {
-			managerCtx2, cancel2 := context.WithCancel(ctx)
-			DeferCleanup(cancel2)
 			manager2 := &Manager{
 				plugins: make(map[string]*plugin),
-				ctx:     managerCtx2,
 			}
 
-			service2, err := newTaskQueueService("other_plugin", manager2, 5)
+			service2, err := newTaskQueueService(ctx, "other_plugin", manager2, 5)
 			Expect(err).ToNot(HaveOccurred())
 			defer service2.Close()
 
@@ -851,23 +838,21 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+			c.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
+			c.DataFolder = conf.NewDir(tmpDir)
+		})
 
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-taskqueue",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+		})
 
 		// Create and start manager
 		manager = &Manager{
@@ -1217,5 +1202,43 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
+	})
+})
+
+var _ = Describe("taskCallTimeout", func() {
+	BeforeEach(func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = time.Hour })
+	})
+
+	It("uses the default limit without a taskqueue permission", func() {
+		Expect(taskCallTimeout(nil)).To(Equal(defaultTimeout))
+	})
+
+	It("uses the default limit when the plugin asks for none", func() {
+		Expect(taskCallTimeout(&TaskQueuePermission{})).To(Equal(defaultTimeout))
+	})
+
+	It("uses the requested limit under the server cap", func() {
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 600})).To(Equal(10 * time.Minute))
+	})
+
+	It("caps the requested limit at the server option", func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = 5 * time.Minute })
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 3600})).To(Equal(5 * time.Minute))
+	})
+
+	It("keeps a request that is under a server cap with a fraction of a second", func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = 1500 * time.Millisecond })
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 1})).To(Equal(time.Second))
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 2})).To(Equal(1500 * time.Millisecond))
+	})
+
+	It("caps a huge request without overflowing", func() {
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: math.MaxInt})).To(Equal(time.Hour))
+	})
+
+	It("falls back to the default limit when the server option is not positive", func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = 0 })
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 3600})).To(Equal(defaultTimeout))
 	})
 })

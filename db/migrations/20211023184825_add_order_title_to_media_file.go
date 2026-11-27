@@ -14,8 +14,8 @@ func init() {
 	goose.AddMigrationContext(upAddOrderTitleToMediaFile, downAddOrderTitleToMediaFile)
 }
 
-func upAddOrderTitleToMediaFile(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddOrderTitleToMediaFile(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table main.media_file
 	add order_title varchar null collate NOCASE;
 create index if not exists media_file_order_title
@@ -25,12 +25,12 @@ create index if not exists media_file_order_title
 		return err
 	}
 
-	return upAddOrderTitleToMediaFile_populateOrderTitle(tx)
+	return upAddOrderTitleToMediaFile_populateOrderTitle(ctx, tx)
 }
 
 //goland:noinspection GoSnakeCaseUsage
-func upAddOrderTitleToMediaFile_populateOrderTitle(tx *sql.Tx) error {
-	rows, err := tx.Query(`select id, title from media_file`)
+func upAddOrderTitleToMediaFile_populateOrderTitle(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `select id, title from media_file`)
 	if err != nil {
 		return err
 	}
@@ -57,6 +57,6 @@ func upAddOrderTitleToMediaFile_populateOrderTitle(tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downAddOrderTitleToMediaFile(_ context.Context, tx *sql.Tx) error {
+func downAddOrderTitleToMediaFile(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

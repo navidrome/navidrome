@@ -45,6 +45,7 @@ func CounterCount(name string) int32 {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response counterCountResponse

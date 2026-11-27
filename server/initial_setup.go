@@ -14,36 +14,32 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 )
 
-func initialSetup(ds model.DataStore) {
-	ctx := context.TODO()
-	_ = ds.WithTx(func(tx model.DataStore) error {
-		if err := tx.Library(ctx).StoreMusicFolder(); err != nil {
-			return err
-		}
-
-		properties := tx.Property(ctx)
-		_, err := properties.Get(consts.InitialSetupFlagKey)
-		if err == nil {
-			return nil
-		}
+// initialSetup keeps reads out of the transaction: SQLite fails a write that follows a read at once,
+// without waiting for the lock
+func initialSetup(ctx context.Context, ds model.DataStore) error {
+	if err := ds.Library().StoreMusicFolder(ctx); err != nil {
+		return err
+	}
+	if _, err := ds.Property().Get(ctx, consts.InitialSetupFlagKey); err == nil {
+		return nil
+	}
+	return ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
 		log.Info("Running initial setup")
-		if conf.Server.DevAutoCreateAdminPassword != "" {
-			if err = createInitialAdminUser(tx, conf.Server.DevAutoCreateAdminPassword); err != nil {
+		if conf.Server().DevAutoCreateAdminPassword != "" {
+			if err := createInitialAdminUser(ctx, tx, conf.Server().DevAutoCreateAdminPassword); err != nil {
 				return err
 			}
 		}
-
-		err = properties.Put(consts.InitialSetupFlagKey, time.Now().String())
-		return err
+		return tx.Property().Put(ctx, consts.InitialSetupFlagKey, time.Now().String())
 	}, "initial setup")
 }
 
-// If the Dev Admin user is not present, create it
-func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
-	users := ds.User(context.TODO())
-	c, err := users.CountAll(model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})
+// createInitialAdminUser creates the Dev Admin user if it is not present
+func createInitialAdminUser(ctx context.Context, ds model.DataStore, initialPassword string) error {
+	users := ds.User()
+	c, err := users.CountAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})
 	if err != nil {
-		panic(fmt.Sprintf("Could not access User table: %s", err))
+		return fmt.Errorf("could not access User table: %w", err)
 	}
 	if c == 0 {
 		newID := id.NewRandom()
@@ -57,12 +53,11 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 			NewPassword: initialPassword,
 			IsAdmin:     true,
 		}
-		err := users.Put(&initialUser)
-		if err != nil {
-			log.Error("Could not create initial admin user", "user", initialUser, err)
+		if err := users.Put(ctx, &initialUser); err != nil {
+			return fmt.Errorf("could not create initial admin user: %w", err)
 		}
 	}
-	return err
+	return nil
 }
 
 func checkFFmpegInstallation() {
@@ -70,10 +65,6 @@ func checkFFmpegInstallation() {
 	_, err := f.CmdPath()
 	if err != nil {
 		log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)
-		if conf.Server.Scanner.Extractor == "ffmpeg" {
-			log.Warn("ffmpeg cannot be used for metadata extraction. Falling back to taglib")
-			conf.Server.Scanner.Extractor = "taglib"
-		}
 		return
 	}
 	if !f.IsProbeAvailable() {
@@ -82,17 +73,17 @@ func checkFFmpegInstallation() {
 }
 
 func checkExternalCredentials() {
-	if conf.Server.EnableExternalServices {
-		if !conf.Server.LastFM.Enabled {
+	if conf.Server().EnableExternalServices {
+		if !conf.Server().LastFM.Enabled {
 			log.Info("Last.fm integration is DISABLED")
 		} else {
 			log.Debug("Last.fm integration is ENABLED")
 		}
 
-		if !conf.Server.ListenBrainz.Enabled {
+		if !conf.Server().ListenBrainz.Enabled {
 			log.Info("ListenBrainz integration is DISABLED")
 		} else {
-			log.Debug("ListenBrainz integration is ENABLED", "ListenBrainz.BaseURL", conf.Server.ListenBrainz.BaseURL)
+			log.Debug("ListenBrainz integration is ENABLED", "ListenBrainz.BaseURL", conf.Server().ListenBrainz.BaseURL)
 		}
 	}
 }

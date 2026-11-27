@@ -1,7 +1,9 @@
 package conf
 
+import "fmt"
+
 func ResetConf() {
-	Server = &configOptions{}
+	current.Store(&Options{})
 }
 
 var SetViperDefaults = setViperDefaults
@@ -14,7 +16,7 @@ var NormalizeSearchBackend = normalizeSearchBackend
 
 var ToPascalCase = toPascalCase
 
-var ValidateMaxImageUploadSize = validateMaxImageUploadSize
+var ValidateByteSize = validateByteSize
 
 func SetRuntimeInfoForTest(goos string, euid int) func() {
 	oldGOOS := currentGOOS
@@ -32,3 +34,14 @@ func SetLogFatal(f func(...any)) func() {
 	logFatal = f
 	return func() { logFatal = old }
 }
+
+// PanicOnLogFatal stops the caller the way os.Exit would, so specs can assert on the fatal message.
+func PanicOnLogFatal() func() {
+	return SetLogFatal(func(args ...any) {
+		panic(fmt.Sprint(args...)) //nolint:forbidigo
+	})
+}
+
+var UnknownConfigKeys = unknownConfigKeys
+
+var SuggestOptions = suggestOptions

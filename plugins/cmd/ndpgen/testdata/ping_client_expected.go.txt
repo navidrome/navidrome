@@ -31,6 +31,7 @@ func PingPing() error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {

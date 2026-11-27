@@ -13,14 +13,14 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/server/subsonic/filter"
+	"github.com/navidrome/navidrome/server/imghttp"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	if !conf.Server.EnableGravatar {
+	if !conf.Server().EnableGravatar {
 		return api.getPlaceHolderAvatar(w, r)
 	}
 	p := req.Params(r)
@@ -29,7 +29,7 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 		return nil, err
 	}
 	ctx := r.Context()
-	u, err := api.ds.User(ctx).FindByUsername(username)
+	u, err := api.ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (api *Router) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) 
 func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	// If context is already canceled, discard request without further processing
 	if r.Context().Err() != nil {
-		return nil, nil //nolint:nilerr
+		return nil, nil
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -67,7 +67,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	size := p.IntOr("size", 0)
 	square := p.BoolOr("square", false)
 
-	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)
+	img, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return nil, nil
@@ -79,11 +79,13 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 		return nil, err
 	}
 
-	defer imgReader.Close()
-	w.Header().Set("cache-control", "public, max-age=315360000")
-	w.Header().Set("last-modified", lastUpdate.Format(http.TimeFormat))
+	defer img.Close()
 
-	cnt, err := io.Copy(w, imgReader)
+	artID, _ := model.ParseArtworkID(id)
+	if imghttp.WriteImageHeaders(w, r, img, artID.Hash) {
+		return nil, nil
+	}
+	cnt, err := io.Copy(w, img)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
 	}
@@ -98,22 +100,13 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsByArtistTitleWithLyricsFirst(artist, title))
-
+	structuredLyrics, err := api.lyrics.GetLyricsByArtistTitle(r.Context(), artist, title)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(mediaFiles) == 0 {
-		return response, nil
-	}
-
-	structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), &mediaFiles[0])
-	if err != nil {
-		return nil, err
-	}
-
-	if len(structuredLyrics) == 0 {
+	mainLyric, ok := structuredLyrics.Main()
+	if !ok {
 		return response, nil
 	}
 
@@ -121,10 +114,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	lyricsResponse.Title = title
 
 	var lyricsText strings.Builder
-	for _, line := range structuredLyrics[0].Line {
+	for _, line := range mainLyric.Line {
 		lyricsText.WriteString(line.Value + "\n")
 	}
-
 	lyricsResponse.Value = lyricsText.String()
 
 	return response, nil
@@ -136,7 +128,7 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	mediaFile, err := api.ds.MediaFile(r.Context()).Get(id)
+	mediaFile, err := api.ds.MediaFile().Get(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -146,8 +138,10 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
+	enhanced, _ := req.Params(r).Bool("enhanced")
+
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, enhanced)
 
 	return response, nil
 }

@@ -46,7 +46,29 @@
     "react/jsx-uses-react": "off",
     "react/react-in-jsx-scope": "off",
     "react/prop-types": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/dataProvider"],
+            "importNames": ["httpClient"],
+            "message": "Do not call httpClient directly. Add a method to wrapperDataProvider and call it through useDirectDataProvider(), or add the Subsonic call to src/subsonic."
+          },
+          {
+            "group": ["**/dataProvider/httpClient"],
+            "message": "Do not call httpClient directly. Add a method to wrapperDataProvider and call it through useDirectDataProvider(), or add the Subsonic call to src/subsonic."
+          }
+        ]
+      }
+    ],
   },
+  "overrides": [
+    {
+      "files": ["src/dataProvider/**", "src/subsonic/**"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ],
   // Fix Vitest
   "globals": {
     "describe": "readonly",

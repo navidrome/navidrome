@@ -25,20 +25,6 @@ exports:
             contentType: application/json
 components:
     schemas:
-        ArtistRef:
-            description: ArtistRef is a reference to an artist with name and optional MBID.
-            properties:
-                id:
-                    type: string
-                    description: ID is the internal Navidrome artist ID (if known).
-                name:
-                    type: string
-                    description: Name is the artist name.
-                mbid:
-                    type: string
-                    description: MBID is the MusicBrainz ID for the artist.
-            required:
-                - name
         IsAuthorizedRequest:
             description: IsAuthorizedRequest is the request for authorization check.
             properties:
@@ -194,3 +180,31 @@ components:
                 - duration
                 - trackNumber
                 - discNumber
+        ArtistRef:
+            description: |-
+                ArtistRef is the minimal information a plugin returns for Navidrome to match an
+                artist against the library. It is a reference, not a full artist entity: it
+                carries only matching keys (name and optional internal/MusicBrainz IDs) plus a
+                few projection fields used when describing a track's participants, never
+                descriptive data such as biographies or images.
+            properties:
+                id:
+                    type: string
+                    description: ID is the internal Navidrome artist ID (if known).
+                name:
+                    type: string
+                    description: Name is the artist name.
+                mbid:
+                    type: string
+                    description: MBID is the MusicBrainz ID for the artist.
+                sortName:
+                    type: string
+                    description: SortName is the artist name used for sorting (if known).
+                role:
+                    type: string
+                    description: Role is the participation category (e.g. "artist", "composer", "performer").
+                subRole:
+                    type: string
+                    description: SubRole is a specialization within Role (e.g. the instrument for a performer).
+            required:
+                - name

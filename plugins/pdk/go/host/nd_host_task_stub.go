@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // QueueConfig represents the QueueConfig data structure.
 // QueueConfig holds configuration for a task queue.
@@ -68,7 +70,11 @@ func TaskEnqueue(queueName string, payload []byte) (string, error) {
 // Get is the mock method for TaskGet.
 func (m *mockTaskService) Get(taskID string) (*TaskInfo, error) {
 	args := m.Called(taskID)
-	return args.Get(0).(*TaskInfo), args.Error(1)
+	var r0 *TaskInfo
+	if v := args.Get(0); v != nil {
+		r0 = v.(*TaskInfo)
+	}
+	return r0, args.Error(1)
 }
 
 // TaskGet delegates to the mock instance.

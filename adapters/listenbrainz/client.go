@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -20,6 +21,12 @@ const (
 	lbzApiUrl = "https://api.listenbrainz.org/1/"
 	labsBase  = "https://labs.api.listenbrainz.org/"
 )
+
+// retryLaterErr reads the wait ListenBrainz asked for. It sends X-RateLimit-Reset-In
+// (delta-seconds) on every response, including the 429, and never Retry-After.
+func retryLaterErr(h http.Header) *agents.RetryLaterError {
+	return &agents.RetryLaterError{RetryIn: agents.ParseRetryIn(h.Get("X-RateLimit-Reset-In"))}
+}
 
 var (
 	ErrorNotFound = errors.New("listenbrainz: not found")
@@ -57,7 +64,7 @@ type listenBrainzResponse struct {
 }
 
 type listenBrainzRequest struct {
-	ApiKey string //nolint:gosec
+	ApiKey string
 	Body   listenBrainzRequestBody
 }
 
@@ -155,7 +162,10 @@ func (c *client) path(endpoint string) (string, error) {
 }
 
 func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
-	b, _ := json.Marshal(r.Body)
+	b, err := json.Marshal(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("encoding request body: %w", err)
+	}
 	uri, err := c.path(endpoint)
 	if err != nil {
 		return nil, err
@@ -164,7 +174,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 
 	if r.ApiKey != "" {
-		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))
+		req.Header.Add("Authorization", "Token "+r.ApiKey)
 	}
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz %s request", req.Method), "url", req.URL)
@@ -174,17 +184,24 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 	}
 
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, retryLaterErr(resp.Header)
+	}
 	decoder := json.NewDecoder(resp.Body)
 
 	var response listenBrainzResponse
 	jsonErr := decoder.Decode(&response)
-	if resp.StatusCode != 200 && jsonErr != nil {
+	if resp.StatusCode != http.StatusOK && jsonErr != nil {
 		return nil, fmt.Errorf("ListenBrainz: HTTP Error, Status: (%d)", resp.StatusCode)
 	}
 	if jsonErr != nil {
 		return nil, jsonErr
 	}
 	if response.Code != 0 && response.Code != 200 {
+		// LB also reports rate limiting as a body code, not only as an HTTP status.
+		if response.Code == http.StatusTooManyRequests {
+			return &response, retryLaterErr(resp.Header)
+		}
 		return &response, &listenBrainzError{Code: response.Code, Message: response.Error}
 	}
 
@@ -209,8 +226,11 @@ func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint
 	}
 
 	// On a 200 code, there is no code. Decode using using error message if it exists
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, retryLaterErr(resp.Header)
+		}
 		decoder := json.NewDecoder(resp.Body)
 
 		var lbzError lbzHttpError
@@ -298,7 +318,7 @@ func (c *client) getSimilarArtists(ctx context.Context, mbid string, limit int) 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-artists/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"artist_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.ArtistAlgorithm},
+		"artist_mbids": []string{mbid}, "algorithm": []string{conf.Server().ListenBrainz.ArtistAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)
@@ -337,7 +357,7 @@ func (c *client) getSimilarRecordings(ctx context.Context, mbid string, limit in
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, labsBase+"similar-recordings/json", nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
 	req.URL.RawQuery = url.Values{
-		"recording_mbids": []string{mbid}, "algorithm": []string{conf.Server.ListenBrainz.TrackAlgorithm},
+		"recording_mbids": []string{mbid}, "algorithm": []string{conf.Server().ListenBrainz.TrackAlgorithm},
 	}.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz Labs %s request", req.Method), "url", req.URL)

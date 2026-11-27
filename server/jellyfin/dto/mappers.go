@@ -1,0 +1,537 @@
+package dto
+
+import (
+	"cmp"
+	"fmt"
+	"math"
+	"time"
+
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/utils/slice"
+)
+
+// sortName must match the persistence ORDER BY key (see setSortMappings): Finamp's A-Z jump
+// scans SortName client-side, and any mismatch with the server's sort order scrolls to the top.
+func sortName(sortTag, orderName, displayName string) string {
+	if conf.Server().PreferSortTags {
+		return cmp.Or(sortTag, orderName, displayName)
+	}
+	return cmp.Or(orderName, displayName)
+}
+
+// ticksPerMillis converts Jellyfin wire times, which are ticks: 100ns units, i.e. 10,000 per millisecond.
+const ticksPerMillis = 10_000
+
+func TicksFromSeconds(sec float32) int64 { return int64(float64(sec) * 1000 * ticksPerMillis) }
+
+// TicksFromMillis converts milliseconds (Navidrome lyric timestamps) to ticks.
+func TicksFromMillis(ms int64) int64 { return ms * ticksPerMillis }
+
+// MillisFromTicks converts ticks (client-reported playback positions) to milliseconds.
+func MillisFromTicks(ticks int64) int64 { return ticks / ticksPerMillis }
+
+// premiereDate converts a possibly partial date tag ("2007", "2007-02") into the ISO 8601
+// PremiereDate clients parse, falling back to year; nil when neither exists.
+func premiereDate(date string, year int) *string {
+	d := date
+	switch len(d) {
+	case 4:
+		d += "-01-01"
+	case 7:
+		d += "-01"
+	case 10: // already yyyy-mm-dd
+	default:
+		if year <= 0 {
+			return nil
+		}
+		d = fmt.Sprintf("%04d-01-01", year)
+	}
+	parsed, err := time.Parse(time.DateOnly, d)
+	if err != nil {
+		return nil
+	}
+	s := JellyfinDate(&parsed)
+	return &s
+}
+
+// jellyfinDateLayout is .NET's round-trip layout, 7 fractional digits and all: Manet rejects plain RFC3339.
+const jellyfinDateLayout = "2006-01-02T15:04:05.0000000Z07:00"
+
+// JellyfinDate formats t as the date string clients expect, or "" for the zero time so the
+// field is omitted rather than sent as a meaningless epoch.
+func JellyfinDate(t *time.Time) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(jellyfinDateLayout)
+}
+
+// channelLayout maps a channel count to the label Jellyfin clients expect on a MediaStream.
+func channelLayout(n int) string {
+	switch n {
+	case 1:
+		return "mono"
+	case 2:
+		return "stereo"
+	case 6:
+		return "5.1"
+	case 8:
+		return "7.1"
+	default:
+		return ""
+	}
+}
+
+// MediaSourceFromMediaFile builds the MediaSourceInfo for direct playback of mf's source file.
+// Shared by SongToBaseItem and getPlaybackInfo so Size/Bitrate match across browse and /PlaybackInfo
+// responses (Finamp's download dialog reads MediaSources[0].Size from the browse response).
+func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
+	streams := make([]MediaStream, 1, 2)
+	streams[0] = MediaStream{
+		Type:          "Audio",
+		Index:         0,
+		Codec:         mf.Codec,
+		BitRate:       mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's BitRate is bps.
+		Channels:      mf.Channels,
+		SampleRate:    mf.SampleRate,
+		ChannelLayout: channelLayout(mf.Channels),
+	}
+	// Finamp gates its lyrics view on a Lyric stream in PlaybackInfo, not on HasLyrics.
+	if mf.HasEmbeddedLyrics() {
+		streams = append(streams, MediaStream{Type: "Lyric", Index: 1, IsExternal: true})
+	}
+	return MediaSourceInfo{
+		Id:                   EncodeID(mf.ID),
+		Protocol:             "Http",
+		Container:            mf.Suffix,
+		Size:                 mf.Size,
+		Name:                 mf.Title,
+		Type:                 "Default",
+		RunTimeTicks:         TicksFromSeconds(mf.Duration),
+		Bitrate:              mf.BitRate * 1000, // Navidrome stores kbps; Jellyfin's Bitrate is bps.
+		SupportsDirectPlay:   true,
+		SupportsDirectStream: true,
+		SupportsTranscoding:  true,
+		IsRemote:             false,
+		SupportsProbing:      true,
+		MediaStreams:         streams,
+		MediaAttachments:     []any{},
+		Formats:              []string{},
+	}
+}
+
+// minLikeRating is Jellyfin's UserItemData.MinLikeValue: a rating at or above it reads as Likes.
+const minLikeRating = 6.5
+
+// StarsFromRating maps Jellyfin's 0-10 rating to 0-5 stars, rejecting out-of-range values and NaN.
+// A nonzero rating floors at one star, since 0 stars means "not rated".
+func StarsFromRating(rating float64) (int, bool) {
+	if !(rating >= 0 && rating <= 10) {
+		return 0, false
+	}
+	stars := int(math.Round(rating / 2))
+	if rating > 0 {
+		stars = max(stars, 1)
+	}
+	return stars, true
+}
+
+// StarsFromLikes mirrors Jellyfin, which stores likes as Rating 10 and dislikes as Rating 1.
+func StarsFromLikes(likes bool) int {
+	if likes {
+		return 5
+	}
+	return 1
+}
+
+func UserData(a model.Annotations, itemID string) *UserItemDataDto {
+	// Callers pass the raw model id; encode here so Key/ItemId match the encoded Id on the BaseItemDto.
+	encodedID := EncodeID(itemID)
+	d := &UserItemDataDto{
+		PlayCount:  int(a.PlayCount),
+		IsFavorite: a.Starred,
+		Played:     a.PlayCount > 0,
+		Key:        encodedID,
+		ItemId:     encodedID,
+	}
+	if a.Rating > 0 {
+		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
+		d.Rating = &r
+		d.Likes = new(r >= minLikeRating)
+	}
+	if s := JellyfinDate(a.PlayDate); s != "" {
+		d.LastPlayedDate = &s
+	}
+	return d
+}
+
+// SongToBaseItem maps a media file to an Audio BaseItemDto. MediaSources and SortName are attached
+// only when the request's Fields asks for them, mirroring real Jellyfin (which omits both from a
+// plain list response); a nil fields set means neither.
+func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
+	albumID := EncodeID(mf.AlbumID)
+	item := BaseItemDto{
+		Name:              mf.Title,
+		Id:                EncodeID(mf.ID),
+		Type:              "Audio",
+		MediaType:         "Audio",
+		IsFolder:          false,
+		LocationType:      "FileSystem",
+		HasLyrics:         new(mf.HasEmbeddedLyrics()),
+		ParentId:          albumID,
+		Album:             mf.Album,
+		AlbumId:           albumID,
+		AlbumArtist:       mf.AlbumArtist,
+		RunTimeTicks:      TicksFromSeconds(mf.Duration),
+		DateCreated:       JellyfinDate(new(mf.RecentlyAddedAt())),
+		Container:         mf.Suffix,
+		CanDownload:       true,
+		BackdropImageTags: []string{},
+		UserData:          UserData(mf.Annotations, mf.ID),
+	}
+	if fields.Has("MediaSources") {
+		item.MediaSources = []MediaSourceInfo{MediaSourceFromMediaFile(mf)}
+	}
+	if fields.Has("SortName") {
+		item.SortName = sortName(mf.SortTitle, mf.OrderTitle, mf.Title)
+	}
+	// Real Jellyfin splits Artists/ArtistItems per track artist (AlbumArtists stays a single credit).
+	// Participants holds the per-artist list; fall back to the flattened display fields when absent.
+	if artists := mf.Participants[model.RoleArtist]; len(artists) > 0 {
+		item.Artists = slice.Map(artists, func(p model.Participant) string { return p.Name })
+		item.ArtistItems = slice.Map(artists, func(p model.Participant) NameGuidPair {
+			return NameGuidPair{Name: p.Name, Id: EncodeID(p.ID)}
+		})
+	} else {
+		if mf.Artist != "" {
+			item.Artists = []string{mf.Artist}
+		}
+		if mf.ArtistID != "" {
+			item.ArtistItems = []NameGuidPair{{Name: mf.Artist, Id: EncodeID(mf.ArtistID)}}
+		}
+	}
+	if mf.AlbumArtistID != "" {
+		item.AlbumArtists = []NameGuidPair{{Name: mf.AlbumArtist, Id: EncodeID(mf.AlbumArtistID)}}
+	}
+	// dB to apply at the RG2 -18 LUFS reference, same convention real Jellyfin uses; no conversion.
+	item.NormalizationGain = mf.RGTrackGain
+	item.AlbumNormalizationGain = mf.RGAlbumGain
+	if mf.Year > 0 {
+		item.ProductionYear = new(mf.Year)
+	}
+	item.PremiereDate = premiereDate(mf.Date, mf.Year)
+	if mf.TrackNumber > 0 {
+		item.IndexNumber = new(mf.TrackNumber)
+	}
+	if mf.DiscNumber > 0 {
+		item.ParentIndexNumber = new(mf.DiscNumber)
+	}
+	if len(mf.Genres) > 0 {
+		for _, g := range mf.Genres {
+			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
+		}
+	} else if mf.Genre != "" {
+		item.Genres = []string{mf.Genre}
+	}
+	// Clients prefer ImageTags.Primary over AlbumId, so a track's own cover must win here.
+	if mf.ImageHash != "" && mf.ImageHash != mf.AlbumImage.ImageHash {
+		tag, blurs, ratio := primaryImage(mf.ItemImage, mf.ID, fields)
+		item.ImageTags = map[string]string{"Primary": tag}
+		item.ImageBlurHashes = blurs
+		item.PrimaryImageAspectRatio = ratio
+	} else if embeddedArtPending(mf) {
+		// Nothing enqueues media files: advertising the id is what makes a client ask, and that
+		// request is what extracts the embedded art and queues the track.
+		item.ImageTags = map[string]string{"Primary": mf.ID}
+	} else if mf.AlbumID != "" {
+		if tag, blurs, ratio := primaryImage(mf.AlbumImage, mf.AlbumID, fields); tag != "" {
+			item.AlbumPrimaryImageTag = tag
+			item.ImageBlurHashes = blurs
+			item.PrimaryImageAspectRatio = ratio
+		}
+	}
+	return item
+}
+
+func embeddedArtPending(mf model.MediaFile) bool {
+	return mf.HasCoverArt && conf.Server().EnableMediaFileCoverArt &&
+		mf.ImageHash == "" && !mf.ImageAbsent
+}
+
+// primaryImage never fakes a blurhash: clients key their cover cache on the value, which would
+// pin a stale cover forever.
+func primaryImage(img model.ItemImage, fallback string, fields Fields) (tag string, blurs map[string]map[string]string, ratio *float64) {
+	if img.ImageAbsent {
+		return "", nil, nil
+	}
+	tag = cmp.Or(img.ImageHash, fallback)
+	if img.BlurHash != "" {
+		blurs = map[string]map[string]string{"Primary": {tag: img.BlurHash}}
+	}
+	if fields.Has("PrimaryImageAspectRatio") {
+		ratio = img.AspectRatio()
+	}
+	return tag, blurs, ratio
+}
+
+func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(al.ItemImage, al.ID, fields)
+	item := BaseItemDto{
+		Name:                    al.Name,
+		Id:                      EncodeID(al.ID),
+		Type:                    "MusicAlbum",
+		IsFolder:                true,
+		LocationType:            "FileSystem",
+		ParentId:                EncodeID(al.AlbumArtistID),
+		AlbumArtist:             al.AlbumArtist,
+		Album:                   al.Name,
+		ChildCount:              new(al.SongCount),
+		SongCount:               new(al.SongCount),
+		RunTimeTicks:            TicksFromSeconds(al.Duration),
+		DateCreated:             JellyfinDate(new(al.RecentlyAddedAt())),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(al.Annotations, al.ID),
+	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	item.Artists = []string{}
+	if al.AlbumArtist != "" {
+		item.Artists = append(item.Artists, al.AlbumArtist)
+	}
+	if al.AlbumArtistID != "" {
+		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: EncodeID(al.AlbumArtistID)}}
+		item.ArtistItems = item.AlbumArtists
+	}
+	if al.MaxYear > 0 {
+		item.ProductionYear = new(al.MaxYear)
+	}
+	item.PremiereDate = premiereDate(al.Date, al.MaxYear)
+	if len(al.Genres) > 0 {
+		for _, g := range al.Genres {
+			item.Genres = append(item.Genres, g.Name)
+			item.GenreItems = append(item.GenreItems, NameGuidPair{Id: EncodeID(g.ID), Name: g.Name})
+		}
+	}
+	// Jellyfin leaves Studios empty for music; we expose record labels here to match our /Studios
+	// list and StudioIds= filter, so a client can display and click through to filter by label.
+	if fields.Has("Studios") {
+		for _, label := range al.Tags.Values(model.TagRecordLabel) {
+			id := EncodeID(model.NewTag(model.TagRecordLabel, label).ID)
+			item.Studios = append(item.Studios, NameGuidPair{Name: label, Id: id})
+		}
+	}
+	// The album's own ReplayGain gain (dB at the RG2 -18 LUFS reference) — same
+	// convention as tracks; clients read it off the album item as NormalizationGain.
+	item.NormalizationGain = al.RGAlbumGain
+	if fields.Has("SortName") {
+		item.SortName = sortName(al.SortAlbumName, al.OrderAlbumName, al.Name)
+	}
+	return item
+}
+
+func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(ar.ItemImage, ar.ID, fields)
+	item := BaseItemDto{
+		Name:                    ar.Name,
+		Id:                      EncodeID(ar.ID),
+		Type:                    "MusicArtist",
+		IsFolder:                true,
+		AlbumCount:              new(ar.AlbumCount),
+		SongCount:               new(ar.SongCount),
+		DateCreated:             JellyfinDate(ar.CreatedAt),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(ar.Annotations, ar.ID),
+	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	if fields.Has("SortName") {
+		item.SortName = sortName(ar.SortArtistName, ar.OrderArtistName, ar.Name)
+	}
+	return item
+}
+
+// LibraryToBaseItem maps a library to the CollectionFolder item clients browse as a top-level node.
+// Manet keeps no library, and so syncs nothing, unless it carries the fields Jellyfin sends here.
+func LibraryToBaseItem(lib model.Library) BaseItemDto {
+	id := EncodeLibraryID(lib.ID)
+	return BaseItemDto{
+		Id:                id,
+		Name:              lib.Name,
+		SortName:          lib.Name,
+		Type:              "CollectionFolder",
+		CollectionType:    "music",
+		IsFolder:          true,
+		Path:              lib.Path,
+		LocationType:      "FileSystem",
+		DateCreated:       JellyfinDate(&lib.CreatedAt),
+		ChildCount:        new(lib.TotalAlbums),
+		UserData:          &UserItemDataDto{Key: id, ItemId: id},
+		BackdropImageTags: []string{},
+	}
+}
+
+func GenreToBaseItem(g model.Genre) BaseItemDto {
+	return BaseItemDto{
+		Name:              g.Name,
+		Id:                EncodeID(g.ID),
+		Type:              "MusicGenre",
+		IsFolder:          true,
+		BackdropImageTags: []string{},
+	}
+}
+
+func StudioToBaseItem(t model.Tag) BaseItemDto {
+	return BaseItemDto{
+		Name:              t.TagValue,
+		Id:                EncodeID(t.ID),
+		Type:              "Studio",
+		BackdropImageTags: []string{},
+	}
+}
+
+// PlaylistToBaseItem maps a playlist to a Playlist BaseItemDto.
+func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
+	tag, blurs, ratio := primaryImage(p.ItemImage, p.ID, fields)
+	item := BaseItemDto{
+		Name: p.Name,
+		Id:   EncodeID(p.ID),
+		Type: "Playlist",
+		// Synthetic path: Jellify only surfaces playlists whose Path contains "data" (real Jellyfin
+		// stores them under its data folder), so without this its Playlists tab hides them all.
+		Path:                    "/data/playlists/" + p.ID,
+		IsFolder:                true,
+		MediaType:               "Audio",
+		ChildCount:              new(p.SongCount),
+		RunTimeTicks:            TicksFromSeconds(p.Duration),
+		DateCreated:             JellyfinDate(&p.CreatedAt),
+		ImageBlurHashes:         blurs,
+		PrimaryImageAspectRatio: ratio,
+		BackdropImageTags:       []string{},
+		UserData:                UserData(p.Annotations, p.ID),
+	}
+	if tag != "" {
+		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	// Playlists have no sort tag; the repository orders them by name.
+	if fields.Has("SortName") {
+		item.SortName = p.Name
+	}
+	return item
+}
+
+// LyricDtoFromLyrics maps one lyric track to Jellyfin's LyricDto. Clients infer synced-vs-plain
+// from per-line Start presence, so synced drops start-less lines and unsynced never emits Start.
+func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
+	d := LyricDto{
+		Metadata: LyricMetadata{
+			Artist:   cmp.Or(lyrics.DisplayArtist, mf.Artist),
+			Album:    mf.Album,
+			Title:    cmp.Or(lyrics.DisplayTitle, mf.Title),
+			Length:   TicksFromSeconds(mf.Duration),
+			IsSynced: lyrics.Synced,
+		},
+		Lyrics: make([]LyricLine, 0, len(lyrics.Line)),
+	}
+	if lyrics.Offset != nil {
+		offset := TicksFromMillis(*lyrics.Offset)
+		d.Metadata.Offset = &offset
+	}
+	for _, line := range lyrics.Line {
+		out := LyricLine{Text: line.Value}
+		if lyrics.Synced {
+			if line.Start == nil {
+				continue
+			}
+			start := TicksFromMillis(*line.Start)
+			out.Start = &start
+			for _, cue := range line.Cue {
+				if cue.Start == nil {
+					continue
+				}
+				c := LyricLineCue{
+					Position:    cue.ByteStart,
+					EndPosition: cue.ByteEnd,
+					Start:       TicksFromMillis(*cue.Start),
+				}
+				if cue.End != nil {
+					end := TicksFromMillis(*cue.End)
+					c.End = &end
+				}
+				out.Cues = append(out.Cues, c)
+			}
+		}
+		d.Lyrics = append(d.Lyrics, out)
+	}
+	return d
+}
+
+// NewSessionInfo's Id is stable per client install, as Jellyfin reuses a device's session across logins.
+func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, serverID string) *SessionInfo {
+	now := time.Now()
+	return &SessionInfo{
+		Id:                 EncodeID(id.NewHash(client, deviceID)),
+		UserId:             EncodeID(u.ID),
+		UserName:           u.UserName,
+		Client:             client,
+		DeviceId:           deviceID,
+		DeviceName:         deviceName,
+		ApplicationVersion: version,
+		ServerId:           serverID,
+		LastActivityDate:   JellyfinDate(&now),
+		IsActive:           true,
+		PlayableMediaTypes: []string{"Audio"},
+		SupportedCommands:  []string{},
+		AdditionalUsers:    []any{},
+		NowPlayingQueue:    []any{},
+		PlayState:          PlayerStateInfo{RepeatMode: "RepeatNone", PlaybackOrder: "Default"},
+	}
+}
+
+// RadioToBaseItem maps an internet radio station to a Live TV radio channel, the shape Jellyfin
+// clients list stations in (GET /LiveTv/Channels).
+func RadioToBaseItem(rd model.Radio) BaseItemDto {
+	item := BaseItemDto{
+		Name:              rd.Name,
+		Id:                EncodeID(rd.ID),
+		Type:              "TvChannel",
+		ChannelType:       "Radio",
+		MediaType:         "Audio",
+		LocationType:      "Remote",
+		BackdropImageTags: []string{},
+	}
+	// An uploaded image is a station's only art source, as in Subsonic's getInternetRadioStations.
+	if rd.UploadedImage != "" && !rd.ImageAbsent {
+		tag, blurs, _ := primaryImage(rd.ItemImage, rd.ID, nil)
+		item.ImageTags = map[string]string{"Primary": tag}
+		item.ImageBlurHashes = blurs
+	}
+	return item
+}
+
+// MediaSourceFromRadio points clients straight at the station URL. RequiresOpening stays false so
+// they skip Jellyfin's LiveStreams/Open step, which Navidrome doesn't implement.
+func MediaSourceFromRadio(rd model.Radio) MediaSourceInfo {
+	return MediaSourceInfo{
+		Id:                 EncodeID(rd.ID),
+		Path:               rd.StreamUrl,
+		Protocol:           "Http",
+		Name:               rd.Name,
+		Type:               "Default",
+		IsRemote:           true,
+		IsInfiniteStream:   true,
+		SupportsDirectPlay: true,
+		// Index -1 is real Jellyfin's "unknown position" for a live stream's audio track.
+		MediaStreams:     []MediaStream{{Type: "Audio", Index: -1}},
+		MediaAttachments: []any{},
+		Formats:          []string{},
+	}
+}

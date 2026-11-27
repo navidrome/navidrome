@@ -16,6 +16,7 @@ const mockPlaylists = [
   { id: 'playlist-2', name: 'Jazz Collection', ownerId: 'admin' },
   { id: 'playlist-3', name: 'Electronic Beats', ownerId: 'admin' },
   { id: 'playlist-4', name: 'Chill Vibes', ownerId: 'user2' }, // Not writable by admin
+  { id: 'playlist-5', name: 'Synced List', ownerId: 'admin', sync: true },
 ]
 
 const mockIndexedData = {
@@ -27,6 +28,12 @@ const mockIndexedData = {
     ownerId: 'admin',
   },
   'playlist-4': { id: 'playlist-4', name: 'Chill Vibes', ownerId: 'user2' },
+  'playlist-5': {
+    id: 'playlist-5',
+    name: 'Synced List',
+    ownerId: 'admin',
+    sync: true,
+  },
 }
 
 const createTestComponent = (
@@ -89,6 +96,8 @@ describe('SelectPlaylistInput', () => {
 
       // Should not show playlists not owned by admin (not writable)
       expect(screen.queryByText('Chill Vibes')).not.toBeInTheDocument()
+      // Should not show synced playlists (their tracks are not editable)
+      expect(screen.queryByText('Synced List')).not.toBeInTheDocument()
     })
 
     it('should filter playlists based on search input', async () => {

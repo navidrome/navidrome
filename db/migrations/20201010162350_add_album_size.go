@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20201010162350, Down20201010162350)
 }
 
-func Up20201010162350(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20201010162350(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table album
 	add size integer default 0 not null;
 create index if not exists album_size
@@ -28,7 +28,7 @@ where id not null;`)
 	return err
 }
 
-func Down20201010162350(_ context.Context, tx *sql.Tx) error {
+func Down20201010162350(ctx context.Context, tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	return nil
 }

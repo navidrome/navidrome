@@ -34,28 +34,28 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 
 	Describe("getLinkStatus", func() {
 		It("returns false when there is no stored session key", func() {
-			req = httptest.NewRequest("GET", "/listenbrainz/link", nil)
+			req = httptest.NewRequest(http.MethodGet, "/listenbrainz/link", nil)
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
-			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-			Expect(parsed["status"]).To(Equal(false))
+			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+			Expect(parsed["status"]).To(BeFalse())
 		})
 
 		It("returns true when there is a stored session key", func() {
 			sk.KeyValue = "sk-1"
-			req = httptest.NewRequest("GET", "/listenbrainz/link", nil)
+			req = httptest.NewRequest(http.MethodGet, "/listenbrainz/link", nil)
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
-			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-			Expect(parsed["status"]).To(Equal(true))
+			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+			Expect(parsed["status"]).To(BeTrue())
 		})
 	})
 
 	Describe("link", func() {
 		It("returns bad request when no token is sent", func() {
-			req = httptest.NewRequest("PUT", "/listenbrainz/link", strings.NewReader(`{}`))
+			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusBadRequest))
 		})
@@ -63,10 +63,10 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 		It("returns bad request when the token is invalid", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token invalid.", "valid": false}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
-			req = httptest.NewRequest("PUT", "/listenbrainz/link", strings.NewReader(`{"token": "invalid-tok-1"}`))
+			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "invalid-tok-1"}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusBadRequest))
 		})
@@ -74,25 +74,25 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 		It("returns true and the username when the token is valid", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token valid.", "user_name": "ListenBrainzUser", "valid": true}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
-			req = httptest.NewRequest("PUT", "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
+			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
-			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(BeNil())
-			Expect(parsed["status"]).To(Equal(true))
+			Expect(json.Unmarshal(resp.Body.Bytes(), &parsed)).To(Succeed())
+			Expect(parsed["status"]).To(BeTrue())
 			Expect(parsed["user"]).To(Equal("ListenBrainzUser"))
 		})
 
 		It("saves the session key when the token is valid", func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token valid.", "user_name": "ListenBrainzUser", "valid": true}`)),
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 			}
 
-			req = httptest.NewRequest("PUT", "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
+			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			Expect(sk.KeyValue).To(Equal("tok-1"))
@@ -102,7 +102,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 	Describe("unlink", func() {
 		It("removes the session key when unlinking", func() {
 			sk.KeyValue = "tok-1"
-			req = httptest.NewRequest("DELETE", "/listenbrainz/link", nil)
+			req = httptest.NewRequest(http.MethodDelete, "/listenbrainz/link", nil)
 			r.unlink(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			Expect(sk.KeyValue).To(Equal(""))

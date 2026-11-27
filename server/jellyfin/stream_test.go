@@ -1,0 +1,543 @@
+package jellyfin
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"time"
+
+	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+var _ = Describe("Stream", func() {
+	var ctx context.Context
+	var api *Router
+	var ds model.DataStore
+	var streamer *fakeMediaStreamer
+	var decider *fakeTranscodeDecider
+
+	// alice has access to library 1 only.
+	ctxUser := func() context.Context {
+		return request.WithUser(ctx, model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
+	}
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		putUser(ctx, ds, model.User{ID: testID("u1"), UserName: "alice"})
+		persistencetest.SetLibraries(ctx, ds, "/music1", "/music2")
+		Expect(ds.User().SetUserLibraries(ctx, testID("u1"), []int{1})).To(Succeed())
+		streamer = &fakeMediaStreamer{}
+		decider = &fakeTranscodeDecider{}
+		api = &Router{
+			ds: ds, streamer: streamer, transcodeDecider: decider,
+			lyrics: &fakeLyricsService{lyrics: map[string]model.LyricList{}},
+		}
+	})
+
+	Describe("getPlaybackInfo", func() {
+		It("returns a media source for an accessible track", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+			Expect(res.MediaSources[0].Container).To(Equal("mp3"))
+			Expect(res.MediaSources[0].Size).To(Equal(int64(1000)))
+			Expect(res.PlaySessionId).To(MatchRegexp("^[0-9a-f]{32}$"))
+		})
+
+		It("returns 404 for a track in a library the user can't access", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
+			)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 404 when the id doesn't match any media file", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Items/missing/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		playbackInfo := func() dto.PlaybackInfoResponse {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			api.getPlaybackInfo(w, r)
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			return res
+		}
+
+		lyricStreams := func(res dto.PlaybackInfoResponse) []dto.MediaStream {
+			var out []dto.MediaStream
+			for _, s := range res.MediaSources[0].MediaStreams {
+				if s.Type == "Lyric" {
+					out = append(out, s)
+				}
+			}
+			return out
+		}
+
+		It("advertises a Lyric stream for plugin/sidecar-sourced lyrics not embedded in the file", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
+		})
+
+		It("advertises no Lyric stream when the pipeline finds nothing", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
+
+			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
+		})
+
+		It("advertises no Lyric stream when the lyrics endpoint would 404 (main lyric has no lines)", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				testID("s1"): {{Kind: "main", Lang: "eng"}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(BeEmpty())
+		})
+
+		It("doesn't duplicate the Lyric stream when lyrics are already embedded", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},
+			)
+			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
+				testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "hello"}}}},
+			}}
+
+			Expect(lyricStreams(playbackInfo())).To(HaveLen(1))
+		})
+
+		It("still returns 200 with a valid MediaSource and no Lyric stream when the lyrics pipeline errors", func() {
+			// Own ID: an erroring loader isn't cached, but a shared ID could still pick up
+			// another test's cached (non-error) result and mask this assertion.
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s-err"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
+			api.lyrics = &fakeLyricsService{err: errors.New("boom")}
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s-err"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s-err")))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID(testID("s-err"))))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
+
+		It("does not block playback info when lyrics lookup is slow", func() {
+			origTimeout := playbackInfoLyricsTimeout
+			playbackInfoLyricsTimeout = 20 * time.Millisecond
+			DeferCleanup(func() { playbackInfoLyricsTimeout = origTimeout })
+
+			blockCh := make(chan struct{})
+			doneCh := make(chan struct{})
+			DeferCleanup(func() {
+				close(blockCh)
+				Eventually(doneCh).Should(BeClosed())
+			})
+
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Slow Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
+			api.lyrics = &fakeLyricsService{
+				lyrics: map[string]model.LyricList{
+					testID("s1"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "delayed"}}}},
+				},
+				blockCh: blockCh,
+				doneCh:  doneCh,
+			}
+
+			start := time.Now()
+			res := playbackInfo()
+			duration := time.Since(start)
+			Expect(duration).To(BeNumerically("<", 150*time.Millisecond))
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
+
+		It("recovers panics in detached lyrics lookup and returns 200 without Lyric stream", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s-panic"), Title: "Panic Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			)
+			api.lyrics = &fakeLyricsService{panicVal: "lyrics plugin crash"}
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s-panic"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s-panic")))
+			api.getPlaybackInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
+	})
+
+	Describe("streamAudio", func() {
+		It("invokes the transcode decider and streamer for an accessible track", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
+			streamer.content = "audio-bytes"
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(decider.invoked).To(BeTrue())
+			Expect(streamer.invoked).To(BeTrue())
+			Expect(w.Body.String()).To(Equal("audio-bytes"))
+		})
+
+		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
+			)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(decider.invoked).To(BeFalse())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+
+		It("returns 404 when the id doesn't match any media file, without invoking the streamer or decider", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/missing/stream", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
+			invoke(api.streamAudio, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(decider.invoked).To(BeFalse())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+
+		It("converts the bps audioBitRate param to kbps", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiobitrate=320000", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+
+			Expect(decider.req.BitRate).To(Equal(320))
+		})
+
+		It("uses the audioCodec param as target format when no container is given", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiocodec=aac", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+
+			Expect(decider.req.Format).To(Equal("aac"))
+		})
+
+		It("returns 500 and logs when the streamer fails", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
+			streamer.err = errors.New("boom")
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
+	})
+
+	Describe("HEAD requests", func() {
+		head := func(query string) *httptest.ResponseRecorder {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			)
+			streamer.content = "audio-bytes"
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodHead, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?"+query, nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+			return w
+		}
+
+		It("answers a transcode with the target type and no length, without starting it", func() {
+			w := head("audioCodec=mp3")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("audio/mpeg"))
+			Expect(w.Header().Get("Content-Length")).To(BeEmpty())
+			Expect(w.Body.String()).To(BeEmpty())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+
+		It("answers direct play through the streamer, without a body", func() {
+			w := head("static=true")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamer.invoked).To(BeTrue())
+			Expect(w.Body.String()).To(BeEmpty())
+		})
+	})
+
+	Describe("streamUniversal", func() {
+		universal := func(query string) {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
+			)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/universal?"+query, nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamUniversal, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+		}
+
+		It("turns Container into direct play profiles and TranscodingContainer into the target", func() {
+			universal("Container=mp3,m4a|aac&TranscodingContainer=m4a&AudioCodec=aac&MaxStreamingBitrate=128000")
+			Expect(decider.client.DirectPlayProfiles).To(Equal([]stream.DirectPlayProfile{
+				{Containers: []string{"mp3"}, Protocols: []string{stream.ProtocolHTTP}},
+				{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{stream.ProtocolHTTP}},
+			}))
+			Expect(decider.client.TranscodingProfiles).To(Equal([]stream.Profile{
+				{Container: "m4a", AudioCodec: "aac", Protocol: stream.ProtocolHTTP},
+			}))
+			Expect(decider.client.MaxAudioBitrate).To(Equal(128))
+			Expect(decider.client.MaxTranscodingAudioBitrate).To(Equal(128))
+		})
+
+		It("accepts repeated Container query parameters", func() {
+			universal("Container=mp3&Container=m4a|aac&TranscodingContainer=m4a&AudioCodec=aac")
+			Expect(decider.client.DirectPlayProfiles).To(Equal([]stream.DirectPlayProfile{
+				{Containers: []string{"mp3"}, Protocols: []string{stream.ProtocolHTTP}},
+				{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{stream.ProtocolHTTP}},
+			}))
+		})
+
+		It("uses AudioCodec as the target when no TranscodingContainer is given", func() {
+			universal("Container=mp3&AudioCodec=aac")
+			Expect(decider.client.TranscodingProfiles).To(Equal([]stream.Profile{
+				{Container: "aac", AudioCodec: "aac", Protocol: stream.ProtocolHTTP},
+			}))
+		})
+
+		It("serves the file as is for static=true", func() {
+			universal("static=true&Container=ogg")
+			Expect(decider.req.Format).To(Equal("raw"))
+			Expect(decider.client).To(BeNil())
+		})
+	})
+
+	Describe("streamHls", func() {
+		BeforeEach(func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "dsf", Duration: 100.5, LibraryID: 1},
+			)
+		})
+
+		hls := func(query string, ctx context.Context) *httptest.ResponseRecorder {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/main.m3u8"+query, nil).WithContext(ctx)
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamHls, w, r)
+			return w
+		}
+
+		It("returns a single-segment VOD playlist pointing at the progressive stream endpoint", func() {
+			w := hls("?audiocodec=aac&audiobitrate=320000&api_key=tok", ctxUser())
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("application/vnd.apple.mpegurl"))
+			body := w.Body.String()
+			Expect(body).To(HavePrefix("#EXTM3U\n"))
+			Expect(body).To(ContainSubstring("#EXT-X-PLAYLIST-TYPE:VOD\n"))
+			Expect(body).To(ContainSubstring("#EXT-X-TARGETDURATION:101\n"))
+			Expect(body).To(ContainSubstring("#EXTINF:100.500,\n"))
+			Expect(body).To(ContainSubstring("\nstream.aac?api_key=tok&audioBitRate=320000\n"))
+			Expect(body).To(HaveSuffix("#EXT-X-ENDLIST\n"))
+		})
+
+		It("omits the bitrate param when the client doesn't send one", func() {
+			w := hls("?audiocodec=aac&api_key=tok", ctxUser())
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.aac?api_key=tok\n"))
+		})
+
+		It("falls back to aac for codecs HLS packed-audio can't carry", func() {
+			w := hls("?audiocodec=opus", ctxUser())
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.aac\n"))
+		})
+
+		It("honors mp3 as segment codec", func() {
+			w := hls("?audiocodec=mp3", ctxUser())
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.mp3\n"))
+		})
+
+		It("prefers the server-forced transcoding format over the requested codec", func() {
+			ctx := request.WithTranscoding(ctxUser(), model.Transcoding{TargetFormat: "mp3"})
+			w := hls("?audiocodec=aac", ctx)
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.mp3\n"))
+		})
+
+		It("advertises an HLS-incompatible forced format verbatim, matching what the segment will contain", func() {
+			ctx := request.WithTranscoding(ctxUser(), model.Transcoding{TargetFormat: "opus"})
+			w := hls("?audiocodec=aac", ctx)
+			Expect(w.Body.String()).To(ContainSubstring("\nstream.opus\n"))
+		})
+
+		It("returns 404 for a track in a library the user can't access", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "dsf", LibraryID: 2},
+			)
+			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 404 when the id doesn't match any media file", func() {
+			Expect(ds.MediaFile().Delete(ctx, testID("s1"))).To(Succeed())
+			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
+		})
+	})
+
+	Describe("streamFile", func() {
+		It("invokes the decider with a raw/direct-play request and the streamer for an accessible track", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
+			)
+			streamer.content = "audio-bytes"
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			api.streamFile(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(decider.invoked).To(BeTrue())
+			Expect(decider.req.Format).To(Equal("raw"))
+			Expect(streamer.invoked).To(BeTrue())
+			Expect(w.Body.String()).To(Equal("audio-bytes"))
+		})
+
+		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
+			persistencetest.PutMediaFiles(ctx, ds,
+				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
+			)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser()) // only has access to library 1
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			api.streamFile(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(decider.invoked).To(BeFalse())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+
+		It("returns 404 when the id doesn't match any media file, without invoking the streamer or decider", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Items/missing/File", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
+			api.streamFile(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(decider.invoked).To(BeFalse())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+	})
+})
+
+// fakeTranscodeDecider is a local test double for stream.TranscodeDecider: it records whether
+// (and how) ResolveRequest was invoked, so tests can assert it's never called on the
+// access-denied path, without needing a real transcode decision pipeline.
+type fakeTranscodeDecider struct {
+	invoked bool
+	req     stream.Request
+	client  *stream.ClientInfo
+}
+
+func (f *fakeTranscodeDecider) MakeDecision(context.Context, *model.MediaFile, *stream.ClientInfo, stream.TranscodeOptions) (*stream.TranscodeDecision, error) {
+	return &stream.TranscodeDecision{}, nil
+}
+
+func (f *fakeTranscodeDecider) CreateTranscodeParams(*stream.TranscodeDecision) (string, error) {
+	return "", nil
+}
+
+func (f *fakeTranscodeDecider) ResolveRequestFromToken(context.Context, string, *model.MediaFile, int) (stream.Request, error) {
+	return stream.Request{}, nil
+}
+
+func (f *fakeTranscodeDecider) ResolveRequest(_ context.Context, _ *model.MediaFile, format string, bitRate int, offset int) stream.Request {
+	f.invoked = true
+	f.req = stream.Request{Format: format, BitRate: bitRate, Offset: offset}
+	return f.req
+}
+
+func (f *fakeTranscodeDecider) ResolveClientRequest(_ context.Context, _ *model.MediaFile, ci *stream.ClientInfo, offset int) stream.Request {
+	f.invoked = true
+	f.client = ci
+	f.req = stream.Request{Offset: offset}
+	return f.req
+}
+
+// fakeMediaStreamer is a local test double for stream.MediaStreamer: it records whether
+// NewStream was invoked and, on success, returns a real (non-seekable) *stream.Stream backed
+// by an in-memory reader, so streamAudio's call to Stream.Serve exercises real code.
+type fakeMediaStreamer struct {
+	invoked bool
+	content string
+	err     error
+}
+
+func (f *fakeMediaStreamer) NewStream(_ context.Context, mf *model.MediaFile, _ stream.Request) (*stream.Stream, error) {
+	f.invoked = true
+	if f.err != nil {
+		return nil, f.err
+	}
+	return stream.NewStream(mf, mf.Suffix, 0, io.NopCloser(strings.NewReader(f.content))), nil
+}

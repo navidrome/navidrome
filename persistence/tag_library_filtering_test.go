@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -30,6 +29,7 @@ const (
 
 var _ = Describe("Tag Library Filtering", func() {
 	var (
+		ctx       context.Context
 		tagRockID = id.NewTagID(tagNameGenre, tagValueRock)
 		tagPopID  = id.NewTagID(tagNameGenre, tagValuePop)
 		tagJazzID = id.NewTagID(tagNameGenre, tagValueJazz)
@@ -44,7 +44,7 @@ var _ = Describe("Tag Library Filtering", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		ctx = GinkgoT().Context()
 
 		// Generate unique path suffix to avoid conflicts with other tests
 		uniqueSuffix := time.Now().Format("20060102150405.000")
@@ -77,12 +77,12 @@ var _ = Describe("Tag Library Filtering", func() {
 		}
 
 		// Create test tags
-		adminCtx := request.WithUser(log.NewContext(context.TODO()), adminUser)
-		tagRepo := NewTagRepository(adminCtx, GetDBXBuilder())
+		adminCtx := request.WithUser(log.NewContext(ctx), adminUser)
+		tagRepo := NewTagRepository(GetDBXBuilder())
 
 		createTag := func(libraryID int, name, value string) {
 			tag := model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
-			err := tagRepo.Add(libraryID, tag)
+			err := tagRepo.Add(adminCtx, libraryID, tag)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
@@ -112,47 +112,42 @@ var _ = Describe("Tag Library Filtering", func() {
 	Describe("TagRepository Library Filtering", func() {
 		// Helper to create repository and read all tags
 		readAllTags := func(user *model.User, filters ...rest.QueryOptions) model.TagList {
-			var ctx context.Context
+			userCtx := ctx
 			if user != nil {
-				ctx = request.WithUser(log.NewContext(context.TODO()), *user)
-			} else {
-				ctx = context.Background() // Headless context
+				userCtx = request.WithUser(log.NewContext(ctx), *user)
 			}
 
-			tagRepo := NewTagRepository(ctx, GetDBXBuilder())
-			repo := tagRepo.(model.ResourceRepository)
+			repo := NewTagRepository(GetDBXBuilder())
 
 			var opts rest.QueryOptions
 			if len(filters) > 0 {
 				opts = filters[0]
 			}
 
-			tags, err := repo.ReadAll(opts)
+			tags, err := repo.ReadAll(userCtx, opts)
 			Expect(err).ToNot(HaveOccurred())
-			return tags.(model.TagList)
+			return tags
 		}
 
 		// Helper to count tags
 		countTags := func(user *model.User) int64 {
-			var ctx context.Context
+			userCtx := ctx
 			if user != nil {
-				ctx = request.WithUser(log.NewContext(context.TODO()), *user)
-			} else {
-				ctx = context.Background()
+				userCtx = request.WithUser(log.NewContext(ctx), *user)
 			}
 
-			tagRepo := NewTagRepository(ctx, GetDBXBuilder())
-			repo := tagRepo.(model.ResourceRepository)
+			repo := NewTagRepository(GetDBXBuilder())
 
-			count, err := repo.Count()
+			count, err := repo.Count(userCtx)
 			Expect(err).ToNot(HaveOccurred())
 			return count
 		}
 
 		Context("Admin User", func() {
-			It("should see all tags regardless of library", func() {
-				tags := readAllTags(&adminUser)
-				Expect(tags).To(HaveLen(3))
+			It("should see all tags even without user_library assignments", func() {
+				unassignedAdmin := model.User{ID: "admin-without-libraries", IsAdmin: true}
+				Expect(readAllTags(&unassignedAdmin)).To(HaveLen(3))
+				Expect(countTags(&unassignedAdmin)).To(Equal(int64(3)))
 			})
 		})
 
@@ -177,7 +172,7 @@ var _ = Describe("Tag Library Filtering", func() {
 					Filters: map[string]any{"library_id": libraryID3},
 				})
 				// Should return no tags since user can't access library 3
-				Expect(tags).To(HaveLen(0))
+				Expect(tags).To(BeEmpty())
 			})
 
 			It("should filter by library 1 correctly", func() {

@@ -1,0 +1,17 @@
+version: '1.0'
+metadata:
+  title: 'Karaoke Test'
+  artist: 'Test Artist'
+  language: 'eng'
+
+lines:
+  - text: "Hello world"
+    start_ms: 1000
+    end_ms: 3000
+    words:
+      - text: "Hello "
+        start_ms: 1000
+        end_ms: 1500
+      - text: "world"
+        start_ms: 1500
+        end_ms: 3000

@@ -105,4 +105,44 @@ var _ = Describe("Claims", func() {
 		})
 	})
 
+	Describe("Audience and Epoch claims", func() {
+		It("omits both when zero", func() {
+			m := auth.Claims{ID: "artwork-id"}.ToMap()
+			Expect(m).ToNot(HaveKey("aud"))
+			Expect(m).ToNot(HaveKey("ep"))
+		})
+
+		It("includes them when set", func() {
+			m := auth.Claims{Subject: "u", Epoch: 3, Audience: []string{"jellyfin"}}.ToMap()
+			Expect(m).To(HaveKeyWithValue("ep", 3))
+			Expect(m).To(HaveKeyWithValue("aud", []string{"jellyfin"}))
+		})
+
+		It("round-trips through a signed token", func() {
+			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
+			_, tokenStr, err := tokenAuth.Encode(auth.Claims{
+				Subject: "u", Epoch: 7, Audience: []string{"jellyfin"},
+			}.ToMap())
+			Expect(err).ToNot(HaveOccurred())
+
+			token, err := jwtauth.VerifyToken(tokenAuth, tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			claims := auth.ClaimsFromToken(token)
+			Expect(claims.Epoch).To(Equal(7))
+			Expect(claims.Audience).To(Equal([]string{"jellyfin"}))
+		})
+
+		It("reads a token that has neither claim", func() {
+			tokenAuth := jwtauth.New("HS256", []byte("test-secret"), nil)
+			_, tokenStr, err := tokenAuth.Encode(auth.Claims{Subject: "u"}.ToMap())
+			Expect(err).ToNot(HaveOccurred())
+
+			token, err := jwtauth.VerifyToken(tokenAuth, tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			claims := auth.ClaimsFromToken(token)
+			Expect(claims.Epoch).To(BeZero())
+			Expect(claims.Audience).To(BeEmpty())
+		})
+	})
+
 })

@@ -11,9 +11,9 @@ func init() {
 	goose.AddMigrationContext(Up20200220143731, Down20200220143731)
 }
 
-func Up20200220143731(_ context.Context, tx *sql.Tx) error {
-	notice(tx, "This migration will force the next scan to be a full rescan!")
-	_, err := tx.Exec(`
+func Up20200220143731(ctx context.Context, tx *sql.Tx) error {
+	notice(ctx, tx, "This migration will force the next scan to be a full rescan!")
+	_, err := tx.ExecContext(ctx, `
 create table media_file_dg_tmp
 (
 	id varchar(255) not null
@@ -125,6 +125,6 @@ update media_file set updated_at = '0001-01-01';
 	return err
 }
 
-func Down20200220143731(_ context.Context, tx *sql.Tx) error {
+func Down20200220143731(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

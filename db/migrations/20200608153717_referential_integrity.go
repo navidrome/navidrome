@@ -11,46 +11,46 @@ func init() {
 	goose.AddMigrationContext(Up20200608153717, Down20200608153717)
 }
 
-func Up20200608153717(_ context.Context, tx *sql.Tx) error {
+func Up20200608153717(ctx context.Context, tx *sql.Tx) error {
 	// First delete dangling players
-	_, err := tx.Exec(`
+	_, err := tx.ExecContext(ctx, `
 delete from player where user_name not in (select user_name from user)`)
 	if err != nil {
 		return err
 	}
 
 	// Also delete dangling players
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 delete from playlist where owner not in (select user_name from user)`)
 	if err != nil {
 		return err
 	}
 
 	// Also delete dangling playlist tracks
-	_, err = tx.Exec(`
+	_, err = tx.ExecContext(ctx, `
 delete from playlist_tracks where playlist_id not in (select id from playlist)`)
 	if err != nil {
 		return err
 	}
 
 	// Add foreign key to player table
-	err = updatePlayer_20200608153717(tx)
+	err = updatePlayer_20200608153717(ctx, tx)
 	if err != nil {
 		return err
 	}
 
 	// Add foreign key to playlist table
-	err = updatePlaylist_20200608153717(tx)
+	err = updatePlaylist_20200608153717(ctx, tx)
 	if err != nil {
 		return err
 	}
 
 	// Add foreign keys to playlist_tracks table
-	return updatePlaylistTracks_20200608153717(tx)
+	return updatePlaylistTracks_20200608153717(ctx, tx)
 }
 
-func updatePlayer_20200608153717(tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func updatePlayer_20200608153717(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table player_dg_tmp
 (
 	id varchar(255) not null
@@ -77,8 +77,8 @@ alter table player_dg_tmp rename to player;
 	return err
 }
 
-func updatePlaylist_20200608153717(tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func updatePlaylist_20200608153717(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table playlist_dg_tmp
 (
 	id varchar(255) not null
@@ -108,8 +108,8 @@ create index playlist_name
 	return err
 }
 
-func updatePlaylistTracks_20200608153717(tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func updatePlaylistTracks_20200608153717(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table playlist_tracks_dg_tmp
 (
 	id integer default 0 not null,
@@ -133,6 +133,6 @@ create unique index playlist_tracks_pos
 	return err
 }
 
-func Down20200608153717(_ context.Context, tx *sql.Tx) error {
+func Down20200608153717(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

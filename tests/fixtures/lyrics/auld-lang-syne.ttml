@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xml:lang="eng">
+  <body>
+    <div>
+      <p begin="00:00:00.000" end="00:00:04.500"><span begin="00:00:00.000" end="00:00:00.900">Should </span><span begin="00:00:00.900" end="00:00:01.800">auld </span><span begin="00:00:01.800" end="00:00:02.700">acquaintance </span><span begin="00:00:02.700" end="00:00:03.600">be </span><span begin="00:00:03.600" end="00:00:04.500">forgot,</span></p>
+      <p begin="00:00:04.500" end="00:00:09.000">And never brought to mind?</p>
+      <p begin="00:00:09.000" end="00:00:13.500">Should auld acquaintance be forgot,</p>
+      <p begin="00:00:13.500" end="00:00:18.000">And auld lang syne?</p>
+      <p begin="00:00:18.000" end="00:00:22.500">For auld lang syne, my dear,</p>
+      <p begin="00:00:22.500" end="00:00:27.000">For auld lang syne,</p>
+      <p begin="00:00:27.000" end="00:00:31.500">We'll tak a cup o' kindness yet,</p>
+      <p begin="00:00:31.500" end="00:00:36.000">For auld lang syne.</p>
+      <p begin="00:00:36.000" end="00:00:40.500">And surely ye'll be your pint-stowp,</p>
+      <p begin="00:00:40.500" end="00:00:45.000">And surely I'll be mine,</p>
+      <p begin="00:00:45.000" end="00:00:49.500">And we'll tak a cup o' kindness yet,</p>
+      <p begin="00:00:49.500" end="00:00:54.000">For auld lang syne.</p>
+      <p begin="00:00:54.000" end="00:00:58.500">We twa hae run about the braes,</p>
+      <p begin="00:00:58.500" end="00:01:03.000">And pou'd the gowans fine,</p>
+      <p begin="00:01:03.000" end="00:01:07.500">But we've wander'd mony a weary fit,</p>
+      <p begin="00:01:07.500" end="00:01:12.000">Sin auld lang syne.</p>
+      <p begin="00:01:12.000" end="00:01:16.500">We twa hae paidl'd in the burn,</p>
+      <p begin="00:01:16.500" end="00:01:21.000">Frae morning sun till dine,</p>
+      <p begin="00:01:21.000" end="00:01:25.500">But seas between us braid hae roar'd</p>
+      <p begin="00:01:25.500" end="00:01:30.000">Sin auld lang syne.</p>
+      <p begin="00:01:30.000" end="00:01:34.500">And there's a hand, my trusty fiere,</p>
+      <p begin="00:01:34.500" end="00:01:39.000">And gie's a hand o' thine,</p>
+      <p begin="00:01:39.000" end="00:01:43.500">And we'll tak a right gude-willie waught,</p>
+      <p begin="00:01:43.500" end="00:01:48.000">For auld lang syne.</p>
+    </div>
+  </body>
+</tt>

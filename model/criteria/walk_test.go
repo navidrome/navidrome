@@ -1,6 +1,7 @@
 package criteria
 
 import (
+	"errors"
 	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -38,7 +39,7 @@ var _ = Describe("Walk", func() {
 	})
 
 	It("stops when the visitor returns an error", func() {
-		expectedErr := fmt.Errorf("stop")
+		expectedErr := errors.New("stop")
 
 		err := Walk(All{Contains{"title": "love"}}, func(Expression) error {
 			return expectedErr

@@ -1,7 +1,11 @@
 package ffmpeg
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,7 +27,7 @@ func TestFFmpeg(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
 	appPath, _ := filepath.Abs(filepath.Join(filepath.Dir(file), "..", ".."))
 	confPath := filepath.Join(appPath, "tests", "navidrome-test.toml")
-	_ = os.Chdir(appPath)
+	t.Chdir(appPath)
 	conf.LoadFromFile(confPath)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
@@ -60,38 +64,31 @@ var _ = Describe("ffmpeg", func() {
 		})
 	})
 
-	Describe("createProbeCommand", func() {
-		It("creates a valid command line", func() {
-			args := createProbeCommand(probeCmd, []string{"/music library/one.mp3", "/music library/two.mp3"})
-			Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata"}))
-		})
-	})
-
 	When("ffmpegPath is set", func() {
 		It("returns the correct ffmpeg path", func() {
 			ffmpegPath = "/usr/bin/ffmpeg"
-			args := createProbeCommand(probeCmd, []string{"one.mp3"})
-			Expect(args).To(Equal([]string{"/usr/bin/ffmpeg", "-i", "one.mp3", "-f", "ffmetadata"}))
+			args := createFFmpegCommand("ffmpeg -i %s -f mp3 -", "one.mp3", 0, 0)
+			Expect(args).To(Equal([]string{"/usr/bin/ffmpeg", "-i", "one.mp3", "-f", "mp3", "-"}))
 		})
 		It("returns the correct ffmpeg path with spaces", func() {
 			ffmpegPath = "/usr/bin/with spaces/ffmpeg.exe"
-			args := createProbeCommand(probeCmd, []string{"one.mp3"})
-			Expect(args).To(Equal([]string{"/usr/bin/with spaces/ffmpeg.exe", "-i", "one.mp3", "-f", "ffmetadata"}))
+			args := createFFmpegCommand("ffmpeg -i %s -f mp3 -", "one.mp3", 0, 0)
+			Expect(args).To(Equal([]string{"/usr/bin/with spaces/ffmpeg.exe", "-i", "one.mp3", "-f", "mp3", "-"}))
 		})
 	})
 
 	Describe("isDefaultCommand", func() {
 		It("returns true for known default mp3 command", func() {
-			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
+			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
 		})
 		It("returns true for known default opus command", func() {
-			Expect(isDefaultCommand("opus", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
+			Expect(isDefaultCommand("opus", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
 		})
 		It("returns true for known default aac command", func() {
-			Expect(isDefaultCommand("aac", "ffmpeg -ss %t -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
+			Expect(isDefaultCommand("aac", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
 		})
 		It("returns true for known default flac command", func() {
-			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
+			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
 		})
 		It("returns false for a custom command", func() {
 			Expect(isDefaultCommand("mp3", "ffmpeg -i %s -b:a %bk -custom-flag -f mp3 -")).To(BeFalse())
@@ -113,6 +110,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.flac",
 				"-map", "0:a:0",
+				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "256k",
 				"-ar", "48000",
@@ -132,6 +130,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.dsf",
 				"-map", "0:a:0",
+				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "flac",
 				"-ar", "48000",
 				"-v", "0",
@@ -149,6 +148,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.flac",
 				"-map", "0:a:0",
+				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "libopus",
 				"-b:a", "128k",
 				"-v", "0",
@@ -169,6 +169,7 @@ var _ = Describe("ffmpeg", func() {
 				"-ss", "30",
 				"-i", "/music/file.mp3",
 				"-map", "0:a:0",
+				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "192k",
 				"-v", "0",
@@ -186,6 +187,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.flac",
 				"-map", "0:a:0",
+				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "aac",
 				"-b:a", "256k",
 				"-v", "0",
@@ -203,6 +205,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.dsf",
 				"-map", "0:a:0",
+				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "flac",
 				"-sample_fmt", "s32",
 				"-v", "0",
@@ -547,6 +550,65 @@ var _ = Describe("ffmpeg", func() {
 		})
 	})
 
+	Describe("ProbeError", func() {
+		It("uses the underlying cause in Error() so logs keep the full detail", func() {
+			e := &ProbeError{Path: "/music/foo.flac",
+				err: errors.New("/music/foo.flac: Invalid data found when processing input")}
+			Expect(e.Error()).To(ContainSubstring("/music/foo.flac"))
+			Expect(e.Error()).To(ContainSubstring("Invalid data found when processing input"))
+		})
+
+		It("returns the path-free reason from SafeReason()", func() {
+			e := &ProbeError{Path: "/music/foo.flac", Reason: "the file: Invalid data found when processing input"}
+			Expect(e.SafeReason()).To(Equal("the file: Invalid data found when processing input"))
+			Expect(e.SafeReason()).ToNot(ContainSubstring("/music/foo.flac"))
+		})
+
+		It("unwraps to the underlying cause so errors.Is detects a missing file", func() {
+			e := &ProbeError{Path: "/music/foo.flac", Reason: "file not found", err: os.ErrNotExist}
+			Expect(errors.Is(e, os.ErrNotExist)).To(BeTrue())
+		})
+	})
+
+	Describe("probeClientReason", func() {
+		It("strips the file path from ffprobe stderr", func() {
+			if runtime.GOOS == "windows" {
+				Skip("uses /bin/sh")
+			}
+			_, err := exec.Command("/bin/sh", "-c", "echo '/music/foo.flac: Invalid data found' >&2; exit 1").Output()
+			Expect(err).To(HaveOccurred())
+			Expect(probeClientReason(err, "/music/foo.flac")).To(Equal("the file: Invalid data found"))
+		})
+
+		It("returns a generic reason for launch failures, without leaking the binary path", func() {
+			err := errors.New("fork/exec /opt/navidrome/bin/ffprobe: no such file or directory")
+			Expect(probeClientReason(err, "/music/foo.flac")).To(Equal("could not read file"))
+		})
+	})
+
+	Describe("probeDetail", func() {
+		It("surfaces ffprobe stderr for logging", func() {
+			if runtime.GOOS == "windows" {
+				Skip("uses /bin/sh")
+			}
+			_, err := exec.Command("/bin/sh", "-c", "echo 'boom detail' >&2; exit 1").Output()
+			Expect(err).To(HaveOccurred())
+			Expect(probeDetail(err)).To(Equal("boom detail"))
+		})
+	})
+
+	Describe("fileAccessReason", func() {
+		It("reports a missing file as 'file not found', not a raw stat message", func() {
+			_, err := os.Stat("/no/such/dir/really-missing.flac")
+			Expect(err).To(HaveOccurred())
+			Expect(fileAccessReason(err)).To(Equal("file not found"))
+		})
+
+		It("falls back to a generic reason for other access errors", func() {
+			Expect(fileAccessReason(errors.New("boom"))).To(Equal("file not accessible"))
+		})
+	})
+
 	Describe("FFmpeg", func() {
 		Context("when FFmpeg is available", func() {
 			var ff FFmpeg
@@ -558,6 +620,16 @@ var _ = Describe("ffmpeg", func() {
 				if !ff.IsAvailable() {
 					Skip("FFmpeg not available on this system")
 				}
+			})
+
+			It("ProbeAudioStream returns a not-found ProbeError for a missing file", func() {
+				_, err := ff.ProbeAudioStream(GinkgoT().Context(), "/no/such/dir/really-missing.flac")
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, os.ErrNotExist)).To(BeTrue())
+				var pe *ProbeError
+				Expect(errors.As(err, &pe)).To(BeTrue())
+				Expect(pe.SafeReason()).To(Equal("file not found"))
+				Expect(pe.NotFound).To(BeTrue())
 			})
 
 			It("should interrupt transcoding when context is cancelled", func() {
@@ -607,6 +679,57 @@ var _ = Describe("ffmpeg", func() {
 					BitRate:  128,
 				})
 				Expect(err).To(MatchError(context.Canceled))
+			})
+
+			It("fills in total_samples on a piped FLAC transcode", func() {
+				stream, err := ff.Transcode(GinkgoT().Context(), TranscodeOptions{
+					Command:  "ffmpeg -i %s -map 0:a:0 -v 0 -c:a flac -f flac -",
+					Format:   "flac",
+					FilePath: "tests/fixtures/test.flac",
+					Duration: 1, // the fixture is exactly 1s at 44100Hz
+				})
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				out, err := io.ReadAll(stream)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(out[:4])).To(Equal("fLaC"))
+				Expect(readTotalSamples(out)).To(Equal(uint64(44100)))
+			})
+
+			It("patches the duration net of the requested offset", func() {
+				// The command has no %t, so ffmpeg still emits the whole fixture.
+				// What is under test is the header arithmetic, not the audio.
+				stream, err := ff.Transcode(GinkgoT().Context(), TranscodeOptions{
+					Command:  "ffmpeg -i %s -map 0:a:0 -v 0 -c:a flac -f flac -",
+					Format:   "flac",
+					FilePath: "tests/fixtures/test.flac",
+					Duration: 3,
+					Offset:   1,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				out, err := io.ReadAll(stream)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(readTotalSamples(out)).To(Equal(uint64(2 * 44100)))
+			})
+
+			It("inserts an Info frame on a piped mp3 transcode", func() {
+				stream, err := ff.Transcode(GinkgoT().Context(), TranscodeOptions{
+					Command:  "ffmpeg -i %s -map 0:a:0 -v 0 -b:a 128k -f mp3 -",
+					Format:   "mp3",
+					FilePath: "tests/fixtures/test.flac",
+					Duration: 1, // the fixture is exactly 1s at 44100Hz
+				})
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				out, err := io.ReadAll(stream)
+				Expect(err).ToNot(HaveOccurred())
+				at := bytes.Index(out, []byte("Info"))
+				Expect(at).To(BeNumerically(">", 0))
+				Expect(binary.BigEndian.Uint32(out[at+8:])).To(Equal(uint32(38)))
 			})
 		})
 

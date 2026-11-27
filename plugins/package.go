@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
+	"strings"
 )
 
 const (
@@ -17,6 +19,26 @@ const (
 	// wasmFileName is the name of the WebAssembly module inside the package.
 	wasmFileName = "plugin.wasm"
 )
+
+// validPluginID reports whether id is usable. It names a directory under
+// DataFolder/plugins, so a path-like one would point at another plugin's data.
+func validPluginID(id string) bool {
+	if id == "." || id == ".." || strings.ContainsAny(id, `/\`) || !filepath.IsLocal(id) {
+		return false
+	}
+	// Windows drops trailing dots and spaces, so "foo." and "foo" would end up
+	// sharing a directory
+	return strings.TrimRight(id, ". ") == id
+}
+
+// pluginIDFromPath derives the plugin ID from a package path.
+func pluginIDFromPath(path string) (string, bool) {
+	id := strings.TrimSuffix(filepath.Base(path), PackageExtension)
+	if !validPluginID(id) {
+		return "", false
+	}
+	return id, true
+}
 
 // ndpPackage represents a loaded .ndp plugin package.
 // It contains the manifest and wasm bytes read from the archive.
@@ -72,9 +94,10 @@ func openPackage(ndpPath string) (*ndpPackage, error) {
 	}, nil
 }
 
-// readManifest reads only the manifest from an .ndp file without loading the wasm bytes.
-// This is useful for quick plugin discovery.
-func readManifest(ndpPath string) (*Manifest, error) {
+// ReadManifest reads and validates the manifest from a .ndp file without loading
+// the wasm bytes (it runs ParseManifest, so JSON-schema and cross-field
+// validation are applied). Useful for quick plugin discovery and validation.
+func ReadManifest(ndpPath string) (*Manifest, error) {
 	// Open the zip archive
 	zr, err := zip.OpenReader(ndpPath)
 	if err != nil {

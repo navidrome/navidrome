@@ -5,6 +5,8 @@
 //! This crate provides type definitions, traits, and registration macros
 //! for implementing Navidrome plugin capabilities in Rust.
 
+pub use nd_pdk_types as types;
+
 pub mod lifecycle;
 pub mod lyrics;
 pub mod metadata;

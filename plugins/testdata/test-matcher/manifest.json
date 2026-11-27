@@ -1,0 +1,14 @@
+{
+  "name": "Test Matcher Plugin",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test plugin for Matcher integration testing",
+  "permissions": {
+    "matcher": {
+      "reason": "For testing matcher operations"
+    },
+    "library": {
+      "reason": "Matching returns library tracks"
+    }
+  }
+}

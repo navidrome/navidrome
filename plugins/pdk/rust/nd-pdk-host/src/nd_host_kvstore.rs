@@ -160,17 +160,17 @@ struct KVStoreGetStorageUsedResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn kvstore_set(input: Json<KVStoreSetRequest>) -> Json<KVStoreSetResponse>;
-    fn kvstore_setwithttl(input: Json<KVStoreSetWithTTLRequest>) -> Json<KVStoreSetWithTTLResponse>;
-    fn kvstore_get(input: Json<KVStoreGetRequest>) -> Json<KVStoreGetResponse>;
-    fn kvstore_getmany(input: Json<KVStoreGetManyRequest>) -> Json<KVStoreGetManyResponse>;
-    fn kvstore_has(input: Json<KVStoreHasRequest>) -> Json<KVStoreHasResponse>;
-    fn kvstore_list(input: Json<KVStoreListRequest>) -> Json<KVStoreListResponse>;
-    fn kvstore_delete(input: Json<KVStoreDeleteRequest>) -> Json<KVStoreDeleteResponse>;
-    fn kvstore_deletebyprefix(input: Json<KVStoreDeleteByPrefixRequest>) -> Json<KVStoreDeleteByPrefixResponse>;
-    fn kvstore_getstorageused(input: Json<serde_json::Value>) -> Json<KVStoreGetStorageUsedResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn kvstore_set(input: u64) -> u64;
+    fn kvstore_setwithttl(input: u64) -> u64;
+    fn kvstore_get(input: u64) -> u64;
+    fn kvstore_getmany(input: u64) -> u64;
+    fn kvstore_has(input: u64) -> u64;
+    fn kvstore_list(input: u64) -> u64;
+    fn kvstore_delete(input: u64) -> u64;
+    fn kvstore_deletebyprefix(input: u64) -> u64;
+    fn kvstore_getstorageused(input: u64) -> u64;
 }
 
 /// Set stores a byte value with the given key.
@@ -188,14 +188,12 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set(key: &str, value: Vec<u8>) -> Result<(), Error> {
-    let response = unsafe {
-        kvstore_set(Json(KVStoreSetRequest {
-            key: key.to_owned(),
-            value: value,
-        }))?
-    };
+    let response: KVStoreSetResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_set, &KVStoreSetRequest {
+        key: key.to_owned(),
+        value: value,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -222,15 +220,13 @@ pub fn set(key: &str, value: Vec<u8>) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set_with_ttl(key: &str, value: Vec<u8>, ttl_seconds: i64) -> Result<(), Error> {
-    let response = unsafe {
-        kvstore_setwithttl(Json(KVStoreSetWithTTLRequest {
-            key: key.to_owned(),
-            value: value,
-            ttl_seconds: ttl_seconds,
-        }))?
-    };
+    let response: KVStoreSetWithTTLResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_setwithttl, &KVStoreSetWithTTLRequest {
+        key: key.to_owned(),
+        value: value,
+        ttl_seconds: ttl_seconds,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -253,18 +249,16 @@ pub fn set_with_ttl(key: &str, value: Vec<u8>, ttl_seconds: i64) -> Result<(), E
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(key: &str) -> Result<Option<Vec<u8>>, Error> {
-    let response = unsafe {
-        kvstore_get(Json(KVStoreGetRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: KVStoreGetResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_get, &KVStoreGetRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    if response.0.exists {
-        Ok(Some(response.0.value))
+    if response.exists {
+        Ok(Some(response.value))
     } else {
         Ok(None)
     }
@@ -287,17 +281,15 @@ pub fn get(key: &str) -> Result<Option<Vec<u8>>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_many(keys: Vec<String>) -> Result<std::collections::HashMap<String, Vec<u8>>, Error> {
-    let response = unsafe {
-        kvstore_getmany(Json(KVStoreGetManyRequest {
-            keys: keys,
-        }))?
-    };
+    let response: KVStoreGetManyResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_getmany, &KVStoreGetManyRequest {
+        keys: keys,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.values)
+    Ok(response.values)
 }
 
 /// Has checks if a key exists in storage.
@@ -316,17 +308,15 @@ pub fn get_many(keys: Vec<String>) -> Result<std::collections::HashMap<String, V
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn has(key: &str) -> Result<bool, Error> {
-    let response = unsafe {
-        kvstore_has(Json(KVStoreHasRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: KVStoreHasResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_has, &KVStoreHasRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.exists)
+    Ok(response.exists)
 }
 
 /// List returns all keys matching the given prefix.
@@ -345,17 +335,15 @@ pub fn has(key: &str) -> Result<bool, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn list(prefix: &str) -> Result<Vec<String>, Error> {
-    let response = unsafe {
-        kvstore_list(Json(KVStoreListRequest {
-            prefix: prefix.to_owned(),
-        }))?
-    };
+    let response: KVStoreListResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_list, &KVStoreListRequest {
+        prefix: prefix.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.keys)
+    Ok(response.keys)
 }
 
 /// Delete removes a value from storage.
@@ -371,13 +359,11 @@ pub fn list(prefix: &str) -> Result<Vec<String>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn delete(key: &str) -> Result<(), Error> {
-    let response = unsafe {
-        kvstore_delete(Json(KVStoreDeleteRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: KVStoreDeleteResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_delete, &KVStoreDeleteRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -400,17 +386,15 @@ pub fn delete(key: &str) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn delete_by_prefix(prefix: &str) -> Result<i64, Error> {
-    let response = unsafe {
-        kvstore_deletebyprefix(Json(KVStoreDeleteByPrefixRequest {
-            prefix: prefix.to_owned(),
-        }))?
-    };
+    let response: KVStoreDeleteByPrefixResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_deletebyprefix, &KVStoreDeleteByPrefixRequest {
+        prefix: prefix.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.deleted_count)
+    Ok(response.deleted_count)
 }
 
 /// GetStorageUsed returns the total storage used by this plugin in bytes.
@@ -421,13 +405,11 @@ pub fn delete_by_prefix(prefix: &str) -> Result<i64, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_storage_used() -> Result<i64, Error> {
-    let response = unsafe {
-        kvstore_getstorageused(Json(serde_json::json!({})))?
-    };
+    let response: KVStoreGetStorageUsedResponse = unsafe { nd_pdk_types::hostcall::call(kvstore_getstorageused, &serde_json::json!({})) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.bytes)
+    Ok(response.bytes)
 }

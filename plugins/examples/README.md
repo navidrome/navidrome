@@ -108,7 +108,7 @@ Generate boilerplate from a schema:
 # Install XTP: https://docs.xtp.dylibso.com/docs/cli
 
 xtp plugin init \
-  --schema-file ../schemas/metadata_agent.yaml \
+  --schema-file ../capabilities/metadata_agent.yaml \
   --template go \
   --path ./my-plugin \
   --name my-plugin
@@ -119,7 +119,7 @@ xtp plugin build
 zip -j my-plugin.ndp manifest.json dist/plugin.wasm
 ```
 
-Available schemas in [../schemas/](../schemas/):
+Available schemas in [../capabilities/](../capabilities/):
 - `metadata_agent.yaml` – Artist/album metadata
 - `scrobbler.yaml` – Scrobbling integration
 - `lifecycle.yaml` – Init callbacks

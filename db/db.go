@@ -4,17 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
-	"runtime"
+	"sync"
+	"time"
 
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
+	"github.com/navidrome/navidrome/utils/natural"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
+
+// NaturalCollation sorts embedded numbers by value. It is registered on every
+// connection, but only referenced when conf.Server().EnableNaturalSorting is on.
+const NaturalCollation = "NATSORT"
 
 var (
 	Dialect = "sqlite3"
@@ -27,32 +34,34 @@ var embedMigrations embed.FS
 
 const migrationsFolder = "migrations"
 
+// registerDriverOnce guards sql.Register, which panics if called twice: the singleton instance can be
+// reset (tests/benchmarks) and rebuilt, but the driver is process-global and registers only once.
+var registerDriverOnce sync.Once
+
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
-		sql.Register(Driver, &sqlite3.SQLiteDriver{
-			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
-			},
+		registerDriverOnce.Do(func() {
+			sql.Register(Driver, &sqlite3.SQLiteDriver{
+				ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+					if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
+						return err
+					}
+					return conn.RegisterCollation(NaturalCollation, natural.CompareFold)
+				},
+			})
 		})
-		Path = conf.Server.DbPath
+		Path = conf.Server().DbPath
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
-			conf.Server.DbPath = Path
+			conf.Update(func(c *conf.Options) { c.DbPath = Path })
 		} else {
-			conf.Server.DataFolder.MustPath()
+			conf.Server().DataFolder.MustPath()
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)
-		db.SetMaxOpenConns(max(4, runtime.NumCPU()))
+		db.SetMaxOpenConns(conf.MaxOpenConns())
 		if err != nil {
 			log.Fatal("Error opening database", err)
-		}
-		if conf.Server.DevOptimizeDB {
-			_, err = db.Exec("PRAGMA optimize=0x10002")
-			if err != nil {
-				log.Error("Error applying PRAGMA optimize", err)
-				return nil
-			}
 		}
 		return db
 	})
@@ -61,9 +70,6 @@ func Db() *sql.DB {
 func Close(ctx context.Context) {
 	// Ignore cancellations when closing the DB
 	ctx = context.WithoutCancel(ctx)
-
-	// Run optimize before closing
-	Optimize(ctx)
 
 	log.Info(ctx, "Closing Database")
 	err := Db().Close()
@@ -103,11 +109,11 @@ func Init(ctx context.Context) func() {
 		log.Fatal(ctx, "Failed to apply new migrations", err)
 	}
 
-	if hasSchemaChanges && conf.Server.DevOptimizeDB {
-		log.Debug(ctx, "Applying PRAGMA optimize after schema changes")
-		_, err = db.ExecContext(ctx, "PRAGMA optimize")
+	if hasSchemaChanges {
+		log.Debug(ctx, "Running ANALYZE after schema changes")
+		err = optimizeAt(ctx, db, time.Now())
 		if err != nil {
-			log.Error(ctx, "Error applying PRAGMA optimize", err)
+			log.Error(ctx, "Error running ANALYZE", err)
 		}
 	}
 
@@ -116,35 +122,21 @@ func Init(ctx context.Context) func() {
 	}
 }
 
-// Optimize runs PRAGMA optimize on each connection in the pool
-func Optimize(ctx context.Context) {
-	if !conf.Server.DevOptimizeDB {
-		return
+// ErrorCodes reports the SQLite result code and extended result code carried by err.
+// The extended code is what distinguishes errors that share a message: "database is locked"
+// is both SQLITE_BUSY, which busy_timeout retries, and SQLITE_BUSY_SNAPSHOT, which it never can.
+func ErrorCodes(err error) (code, extended int, ok bool) {
+	var se sqlite3.Error
+	if !errors.As(err, &se) {
+		return 0, 0, false
 	}
-	numConns := Db().Stats().OpenConnections
-	if numConns == 0 {
-		log.Debug(ctx, "No open connections to optimize")
-		return
-	}
-	log.Debug(ctx, "Optimizing open connections", "numConns", numConns)
-	var conns []*sql.Conn
-	for range numConns {
-		conn, err := Db().Conn(ctx)
-		conns = append(conns, conn)
-		if err != nil {
-			log.Error(ctx, "Error getting connection from pool", err)
-			continue
-		}
-		_, err = conn.ExecContext(ctx, "PRAGMA optimize;")
-		if err != nil {
-			log.Error(ctx, "Error running PRAGMA optimize", err)
-		}
-	}
+	return int(se.Code), int(se.ExtendedCode), true
+}
 
-	// Return all connections to the Connection Pool
-	for _, conn := range conns {
-		conn.Close()
-	}
+// IsBusy reports whether err is SQLITE_BUSY, including BUSY_SNAPSHOT, which only a new transaction clears.
+func IsBusy(err error) bool {
+	code, _, ok := ErrorCodes(err)
+	return ok && code == int(sqlite3.ErrBusy)
 }
 
 type statusLogger struct{ numPending int }
@@ -171,17 +163,28 @@ func hasPendingMigrations(ctx context.Context, db *sql.DB, folder string) bool {
 	return l.numPending > 0
 }
 
+// hasGooseTable reports whether goose's bookkeeping table exists, i.e. whether the
+// database has ever been migrated.
+func hasGooseTable(ctx context.Context, db *sql.DB) (bool, error) {
+	var name string
+	err := db.QueryRowContext(ctx,
+		"SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version'").Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func isSchemaEmpty(ctx context.Context, db *sql.DB) bool {
-	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
+	found, err := hasGooseTable(ctx, db)
 	if err != nil {
 		log.Fatal(ctx, "Database could not be opened!", err)
 	}
-	defer rows.Close()
-	return !rows.Next()
+	return !found
 }
 
 type logAdapter struct {
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // goose logger interface has no ctx
 	silent bool
 }
 

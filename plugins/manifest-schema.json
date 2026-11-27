@@ -34,9 +34,6 @@
     "permissions": {
       "$ref": "#/$defs/Permissions"
     },
-    "experimental": {
-      "$ref": "#/$defs/Experimental"
-    },
     "config": {
       "$ref": "#/$defs/ConfigDefinition"
     }
@@ -55,27 +52,6 @@
         "uiSchema": {
           "type": "object",
           "description": "Optional JSONForms UI Schema for customizing form layout"
-        }
-      }
-    },
-    "Experimental": {
-      "type": "object",
-      "description": "Experimental features that may change or be removed in future versions",
-      "additionalProperties": false,
-      "properties": {
-        "threads": {
-          "$ref": "#/$defs/ThreadsFeature"
-        }
-      }
-    },
-    "ThreadsFeature": {
-      "type": "object",
-      "description": "Enable experimental WebAssembly threads support",
-      "additionalProperties": false,
-      "properties": {
-        "reason": {
-          "type": "string",
-          "description": "Explanation for why threads support is needed"
         }
       }
     },
@@ -113,6 +89,15 @@
         },
         "taskqueue": {
           "$ref": "#/$defs/TaskQueuePermission"
+        },
+        "matcher": {
+          "$ref": "#/$defs/MatcherPermission"
+        },
+        "storage": {
+          "$ref": "#/$defs/StoragePermission"
+        },
+        "scrobbleRetriever": {
+          "$ref": "#/$defs/ScrobbleRetrieverPermission"
         }
       }
     },
@@ -149,7 +134,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.musicbrainz.org')",
+          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.musicbrainz.org'). A named host alone can't reach a private address; also list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that",
           "items": {
             "type": "string"
           }
@@ -189,7 +174,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.musicbrainz.org')",
+          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.musicbrainz.org'). Required: with no entries every connection is blocked. A named host alone can't reach a private address; also list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that",
           "items": {
             "type": "string"
           }
@@ -241,6 +226,12 @@
           "description": "Maximum total concurrent workers across all queues. Default: 1",
           "minimum": 1,
           "default": 1
+        },
+        "maxTaskDuration": {
+          "type": "integer",
+          "description": "Maximum run time of one task execution, in seconds. Capped by the server option Plugins.MaxTaskDuration. Default: 30",
+          "minimum": 1,
+          "default": 30
         }
       }
     },
@@ -252,6 +243,39 @@
         "reason": {
           "type": "string",
           "description": "Explanation for why users access is needed"
+        }
+      }
+    },
+    "MatcherPermission": {
+      "type": "object",
+      "description": "Matcher service permissions for resolving external songs to local library tracks",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why matcher access is needed"
+        }
+      }
+    },
+    "StoragePermission": {
+      "type": "object",
+      "description": "Storage permissions for enabling persistent read-write storage exclusively for the plugin",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why storage access is needed"
+        }
+      }
+    },
+    "ScrobbleRetrieverPermission": {
+      "type": "object",
+      "description": "Scrobble retriever permissions for retrieving scrobbles from users",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why scrobble retriever access is needed"
         }
       }
     }

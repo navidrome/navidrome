@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -13,10 +11,9 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -45,28 +42,21 @@ var _ = Describe("ArtworkService", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
-		// Initialize auth (required for token generation)
-		ds := &tests.MockDataStore{MockedProperty: &tests.MockedPropertyRepo{}}
-		auth.Init(ds)
-
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-artwork",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{
-			MockedProperty: &tests.MockedPropertyRepo{},
-			MockedPlugin:   mockPluginRepo,
-		}
+		})
+		// Initialize auth (required for token generation)
+		auth.Init(dataStore)
 
 		// Create and start manager
 		manager = &Manager{
@@ -122,7 +112,7 @@ var _ = Describe("ArtworkService", Ordered, func() {
 				Size:        size,
 			}
 			inputBytes, _ := json.Marshal(input)
-			_, outputBytes, err := instance.Call("nd_test_artwork", inputBytes)
+			_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_artwork", inputBytes)
 			if err != nil {
 				return "", err
 			}
@@ -189,6 +179,14 @@ var _ = Describe("ArtworkService", Ordered, func() {
 			Expect(artID.ID).To(Equal("al-456"))
 		})
 
+		It("uses the address of the request that triggered the plugin", func() {
+			ctx := request.WithServerAddress(GinkgoT().Context(), "https", "music.example.com")
+
+			url, err := callTestArtwork(ctx, "track", "mf-789", 300)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(url).To(HavePrefix("https://music.example.com/share/img/"))
+		})
+
 		It("should handle unknown artwork type", func() {
 			_, err := callTestArtwork(GinkgoT().Context(), "unknown", "id-123", 0)
 			Expect(err).To(HaveOccurred())
@@ -225,7 +223,7 @@ func decodeArtworkURL(artworkURL string) model.ArtworkID {
 	}
 
 	// Decode JWT token
-	token, err := auth.TokenAuth.Decode(tokenPart)
+	token, err := auth.PublicTokenAuth.Decode(tokenPart)
 	Expect(err).ToNot(HaveOccurred(), "Failed to decode JWT token")
 
 	c := auth.ClaimsFromToken(token)

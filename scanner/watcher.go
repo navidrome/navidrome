@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,7 +23,7 @@ type Watcher interface {
 }
 
 type watcher struct {
-	mainCtx         context.Context
+	mainCtx         context.Context //nolint:containedctx // watcher lifecycle ctx
 	ds              model.DataStore
 	scanner         model.Scanner
 	triggerWait     time.Duration
@@ -47,7 +48,7 @@ func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 		return &watcher{
 			ds:              ds,
 			scanner:         s,
-			triggerWait:     conf.Server.Scanner.WatcherWait,
+			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 500),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
@@ -59,7 +60,7 @@ func (w *watcher) Run(ctx context.Context) error {
 	w.mainCtx = ctx
 
 	// Start watchers for all existing libraries
-	libs, err := w.ds.Library(ctx).GetAll()
+	libs, err := w.ds.Library().GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("getting libraries: %w", err)
 	}
@@ -100,7 +101,7 @@ func (w *watcher) Run(ctx context.Context) error {
 
 			go func() {
 				var err error
-				if conf.Server.DevSelectiveWatcher {
+				if conf.Server().DevSelectiveWatcher {
 					_, err = w.scanner.ScanFolders(ctx, false, targetSlice)
 				} else {
 					_, err = w.scanner.ScanAll(ctx, false)
@@ -158,7 +159,7 @@ func (w *watcher) Watch(ctx context.Context, lib *model.Library) error {
 	}
 
 	// Start new watcher
-	watcherCtx, cancel := context.WithCancel(w.mainCtx) //nolint:gosec // cancel is stored in instance and called on shutdown
+	watcherCtx, cancel := context.WithCancel(w.mainCtx)
 	instance := &libraryWatcherInstance{
 		library: lib,
 		cancel:  cancel,
@@ -320,18 +321,35 @@ func (w *watcher) shouldIgnoreFolderPath(ctx context.Context, fsys storage.Music
 }
 
 func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
-	baseDir, name := filepath.Split(path)
+	_, name := filepath.Split(path)
+	// A change anywhere inside an ignored directory (a dot-folder when
+	// Scanner.IgnoreDotFolders is enabled, or a special system folder) must not
+	// trigger a scan, even for media files: the scan would skip it anyway.
+	if isUnderIgnoredDir(path) {
+		return true
+	}
 	switch {
-	case model.IsAudioFile(path):
-		return false
-	case model.IsValidPlaylist(path):
-		return false
-	case model.IsImageFile(path):
-		return false
+	case model.IsAudioFile(path), model.IsValidPlaylist(path), model.IsImageFile(path):
+		// A media file is normally not ignored, but a dot-prefixed one (e.g.
+		// ".hidden.mp3") is always skipped by the scanner, so don't scan for it.
+		return isDotEntry(name)
 	case name == ".DS_Store":
 		return true
 	}
-	// As it can be a deletion and not a change, we cannot reliably know if the path is a file or directory.
-	// But at this point, we can assume it's a directory. If it's a file, it would be ignored anyway
-	return isDirIgnored(baseDir)
+	// As it can be a deletion and not a change, we cannot reliably know if the
+	// path is a file or directory. But at this point, we can assume it's a
+	// directory. If it's a file, it would be ignored anyway.
+	return isIgnoredEntry(name, true)
+}
+
+// isUnderIgnoredDir returns true if any parent directory component of the given
+// path is an ignored directory, reusing the same policy as the scanner walk.
+func isUnderIgnoredDir(path string) bool {
+	dir, _ := filepath.Split(path)
+	for part := range strings.SplitSeq(filepath.ToSlash(dir), "/") {
+		if part != "" && isIgnoredEntry(part, true) {
+			return true
+		}
+	}
+	return false
 }

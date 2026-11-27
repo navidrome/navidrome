@@ -79,6 +79,7 @@ func ConfigGet(key string) (string, bool) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response configGetResponse
@@ -115,6 +116,7 @@ func ConfigGetInt(key string) (int64, bool) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response configGetIntResponse
@@ -150,6 +152,7 @@ func ConfigKeys(prefix string) []string {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response configKeysResponse

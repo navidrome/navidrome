@@ -94,6 +94,7 @@ func WebSocketConnect(url string, headers map[string]string, connectionID string
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response webSocketConnectResponse
@@ -136,6 +137,7 @@ func WebSocketSendText(connectionID string, message string) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -177,6 +179,7 @@ func WebSocketSendBinary(connectionID string, data []byte) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -220,6 +223,7 @@ func WebSocketCloseConnection(connectionID string, code int32, reason string) er
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {

@@ -16,6 +16,9 @@ export default defineConfig({
       filename: 'sw.js',
       injectManifest: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MiB
+        // index.html is rendered per-user by the server, so a precached copy
+        // would pin one user's config (and auth payload) across logins
+        globIgnores: ['index.html'],
       },
       devOptions: {
         enabled: true,

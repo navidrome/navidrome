@@ -16,6 +16,6 @@ func upAddFolderHash(ctx context.Context, tx *sql.Tx) error {
 	return err
 }
 
-func downAddFolderHash(ctx context.Context, tx *sql.Tx) error {
+func downAddFolderHash(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

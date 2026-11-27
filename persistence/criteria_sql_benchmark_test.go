@@ -10,7 +10,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -30,15 +29,15 @@ const (
 // between the current implementation (merged join-table via criteria pipeline) and
 // the old baseline (unmerged json_tree subqueries).
 func BenchmarkSmartPlaylistRole(b *testing.B) {
-	configtest.SetupConfig()
+	b.Cleanup(conf.SnapshotConfig())
 	tmpDir := b.TempDir()
-	conf.Server.DbPath = filepath.Join(tmpDir, "bench-smartpl.db")
-	cleanup := db.Init(context.Background())
+	conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "bench-smartpl.db") })
+	cleanup := db.Init(b.Context())
 	defer cleanup()
 	log.SetLevel(log.LevelFatal)
 
 	conn := dbx.NewFromDB(db.Db(), db.Dialect)
-	ctx := log.NewContext(context.Background())
+	ctx := log.NewContext(b.Context())
 	user := model.User{ID: "bench-user", UserName: "bench", Name: "Bench User", IsAdmin: true}
 	ctx = request.WithUser(ctx, user)
 
@@ -60,6 +59,61 @@ func BenchmarkSmartPlaylistRole(b *testing.B) {
 	})
 }
 
+// BenchmarkSmartPlaylistNegatedRole compares performance for smart playlists with many
+// negated role conditions ANDed together (e.g. 500 "isNot artist" rules, issue #5511)
+// between the current implementation (merged NOT EXISTS via criteria pipeline) and the
+// old baseline (one separate NOT EXISTS subquery per pattern).
+func BenchmarkSmartPlaylistNegatedRole(b *testing.B) {
+	b.Cleanup(conf.SnapshotConfig())
+	tmpDir := b.TempDir()
+	conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "bench-smartpl-neg.db") })
+	cleanup := db.Init(b.Context())
+	defer cleanup()
+	log.SetLevel(log.LevelFatal)
+
+	conn := dbx.NewFromDB(db.Db(), db.Dialect)
+	ctx := log.NewContext(b.Context())
+	user := model.User{ID: "bench-user", UserName: "bench", Name: "Bench User", IsAdmin: true}
+	ctx = request.WithUser(ctx, user)
+
+	setupBenchData(b, ctx, conn, user)
+	criteria.AddRoles([]string{"artist"})
+
+	// Build the criteria expression: 500 "isNot artist" patterns in an AND group
+	allExprs := make(criteria.All, benchNumPatterns)
+	for i := range benchNumPatterns {
+		allExprs[i] = criteria.IsNot{"artist": fmt.Sprintf("Artist %04d", i)}
+	}
+	expr := criteria.Criteria{Expression: allExprs, Sort: "title", Limit: 500}
+
+	b.Run("Current", func(b *testing.B) {
+		benchmarkCriteriaPipeline(b, ctx, expr)
+	})
+	b.Run("Baseline_UnmergedNotExists", func(b *testing.B) {
+		benchmarkUnmergedNegatedJSONTree(b, ctx)
+	})
+}
+
+// benchmarkUnmergedNegatedJSONTree builds the old-style query with N separate negated
+// json_tree EXISTS subqueries ANDed together (the pre-optimization baseline).
+func benchmarkUnmergedNegatedJSONTree(b *testing.B, ctx context.Context) {
+	b.Helper()
+
+	var sb strings.Builder
+	sb.WriteString("SELECT media_file.id FROM media_file WHERE (")
+	args := make([]any, 0, benchNumPatterns)
+	for i := range benchNumPatterns {
+		if i > 0 {
+			sb.WriteString(" AND ")
+		}
+		sb.WriteString("not exists (select 1 from json_tree(media_file.participants, '$.artist') where key='name' and value = ?)")
+		args = append(args, fmt.Sprintf("Artist %04d", i))
+	}
+	sb.WriteString(") ORDER BY media_file.title LIMIT 500")
+
+	runBenchQuery(b, ctx, sb.String(), args)
+}
+
 // benchmarkCriteriaPipeline runs the criteria through the actual production code path:
 // newSmartPlaylistCriteria → Where() → ToSql(), then executes the resulting query.
 func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.Criteria) {
@@ -69,7 +123,7 @@ func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.
 
 	// Build the full query matching buildSmartPlaylistQuery + addCriteria
 	sq := squirrel.Select("media_file.id").From("media_file")
-	cond, err := cSQL.Where()
+	cond, err := cSQL.where()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -77,7 +131,7 @@ func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.
 	if expr.Limit > 0 {
 		sq = sq.Limit(uint64(expr.Limit))
 	}
-	if order := cSQL.OrderBy(); order != "" {
+	if order := cSQL.orderBy(); order != "" {
 		sq = sq.OrderBy(order)
 	}
 
@@ -134,11 +188,11 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 
 	sqlDB := db.Db()
 
-	ur := NewUserRepository(ctx, conn)
-	if err := ur.Put(&user); err != nil {
+	ur := NewUserRepository(conn)
+	if err := ur.Put(ctx, &user); err != nil {
 		b.Fatal(err)
 	}
-	if err := ur.SetUserLibraries(user.ID, []int{1}); err != nil {
+	if err := ur.SetUserLibraries(ctx, user.ID, []int{1}); err != nil {
 		b.Fatal(err)
 	}
 
@@ -196,7 +250,10 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 		primaryArtistName := fmt.Sprintf("Artist %04d", primaryArtistIdx)
 
 		participants := map[string][]map[string]string{"artist": artistEntries}
-		participantsJSON, _ := json.Marshal(participants)
+		participantsJSON, err := json.Marshal(participants)
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		if _, err := mfStmt.Exec(
 			trackID,

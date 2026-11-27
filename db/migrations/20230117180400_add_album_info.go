@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddAlbumInfo, downAddAlbumInfo)
 }
 
-func upAddAlbumInfo(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddAlbumInfo(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table album
 	add description varchar(255) default '' not null;
 alter table album
@@ -29,6 +29,6 @@ alter table album
 	return err
 }
 
-func downAddAlbumInfo(_ context.Context, tx *sql.Tx) error {
+func downAddAlbumInfo(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

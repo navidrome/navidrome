@@ -87,7 +87,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	if conf.Server.Prometheus.Enabled {
+	if conf.Server().Prometheus.Enabled {
 		r.Use(recordStats(api.metrics))
 	}
 
@@ -107,6 +107,7 @@ func (api *Router) routes() http.Handler {
 			r.Use(getPlayer(api.players))
 			h(r, "ping", api.Ping)
 			h(r, "getLicense", api.GetLicense)
+			h(r, "tokenInfo", api.TokenInfo)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -190,8 +191,8 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
-			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-				conf.Server.DevArtworkThrottleBacklogTimeout))
+			r.Use(server.ThrottleBacklog(conf.Server().DevArtworkMaxRequests, conf.Server().DevArtworkThrottleBacklogLimit,
+				conf.Server().DevArtworkThrottleBacklogTimeout))
 			hr(r, "getCoverArt", api.GetCoverArt)
 		})
 		r.Group(func(r chi.Router) {
@@ -204,7 +205,7 @@ func (api *Router) routes() http.Handler {
 				h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 			})
 		})
-		if conf.Server.EnableSharing {
+		if conf.Server().EnableSharing {
 			r.Group(func(r chi.Router) {
 				r.Use(getPlayer(api.players))
 				h(r, "getShares", api.GetShares)
@@ -216,7 +217,7 @@ func (api *Router) routes() http.Handler {
 			h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 		}
 
-		if conf.Server.Jukebox.Enabled {
+		if conf.Server().Jukebox.Enabled {
 			r.Group(func(r chi.Router) {
 				r.Use(getPlayer(api.players))
 				h(r, "jukeboxControl", api.JukeboxControl)
@@ -238,14 +239,14 @@ func (api *Router) routes() http.Handler {
 	return r
 }
 
-// Add a Subsonic handler
+// h adds a Subsonic handler
 func h(r chi.Router, path string, f handler) {
 	hr(r, path, func(_ http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 		return f(r)
 	})
 }
 
-// Add a Subsonic handler that requires an http.ResponseWriter (ex: stream, getCoverArt...)
+// hr adds a Subsonic handler that requires an http.ResponseWriter (ex: stream, getCoverArt...)
 func hr(r chi.Router, path string, f handlerRaw) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
@@ -266,7 +267,8 @@ func hr(r chi.Router, path string, f handlerRaw) {
 	addHandler(r, path, handle)
 }
 
-// Add a handler that returns 501 - Not implemented. Used to signal that an endpoint is not implemented yet
+// h501 adds a handler that returns 501 - Not implemented. Used to signal that an endpoint is not
+// implemented yet
 func h501(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {
@@ -278,7 +280,7 @@ func h501(r chi.Router, paths ...string) {
 	}
 }
 
-// Add a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
+// h410 adds a handler that returns 410 - Gone. Used to signal that an endpoint will not be implemented
 func h410(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {
@@ -303,7 +305,7 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorGeneric, err.Error())
 	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
-	case errors.Is(err, model.ErrNotAuthorized):
+	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, model.ErrPlaylistNotEditable): // Subsonic has no code for "read-only resource"
 		err = newError(responses.ErrorAuthorizationFail)
 	case errors.Is(err, stream.ErrTooManyTranscodes):
 		err = newError(responses.ErrorGeneric, "too many concurrent transcodes, please retry shortly")
@@ -358,7 +360,7 @@ func sendResponseWithStatus(w http.ResponseWriter, r *http.Request, payload *res
 			errResp := newResponse()
 			errResp.Status = responses.StatusFailed
 			errResp.Error = &responses.Error{Code: responses.ErrorGeneric, Message: "invalid callback parameter"}
-			response, _ = json.Marshal(responses.JsonWrapper{Subsonic: *errResp})
+			response, err = json.Marshal(responses.JsonWrapper{Subsonic: *errResp})
 			break
 		}
 		w.Header().Set("Content-Type", "application/javascript")

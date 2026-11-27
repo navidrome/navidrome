@@ -11,33 +11,24 @@ import (
 type libraryServiceImpl struct {
 	ds                model.DataStore
 	hasFilesystemPerm bool
-	allowedLibraryIDs []int
-	allLibraries      bool
-	libraryIDMap      map[int]struct{}
+	libraries         libraryAccess
 }
 
-func newLibraryService(ds model.DataStore, perm *LibraryPermission, allowedLibraryIDs []int, allLibraries bool) host.LibraryService {
-	hasFS := perm != nil && perm.Filesystem
-	libraryIDMap := make(map[int]struct{})
-	for _, id := range allowedLibraryIDs {
-		libraryIDMap[id] = struct{}{}
-	}
+func newLibraryService(ds model.DataStore, perm *LibraryPermission, libraries libraryAccess) host.LibraryService {
 	return &libraryServiceImpl{
 		ds:                ds,
-		hasFilesystemPerm: hasFS,
-		allowedLibraryIDs: allowedLibraryIDs,
-		allLibraries:      allLibraries,
-		libraryIDMap:      libraryIDMap,
+		hasFilesystemPerm: perm != nil && perm.Filesystem,
+		libraries:         libraries,
 	}
 }
 
 func (s *libraryServiceImpl) GetLibrary(ctx context.Context, id int32) (*host.Library, error) {
 	// Check if the library is accessible
-	if !s.isLibraryAccessible(int(id)) {
+	if !s.libraries.contains(int(id)) {
 		return nil, fmt.Errorf("library not accessible: library ID %d is not in the allowed list", id)
 	}
 
-	lib, err := s.ds.Library(ctx).Get(int(id))
+	lib, err := s.ds.Library().Get(ctx, int(id))
 	if err != nil {
 		return nil, fmt.Errorf("library not found: %w", err)
 	}
@@ -45,17 +36,8 @@ func (s *libraryServiceImpl) GetLibrary(ctx context.Context, id int32) (*host.Li
 	return s.convertLibrary(lib), nil
 }
 
-// isLibraryAccessible checks if a library ID is accessible to this plugin.
-func (s *libraryServiceImpl) isLibraryAccessible(id int) bool {
-	if s.allLibraries {
-		return true
-	}
-	_, ok := s.libraryIDMap[id]
-	return ok
-}
-
 func (s *libraryServiceImpl) GetAllLibraries(ctx context.Context) ([]host.Library, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libraries: %w", err)
 	}
@@ -63,7 +45,7 @@ func (s *libraryServiceImpl) GetAllLibraries(ctx context.Context) ([]host.Librar
 	// Filter libraries based on allowed list
 	var result []host.Library
 	for _, lib := range libs {
-		if s.isLibraryAccessible(lib.ID) {
+		if s.libraries.contains(lib.ID) {
 			result = append(result, *s.convertLibrary(&lib))
 		}
 	}
