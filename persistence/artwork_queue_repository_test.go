@@ -224,6 +224,24 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			Expect(restarted.Trace).To(Equal("[]"))
 		})
 
+		It("makes a backing-off row eligible at exactly now, not a step later", func() {
+			r := repo.(*artworkQueueRepository)
+			tick := time.Now().Add(-time.Minute)
+			items := []model.ArtworkQueueItem{item("mf", "t5", model.ArtworkPriorityBump), item("al", "t5", model.ArtworkPriorityScan)}
+			Expect(r.enqueueAt(ctx, tick, items)).To(Succeed())
+			backOff("mf", "t5", tick.Add(time.Hour))
+			backOff("al", "t5", tick.Add(time.Hour))
+
+			Expect(r.restartIfQueuedAt(ctx, tick, model.KindMediaFileArtwork, "t5")).To(Succeed())
+			Expect(r.enqueueAt(ctx, tick, items[1:])).To(Succeed())
+
+			for _, kind := range []model.Kind{model.KindMediaFileArtwork, model.KindAlbumArtwork} {
+				got, err := repo.Get(ctx, kind, "t5", model.ImageTypePrimary)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(got.RetryAt).To(BeTemporally("==", tick), "kind %s", kind.Prefix())
+			}
+		})
+
 		It("queues nothing for an item that is not queued, or of another kind", func() {
 			Expect(repo.Enqueue(ctx, item("al", "t3", model.ArtworkPriorityScan))).To(Succeed())
 			backOff("al", "t3", time.Now().Add(time.Hour))

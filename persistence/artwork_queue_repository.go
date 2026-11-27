@@ -51,12 +51,12 @@ func (r *artworkQueueRepository) Enqueue(ctx context.Context, items ...model.Art
 func (r *artworkQueueRepository) enqueueAt(ctx context.Context, now time.Time, items []model.ArtworkQueueItem) error {
 	return r.enqueue(ctx, now, items, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority),
-		retry_at = CASE WHEN retry_at >= excluded.retry_at THEN ? ELSE excluded.retry_at END,
-		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, stepPast(now))
+		retry_at = CASE WHEN retry_at BETWEEN excluded.retry_at AND ? THEN ? ELSE excluded.retry_at END,
+		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, stepPast(now), stepPast(now))
 }
 
-// stepPast is the retry_at to write when the row holds now or later, as it can on a coarse clock: a worker
-// holds a value no later than now, so its CAS must still fail, even after a second reset in the same tick.
+// stepPast is the retry_at to write when the row holds now or a value stepped from it, as it can on a coarse
+// clock: a worker holding either must fail its CAS, even after a second reset in the same tick.
 func stepPast(now time.Time) time.Time { return now.Add(time.Microsecond) }
 
 // RestartIfQueued's new retry_at fails an in-flight worker's DeleteIfUnchanged, so the row outlives a
@@ -66,7 +66,7 @@ func (r *artworkQueueRepository) RestartIfQueued(ctx context.Context, kind model
 }
 
 func (r *artworkQueueRepository) restartIfQueuedAt(ctx context.Context, now time.Time, kind model.Kind, ids ...string) error {
-	retryAt := Expr("CASE WHEN retry_at >= ? THEN ? ELSE ? END", now, stepPast(now), now)
+	retryAt := Expr("CASE WHEN retry_at BETWEEN ? AND ? THEN ? ELSE ? END", now, stepPast(now), stepPast(now), now)
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
 		upd := Update(r.tableName).
 			Set("retry_at", retryAt).Set("attempts", 0).Set("enqueued_at", now).Set("trace", "[]").
