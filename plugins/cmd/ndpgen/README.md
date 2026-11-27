@@ -180,8 +180,8 @@ are rejected (other than the `context.Context` parameter and the `error` result)
 
 They travel as handles. A stream passed to a host function is consumed: the plugin can no longer use it. The
 service gets a wrapper, not the original value (type assertions such as `*os.File` or `io.Seeker` fail), and
-must finish with it before returning: it is closed when the plugin call ends. A returned stream belongs to the
-plugin's current call.
+must finish with it before returning: it is closed when the plugin call ends. So a service must not return a
+stream it was given, or anything built on one. A returned stream belongs to the plugin's current call.
 
 A host function that takes or returns a stream must return an `error`.
 
