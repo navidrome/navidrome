@@ -354,6 +354,9 @@ check_node_env:
 pre-push: lintall testall
 .PHONY: pre-push
 
+pre-push-go: lint test test-ndpgen test-i18n
+.PHONY: pre-push-go
+
 deprecated:
 	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
 .PHONY: deprecated
