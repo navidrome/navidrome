@@ -278,8 +278,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 // loadPluginWithConfig loads a plugin with configuration from DB.
 // The p.Path should point to an .ndp package file.
 func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
-	// NewContext falls back to context.Background() when m.ctx is nil (unstarted manager)
-	ctx := log.NewContext(m.ctx, "plugin", p.ID)
+	ctx := log.NewContext(m.lifecycleCtx(), "plugin", p.ID)
 
 	if m.stopped.Load() {
 		return errors.New("manager is stopped")

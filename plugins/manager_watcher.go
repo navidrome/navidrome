@@ -37,7 +37,7 @@ func (m *Manager) startWatcher() error {
 		return err
 	}
 
-	log.Info(m.ctx, "Started plugin file watcher", "folder", folder)
+	log.Info(m.lifecycleCtx(), "Started plugin file watcher", "folder", folder)
 
 	go m.watcherLoop()
 
@@ -61,7 +61,7 @@ func (m *Manager) stopWatcher() {
 	m.debounceTimers = nil
 	m.debounceMu.Unlock()
 
-	log.Debug(m.ctx, "Stopped plugin file watcher")
+	log.Debug(m.lifecycleCtx(), "Stopped plugin file watcher")
 }
 
 // watcherLoop processes file watcher events
@@ -73,7 +73,7 @@ func (m *Manager) watcherLoop() {
 				return
 			}
 			m.handleWatcherEvent(event)
-		case <-m.ctx.Done():
+		case <-m.lifecycleCtx().Done():
 			return
 		case <-m.watcherDone:
 			return
@@ -92,11 +92,11 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 
 	pluginName, ok := pluginIDFromPath(path)
 	if !ok {
-		log.Warn(m.ctx, "Ignoring plugin file with unusable name", "path", path)
+		log.Warn(m.lifecycleCtx(), "Ignoring plugin file with unusable name", "path", path)
 		return
 	}
 
-	log.Trace(m.ctx, "Plugin file event", "plugin", pluginName, "event", event.Event(), "path", path)
+	log.Trace(m.lifecycleCtx(), "Plugin file event", "plugin", pluginName, "event", event.Event(), "path", path)
 
 	// Debounce: cancel any pending timer for this plugin and start a new one
 	m.debounceMu.Lock()
@@ -108,7 +108,7 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 	// checks if the file exists when the timer fires. This handles sequences like
 	// Remove+Create+Rename correctly by checking actual file state after debounce.
 	m.debounceTimers[pluginName] = time.AfterFunc(debounceDuration, func() {
-		m.processPluginEvent(m.ctx, pluginName)
+		m.processPluginEvent(m.lifecycleCtx(), pluginName)
 	})
 	m.debounceMu.Unlock()
 }
