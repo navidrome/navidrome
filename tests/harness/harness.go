@@ -81,21 +81,6 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	return h
 }
 
-// TruncateDB empties every resettable table, leaving the migrated schema in place — for suites
-// whose specs each build their own library, so the schema is not re-migrated per spec.
-func TruncateDB(tables []string) {
-	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
-
-	for _, table := range tables {
-		// Table names come from sqlite_master, not user input.
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
-}
-
 // Restore reloads every table from the golden snapshot — much faster than a rescan.
 func (h *DB) Restore() {
 	Expect(persistencetest.RestoreFrom(h.SnapshotPath)).To(Succeed())
