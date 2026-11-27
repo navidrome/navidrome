@@ -175,6 +175,12 @@ const (
 	PurgeMissingFull   = "full"
 )
 
+const (
+	RecentlyAddedByScan    = "scan"
+	RecentlyAddedByBirth   = "birth"
+	RecentlyAddedByModTime = "modtime"
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []struct {

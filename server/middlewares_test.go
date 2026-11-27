@@ -509,6 +509,22 @@ var _ = Describe("middlewares", func() {
 				Expect(proxyIP).To(Equal("10.0.0.1:1234"))
 			})
 		})
+
+		Context("with a trusted proxy on a unix socket", func() {
+			DescribeTable("uses the forwarded client IP when the peer is the socket",
+				func(trusted string) {
+					conf.Update(func(c *conf.Options) {
+						c.Address = "unix:/tmp/navidrome-test"
+						c.ExtAuth.TrustedSources = trusted
+					})
+					call("@", map[string]string{"X-Forwarded-For": "203.0.113.5"})
+					Expect(resolved).To(Equal("203.0.113.5"))
+					Expect(remoteAddr).To(Equal("203.0.113.5"))
+				},
+				Entry("socket only", "@"),
+				Entry("socket and a CIDR", "@,10.0.0.0/8"),
+			)
+		})
 	})
 
 	Describe("ClientAddr", func() {

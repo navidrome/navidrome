@@ -75,6 +75,7 @@ type Data struct {
 		SessionTimeout           uint64 `json:"sessionTimeout,omitempty"`
 		SearchFullString         bool   `json:"searchFullString,omitempty"`
 		SearchBackend            string `json:"searchBackend,omitempty"`
+		RecentlyAddedBy          string `json:"recentlyAddedBy,omitempty"`
 		RecentlyAddedByModTime   bool   `json:"recentlyAddedByModTime,omitempty"`
 		PreferSortTags           bool   `json:"preferSortTags,omitempty"`
 		BackupSchedule           string `json:"backupSchedule,omitempty"`
