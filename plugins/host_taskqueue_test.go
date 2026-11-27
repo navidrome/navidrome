@@ -1227,6 +1227,12 @@ var _ = Describe("taskCallTimeout", func() {
 		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 3600})).To(Equal(5 * time.Minute))
 	})
 
+	It("keeps a request that is under a server cap with a fraction of a second", func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = 1500 * time.Millisecond })
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 1})).To(Equal(time.Second))
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 2})).To(Equal(1500 * time.Millisecond))
+	})
+
 	It("caps a huge request without overflowing", func() {
 		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: math.MaxInt})).To(Equal(time.Hour))
 	})

@@ -506,7 +506,7 @@ func taskCallTimeout(perm *TaskQueuePermission) time.Duration {
 		return defaultTimeout
 	}
 	// Compare in seconds first: a huge manifest value would overflow time.Duration.
-	if int64(perm.MaxTaskDuration) >= int64(limit/time.Second) {
+	if int64(perm.MaxTaskDuration) > int64(limit/time.Second) {
 		return limit
 	}
 	return time.Duration(perm.MaxTaskDuration) * time.Second
