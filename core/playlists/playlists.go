@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils"
 )
 
 // MaxTracksPerRequest is how many tracks one API request may add or set; 0 means no limit.
@@ -100,7 +101,7 @@ func InPath(folder model.Folder) bool {
 	if conf.Server().PlaylistsPath == "" {
 		return true
 	}
-	rel, _ := filepath.Rel(folder.LibraryPath, folder.AbsolutePath())
+	rel, _ := utils.RelPath(folder.LibraryPath, folder.AbsolutePath())
 	for path := range strings.SplitSeq(conf.Server().PlaylistsPath, string(filepath.ListSeparator)) {
 		if match, _ := doublestar.Match(path, rel); match {
 			return true
