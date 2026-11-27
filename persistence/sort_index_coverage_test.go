@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -123,17 +124,22 @@ var _ = Describe("Sort index coverage", func() {
 		})
 	}
 
-	It("uses an index for recently_added when RecentlyAddedByModTime is enabled", func() {
-		conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
-		for _, c := range cases[:2] { // media_file and album
-			r := c.newRepo(newCtx())
-			for _, dir := range []string{"asc", "desc"} {
-				orderBy := r.buildSortOrder("recently_added", dir)
-				Expect(checkSortUsesIndex(conn, c.table, orderBy)).To(Succeed(),
-					"sort recently_added (%s) on table %q", dir, c.table)
+	DescribeTable("uses an index for recently_added in every RecentlyAddedBy mode",
+		func(mode string) {
+			conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = mode })
+			for _, c := range cases[:2] { // media_file and album
+				r := c.newRepo(newCtx())
+				for _, dir := range []string{"asc", "desc"} {
+					orderBy := r.buildSortOrder("recently_added", dir)
+					Expect(checkSortUsesIndex(conn, c.table, orderBy)).To(Succeed(),
+						"sort recently_added (%s) on table %q", dir, c.table)
+				}
 			}
-		}
-	})
+		},
+		Entry("scan", consts.RecentlyAddedByScan),
+		Entry("modtime", consts.RecentlyAddedByModTime),
+		Entry("birth", consts.RecentlyAddedByBirth),
+	)
 })
 
 // Matches the full-sort step only: incremental tie-group sorts are reported as

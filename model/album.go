@@ -68,8 +68,15 @@ type Album struct {
 
 	Missing    bool      `structs:"missing" json:"missing"`                      // If all file of the album ar missing
 	ImportedAt time.Time `structs:"imported_at" json:"importedAt" hash:"ignore"` // When this album was imported/updated
-	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`                 // Oldest CreatedAt for all songs in this album
+	CreatedAt  time.Time `structs:"created_at" json:"createdAt" hash:"ignore"`   // Oldest CreatedAt for all songs in this album
+	BirthTime  time.Time `structs:"birth_time" json:"birthTime" hash:"ignore"`   // Oldest BirthTime for all songs in this album
 	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album
+}
+
+// RecentlyAddedAt is the timestamp the "recently added" sort uses, so API clients can reproduce
+// that order. The other timestamps are fallbacks for legacy rows.
+func (a Album) RecentlyAddedAt() time.Time {
+	return recentlyAddedAt(a.BirthTime, a.CreatedAt, a.UpdatedAt, a.ImportedAt)
 }
 
 func (a Album) CoverArtID() ArtworkID {
