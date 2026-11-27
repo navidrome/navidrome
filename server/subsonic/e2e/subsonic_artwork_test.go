@@ -100,7 +100,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 			c.DevArtworkThrottleBacklogTimeout = time.Minute
 		})
 
-		goldenDB.Restore()
+		goldenDB.Restore(ctx)
 		ds = persistence.New(db.Db())
 		auth.Init(ds)
 

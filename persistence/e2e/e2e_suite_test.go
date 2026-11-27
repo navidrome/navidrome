@@ -294,7 +294,7 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(ds.MediaFile().IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
-	Expect(persistencetest.Snapshot(snapshotPath)).To(Succeed())
+	Expect(persistencetest.Snapshot(ctx, snapshotPath)).To(Succeed())
 })
 
 var _ = AfterSuite(func() {
@@ -302,7 +302,7 @@ var _ = AfterSuite(func() {
 })
 
 func restoreDB() {
-	Expect(persistencetest.RestoreFrom(snapshotPath)).To(Succeed())
+	Expect(persistencetest.RestoreFrom(ctx, snapshotPath)).To(Succeed())
 }
 
 func setupTestDB() {

@@ -77,7 +77,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	Expect(persistencetest.Snapshot(h.SnapshotPath)).To(Succeed())
+	Expect(persistencetest.Snapshot(ctx, h.SnapshotPath)).To(Succeed())
 	return h
 }
 
@@ -97,8 +97,8 @@ func TruncateDB(ctx context.Context, tables []string) {
 }
 
 // Restore reloads every table from the golden snapshot — much faster than a rescan.
-func (h *DB) Restore() {
-	Expect(persistencetest.RestoreFrom(h.SnapshotPath)).To(Succeed())
+func (h *DB) Restore(ctx context.Context) {
+	Expect(persistencetest.RestoreFrom(ctx, h.SnapshotPath)).To(Succeed())
 }
 
 // SpyStreamer captures the Request passed to NewStream and returns a minimal fake stream.

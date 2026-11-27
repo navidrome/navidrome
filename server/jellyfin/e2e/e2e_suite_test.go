@@ -328,7 +328,7 @@ func setupTestDB() {
 		c.DevEnableMediaFileProbe = false
 	})
 
-	goldenDB.Restore()
+	goldenDB.Restore(ctx)
 
 	ds = persistence.New(db.Db())
 	auth.Init(ds)

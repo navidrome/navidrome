@@ -426,7 +426,7 @@ func setupTestDB() {
 	})
 
 	// Restore DB to golden state (no scan needed)
-	goldenDB.Restore()
+	goldenDB.Restore(ctx)
 
 	ds = persistence.New(db.Db())
 	auth.Init(ds)
