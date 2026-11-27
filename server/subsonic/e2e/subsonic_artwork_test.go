@@ -103,7 +103,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 
 		// Re-scanning already-populated data deadlocks the parallel album-refresh phase at the
 		// harness's MaxOpenConns=1, so start from before the golden scan and import this library fresh.
-		goldenDB.RestoreUnscanned()
+		goldenDB.RestoreUnscanned(ctx)
 		ds = persistence.New(db.Db())
 		auth.Init(ds)
 		persistencetest.SetLibraries(ctx, ds, musicDir)
@@ -115,7 +115,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Focus the worker on the entities under test.
-		_, err = db.Db().Exec("DELETE FROM artwork_queue")
+		_, err = db.Db().ExecContext(ctx, "DELETE FROM artwork_queue")
 		Expect(err).ToNot(HaveOccurred())
 
 		artfulID = albumIDByName("Artful Album")
@@ -229,7 +229,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Body.Bytes()).To(Equal(readArtworkFixture("cover.jpg")))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("public, max-age=31536000, immutable"))
@@ -241,7 +241,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 })

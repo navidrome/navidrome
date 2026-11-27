@@ -208,7 +208,7 @@ var _ = Describe("redactValue function", func() {
 // Helper functions
 
 func createAuthenticatedConfigRequest(token string) *http.Request {
-	req := httptest.NewRequest(http.MethodGet, "/config/config", nil)
+	req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/config/config", nil)
 	req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	return req
@@ -218,7 +218,7 @@ func createUnauthenticatedConfigRequest(method, path string, body *bytes.Buffer)
 	if body == nil {
 		body = &bytes.Buffer{}
 	}
-	req := httptest.NewRequest(method, path, body)
+	req := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, body)
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }

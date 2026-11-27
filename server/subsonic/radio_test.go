@@ -46,7 +46,7 @@ var _ = Describe("Radio", func() {
 		})
 
 		It("returns all radios with basic fields", func() {
-			r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getInternetRadios", nil)
 			r = r.WithContext(ctx)
 
 			response, err := api.GetInternetRadios(r)
@@ -70,7 +70,7 @@ var _ = Describe("Radio", func() {
 			})
 
 			It("includes coverArt from UploadedImage", func() {
-				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -90,7 +90,7 @@ var _ = Describe("Radio", func() {
 				)
 				putItemArtwork(ctx, ds, model.KindRadioArtwork, "rd-1", "0123456789abcdef")
 				putItemArtwork(ctx, ds, model.KindRadioArtwork, "rd-2", "")
-				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -109,7 +109,7 @@ var _ = Describe("Radio", func() {
 			})
 
 			It("does not include coverArt", func() {
-				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -125,7 +125,7 @@ var _ = Describe("Radio", func() {
 			It("does not include coverArt (empty client matches legacy list)", func() {
 				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 
-				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -143,7 +143,7 @@ var _ = Describe("Radio", func() {
 			})
 
 			It("includes coverArt for all clients", func() {
-				r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getInternetRadios", nil)
 				r = r.WithContext(ctx)
 
 				response, err := api.GetInternetRadios(r)
@@ -159,7 +159,7 @@ var _ = Describe("Radio", func() {
 				return failingRadioRepo{r}
 			}})}
 
-			r := httptest.NewRequest(http.MethodGet, "/rest/getInternetRadios", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getInternetRadios", nil)
 			r = r.WithContext(ctx)
 
 			_, err := api.GetInternetRadios(r)

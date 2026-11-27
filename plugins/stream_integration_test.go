@@ -241,7 +241,7 @@ var _ = Describe("Plugin streams", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { instance.Close(ctx) })
 
-			exit, raw, err := instance.Call("read_all", []byte(`{"handle":1,"chunk":8}`))
+			exit, raw, err := instance.CallWithContext(ctx, "read_all", []byte(`{"handle":1,"chunk":8}`))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 			var out streamsOutput
@@ -406,21 +406,22 @@ var _ = Describe("Plugin streams under a memory cap", Ordered, func() {
 
 // buildRustTestPlugin skips when the wasm32-wasip1 Rust target is missing; CI does not install it.
 func buildRustTestPlugin(dir string) string {
+	ctx := GinkgoT().Context()
 	rustup, err := exec.LookPath("rustup")
 	if err != nil {
 		Skip("rustup is not installed")
 	}
-	targets, err := exec.Command(rustup, "target", "list", "--installed").Output()
+	targets, err := exec.CommandContext(ctx, rustup, "target", "list", "--installed").Output()
 	if err != nil || !strings.Contains(string(targets), "wasm32-wasip1") {
 		Skip("the wasm32-wasip1 Rust target is not installed")
 	}
-	cargoOut, err := exec.Command(rustup, "which", "cargo").Output()
+	cargoOut, err := exec.CommandContext(ctx, rustup, "which", "cargo").Output()
 	Expect(err).ToNot(HaveOccurred())
-	rustc, err := exec.Command(rustup, "which", "rustc").Output()
+	rustc, err := exec.CommandContext(ctx, rustup, "which", "rustc").Output()
 	Expect(err).ToNot(HaveOccurred())
 
 	cargo := strings.TrimSpace(string(cargoOut))
-	cmd := exec.Command(cargo, "build", "--release", "--target", "wasm32-wasip1")
+	cmd := exec.CommandContext(ctx, cargo, "build", "--release", "--target", "wasm32-wasip1")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "CARGO_BUILD_RUSTC="+strings.TrimSpace(string(rustc)))
 	out, err := cmd.CombinedOutput()

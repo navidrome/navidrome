@@ -15,6 +15,8 @@ import (
 )
 
 var _ = Describe("ListenBrainz Auth Router", func() {
+	var ctx context.Context
+
 	var sk *fakeSessionKeys
 	var httpClient *tests.FakeHttpClient
 	var r Router
@@ -22,6 +24,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 	var resp *httptest.ResponseRecorder
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		sk = &fakeSessionKeys{KeyName: sessionKeyProperty}
 		httpClient = &tests.FakeHttpClient{}
 		cl := newClient("http://localhost/", httpClient)
@@ -34,7 +37,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 
 	Describe("getLinkStatus", func() {
 		It("returns false when there is no stored session key", func() {
-			req = httptest.NewRequest(http.MethodGet, "/listenbrainz/link", nil)
+			req = httptest.NewRequestWithContext(ctx, http.MethodGet, "/listenbrainz/link", nil)
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
@@ -44,7 +47,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 
 		It("returns true when there is a stored session key", func() {
 			sk.KeyValue = "sk-1"
-			req = httptest.NewRequest(http.MethodGet, "/listenbrainz/link", nil)
+			req = httptest.NewRequestWithContext(ctx, http.MethodGet, "/listenbrainz/link", nil)
 			r.getLinkStatus(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
@@ -55,7 +58,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 
 	Describe("link", func() {
 		It("returns bad request when no token is sent", func() {
-			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{}`))
+			req = httptest.NewRequestWithContext(ctx, http.MethodPut, "/listenbrainz/link", strings.NewReader(`{}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusBadRequest))
 		})
@@ -66,7 +69,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 				StatusCode: http.StatusOK,
 			}
 
-			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "invalid-tok-1"}`))
+			req = httptest.NewRequestWithContext(ctx, http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "invalid-tok-1"}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusBadRequest))
 		})
@@ -77,7 +80,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 				StatusCode: http.StatusOK,
 			}
 
-			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
+			req = httptest.NewRequestWithContext(ctx, http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			var parsed map[string]any
@@ -92,7 +95,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 				StatusCode: http.StatusOK,
 			}
 
-			req = httptest.NewRequest(http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
+			req = httptest.NewRequestWithContext(ctx, http.MethodPut, "/listenbrainz/link", strings.NewReader(`{"token": "tok-1"}`))
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			Expect(sk.KeyValue).To(Equal("tok-1"))
@@ -102,7 +105,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 	Describe("unlink", func() {
 		It("removes the session key when unlinking", func() {
 			sk.KeyValue = "tok-1"
-			req = httptest.NewRequest(http.MethodDelete, "/listenbrainz/link", nil)
+			req = httptest.NewRequestWithContext(ctx, http.MethodDelete, "/listenbrainz/link", nil)
 			r.unlink(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			Expect(sk.KeyValue).To(Equal(""))

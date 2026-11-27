@@ -177,7 +177,7 @@ func putPlaylist(ctx context.Context, ds model.DataStore, pls model.Playlist, al
 
 func unqueue(kind model.Kind, id string) {
 	GinkgoHelper()
-	_, err := db.Db().Exec("DELETE FROM artwork_queue WHERE item_kind = ? AND item_id = ?", kind.Prefix(), id)
+	_, err := db.Db().ExecContext(GinkgoT().Context(), "DELETE FROM artwork_queue WHERE item_kind = ? AND item_id = ?", kind.Prefix(), id)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -204,7 +204,7 @@ func queueCount(ctx context.Context, ds model.DataStore) int64 {
 // expireQueued ages a row past the retry budget, so the next drain settles it instead of retrying.
 func expireQueued(kind, id string) {
 	GinkgoHelper()
-	_, err := db.Db().Exec("UPDATE artwork_queue SET enqueued_at = ? WHERE item_kind = ? AND item_id = ?",
+	_, err := db.Db().ExecContext(GinkgoT().Context(), "UPDATE artwork_queue SET enqueued_at = ? WHERE item_kind = ? AND item_id = ?",
 		time.Now().Add(-(giveUpAfter + time.Hour)), kind, id)
 	Expect(err).ToNot(HaveOccurred())
 }

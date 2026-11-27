@@ -29,14 +29,14 @@ import (
 )
 
 func newGetRequest(queryParams ...string) *http.Request {
-	r := httptest.NewRequest(http.MethodGet, "/ping?"+strings.Join(queryParams, "&"), nil)
+	r := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/ping?"+strings.Join(queryParams, "&"), nil)
 	ctx := r.Context()
 	return r.WithContext(log.NewContext(ctx))
 }
 
 func newPostRequest(queryParam string, formFields ...string) *http.Request {
 	GinkgoHelper()
-	r, err := http.NewRequest(http.MethodPost, "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
+	r, err := http.NewRequestWithContext(GinkgoT().Context(), http.MethodPost, "/ping?"+queryParam, strings.NewReader(strings.Join(formFields, "&")))
 	Expect(err).ToNot(HaveOccurred())
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 	ctx := r.Context()

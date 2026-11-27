@@ -45,7 +45,7 @@ var _ = Describe("Artwork", func() {
 
 	setImagesUpdatedAt := func(folderID string, t time.Time) {
 		GinkgoHelper()
-		_, err := db.Db().Exec("UPDATE folder SET images_updated_at = ? WHERE id = ?", t, folderID)
+		_, err := db.Db().ExecContext(ctx, "UPDATE folder SET images_updated_at = ? WHERE id = ?", t, folderID)
 		Expect(err).ToNot(HaveOccurred())
 	}
 
@@ -247,7 +247,7 @@ var _ = Describe("Artwork", func() {
 		It("refuses to serve a found row whose entity is gone", func() {
 			hash := seedFoundStore("al", "alzz", coverBytes)
 			Expect(hash).ToNot(BeEmpty())
-			_, err := db.Db().Exec("DELETE FROM album WHERE id = ?", "alzz") // its artwork row survives
+			_, err := db.Db().ExecContext(ctx, "DELETE FROM album WHERE id = ?", "alzz") // its artwork row survives
 			Expect(err).ToNot(HaveOccurred())
 
 			_, err = svc.Get(ctx, tests.MustParseArtworkID("al-alzz"), 0, false)
@@ -408,7 +408,7 @@ var _ = Describe("Artwork", func() {
 			Expect(warmed).ToNot(BeEmpty())
 
 			// Unlisting the images leaves the cache key alone, so only a cache hit can still serve.
-			_, err = db.Db().Exec("UPDATE folder SET image_files = '[]' WHERE id = ?", fid)
+			_, err = db.Db().ExecContext(ctx, "UPDATE folder SET image_files = '[]' WHERE id = ?", fid)
 			Expect(err).ToNot(HaveOccurred())
 
 			second, err := svc.Get(ctx, discID, 64, false)

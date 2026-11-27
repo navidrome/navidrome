@@ -172,7 +172,7 @@ var _ = Describe("MediaStreamer", func() {
 		It("keeps empty output a non-error, so callers still reply 200 with an empty body", func() {
 			s := stream.NewStream(mf, "mp3", 128, io.NopCloser(bytes.NewReader(nil)))
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 
 			n, err := s.Serve(ctx, w, r)
 
@@ -189,7 +189,9 @@ var _ = Describe("MediaStreamer", func() {
 			server := httptest.NewServer(serveHandler(stream.NewStream(mf, "mp3", 128, src)))
 			DeferCleanup(server.Close)
 
-			resp, err := http.Get(server.URL)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := http.DefaultClient.Do(req)
 			Expect(err).ToNot(HaveOccurred())
 			defer resp.Body.Close()
 
@@ -211,7 +213,7 @@ var _ = Describe("MediaStreamer", func() {
 			}
 			serve := func(s *stream.Stream) *httptest.ResponseRecorder {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest(http.MethodGet, "/?estimateContentLength=true", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/?estimateContentLength=true", nil)
 				_, err := s.Serve(ctx, w, r)
 				Expect(err).ToNot(HaveOccurred())
 				return w

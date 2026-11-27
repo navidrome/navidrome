@@ -69,7 +69,7 @@ func (s *slowMediaFileRepo) GetWithParticipants(ctx context.Context, id string) 
 func playCount(itemType, id string) int64 {
 	GinkgoHelper()
 	var n int64
-	err := db.Db().QueryRow("SELECT play_count FROM annotation WHERE user_id = 'u-1' AND item_type = ? AND item_id = ?", itemType, id).Scan(&n)
+	err := db.Db().QueryRowContext(GinkgoT().Context(), "SELECT play_count FROM annotation WHERE user_id = 'u-1' AND item_type = ? AND item_id = ?", itemType, id).Scan(&n)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0
 	}
@@ -79,7 +79,7 @@ func playCount(itemType, id string) int64 {
 
 func recordedScrobbles() []model.Scrobble {
 	GinkgoHelper()
-	rows, err := db.Db().Query("SELECT media_file_id, user_id, submission_time FROM scrobbles")
+	rows, err := db.Db().QueryContext(GinkgoT().Context(), "SELECT media_file_id, user_id, submission_time FROM scrobbles")
 	Expect(err).ToNot(HaveOccurred())
 	defer rows.Close()
 	var res []model.Scrobble

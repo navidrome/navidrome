@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -18,7 +19,7 @@ var _ = Describe("Collation", func() {
 	conn := db.Db()
 	DescribeTable("Column collation",
 		func(table, column string) {
-			Expect(checkCollation(conn, table, column)).To(Succeed())
+			Expect(checkCollation(GinkgoT().Context(), conn, table, column)).To(Succeed())
 		},
 		Entry("artist.order_artist_name", "artist", "order_artist_name"),
 		Entry("artist.sort_artist_name", "artist", "sort_artist_name"),
@@ -39,7 +40,7 @@ var _ = Describe("Collation", func() {
 
 	DescribeTable("Index collation",
 		func(table, column string) {
-			Expect(checkIndexUsage(conn, table, column)).To(Succeed())
+			Expect(checkIndexUsage(GinkgoT().Context(), conn, table, column)).To(Succeed())
 		},
 		Entry("artist.order_artist_name", "artist", "order_artist_name collate nocase"),
 		Entry("artist.sort_artist_name", "artist", "coalesce(nullif(sort_artist_name,''),order_artist_name) collate nocase"),
@@ -57,8 +58,8 @@ var _ = Describe("Collation", func() {
 	)
 })
 
-func checkIndexUsage(conn *sql.DB, table string, column string) error {
-	rows, err := conn.Query(fmt.Sprintf(`
+func checkIndexUsage(ctx context.Context, conn *sql.DB, table string, column string) error {
+	rows, err := conn.QueryContext(ctx, fmt.Sprintf(`
 explain query plan select * from %[1]s
 where %[2]s = 'test'
 order by %[2]s`, table, column))
@@ -88,8 +89,8 @@ order by %[2]s`, table, column))
 	return errors.New("no rows returned")
 }
 
-func checkCollation(conn *sql.DB, table string, column string) error {
-	rows, err := conn.Query(fmt.Sprintf("SELECT sql FROM sqlite_master WHERE type='table' AND tbl_name='%s'", table))
+func checkCollation(ctx context.Context, conn *sql.DB, table string, column string) error {
+	rows, err := conn.QueryContext(ctx, fmt.Sprintf("SELECT sql FROM sqlite_master WHERE type='table' AND tbl_name='%s'", table))
 	if err != nil {
 		return err
 	}

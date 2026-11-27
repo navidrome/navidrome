@@ -25,7 +25,7 @@ func newAlbum(id, name string) *model.Album {
 
 func countProperties(prefix string) int {
 	var n int
-	Expect(db.Db().QueryRow("SELECT count(*) FROM property WHERE id LIKE ?", prefix+"%").Scan(&n)).To(Succeed())
+	Expect(db.Db().QueryRowContext(GinkgoT().Context(), "SELECT count(*) FROM property WHERE id LIKE ?", prefix+"%").Scan(&n)).To(Succeed())
 	return n
 }
 
@@ -42,9 +42,9 @@ var _ = Describe("Reset", func() {
 		transcodings, err := ds.Transcoding().CountAll(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(transcodings).To(BeNumerically(">", 0))
-		_, err = db.Db().Exec("DELETE FROM transcoding")
+		_, err = db.Db().ExecContext(ctx, "DELETE FROM transcoding")
 		Expect(err).ToNot(HaveOccurred())
-		_, err = db.Db().Exec("DELETE FROM library")
+		_, err = db.Db().ExecContext(ctx, "DELETE FROM library")
 		Expect(err).ToNot(HaveOccurred())
 
 		persistencetest.Reset()

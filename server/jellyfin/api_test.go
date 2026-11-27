@@ -30,7 +30,7 @@ var _ = Describe("Router", func() {
 	It("serves the public handshake through the mounted handler", func() {
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/System/Info/Public", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/System/Info/Public", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
 	})
@@ -38,7 +38,7 @@ var _ = Describe("Router", func() {
 	It("returns 404 JSON for unknown routes", func() {
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Nonexistent/Route", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Nonexistent/Route", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Header().Get("Content-Type")).To(ContainSubstring("application/json"))
@@ -48,7 +48,7 @@ var _ = Describe("Router", func() {
 	It("returns 404 JSON for a known path with an unsupported method", func() {
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodPatch, "/System/Info/Public", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodPatch, "/System/Info/Public", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Body.String()).To(Equal("{}"))
@@ -64,7 +64,7 @@ var _ = Describe("Router", func() {
 		api := New(ds, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil)
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Users/Me", nil)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Jellify", Device="Phone", DeviceId="dev-1", Version="1.0"`)
 		r.Header.Set("X-Emby-Token", token)
 		api.ServeHTTP(w, r)
@@ -83,7 +83,7 @@ var _ = Describe("Router", func() {
 
 		login := func() int {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
 			r.RemoteAddr = "10.0.0.1:1234"
 			api.ServeHTTP(w, r)
 			return w.Code
@@ -109,7 +109,7 @@ var _ = Describe("Router", func() {
 
 		authorize := func() int {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/QuickConnect/Authorize?code=000000", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/QuickConnect/Authorize?code=000000", nil)
 			r.RemoteAddr = "10.0.0.1:1234"
 			r.Header.Set("X-Emby-Token", token)
 			api.ServeHTTP(w, r)
@@ -133,7 +133,7 @@ var _ = Describe("Router", func() {
 
 		login := func(clientIP string) int {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
 			r.RemoteAddr = "10.0.0.1:1234"
 			r.Header.Set("X-Real-IP", clientIP)
 			handler.ServeHTTP(w, r)

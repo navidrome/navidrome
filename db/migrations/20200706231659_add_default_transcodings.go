@@ -24,13 +24,13 @@ func upAddDefaultTranscodings(ctx context.Context, tx *sql.Tx) error {
 		return nil
 	}
 
-	stmt, err := tx.Prepare("insert into transcoding (id, name, target_format, default_bit_rate, command) values (?, ?, ?, ?, ?)")
+	stmt, err := tx.PrepareContext(ctx, "insert into transcoding (id, name, target_format, default_bit_rate, command) values (?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 
 	for _, t := range consts.DefaultTranscodings {
-		_, err := stmt.Exec(id.NewRandom(), t.Name, t.TargetFormat, t.DefaultBitRate, t.Command)
+		_, err := stmt.ExecContext(ctx, id.NewRandom(), t.Name, t.TargetFormat, t.DefaultBitRate, t.Command)
 		if err != nil {
 			return err
 		}

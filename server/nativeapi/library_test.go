@@ -434,7 +434,7 @@ func createAuthenticatedRequest(method, path string, body *bytes.Buffer, token s
 	if body == nil {
 		body = &bytes.Buffer{}
 	}
-	req := httptest.NewRequest(method, path, body)
+	req := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, body)
 	req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	return req
@@ -444,7 +444,7 @@ func createUnauthenticatedRequest(method, path string, body *bytes.Buffer) *http
 	if body == nil {
 		body = &bytes.Buffer{}
 	}
-	req := httptest.NewRequest(method, path, body)
+	req := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, body)
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }

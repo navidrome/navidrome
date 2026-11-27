@@ -91,7 +91,7 @@ func putLibraries(ds model.DataStore, libs ...model.Library) {
 			restore()
 		}
 		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
-		_, err := db.Db().Exec(`UPDATE library SET total_songs = ?, total_albums = ?, total_artists = ?,
+		_, err := db.Db().ExecContext(ctx, `UPDATE library SET total_songs = ?, total_albums = ?, total_artists = ?,
 			total_size = ?, total_duration = ? WHERE id = ?`,
 			lib.TotalSongs, lib.TotalAlbums, lib.TotalArtists, lib.TotalSize, lib.TotalDuration, lib.ID)
 		Expect(err).ToNot(HaveOccurred())
@@ -185,9 +185,9 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	return manager, tmpDir
 }
 
-var _ = SynchronizedBeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func(ctx SpecContext) {
 	// Build once: the testdata Makefile is not safe to run concurrently.
-	buildTestPlugins(testDataDir)
+	buildTestPlugins(ctx, testDataDir)
 }, func() {
 	// Get testdata directory (where test plugin .ndp packages live)
 	_, currentFile, _, ok := runtime.Caller(0)

@@ -70,7 +70,7 @@ func newKVStoreService(ctx context.Context, pluginName string, perm *KVStorePerm
 	db.SetMaxIdleConns(1)
 
 	// Apply schema migrations
-	if err := createKVStoreSchema(db); err != nil {
+	if err := createKVStoreSchema(ctx, db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrating kvstore schema: %w", err)
 	}
@@ -91,8 +91,8 @@ func newKVStoreService(ctx context.Context, pluginName string, perm *KVStorePerm
 
 // createKVStoreSchema applies schema migrations to the kvstore database.
 // New migrations must be appended at the end of the slice.
-func createKVStoreSchema(db *sql.DB) error {
-	return migrateDB(db, []string{
+func createKVStoreSchema(ctx context.Context, db *sql.DB) error {
+	return migrateDB(ctx, db, []string{
 		`CREATE TABLE IF NOT EXISTS kvstore (
 			key TEXT PRIMARY KEY NOT NULL,
 			value BLOB NOT NULL,

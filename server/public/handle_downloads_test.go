@@ -61,7 +61,7 @@ var _ = Describe("handleDownloads", func() {
 	}
 
 	makeRequest := func(id string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest(http.MethodGet, "/public/d/"+id+"?%3Aid="+id, nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/public/d/"+id+"?%3Aid="+id, nil)
 		w := httptest.NewRecorder()
 		pub.handleDownloads(w, r)
 		return w

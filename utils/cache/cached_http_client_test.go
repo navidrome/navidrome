@@ -18,6 +18,11 @@ import (
 )
 
 var _ = Describe("HTTPClient", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Context("GET", func() {
 		var chc *HTTPClient
 		var ts *httptest.Server
@@ -40,7 +45,7 @@ var _ = Describe("HTTPClient", func() {
 		})
 
 		It("caches repeated requests", func() {
-			r, _ := http.NewRequest(http.MethodGet, ts.URL+"?name=doe", nil)
+			r, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"?name=doe", nil)
 			resp, err := chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			body, err := io.ReadAll(resp.Body)
@@ -49,7 +54,7 @@ var _ = Describe("HTTPClient", func() {
 			Expect(requestsReceived).To(Equal(1))
 
 			// Same request
-			r, _ = http.NewRequest(http.MethodGet, ts.URL+"?name=doe", nil)
+			r, _ = http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"?name=doe", nil)
 			resp, err = chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			body, err = io.ReadAll(resp.Body)
@@ -58,7 +63,7 @@ var _ = Describe("HTTPClient", func() {
 			Expect(requestsReceived).To(Equal(1))
 
 			// Different request
-			r, _ = http.NewRequest(http.MethodGet, ts.URL, nil)
+			r, _ = http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
 			resp, err = chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			body, err = io.ReadAll(resp.Body)
@@ -67,7 +72,7 @@ var _ = Describe("HTTPClient", func() {
 			Expect(requestsReceived).To(Equal(2))
 
 			// Different again (same as before, but with header)
-			r, _ = http.NewRequest(http.MethodGet, ts.URL, nil)
+			r, _ = http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
 			r.Header.Add("head", "this is a header")
 			resp, err = chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
@@ -82,7 +87,7 @@ var _ = Describe("HTTPClient", func() {
 			requestsReceived = 0
 			chc = NewHTTPClient(http.DefaultClient, 10*time.Millisecond)
 
-			r, _ := http.NewRequest(http.MethodGet, ts.URL+"?name=doe", nil)
+			r, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"?name=doe", nil)
 			_, err := chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(requestsReceived).To(Equal(1))
@@ -91,7 +96,7 @@ var _ = Describe("HTTPClient", func() {
 			time.Sleep(50 * time.Millisecond)
 
 			// Same request
-			r, _ = http.NewRequest(http.MethodGet, ts.URL+"?name=doe", nil)
+			r, _ = http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"?name=doe", nil)
 			_, err = chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(requestsReceived).To(Equal(2))
@@ -121,7 +126,7 @@ var _ = Describe("HTTPClient", func() {
 				log.SetLevel(prevLevel)
 			})
 
-			r, _ := http.NewRequest(http.MethodGet, ts.URL, nil)
+			r, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL, nil)
 			r.Header.Set("Authorization", "Bearer secret-token")
 			_, err := chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
@@ -157,14 +162,14 @@ var _ = Describe("HTTPClient", func() {
 		})
 
 		It("sends every request to the server, so an error reply is not replayed", func() {
-			r, _ := http.NewRequest(http.MethodPost, ts.URL, strings.NewReader("listen"))
+			r, _ := http.NewRequestWithContext(ctx, http.MethodPost, ts.URL, strings.NewReader("listen"))
 			resp, err := chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusBadGateway))
 			_ = resp.Body.Close()
 
 			// Same request
-			r, _ = http.NewRequest(http.MethodPost, ts.URL, strings.NewReader("listen"))
+			r, _ = http.NewRequestWithContext(ctx, http.MethodPost, ts.URL, strings.NewReader("listen"))
 			resp, err = chc.Do(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))

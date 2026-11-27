@@ -1,0 +1,7 @@
+# golangci-lint built with our own linters; `make lint` and CI build it from this file.
+version: v2.14.0
+name: golangci-lint
+destination: ./bin
+plugins:
+  - module: github.com/navidrome/navidrome/tools/ctxvariant
+    path: ./tools/ctxvariant

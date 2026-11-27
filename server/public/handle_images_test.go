@@ -44,15 +44,18 @@ func (f *fakeArtwork) Get(context.Context, model.ArtworkID, int, bool) (*artwork
 }
 
 var _ = Describe("handleImages", func() {
+	var ctx context.Context
+
 	var w *httptest.ResponseRecorder
 
 	newImageRequest := func(claimID string) *http.Request {
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
 		token, _ := auth.CreatePublicToken(auth.Claims{ID: claimID})
-		return httptest.NewRequest(http.MethodGet, "/img?:id="+url.QueryEscape(token), nil)
+		return httptest.NewRequestWithContext(ctx, http.MethodGet, "/img?:id="+url.QueryEscape(token), nil)
 	}
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		w = httptest.NewRecorder()
 	})
 

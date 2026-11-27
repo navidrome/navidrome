@@ -31,7 +31,7 @@ func Init(t testing.TB) {
 	db.Init(t.Context())
 
 	baselinePath = filepath.Join(dir, "baseline.db")
-	if err := Snapshot(baselinePath); err != nil {
+	if err := Snapshot(t.Context(), baselinePath); err != nil {
 		t.Fatalf("snapshotting baseline database: %v", err)
 	}
 	t.Cleanup(func() {
@@ -46,7 +46,7 @@ func Reset() {
 	if baselinePath == "" {
 		ginkgo.Fail("persistencetest.Reset called before persistencetest.Init")
 	}
-	if err := RestoreFrom(baselinePath); err != nil {
+	if err := RestoreFrom(ginkgo.GinkgoT().Context(), baselinePath); err != nil {
 		ginkgo.Fail("restoring baseline database: " + err.Error())
 	}
 }
@@ -77,14 +77,13 @@ func tables(ctx context.Context, conn *sql.Conn) ([]string, error) {
 }
 
 // Snapshot writes a copy of the database to path, which must not exist, for RestoreFrom to restore.
-func Snapshot(path string) error {
-	_, err := db.Db().Exec("VACUUM INTO ?", path)
+func Snapshot(ctx context.Context, path string) error {
+	_, err := db.Db().ExecContext(ctx, "VACUUM INTO ?", path)
 	return err
 }
 
 // RestoreFrom replaces every table's rows with those in the SQLite file at path.
-func RestoreFrom(path string) error {
-	ctx := context.Background()
+func RestoreFrom(ctx context.Context, path string) error {
 	// ATTACH and PRAGMA foreign_keys are per connection and refused inside a transaction, so they
 	// run on one pinned connection, before it.
 	conn, err := db.Db().Conn(ctx)

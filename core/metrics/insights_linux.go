@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -8,7 +9,7 @@ import (
 	"syscall"
 )
 
-func getOSVersion() (string, string) {
+func getOSVersion(context.Context) (string, string) {
 	file, err := os.Open("/etc/os-release")
 	if err != nil {
 		return "", ""

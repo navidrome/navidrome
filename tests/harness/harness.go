@@ -75,33 +75,33 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 		u.Libraries = loaded.Libraries
 	}
 
-	Expect(persistencetest.Snapshot(h.UnscannedSnapshotPath)).To(Succeed())
+	Expect(persistencetest.Snapshot(ctx, h.UnscannedSnapshotPath)).To(Succeed())
 
 	s := scanner.New(ctx, ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	Expect(persistencetest.Snapshot(h.SnapshotPath)).To(Succeed())
+	Expect(persistencetest.Snapshot(ctx, h.SnapshotPath)).To(Succeed())
 	return h
 }
 
 // Restore reloads every table from the golden snapshot — much faster than a rescan.
-func (h *DB) Restore() {
-	Expect(persistencetest.RestoreFrom(h.SnapshotPath)).To(Succeed())
+func (h *DB) Restore(ctx context.Context) {
+	Expect(persistencetest.RestoreFrom(ctx, h.SnapshotPath)).To(Succeed())
 }
 
 // RestoreUnscanned reloads the seeded users and library from before the golden scan, for specs
 // that scan a library of their own.
-func (h *DB) RestoreUnscanned() {
-	Expect(persistencetest.RestoreFrom(h.UnscannedSnapshotPath)).To(Succeed())
+func (h *DB) RestoreUnscanned(ctx context.Context) {
+	Expect(persistencetest.RestoreFrom(ctx, h.UnscannedSnapshotPath)).To(Succeed())
 }
 
 // Resnapshot replaces the golden snapshot with the current database, for suites that seed more
 // data on top of the scan.
-func (h *DB) Resnapshot() {
+func (h *DB) Resnapshot(ctx context.Context) {
 	Expect(os.Remove(h.SnapshotPath)).To(Succeed())
-	Expect(persistencetest.Snapshot(h.SnapshotPath)).To(Succeed())
+	Expect(persistencetest.Snapshot(ctx, h.SnapshotPath)).To(Succeed())
 }
 
 // SpyStreamer captures the Request passed to NewStream and returns a minimal fake stream.
@@ -148,10 +148,10 @@ func (NoopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io
 	return nil, errors.New("noop ffmpeg: convert animated image not supported")
 }
 
-func (NoopFFmpeg) CmdPath() (string, error) { return "", nil }
-func (NoopFFmpeg) IsAvailable() bool        { return false }
-func (NoopFFmpeg) IsProbeAvailable() bool   { return true }
-func (NoopFFmpeg) Version() string          { return "noop" }
+func (NoopFFmpeg) CmdPath() (string, error)       { return "", nil }
+func (NoopFFmpeg) IsAvailable() bool              { return false }
+func (NoopFFmpeg) IsProbeAvailable() bool         { return true }
+func (NoopFFmpeg) Version(context.Context) string { return "noop" }
 
 var (
 	_ stream.MediaStreamer = &SpyStreamer{}

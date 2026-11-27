@@ -36,7 +36,7 @@ func upAddOrderTitleToMediaFile_populateOrderTitle(ctx context.Context, tx *sql.
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update media_file set order_title = ? where id = ?")
+	stmt, err := tx.PrepareContext(ctx, "update media_file set order_title = ? where id = ?")
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func upAddOrderTitleToMediaFile_populateOrderTitle(ctx context.Context, tx *sql.
 		}
 
 		orderTitle := strings.TrimSpace(sanitize.Accents(title))
-		_, err = stmt.Exec(orderTitle, id)
+		_, err = stmt.ExecContext(ctx, orderTitle, id)
 		if err != nil {
 			log.Error("Error setting media_file's order_title", "title", title, "id", id, err)
 		}

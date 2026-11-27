@@ -68,7 +68,7 @@ func callSandbox(manager *Manager, input sandboxInput) sandboxOutput {
 
 	inputBytes, err := json.Marshal(input)
 	Expect(err).ToNot(HaveOccurred())
-	_, outputBytes, err := instance.Call("nd_test_library", inputBytes)
+	_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_library", inputBytes)
 	Expect(err).ToNot(HaveOccurred())
 
 	var output sandboxOutput

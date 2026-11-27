@@ -387,7 +387,7 @@ var _ = Describe("NewTracingResolver", func() {
 	expectNothingPersisted := func() {
 		GinkgoHelper()
 		var rows int
-		Expect(db.Db().QueryRow("SELECT count(*) FROM item_artwork").Scan(&rows)).To(Succeed())
+		Expect(db.Db().QueryRowContext(ctx, "SELECT count(*) FROM item_artwork").Scan(&rows)).To(Succeed())
 		Expect(rows).To(BeZero(), "explain is read-only; a diagnostic walk must never become the stored answer")
 		Expect(queueCount(ctx, ds)).To(BeZero())
 	}

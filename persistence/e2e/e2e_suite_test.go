@@ -248,7 +248,7 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(ds.MediaFile().IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
-	goldenDB.Resnapshot()
+	goldenDB.Resnapshot(ctx)
 })
 
 var _ = AfterSuite(func() {
@@ -264,6 +264,6 @@ func setupTestDB() {
 		c.SmartPlaylistRefreshDelay = 0
 	})
 
-	goldenDB.Restore()
+	goldenDB.Restore(ctx)
 	ds = persistence.New(db.Db())
 }

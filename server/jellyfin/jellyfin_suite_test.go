@@ -42,7 +42,7 @@ func invoke(h http.HandlerFunc, w http.ResponseWriter, r *http.Request) {
 // setTokenEpoch writes token_epoch directly: User().Put never stores it.
 func setTokenEpoch(userID string, epoch int) {
 	GinkgoHelper()
-	_, err := db.Db().Exec("UPDATE user SET token_epoch = ? WHERE id = ?", epoch, userID)
+	_, err := db.Db().ExecContext(GinkgoT().Context(), "UPDATE user SET token_epoch = ? WHERE id = ?", epoch, userID)
 	Expect(err).ToNot(HaveOccurred())
 }
 

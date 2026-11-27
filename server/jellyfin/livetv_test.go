@@ -36,7 +36,7 @@ var _ = Describe("Live TV radio", func() {
 	call := func(method, path, body string) *httptest.ResponseRecorder {
 		GinkgoHelper()
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r := httptest.NewRequestWithContext(ctx, method, path, strings.NewReader(body))
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="WatchAmp", Device="Watch", DeviceId="dev-1", Version="1.0"`)
 		r.Header.Set("X-Emby-Token", token)
 		api.ServeHTTP(w, r)

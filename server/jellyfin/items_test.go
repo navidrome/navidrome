@@ -159,7 +159,7 @@ var _ = Describe("Items", func() {
 	getItems := func(url string, ctx context.Context) (int, dto.QueryResult) {
 		GinkgoHelper()
 		w := httptest.NewRecorder()
-		invoke(api.getItems, w, httptest.NewRequest(http.MethodGet, url, nil).WithContext(ctx))
+		invoke(api.getItems, w, httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil))
 		var res dto.QueryResult
 		if w.Code == http.StatusOK {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -1020,7 +1020,7 @@ var _ = Describe("Items", func() {
 		getItem := func(itemID string, ctx context.Context) (int, dto.BaseItemDto) {
 			GinkgoHelper()
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Items/"+itemID, nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+itemID, nil)
 			invoke(api.getItem, w, withChiURLParam(r, "itemId", itemID))
 			var item dto.BaseItemDto
 			if w.Code == http.StatusOK {
@@ -1122,7 +1122,7 @@ var _ = Describe("Items", func() {
 		latest := func(ctx context.Context) []dto.BaseItemDto {
 			GinkgoHelper()
 			w := httptest.NewRecorder()
-			invoke(api.getLatest, w, httptest.NewRequest(http.MethodGet, "/Users/u1/Items/Latest", nil).WithContext(ctx))
+			invoke(api.getLatest, w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/Users/u1/Items/Latest", nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var items []dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &items)).To(Succeed())
@@ -1198,7 +1198,7 @@ var _ = Describe("Items", func() {
 
 		It("keeps entries from every value of a repeated param", func() {
 			repeated := func(rawURL string) string {
-				r := httptest.NewRequest(http.MethodGet, rawURL, nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 				return knownItemKinds(joinedStrings(req.Params(r), "includeitemtypes"))
 			}
 			Expect(repeated("/Items?includeitemtypes=MusicArtist&includeitemtypes=Audio&includeitemtypes=MusicAlbum")).
@@ -1235,21 +1235,21 @@ var _ = Describe("Items", func() {
 
 	Describe("decodedQueryIDs", func() {
 		It("decodes every entry when all are well-formed", func() {
-			r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("a2")), nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("a2")), nil)
 			ids, ok := decodedQueryIDs(r, "ids")
 			Expect(ok).To(BeTrue())
 			Expect(ids).To(Equal([]string{testID("a1"), testID("a2")}))
 		})
 
 		It("reports not ok and an empty list, not a partially-decoded one, for a mix of valid and malformed entries", func() {
-			r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+",not-a-valid-id", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+",not-a-valid-id", nil)
 			ids, ok := decodedQueryIDs(r, "ids")
 			Expect(ok).To(BeFalse())
 			Expect(ids).To(BeEmpty())
 		})
 
 		It("reports ok for an absent param, decoding to an empty list", func() {
-			r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items", nil)
 			ids, ok := decodedQueryIDs(r, "ids")
 			Expect(ok).To(BeTrue())
 			Expect(ids).To(BeEmpty())

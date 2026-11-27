@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -9,9 +10,11 @@ import (
 )
 
 var _ = Describe("migrateDB", func() {
+	var ctx context.Context
 	var db *sql.DB
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		var err error
 		db, err = sql.Open("sqlite3", ":memory:")
 		Expect(err).ToNot(HaveOccurred())
@@ -25,7 +28,7 @@ var _ = Describe("migrateDB", func() {
 
 	getUserVersion := func() int {
 		var version int
-		Expect(db.QueryRow(`PRAGMA user_version`).Scan(&version)).To(Succeed())
+		Expect(db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&version)).To(Succeed())
 		return version
 	}
 
@@ -35,11 +38,11 @@ var _ = Describe("migrateDB", func() {
 			`ALTER TABLE test ADD COLUMN email TEXT`,
 		}
 
-		Expect(migrateDB(db, migrations)).To(Succeed())
+		Expect(migrateDB(ctx, db, migrations)).To(Succeed())
 		Expect(getUserVersion()).To(Equal(2))
 
 		// Verify schema
-		_, err := db.Exec(`INSERT INTO test (id, name, email) VALUES (1, 'Alice', 'alice@test.com')`)
+		_, err := db.ExecContext(ctx, `INSERT INTO test (id, name, email) VALUES (1, 'Alice', 'alice@test.com')`)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -47,7 +50,7 @@ var _ = Describe("migrateDB", func() {
 		migrations1 := []string{
 			`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`,
 		}
-		Expect(migrateDB(db, migrations1)).To(Succeed())
+		Expect(migrateDB(ctx, db, migrations1)).To(Succeed())
 		Expect(getUserVersion()).To(Equal(1))
 
 		// Add a new migration
@@ -55,11 +58,11 @@ var _ = Describe("migrateDB", func() {
 			`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`,
 			`ALTER TABLE test ADD COLUMN email TEXT`,
 		}
-		Expect(migrateDB(db, migrations2)).To(Succeed())
+		Expect(migrateDB(ctx, db, migrations2)).To(Succeed())
 		Expect(getUserVersion()).To(Equal(2))
 
 		// Verify the new column exists
-		_, err := db.Exec(`INSERT INTO test (id, name, email) VALUES (1, 'Alice', 'alice@test.com')`)
+		_, err := db.ExecContext(ctx, `INSERT INTO test (id, name, email) VALUES (1, 'Alice', 'alice@test.com')`)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -67,13 +70,13 @@ var _ = Describe("migrateDB", func() {
 		migrations := []string{
 			`CREATE TABLE test (id INTEGER PRIMARY KEY)`,
 		}
-		Expect(migrateDB(db, migrations)).To(Succeed())
-		Expect(migrateDB(db, migrations)).To(Succeed())
+		Expect(migrateDB(ctx, db, migrations)).To(Succeed())
+		Expect(migrateDB(ctx, db, migrations)).To(Succeed())
 		Expect(getUserVersion()).To(Equal(1))
 	})
 
 	It("is a no-op with empty migrations slice", func() {
-		Expect(migrateDB(db, nil)).To(Succeed())
+		Expect(migrateDB(ctx, db, nil)).To(Succeed())
 		Expect(getUserVersion()).To(Equal(0))
 	})
 
@@ -83,7 +86,7 @@ var _ = Describe("migrateDB", func() {
 			`INVALID SQL STATEMENT`,
 		}
 
-		err := migrateDB(db, migrations)
+		err := migrateDB(ctx, db, migrations)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("migration 2 failed"))
 
@@ -91,7 +94,7 @@ var _ = Describe("migrateDB", func() {
 		Expect(getUserVersion()).To(Equal(0))
 
 		// Table should not exist (rolled back)
-		_, err = db.Exec(`INSERT INTO test (id) VALUES (1)`)
+		_, err = db.ExecContext(ctx, `INSERT INTO test (id) VALUES (1)`)
 		Expect(err).To(HaveOccurred())
 	})
 })

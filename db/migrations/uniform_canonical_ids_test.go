@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 
@@ -14,6 +15,7 @@ import (
 var _ = Describe("upUniformCanonicalIds", func() {
 	var db *sql.DB
 	var tx *sql.Tx
+	var ctx context.Context
 
 	const (
 		hashID    = "5cLJPkLA5DK2BADhoeotPk" // canonical, kept
@@ -29,6 +31,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		var err error
 		db, err = sql.Open("sqlite3", "file::memory:")
 		Expect(err).ToNot(HaveOccurred())
@@ -36,7 +39,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		DeferCleanup(func() { _ = db.Close() })
 
 		// Minimal fixture: every table/column idColumns and the list rewrites touch.
-		_, err = db.Exec(`
+		_, err = db.ExecContext(ctx, `
 			CREATE TABLE media_file (id text, pid text, artist_id text, album_id text, album_artist_id text, folder_id text, mbz_recording_id text);
 			CREATE TABLE album (id text, album_artist_id text);
 			CREATE TABLE artist (id text);
@@ -67,7 +70,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		seed := func(query string, args ...any) {
-			_, err := db.Exec(query, args...)
+			_, err := db.ExecContext(ctx, query, args...)
 			ExpectWithOffset(1, err).ToNot(HaveOccurred())
 		}
 		// media_file: legacy id/pid, hash artist, legacy album, mbz uuid must stay untouched
@@ -94,15 +97,15 @@ var _ = Describe("upUniformCanonicalIds", func() {
 
 	JustBeforeEach(func() {
 		var err error
-		tx, err = db.Begin()
+		tx, err = db.BeginTx(ctx, nil)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(upUniformCanonicalIds(GinkgoT().Context(), tx)).To(Succeed())
+		Expect(upUniformCanonicalIds(ctx, tx)).To(Succeed())
 		Expect(tx.Commit()).To(Succeed())
 	})
 
 	get := func(query string) string {
 		var s string
-		ExpectWithOffset(1, db.QueryRow(query).Scan(&s)).To(Succeed())
+		ExpectWithOffset(1, db.QueryRowContext(ctx, query).Scan(&s)).To(Succeed())
 		return s
 	}
 
@@ -185,7 +188,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 
 	rescanCount := func() int {
 		var count int
-		ExpectWithOffset(1, db.QueryRow(
+		ExpectWithOffset(1, db.QueryRowContext(ctx,
 			`SELECT count(*) FROM property WHERE id = ?`, consts.FullScanAfterMigrationFlagKey).Scan(&count)).To(Succeed())
 		return count
 	}
@@ -206,7 +209,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 
 	propCount := func(key string) int {
 		var count int
-		ExpectWithOffset(1, db.QueryRow(`SELECT count(*) FROM property WHERE id = ?`, key).Scan(&count)).To(Succeed())
+		ExpectWithOffset(1, db.QueryRowContext(ctx, `SELECT count(*) FROM property WHERE id = ?`, key).Scan(&count)).To(Succeed())
 		return count
 	}
 
@@ -217,7 +220,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 
 	Context("with no stored session secret", func() {
 		BeforeEach(func() {
-			_, err := db.Exec(`DELETE FROM property WHERE id = ?`, consts.JWTSecretKey)
+			_, err := db.ExecContext(ctx, `DELETE FROM property WHERE id = ?`, consts.JWTSecretKey)
 			Expect(err).ToNot(HaveOccurred())
 		})
 

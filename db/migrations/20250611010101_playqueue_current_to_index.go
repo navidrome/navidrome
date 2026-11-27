@@ -59,7 +59,7 @@ create table playqueue_dg_tmp(
 				}
 			}
 		}
-		_, err = stmt.Exec(id, userID, index, position, changedBy, items, createdAt, updatedAt)
+		_, err = stmt.ExecContext(ctx, id, userID, index, position, changedBy, items, createdAt, updatedAt)
 		if err != nil {
 			return err
 		}

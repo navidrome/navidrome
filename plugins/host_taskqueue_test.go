@@ -638,7 +638,7 @@ var _ = Describe("TaskQueueService", func() {
 
 			// Check next_run_at is positive and reasonable (capped at maxRetentionMs from now)
 			var nextRunAt int64
-			err = service.db.QueryRow(`SELECT next_run_at FROM tasks WHERE id = ?`, taskID).Scan(&nextRunAt)
+			err = service.db.QueryRowContext(ctx, `SELECT next_run_at FROM tasks WHERE id = ?`, taskID).Scan(&nextRunAt)
 			Expect(err).ToNot(HaveOccurred())
 
 			now := time.Now().UnixMilli()
@@ -908,7 +908,7 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 		defer instance.Close(ctx)
 
 		inputBytes, _ := json.Marshal(input)
-		_, outputBytes, err := instance.Call("nd_test_taskqueue", inputBytes)
+		_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_taskqueue", inputBytes)
 		if err != nil {
 			return nil, err
 		}

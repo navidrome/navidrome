@@ -2,6 +2,7 @@ package apiv1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,14 +17,16 @@ import (
 )
 
 var _ = Describe("OpenAPI document routes", func() {
+	var ctx context.Context
 	var router *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		router = New(struct{ model.DataStore }{})
 	})
 
 	get := func(path string, headers map[string]string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, path, nil)
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}

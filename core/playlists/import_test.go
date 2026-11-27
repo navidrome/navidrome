@@ -427,7 +427,7 @@ var _ = Describe("Playlists - Import", func() {
 				}
 				putPlaylists(ctx, ds, existingPls)
 				// Put leaves a smart playlist's counters to its evaluation, so set them directly.
-				_, err := db.Db().Exec("UPDATE playlist SET song_count = 42, duration = 123.4, size = 5000 WHERE id = 'smart-id'")
+				_, err := db.Db().ExecContext(ctx, "UPDATE playlist SET song_count = 42, duration = 123.4, size = 5000 WHERE id = 'smart-id'")
 				Expect(err).ToNot(HaveOccurred())
 
 				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
