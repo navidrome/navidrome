@@ -13,15 +13,16 @@ if [ ! -f /etc/navidrome/navidrome.toml ]; then
     printf "MusicFolder = \"/opt/navidrome/music\"\n" >> /etc/navidrome/navidrome.toml
 fi
 
+# Older versions created these folders as root when this script ran `navidrome`. They were created empty,
+# so no -R. Real dirs only, never following links: navidrome owns /var/lib/navidrome and could plant symlinks.
+find /var/lib/navidrome/cache /var/lib/navidrome/artwork /var/lib/navidrome/plugins -maxdepth 0 -type d -user root -exec chown -h navidrome:navidrome {} + 2>/dev/null
+
 postinstall_flag="/var/lib/navidrome/.installed"
 
 if [ ! -f "$postinstall_flag" ]; then
     # The primary reason why this would fail is if the service was already installed AND
     # someone manually removed the .installed flag. In this case, ignore the error
     navidrome service install --user navidrome --working-directory /var/lib/navidrome --configfile /etc/navidrome/navidrome.toml || :
-    # Any `navidrome` command will make a cache. Make sure that this is properly owned by the Navidrome user
-    # and not by root
-    chown navidrome:navidrome /var/lib/navidrome/cache
     touch "$postinstall_flag"
 else
     navidrome service stop --configfile /etc/navidrome/navidrome.toml && navidrome service start --configfile /etc/navidrome/navidrome.toml

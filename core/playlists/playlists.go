@@ -3,11 +3,12 @@ package playlists
 import (
 	"context"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
@@ -17,11 +18,34 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
+// MaxTracksPerRequest is how many tracks one API request may add or set; 0 means no limit.
+// Native album, artist and disc ids are not counted: their expansion is bounded by the library size.
+func MaxTracksPerRequest() int {
+	return max(conf.Server().DevMaxPlaylistTracksPerRequest, 0)
+}
+
+// TooManyTracks reports whether n tracks exceed MaxTracksPerRequest.
+func TooManyTracks(n int) bool {
+	limit := MaxTracksPerRequest()
+	return limit > 0 && n > limit
+}
+
+// MaxRequestBytes is a body limit that grows with MaxTracksPerRequest, so raising the track limit is not undone by a 413.
+// It never goes below floor, and there is no limit when the track limit is 0.
+func MaxRequestBytes(floor, perTrack int64) int64 {
+	tracks := MaxTracksPerRequest()
+	if tracks == 0 {
+		return math.MaxInt64
+	}
+	return max(floor, int64(tracks)*perTrack)
+}
+
 type Playlists interface {
 	// Reads
 	GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error)
 	Get(ctx context.Context, id string) (*model.Playlist, error)
 	GetWithTracks(ctx context.Context, id string) (*model.Playlist, error)
+	Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error)
 	GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error)
 
 	// Mutations
@@ -31,6 +55,7 @@ type Playlists interface {
 
 	// Track management
 	AddTracks(ctx context.Context, playlistID string, ids []string) (int, error)
+	InsertTracks(ctx context.Context, playlistID string, ids []string, pos int) (int, error)
 	AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error)
 	AddArtists(ctx context.Context, playlistID string, artistIds []string) (int, error)
 	AddDiscs(ctx context.Context, playlistID string, discs []model.DiscID) (int, error)
@@ -47,32 +72,36 @@ type Playlists interface {
 	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
 
 	// REST adapters
-	NewRepository(ctx context.Context) rest.Repository
-	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
+	Repository() rest.Repository[model.Playlist]
+	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository[model.PlaylistTrack]
 }
 
-// ImageUploadService is a local interface satisfied by core.ImageUploadService.
-// Defined here to avoid an import cycle between core and core/playlists.
+// ImageUploadService is a local interface satisfied by artwork.Uploader.
+// Defined here to avoid an import cycle between core/artwork and core/playlists.
 type ImageUploadService interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
+	EnqueueArtwork(ctx context.Context, entityType, entityID string)
 }
 
 type playlists struct {
 	ds        model.DataStore
 	imgUpload ImageUploadService
+	repo      *playlistRepositoryWrapper
 }
 
 func NewPlaylists(ds model.DataStore, imgUpload ImageUploadService) Playlists {
-	return &playlists{ds: ds, imgUpload: imgUpload}
+	s := &playlists{ds: ds, imgUpload: imgUpload}
+	s.repo = &playlistRepositoryWrapper{PlaylistRepository: ds.Playlist(), service: s}
+	return s
 }
 
 func InPath(folder model.Folder) bool {
-	if conf.Server.PlaylistsPath == "" {
+	if conf.Server().PlaylistsPath == "" {
 		return true
 	}
 	rel, _ := filepath.Rel(folder.LibraryPath, folder.AbsolutePath())
-	for path := range strings.SplitSeq(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
+	for path := range strings.SplitSeq(conf.Server().PlaylistsPath, string(filepath.ListSeparator)) {
 		if match, _ := doublestar.Match(path, rel); match {
 			return true
 		}
@@ -83,19 +112,34 @@ func InPath(folder model.Folder) bool {
 // --- Read operations ---
 
 func (s *playlists) GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error) {
-	return s.ds.Playlist(ctx).GetAll(options...)
+	return s.ds.Playlist().GetAll(ctx, options...)
 }
 
 func (s *playlists) Get(ctx context.Context, id string) (*model.Playlist, error) {
-	return s.ds.Playlist(ctx).Get(id)
+	return s.ds.Playlist().Get(ctx, id)
 }
 
 func (s *playlists) GetWithTracks(ctx context.Context, id string) (*model.Playlist, error) {
-	return s.ds.Playlist(ctx).GetWithTracks(id, true, false)
+	return s.ds.Playlist().GetWithTracks(ctx, id, true, false)
 }
 
 func (s *playlists) GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error) {
-	return s.ds.Playlist(ctx).GetPlaylists(mediaFileId)
+	return s.ds.Playlist().GetPlaylists(ctx, mediaFileId)
+}
+
+// Tracks scopes a repository to one playlist's tracks, for callers that page or stream them rather
+// than loading every one like GetWithTracks. Gets first because PlaylistRepository.Tracks discards
+// its error behind a nil (and warns), and this is probed with ids that are usually not playlists.
+func (s *playlists) Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error) {
+	repo := s.ds.Playlist()
+	if _, err := repo.Get(ctx, id); err != nil {
+		return nil, err
+	}
+	tracks := repo.Tracks(ctx, id, true)
+	if tracks == nil {
+		return nil, model.ErrNotFound
+	}
+	return tracks, nil
 }
 
 // --- Mutation operations ---
@@ -109,15 +153,16 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 		var err error
 
 		if playlistId != "" {
-			pls, err = tx.Playlist(ctx).Get(playlistId)
+			pls, err = tx.Playlist().Get(ctx, playlistId)
 			if err != nil {
 				return err
 			}
-			if pls.IsSmartPlaylist() {
-				return model.ErrNotAuthorized
-			}
+			// Ownership first: a non-owner must get ErrNotAuthorized, not a read-only conflict.
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
 				return model.ErrNotAuthorized
+			}
+			if !pls.TracksEditable() {
+				return model.ErrPlaylistNotEditable
 			}
 		} else {
 			pls = &model.Playlist{Name: name}
@@ -126,7 +171,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 		pls.Tracks = nil
 		pls.AddMediaFilesByID(ids)
 
-		err = tx.Playlist(ctx).Put(pls)
+		err = tx.Playlist().Put(ctx, pls)
 		playlistId = pls.ID
 		return err
 	})
@@ -146,7 +191,7 @@ func (s *playlists) Delete(ctx context.Context, id string) error {
 		}
 	}
 
-	return s.ds.Playlist(ctx).Delete(id)
+	return s.ds.Playlist().Delete(ctx, id)
 }
 
 func (s *playlists) Update(ctx context.Context, playlistID string,
@@ -164,21 +209,28 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		return err
 	}
 	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
-		repo := tx.Playlist(ctx)
+		repo := tx.Playlist()
 
 		if len(idxToRemove) > 0 {
-			tracksRepo := repo.Tracks(playlistID, false)
-			// Convert 0-based indices to 1-based position IDs and delete them directly,
-			// avoiding the need to load all tracks into memory.
-			positions := make([]string, len(idxToRemove))
-			for i, idx := range idxToRemove {
-				positions[i] = strconv.Itoa(idx + 1)
-			}
-			if err := tracksRepo.Delete(positions...); err != nil {
+			tracksRepo := repo.Tracks(ctx, playlistID, false)
+			// Indexes refer to GetWithTracks' list, which hides missing and inaccessible-library tracks.
+			visible, err := tracksRepo.GetPositionIDs(ctx, model.QueryOptions{Sort: "id", Filters: squirrel.Eq{"missing": false}})
+			if err != nil {
 				return err
 			}
+			positions := make([]string, 0, len(idxToRemove))
+			for _, idx := range idxToRemove {
+				if idx >= 0 && idx < len(visible) {
+					positions = append(positions, visible[idx])
+				}
+			}
+			if len(positions) > 0 {
+				if err := tracksRepo.Delete(ctx, positions...); err != nil {
+					return err
+				}
+			}
 			if len(idsToAdd) > 0 {
-				if _, err := tracksRepo.Add(idsToAdd); err != nil {
+				if _, err := tracksRepo.Add(ctx, idsToAdd); err != nil {
 					return err
 				}
 			}
@@ -186,7 +238,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 		}
 
 		if len(idsToAdd) > 0 {
-			if _, err := repo.Tracks(playlistID, false).Add(idsToAdd); err != nil {
+			if _, err := repo.Tracks(ctx, playlistID, false).Add(ctx, idsToAdd); err != nil {
 				return err
 			}
 		}
@@ -202,7 +254,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 
 // checkWritable fetches the playlist and verifies the current user can modify it.
 func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playlist, error) {
-	pls, err := s.ds.Playlist(ctx).Get(id)
+	pls, err := s.ds.Playlist().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -213,14 +265,14 @@ func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playli
 	return pls, nil
 }
 
-// checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
+// checkTracksEditable verifies the user owns the playlist and its tracks are editable.
 func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
 	pls, err := s.checkWritable(ctx, playlistID)
 	if err != nil {
 		return nil, err
 	}
-	if pls.IsSmartPlaylist() {
-		return nil, model.ErrNotAuthorized
+	if !pls.TracksEditable() {
+		return nil, model.ErrPlaylistNotEditable
 	}
 	return pls, nil
 }
@@ -238,7 +290,7 @@ func (s *playlists) updateMetadata(ctx context.Context, ds model.DataStore, pls 
 	if public != nil {
 		pls.Public = *public
 	}
-	return ds.Playlist(ctx).Put(pls)
+	return ds.Playlist().Put(ctx, pls)
 }
 
 // --- Track management operations ---
@@ -247,28 +299,44 @@ func (s *playlists) AddTracks(ctx context.Context, playlistID string, ids []stri
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
-	return s.ds.Playlist(ctx).Tracks(playlistID, false).Add(ids)
+	return s.ds.Playlist().Tracks(ctx, playlistID, false).Add(ctx, ids)
+}
+
+// InsertTracks adds tracks before the 1-based position pos; a position past the end appends.
+func (s *playlists) InsertTracks(ctx context.Context, playlistID string, ids []string, pos int) (int, error) {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
+		return 0, err
+	}
+	var count int
+	// Immediate: a deferred tx that reads before shifting fails at once with SQLITE_BUSY under
+	// concurrent writers instead of waiting for the lock.
+	err := s.ds.WithTxImmediate(func(tx model.DataStore) error {
+		var err error
+		count, err = tx.Playlist().Tracks(ctx, playlistID, false).Insert(ctx, ids, pos)
+		return err
+	})
+	return count, err
 }
 
 func (s *playlists) AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error) {
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
-	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddAlbums(albumIds)
+	return s.ds.Playlist().Tracks(ctx, playlistID, false).AddAlbums(ctx, albumIds)
 }
 
 func (s *playlists) AddArtists(ctx context.Context, playlistID string, artistIds []string) (int, error) {
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
-	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddArtists(artistIds)
+	return s.ds.Playlist().Tracks(ctx, playlistID, false).AddArtists(ctx, artistIds)
 }
 
 func (s *playlists) AddDiscs(ctx context.Context, playlistID string, discs []model.DiscID) (int, error) {
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return 0, err
 	}
-	return s.ds.Playlist(ctx).Tracks(playlistID, false).AddDiscs(discs)
+	return s.ds.Playlist().Tracks(ctx, playlistID, false).AddDiscs(ctx, discs)
 }
 
 func (s *playlists) RemoveTracks(ctx context.Context, playlistID string, trackIds []string) error {
@@ -276,7 +344,7 @@ func (s *playlists) RemoveTracks(ctx context.Context, playlistID string, trackId
 		return err
 	}
 	return s.ds.WithTx(func(tx model.DataStore) error {
-		return tx.Playlist(ctx).Tracks(playlistID, false).Delete(trackIds...)
+		return tx.Playlist().Tracks(ctx, playlistID, false).Delete(ctx, trackIds...)
 	})
 }
 
@@ -284,8 +352,8 @@ func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return err
 	}
-	return s.ds.WithTx(func(tx model.DataStore) error {
-		return tx.Playlist(ctx).Tracks(playlistID, false).Reorder(pos, newPos)
+	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
+		return tx.Playlist().Tracks(ctx, playlistID, false).Reorder(ctx, pos, newPos)
 	})
 }
 
@@ -304,7 +372,11 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 	}
 
 	pls.UploadedImage = filename
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist().Put(ctx, pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }
 
 func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
@@ -318,5 +390,9 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 	}
 
 	pls.UploadedImage = ""
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist().Put(ctx, pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }

@@ -45,14 +45,15 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 
 	// Parse optional target parameters for selective scanning
 	var targets []model.ScanTarget
-	if targetParams, err := p.Strings("target"); err == nil && len(targetParams) > 0 {
+	if targetParams := p.Strings("target"); len(targetParams) > 0 {
+		var err error
 		targets, err = model.ParseTargets(targetParams)
 		if err != nil {
 			return nil, newError(responses.ErrorGeneric, fmt.Sprintf("Invalid target parameter: %v", err))
 		}
 
 		// Validate all libraries in targets exist and user has access to them
-		userLibraries, err := api.ds.User(ctx).GetUserLibraries(loggedUser.ID)
+		userLibraries, err := api.ds.User().GetUserLibraries(ctx, loggedUser.ID)
 		if err != nil {
 			return nil, newError(responses.ErrorGeneric, "Internal error")
 		}
@@ -66,7 +67,7 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 
 		// Special case: if single library with empty path and it's the only library in DB, call ScanAll
 		if len(targets) == 1 && targets[0].FolderPath == "" {
-			allLibs, err := api.ds.Library(ctx).GetAll()
+			allLibs, err := api.ds.Library().GetAll(ctx)
 			if err != nil {
 				return nil, newError(responses.ErrorGeneric, "Internal error")
 			}

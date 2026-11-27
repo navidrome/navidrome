@@ -4,6 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -18,9 +21,9 @@ var _ = Describe("LibraryRepository", func() {
 	var conn *dbx.DB
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
-		repo = NewLibraryRepository(ctx, conn)
+		repo = NewLibraryRepository(conn)
 	})
 
 	AfterEach(func() {
@@ -37,17 +40,37 @@ var _ = Describe("LibraryRepository", func() {
 					Path: "/music/test",
 				}
 
-				err := repo.Put(lib)
+				err := repo.Put(ctx, lib)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lib.ID).To(BeNumerically(">", 0))
 				Expect(lib.CreatedAt).ToNot(BeZero())
 				Expect(lib.UpdatedAt).ToNot(BeZero())
 
 				// Verify it was inserted
-				savedLib, err := repo.Get(lib.ID)
+				savedLib, err := repo.Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(savedLib.Name).To(Equal("Test Library"))
 				Expect(savedLib.Path).To(Equal("/music/test"))
+			})
+		})
+
+		Context("when colsToUpdate is specified", func() {
+			It("only writes the requested columns", func() {
+				lib := &model.Library{
+					Name:            "Original Library",
+					Path:            "/music/original",
+					RemotePath:      "/remote/original",
+					DefaultNewUsers: true,
+				}
+				Expect(repo.Put(ctx, lib)).To(Succeed())
+
+				Expect(repo.Put(ctx, &model.Library{ID: lib.ID, Name: "Renamed", Path: lib.Path}, "name", "path")).To(Succeed())
+
+				saved, err := repo.Get(ctx, lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(saved.Name).To(Equal("Renamed"))
+				Expect(saved.RemotePath).To(Equal("/remote/original"))
+				Expect(saved.DefaultNewUsers).To(BeTrue())
 			})
 		})
 
@@ -59,7 +82,7 @@ var _ = Describe("LibraryRepository", func() {
 					Name: "Original Library",
 					Path: "/music/original",
 				}
-				err := repo.Put(lib)
+				err := repo.Put(ctx, lib)
 				Expect(err).ToNot(HaveOccurred())
 
 				originalID := lib.ID
@@ -73,7 +96,7 @@ var _ = Describe("LibraryRepository", func() {
 				// Now update it
 				lib.Name = "Updated Library"
 				lib.Path = "/music/updated"
-				err = repo.Put(lib)
+				err = repo.Put(ctx, lib)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify it was updated, not inserted
@@ -82,7 +105,7 @@ var _ = Describe("LibraryRepository", func() {
 				Expect(lib.UpdatedAt).To(BeTemporally(">", originalCreatedAt))
 
 				// Verify the changes were saved
-				savedLib, err := repo.Get(lib.ID)
+				savedLib, err := repo.Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(savedLib.Name).To(Equal("Updated Library"))
 				Expect(savedLib.Path).To(Equal("/music/updated"))
@@ -98,18 +121,18 @@ var _ = Describe("LibraryRepository", func() {
 				}
 
 				// Ensure the record doesn't exist
-				_, err := repo.Get(999)
+				_, err := repo.Get(ctx, 999)
 				Expect(err).To(HaveOccurred())
 
 				// Put should insert it
-				err = repo.Put(lib)
+				err = repo.Put(ctx, lib)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lib.ID).To(Equal(999))
 				Expect(lib.CreatedAt).ToNot(BeZero())
 				Expect(lib.UpdatedAt).ToNot(BeZero())
 
 				// Verify it was inserted with the correct ID
-				savedLib, err := repo.Get(999)
+				savedLib, err := repo.Get(ctx, 999)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(savedLib.ID).To(Equal(999))
 				Expect(savedLib.Name).To(Equal("New Library with ID"))
@@ -118,11 +141,62 @@ var _ = Describe("LibraryRepository", func() {
 		})
 	})
 
+	Describe("StoreMusicFolder", func() {
+		var libBefore *model.Library
+
+		BeforeEach(func() {
+			var err error
+			libBefore, err = repo.Get(ctx, model.DefaultLibraryID)
+			Expect(err).ToNot(HaveOccurred())
+
+			DeferCleanup(func() {
+				_, _ = conn.NewQuery("update library set path = {:path}, updated_at = {:updated_at} where id = {:id}").
+					Bind(dbx.Params{"path": libBefore.Path, "updated_at": libBefore.UpdatedAt, "id": model.DefaultLibraryID}).
+					Execute()
+				libLock.Lock()
+				defer libLock.Unlock()
+				delete(libCache, model.DefaultLibraryID)
+			})
+		})
+
+		It("skips updating the default library when the configured path is unchanged", func() {
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path })
+			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
+
+			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(libAfter.Path).To(Equal(libBefore.Path))
+			Expect(libAfter.UpdatedAt).To(Equal(libBefore.UpdatedAt))
+		})
+
+		It("does not need the write lock when the configured path is unchanged", func() {
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path })
+			lockConn, err := db.Db().Conn(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(lockConn.Close)
+			_, err = lockConn.ExecContext(ctx, "BEGIN IMMEDIATE")
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _, _ = lockConn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK") })
+
+			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
+		})
+
+		It("updates the default library only when the configured path changes", func() {
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path + "-updated" })
+			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
+
+			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(libAfter.Path).To(Equal(conf.Server().MusicFolder))
+			Expect(libAfter.UpdatedAt).ToNot(Equal(libBefore.UpdatedAt))
+		})
+	})
+
 	It("refreshes stats", func() {
-		libBefore, err := repo.Get(1)
+		libBefore, err := repo.Get(ctx, 1)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(repo.RefreshStats(1)).To(Succeed())
-		libAfter, err := repo.Get(1)
+		Expect(repo.RefreshStats(ctx, 1)).To(Succeed())
+		libAfter, err := repo.Get(ctx, 1)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(libAfter.UpdatedAt).To(BeTemporally(">", libBefore.UpdatedAt))
 
@@ -158,16 +232,16 @@ var _ = Describe("LibraryRepository", func() {
 				Name: "Test Scan Library",
 				Path: "/music/test-scan",
 			}
-			err := repo.Put(lib)
+			err := repo.Put(ctx, lib)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		DescribeTable("ScanBegin",
 			func(fullScan bool, expectedFullScanInProgress bool) {
-				err := repo.ScanBegin(lib.ID, fullScan)
+				err := repo.ScanBegin(ctx, lib.ID, fullScan)
 				Expect(err).ToNot(HaveOccurred())
 
-				updatedLib, err := repo.Get(lib.ID)
+				updatedLib, err := repo.Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(updatedLib.LastScanStartedAt).ToNot(BeZero())
 				Expect(updatedLib.FullScanInProgress).To(Equal(expectedFullScanInProgress))
@@ -178,15 +252,15 @@ var _ = Describe("LibraryRepository", func() {
 
 		Context("ScanEnd", func() {
 			BeforeEach(func() {
-				err := repo.ScanBegin(lib.ID, true)
+				err := repo.ScanBegin(ctx, lib.ID, true)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("sets LastScanAt and clears FullScanInProgress and LastScanStartedAt", func() {
-				err := repo.ScanEnd(lib.ID)
+				err := repo.ScanEnd(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 
-				updatedLib, err := repo.Get(lib.ID)
+				updatedLib, err := repo.Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(updatedLib.LastScanAt).ToNot(BeZero())
 				Expect(updatedLib.FullScanInProgress).To(BeFalse())
@@ -194,16 +268,94 @@ var _ = Describe("LibraryRepository", func() {
 			})
 
 			It("sets LastScanAt to be after LastScanStartedAt", func() {
-				libBefore, err := repo.Get(lib.ID)
+				libBefore, err := repo.Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = repo.ScanEnd(lib.ID)
+				err = repo.ScanEnd(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 
-				libAfter, err := repo.Get(lib.ID)
+				libAfter, err := repo.Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libAfter.LastScanAt).To(BeTemporally(">=", libBefore.LastScanStartedAt))
 			})
+		})
+	})
+
+	Describe("PID config", func() {
+		It("stores the overrides, and Put never touches the scanned specs", func() {
+			lib := &model.Library{Name: "PID Library", Path: "/music/pid", PIDAlbum: "folder", PIDTrack: "title"}
+			Expect(repo.Put(ctx, lib)).To(Succeed())
+			Expect(repo.SetScannedPID(ctx, lib.ID, model.PIDConfig{Album: "folder", Track: "title"})).To(Succeed())
+
+			// An update coming from the REST API has no scanned specs. It must not clear them
+			update := &model.Library{ID: lib.ID, Name: "PID Library", Path: "/music/pid", PIDTrack: "title"}
+			Expect(repo.Put(ctx, update)).To(Succeed())
+
+			saved, err := repo.Get(ctx, lib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.PIDAlbum).To(BeEmpty())
+			Expect(saved.PIDTrack).To(Equal("title"))
+			Expect(saved.ScannedPIDAlbum).To(Equal("folder"))
+			Expect(saved.ScannedPIDTrack).To(Equal("title"))
+		})
+
+		It("keeps the overrides when a partial update does not send them", func() {
+			lib := &model.Library{Name: "Partial", Path: "/music/partial", PIDAlbum: "folder", PIDTrack: "title"}
+			Expect(repo.Put(ctx, lib)).To(Succeed())
+
+			Expect(repo.Put(ctx, &model.Library{ID: lib.ID, Name: "Renamed"}, "name")).To(Succeed())
+
+			saved, err := repo.Get(ctx, lib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.Name).To(Equal("Renamed"))
+			Expect(saved.PIDAlbum).To(Equal("folder"))
+			Expect(saved.PIDTrack).To(Equal("title"))
+		})
+	})
+
+	Describe("Delete", func() {
+		var adminRepo model.LibraryRepository
+		var artistRepo model.ArtistRepository
+		var adminCtx context.Context
+
+		artistMissing := func(id string) bool {
+			var missing bool
+			err := conn.NewQuery("SELECT missing FROM artist WHERE id = {:id}").
+				Bind(dbx.Params{"id": id}).Row(&missing)
+			Expect(err).ToNot(HaveOccurred())
+			return missing
+		}
+
+		BeforeEach(func() {
+			adminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			adminRepo = NewLibraryRepository(conn)
+			artistRepo = NewArtistRepository(conn)
+		})
+
+		It("marks artists orphaned by the delete as missing", func() {
+			lib := model.Library{Name: "Doomed Library", Path: "/doomed"}
+			Expect(adminRepo.Put(adminCtx, &lib)).To(Succeed())
+
+			orphanArtist := model.Artist{ID: "delete-orphan", Name: "Orphan To Be"}
+			sharedArtist := model.Artist{ID: "delete-shared", Name: "Shared Artist"}
+			Expect(artistRepo.Put(adminCtx, &orphanArtist)).To(Succeed())
+			Expect(artistRepo.Put(adminCtx, &sharedArtist)).To(Succeed())
+			Expect(adminRepo.AddArtist(adminCtx, lib.ID, orphanArtist.ID)).To(Succeed())
+			Expect(adminRepo.AddArtist(adminCtx, lib.ID, sharedArtist.ID)).To(Succeed())
+			Expect(adminRepo.AddArtist(adminCtx, 1, sharedArtist.ID)).To(Succeed())
+			DeferCleanup(func() {
+				if raw, ok := artistRepo.(*artistRepository); ok {
+					_, _ = raw.executeSQL(adminCtx, squirrel.Delete("artist").
+						Where(squirrel.Eq{"id": []string{orphanArtist.ID, sharedArtist.ID}}))
+				}
+			})
+
+			Expect(artistMissing(orphanArtist.ID)).To(BeFalse())
+
+			Expect(adminRepo.Delete(adminCtx, lib.ID)).To(Succeed())
+
+			Expect(artistMissing(orphanArtist.ID)).To(BeTrue(), "orphaned artist should be marked missing")
+			Expect(artistMissing(sharedArtist.ID)).To(BeFalse(), "artist still in another library must stay visible")
 		})
 	})
 })

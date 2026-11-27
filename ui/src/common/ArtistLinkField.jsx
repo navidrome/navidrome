@@ -6,8 +6,10 @@ import { useGetHandleArtistClick } from './useGetHandleArtistClick'
 import { intersperse } from '../utils/index.js'
 import { useDispatch } from 'react-redux'
 import { closeExtendedInfoDialog } from '../actions/dialogs.js'
+import config from '../config'
 
-const ALink = withWidth()((props) => {
+// noSSR: withWidth otherwise renders null until mounted, so the artist line pops in and grows the row.
+const ALink = withWidth({ noSSR: true })((props) => {
   const { artist, width, ...rest } = props
   const artistLink = useGetHandleArtistClick(width)
   const dispatch = useDispatch()
@@ -69,7 +71,9 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
   // Get artists array with fallback
   let artists = record?.participants?.[role] || []
   const remixers =
-    role === 'artist' && record?.participants?.remixer
+    role === 'artist' &&
+    config.uiAppendRemixers &&
+    record?.participants?.remixer
       ? record.participants.remixer.slice(0, 2)
       : []
 

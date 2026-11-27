@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -27,10 +28,10 @@ type localStorage struct {
 }
 
 func newLocalStorage(u url.URL) storage.Storage {
-	newExtractor, ok := extractors[conf.Server.Scanner.Extractor]
+	newExtractor, ok := extractors[conf.Server().Scanner.Extractor]
 	if !ok || newExtractor == nil {
-		if conf.Server.Scanner.Extractor != consts.DefaultScannerExtractor {
-			log.Warn("Extractor not found, using default", "extractor", conf.Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		if conf.Server().Scanner.Extractor != consts.DefaultScannerExtractor {
+			log.Warn("Extractor not found, using default", "extractor", conf.Server().Scanner.Extractor, "default", consts.DefaultScannerExtractor)
 		}
 		newExtractor = extractors[consts.DefaultScannerExtractor]
 		if newExtractor == nil {
@@ -51,15 +52,39 @@ func newLocalStorage(u url.URL) storage.Storage {
 
 func (s *localStorage) FS() (storage.MusicFS, error) {
 	path := s.u.Path
-	if _, err := os.Stat(path); err != nil { //nolint:gosec
+	if _, err := os.Stat(path); err != nil {
 		return nil, fmt.Errorf("%w: %s", err, path)
 	}
-	return &localFS{FS: os.DirFS(path), extractor: s.extractor}, nil
+	return &localFS{FS: os.DirFS(path), extractor: s.extractor, root: path}, nil
 }
 
 type localFS struct {
 	fs.FS
 	extractor Extractor
+	root      string
+	// devices whose statx never reports a birth time (NFS, rclone/FUSE), so we ask each only once
+	noBirthTime sync.Map
+}
+
+// ResolveSymlink implements storage.SymlinkResolverFS. It resolves the whole chain at the
+// OS level, so links whose targets live outside the library folder (not reachable through
+// the fs.FS abstraction) still resolve to their final target.
+func (lfs *localFS) ResolveSymlink(name string) (string, error) {
+	if !fs.ValidPath(name) {
+		return "", &fs.PathError{Op: "resolvesymlink", Path: name, Err: fs.ErrInvalid}
+	}
+	return filepath.EvalSymlinks(filepath.Join(lfs.root, filepath.FromSlash(name)))
+}
+
+// ReadLink and Lstat implement fs.ReadLinkFS, so callers can detect symlinks without following them.
+var _ fs.ReadLinkFS = (*localFS)(nil)
+
+func (lfs *localFS) ReadLink(name string) (string, error) {
+	return fs.ReadLink(lfs.FS, name)
+}
+
+func (lfs *localFS) Lstat(name string) (fs.FileInfo, error) {
+	return fs.Lstat(lfs.FS, name)
 }
 
 func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
@@ -73,7 +98,11 @@ func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 			if err != nil {
 				return nil, err
 			}
-			v.FileInfo = localFileInfo{info}
+			v.FileInfo = localFileInfo{
+				FileInfo:    info,
+				path:        filepath.Join(lfs.root, filepath.FromSlash(path)),
+				noBirthTime: &lfs.noBirthTime,
+			}
 			res[path] = v
 		}
 	}
@@ -84,13 +113,44 @@ func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 // with metadata.FileInfo
 type localFileInfo struct {
 	fs.FileInfo
+	path        string
+	noBirthTime *sync.Map
 }
 
 func (lfi localFileInfo) BirthTime() time.Time {
 	if ts := times.Get(lfi.FileInfo); ts.HasBirthTime() {
 		return ts.BirthTime()
 	}
+	if bt, ok := lfi.statxBirthTime(); ok {
+		return bt
+	}
 	return time.Now()
+}
+
+// statxBirthTime reads the birth time from the path, which on Linux is the only way to get it.
+// Filesystems that never report one are remembered per device, so a scan asks each only once.
+func (lfi localFileInfo) statxBirthTime() (time.Time, bool) {
+	if lfi.path == "" {
+		return time.Time{}, false
+	}
+	dev, hasDev := deviceID(lfi.FileInfo)
+	memo := lfi.noBirthTime
+	if hasDev && memo != nil {
+		if _, skip := memo.Load(dev); skip {
+			return time.Time{}, false
+		}
+	}
+	ts, err := times.Stat(lfi.path)
+	if err != nil {
+		return time.Time{}, false
+	}
+	if ts.HasBirthTime() {
+		return ts.BirthTime(), true
+	}
+	if hasDev && memo != nil {
+		memo.Store(dev, struct{}{})
+	}
+	return time.Time{}, false
 }
 
 func init() {

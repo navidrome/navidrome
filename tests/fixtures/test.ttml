@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:frameRate="30" ttp:subFrameRate="2" ttp:tickRate="10">
+  <body>
+    <div xml:lang="eng">
+      <p begin="00:00:18.80">We're no strangers to love</p>
+      <p begin="00:00:22:24">You know the rules and so do I</p>
+    </div>
+    <div xml:lang="por">
+      <p begin="188t">Nao somos estranhos ao amor</p>
+    </div>
+  </body>
+</tt>

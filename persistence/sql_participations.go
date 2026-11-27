@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -22,15 +23,42 @@ type flatParticipant struct {
 	SubRole  string `json:"sub_role,omitempty"`
 }
 
-func marshalParticipants(participants model.Participants) string {
+// ParticipantIDFilter matches rows of table where the artist participates in any of the given roles
+// (any role when empty). Semi-joins <table>_artists; json_tree over the JSON is far slower at scale.
+func ParticipantIDFilter(table string, artistID any, roles ...model.Role) Sqlizer {
+	return participantIDFilter(table, artistID, false, roles)
+}
+
+// NotParticipantIDFilter is the negation of ParticipantIDFilter.
+func NotParticipantIDFilter(table string, artistID any, roles ...model.Role) Sqlizer {
+	return participantIDFilter(table, artistID, true, roles)
+}
+
+func participantIDFilter(table string, artistID any, negate bool, roles []model.Role) Sqlizer {
+	sel := Select(table + "_id").From(table + "_artists").Where(Eq{"artist_id": artistID})
+	if len(roles) > 0 {
+		sel = sel.Where(Eq{"role": slice.Map(roles, func(r model.Role) string { return r.String() })})
+	}
+	sql, args, _ := sel.ToSql()
+	op := " IN ("
+	if negate {
+		op = " NOT IN ("
+	}
+	return Expr(table+".id"+op+sql+")", args...)
+}
+
+func marshalParticipants(participants model.Participants) (string, error) {
 	dbParticipants := make(map[model.Role][]participant)
 	for role, artists := range participants {
 		for _, artist := range artists {
 			dbParticipants[role] = append(dbParticipants[role], participant{ID: artist.ID, SubRole: artist.SubRole, Name: artist.Name})
 		}
 	}
-	res, _ := json.Marshal(dbParticipants)
-	return string(res)
+	res, err := json.Marshal(dbParticipants)
+	if err != nil {
+		return "", fmt.Errorf("marshalling participants: %w", err)
+	}
+	return string(res), nil
 }
 
 func unmarshalParticipants(data string) (model.Participants, error) {
@@ -43,19 +71,19 @@ func unmarshalParticipants(data string) (model.Participants, error) {
 	participants := make(model.Participants, len(dbParticipants))
 	for role, participantList := range dbParticipants {
 		artists := slice.Map(participantList, func(p participant) model.Participant {
-			return model.Participant{Artist: model.Artist{ID: p.ID, Name: p.Name}, SubRole: p.SubRole}
+			return model.Participant{ID: p.ID, Name: p.Name, SubRole: p.SubRole}
 		})
 		participants[role] = artists
 	}
 	return participants, nil
 }
 
-func (r sqlRepository) updateParticipants(itemID string, participants model.Participants) error {
+func (r sqlRepository) updateParticipants(ctx context.Context, itemID string, participants model.Participants) error {
 	// Delete all existing participant entries for this item.
 	// This ensures stale role associations are removed when an artist's role changes
 	// (e.g., an artist was both albumartist and composer, but is now only composer).
 	sqd := Delete(r.tableName + "_artists").Where(Eq{r.tableName + "_id": itemID})
-	_, err := r.executeSQL(sqd)
+	_, err := r.executeSQL(ctx, sqd)
 	if err != nil {
 		return err
 	}
@@ -95,14 +123,14 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING   -- Ignore duplicates
 	`, r.tableName)
 
-	_, err = r.executeSQL(Expr(query, itemID, string(participantsJSON)))
+	_, err = r.executeSQL(ctx, Expr(query, itemID, string(participantsJSON)))
 	return err
 }
 
-func (r *sqlRepository) getParticipants(m *model.MediaFile) (model.Participants, error) {
-	ar := NewArtistRepository(r.ctx, r.db)
+func (r *sqlRepository) getParticipants(ctx context.Context, m *model.MediaFile) (model.Participants, error) {
+	ar := NewArtistRepository(r.db)
 	ids := m.Participants.AllIDs()
-	artists, err := ar.GetAll(model.QueryOptions{Filters: Eq{"artist.id": ids}})
+	artists, err := ar.GetAll(ctx, model.QueryOptions{Filters: Eq{"artist.id": ids}})
 	if err != nil {
 		return nil, fmt.Errorf("getting participants: %w", err)
 	}

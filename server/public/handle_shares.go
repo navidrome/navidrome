@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
-	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -58,9 +58,9 @@ func (pub *Router) handleM3U(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s = pub.mapShareToM3U(r, *s)
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "audio/x-mpegurl")
-	_, _ = w.Write([]byte(s.ToM3U8())) //nolint:gosec
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(s.ToM3U8()))
 }
 
 func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id string) {
@@ -81,8 +81,8 @@ func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id s
 }
 
 func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
-	s.URL = ShareURL(r, s.ID)
-	s.ImageURL = publicurl.ImageURL(r, s.CoverArtID(), conf.Server.UICoverArtSize)
+	s.URL = publicurl.ShareURL(r.Context(), s.ID)
+	s.ImageURL = publicurl.ImageURL(r.Context(), s.CoverArtID(), conf.Server().UICoverArtSize)
 	for i := range s.Tracks {
 		s.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
 	}
@@ -92,11 +92,27 @@ func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
 func (pub *Router) mapShareToM3U(r *http.Request, s model.Share) *model.Share {
 	for i := range s.Tracks {
 		id := encodeMediafileShare(s, s.Tracks[i].ID)
-		s.Tracks[i].Path = publicurl.PublicURL(r, path.Join(consts.URLPathPublic, "s", id), nil)
+		s.Tracks[i].Path = publicurl.PublicURL(r.Context(), path.Join(consts.URLPathPublic, "s", id), nil)
 	}
 	return &s
 }
 
+// encodeMediafileShare builds the signed token embedded in a public share link
+// for a single track.
+//
+// NOTE ON JWT USAGE: This is deliberately NOT part of Navidrome's authentication.
+// The token is a signed, opaque capability that identifies one shared track
+// (plus its transcode format/bitrate and the parent share id). We use a JWT here
+// (reusing the library we already have) because it is a simple way to get three
+// properties for a public link: the embedded ids can't be enumerated by guessing,
+// the signature
+// makes the claims tamper-evident, and the self-contained exp lets us reject
+// stale links without a DB lookup. It carries no user identity (no subject, no
+// admin flag) and grants access to nothing beyond the share it belongs to; the
+// stream handler still verifies the share exists, is unexpired, and that the
+// track is actually a member of it. An attacker who can forge these tokens
+// necessarily already holds the public-link signing secret, a full-server
+// compromise that is out of scope for the share boundary specifically.
 func encodeMediafileShare(s model.Share, id string) string {
 	claims := auth.Claims{
 		ID:      id,
@@ -104,6 +120,6 @@ func encodeMediafileShare(s model.Share, id string) string {
 		BitRate: s.MaxBitRate,
 		ShareID: s.ID,
 	}
-	token, _ := auth.CreateExpiringPublicToken(V(s.ExpiresAt), claims)
+	token, _ := auth.CreateExpiringPublicToken(gg.V(s.ExpiresAt), claims)
 	return token
 }

@@ -71,7 +71,7 @@ type taskQueueServiceImpl struct {
 	manager        *Manager
 	maxConcurrency int32
 	db             *sql.DB
-	ctx            context.Context
+	ctx            context.Context //nolint:containedctx // service lifecycle ctx for the worker goroutines
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
 	mu             sync.Mutex
@@ -82,8 +82,9 @@ type taskQueueServiceImpl struct {
 }
 
 // newTaskQueueService creates a new taskQueueServiceImpl with its own SQLite database.
-func newTaskQueueService(pluginName string, manager *Manager, maxConcurrency int32) (*taskQueueServiceImpl, error) {
-	dataDir := filepath.Join(conf.Server.DataFolder.String(), "plugins", pluginName)
+// The given ctx bounds the service's background work (queue workers, cleanup loop).
+func newTaskQueueService(ctx context.Context, pluginName string, manager *Manager, maxConcurrency int32) (*taskQueueServiceImpl, error) {
+	dataDir := filepath.Join(conf.Server().DataFolder.String(), "plugins", pluginName)
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("creating plugin data directory: %w", err)
 	}
@@ -102,7 +103,7 @@ func newTaskQueueService(pluginName string, manager *Manager, maxConcurrency int
 		return nil, fmt.Errorf("creating taskqueue schema: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(manager.ctx) //nolint:gosec // cancel is stored in struct and called in Close()
+	ctx, cancel := context.WithCancel(ctx)
 
 	s := &taskQueueServiceImpl{
 		pluginName:     pluginName,
@@ -198,7 +199,7 @@ func (s *taskQueueServiceImpl) clampConcurrency(ctx context.Context, name string
 
 func (s *taskQueueServiceImpl) CreateQueue(ctx context.Context, name string, config host.QueueConfig) error {
 	if len(name) == 0 {
-		return fmt.Errorf("queue name cannot be empty")
+		return errors.New("queue name cannot be empty")
 	}
 	if len(name) > maxQueueNameLength {
 		return fmt.Errorf("queue name exceeds maximum length of %d bytes", maxQueueNameLength)
@@ -498,6 +499,19 @@ func (s *taskQueueServiceImpl) revertTaskToPending(taskID string) {
 	}
 }
 
+// taskCallTimeout is the time limit for one nd_task_execute call.
+func taskCallTimeout(perm *TaskQueuePermission) time.Duration {
+	limit := conf.Server().Plugins.MaxTaskDuration
+	if perm == nil || perm.MaxTaskDuration <= 0 || limit <= 0 {
+		return defaultTimeout
+	}
+	// Compare in seconds first: a huge manifest value would overflow time.Duration.
+	if int64(perm.MaxTaskDuration) > int64(limit/time.Second) {
+		return limit
+	}
+	return time.Duration(perm.MaxTaskDuration) * time.Second
+}
+
 // defaultInvokeCallback calls the plugin's nd_task_execute function.
 func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueName, taskID string, payload []byte, attempt int32) (string, error) {
 	s.manager.mu.RLock()
@@ -515,7 +529,12 @@ func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueN
 		Attempt:   attempt,
 	}
 
-	message, err := callPluginFunction[capabilities.TaskExecuteRequest, string](ctx, p, FuncTaskWorkerCallback, input)
+	var perm *TaskQueuePermission
+	if p.manifest.Permissions != nil {
+		perm = p.manifest.Permissions.Taskqueue
+	}
+	message, err := callPluginFunctionWithTimeout[capabilities.TaskExecuteRequest, string](
+		ctx, p, FuncTaskWorkerCallback, taskCallTimeout(perm), input)
 	if err != nil {
 		return "", err
 	}

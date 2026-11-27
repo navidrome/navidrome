@@ -2,8 +2,10 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -85,10 +87,11 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 
 	go func() {
 		start := time.Now()
-		cache, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
+		cache, sfs, err := newFSCache(fc.name, fc.cacheSize, fc.cacheFolder, fc.maxItems)
 		fc.mutex.Lock()
 		defer fc.mutex.Unlock()
 		fc.cache = cache
+		fc.fs = sfs
 		fc.disabled = cache == nil || err != nil
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
 		fc.ready.Store(true)
@@ -109,6 +112,7 @@ type fileCache struct {
 	cacheFolder string
 	maxItems    int
 	cache       fscache.Cache
+	fs          *spreadFS
 	getReader   ReadFunc
 	disabled    bool
 	ready       atomic.Bool
@@ -156,6 +160,13 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 
 	key := arg.Key()
 	r, w, err := fc.cache.Get(key)
+	if errors.Is(err, fs.ErrNotExist) {
+		// The entry outlived its data file. Drop it and retry, or every future Get
+		// for this key fails for the rest of the process's life.
+		log.Debug(ctx, "Cache entry lost its data file. Re-fetching", "cache", fc.name, "key", key)
+		_ = fc.invalidate(ctx, key)
+		r, w, err = fc.cache.Get(key)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +183,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			return nil, err
 		}
 		go func() {
-			if err := copyAndClose(w, reader); err != nil {
+			if err := fc.copyAndClose(ctx, key, w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
 				_ = fc.invalidate(ctx, key)
 			} else {
@@ -231,7 +242,8 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 	return -1
 }
 
-func copyAndClose(w io.WriteCloser, r io.Reader) error {
+// copyAndClose marks the entry complete before closing w, so EOF implies the entry is settled on disk.
+func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteCloser, r io.Reader) error {
 	_, err := io.Copy(w, r)
 	if err != nil {
 		err = fmt.Errorf("copying data to cache: %w", err)
@@ -241,14 +253,38 @@ func copyAndClose(w io.WriteCloser, r io.Reader) error {
 			err = multierror.Append(err, fmt.Errorf("closing source stream: %w", cErr))
 		}
 	}
-
+	if err == nil {
+		fc.markComplete(ctx, key)
+	} else if cw, ok := w.(interface{ CloseWithError(error) error }); ok {
+		// Cancel instead of close, so readers fail with the cause rather than
+		// draining a truncated entry to a clean EOF.
+		if cErr := cw.CloseWithError(err); cErr != nil {
+			// Join, not Append: err is now shared with readers and must not be mutated.
+			return errors.Join(err, fmt.Errorf("closing cache writer: %w", cErr))
+		}
+		return err
+	} else {
+		log.Warn(ctx, "Cache writer cannot report failures; readers will see a truncated entry as a clean EOF",
+			"cache", fc.name, "key", key, err)
+	}
 	if cErr := w.Close(); cErr != nil {
 		err = multierror.Append(err, fmt.Errorf("closing cache writer: %w", cErr))
 	}
 	return err
 }
 
-func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, error) {
+// markComplete records on disk that the entry for key was written in full,
+// so it is eligible for adoption after a restart (see spreadFS.Reload).
+func (fc *fileCache) markComplete(ctx context.Context, key string) {
+	if fc.fs == nil {
+		return
+	}
+	if err := fc.fs.MarkComplete(key); err != nil {
+		log.Warn(ctx, "Error writing cache completion marker", "cache", fc.name, "key", key, err)
+	}
+}
+
+func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cache, *spreadFS, error) {
 	size, err := humanize.ParseBytes(cacheSize)
 	if err != nil {
 		log.Error("Invalid cache size. Using default size", "cache", name, "size", cacheSize,
@@ -256,28 +292,28 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		size = consts.DefaultCacheSize
 	}
 	if size == 0 {
-		log.Warn(fmt.Sprintf("%s cache disabled", name))
-		return nil, nil
+		log.Warn(name + " cache disabled")
+		return nil, nil, nil
 	}
 
 	lru := NewFileHaunter(name, maxItems, size, consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder = filepath.Join(conf.Server.CacheFolder.MustPath(), cacheFolder)
+	cacheFolder = filepath.Join(conf.Server().CacheFolder.MustPath(), cacheFolder)
 
 	var fs *spreadFS
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))
 	fs, err = NewSpreadFS(cacheFolder, 0755)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error initializing %s cache FS", name), err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	ck, err := fscache.NewCacheWithHaunter(fs, h)
 	if err != nil {
 		log.Error(fmt.Sprintf("Error initializing %s cache", name), err)
-		return nil, err
+		return nil, nil, err
 	}
 	ck.SetKeyMapper(fs.KeyMapper)
 
-	return ck, nil
+	return ck, fs, nil
 }

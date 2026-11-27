@@ -17,33 +17,34 @@ import (
 )
 
 type translation struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Data string `json:"data"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Data      string `json:"data"`
+	TermCount int    `json:"termCount"`
 }
 
-func newTranslationRepository(context.Context) rest.Repository {
+func newTranslationRepository() rest.Repository[translation] {
 	return &translationRepository{}
 }
 
 type translationRepository struct{}
 
-func (r *translationRepository) Read(id string) (any, error) {
+func (r *translationRepository) Read(_ context.Context, id string) (*translation, error) {
 	translations, _ := loadTranslations()
 	if t, ok := translations[id]; ok {
-		return t, nil
+		return &t, nil
 	}
 	return nil, rest.ErrNotFound
 }
 
 // Count simple implementation, does not support any `options`
-func (r *translationRepository) Count(...rest.QueryOptions) (int64, error) {
+func (r *translationRepository) Count(context.Context, ...rest.QueryOptions) (int64, error) {
 	_, count := loadTranslations()
 	return count, nil
 }
 
 // ReadAll simple implementation, only returns IDs. Does not support any `options`
-func (r *translationRepository) ReadAll(...rest.QueryOptions) (any, error) {
+func (r *translationRepository) ReadAll(context.Context, ...rest.QueryOptions) ([]translation, error) {
 	translations, _ := loadTranslations()
 	var result []translation
 	for _, t := range translations {
@@ -51,14 +52,6 @@ func (r *translationRepository) ReadAll(...rest.QueryOptions) (any, error) {
 		result = append(result, t)
 	}
 	return result, nil
-}
-
-func (r *translationRepository) EntityName() string {
-	return "translation"
-}
-
-func (r *translationRepository) NewInstance() any {
-	return &translation{}
 }
 
 var loadTranslations = sync.OnceValues(func() (map[string]translation, int64) {
@@ -97,27 +90,46 @@ func loadTranslation(fsys fs.FS, fileName string) (translation translation, err 
 	// Load translation from json file
 	file, err := fsys.Open(filePath)
 	if err != nil {
-		return
+		return translation, err
 	}
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return
+		return translation, err
 	}
 	var out map[string]any
 	if err = json.Unmarshal(data, &out); err != nil {
-		return
+		return translation, err
 	}
 
 	// Compress JSON
 	buf := new(bytes.Buffer)
 	if err = json.Compact(buf, data); err != nil {
-		return
+		return translation, err
 	}
 
 	translation.Data = buf.String()
 	translation.Name = out["languageName"].(string)
 	translation.ID = id
-	return
+	translation.TermCount = countTranslatedTerms(out)
+	return translation, nil
 }
 
-var _ rest.Repository = (*translationRepository)(nil)
+// countTranslatedTerms counts non-empty leaf values, matching the UI's notion of a translated term
+func countTranslatedTerms(obj map[string]any) int {
+	count := 0
+	for _, v := range obj {
+		switch v := v.(type) {
+		case map[string]any:
+			count += countTranslatedTerms(v)
+		case string:
+			if v != "" {
+				count++
+			}
+		default:
+			count++
+		}
+	}
+	return count
+}
+
+var _ rest.Repository[translation] = (*translationRepository)(nil)

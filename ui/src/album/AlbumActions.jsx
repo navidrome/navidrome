@@ -28,7 +28,7 @@ import {
 } from '../actions'
 import { formatBytes } from '../utils'
 import config from '../config'
-import { ToggleFieldsMenu } from '../common'
+import { RefreshMetadataButton, ToggleFieldsMenu } from '../common'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
@@ -185,6 +185,11 @@ const AlbumActions = ({
               <CloudDownloadOutlinedIcon />
             </AlbumButton>
           )}
+          <RefreshMetadataButton
+            resource="album"
+            record={record}
+            size="small"
+          />
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="albumSong" />}</div>
       </div>

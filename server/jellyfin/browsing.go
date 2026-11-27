@@ -1,0 +1,117 @@
+package jellyfin
+
+import (
+	"net/http"
+
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
+)
+
+// getArtists handles GET /Artists (performing artists, Finamp's "Artists" tab); getAlbumArtists
+// handles GET /Artists/AlbumArtists (album artists only). Distinct roles, so composers/arrangers
+// don't appear identically in both.
+func (api *Router) getArtists(w http.ResponseWriter, r *http.Request) {
+	api.listArtistsByRole(w, r, model.RoleArtist)
+}
+
+func (api *Router) getAlbumArtists(w http.ResponseWriter, r *http.Request) {
+	api.listArtistsByRole(w, r, model.RoleAlbumArtist)
+}
+
+// listArtistsByRole is the shared body of the /Artists* handlers, scoping to ParentId's library
+// when accessible (like queryItems) or all accessible libraries otherwise.
+func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, role model.Role) {
+	ctx := r.Context()
+	scopeIDs, _, ok := parentIDScope(ctx, r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	genreIds, ok := decodedQueryIDs(r, "genreids")
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	// This route resolves its own scope, so it shares only the plain query params with /Items.
+	q := listParams(req.Params(r))
+	q.scopeIDs = scopeIDs
+	q.genreIds = genreIds
+
+	opts := model.QueryOptions{Offset: q.offset, Max: q.limit}
+	applySort(&opts, "MusicArtist", q.sortBy, q.sortOrder)
+	if q.search != "" {
+		opts.Max = clampLimit(opts.Max, defaultSearchLimit, maxSearchLimit)
+	}
+
+	res, err := api.listArtists(ctx, opts, q, role)
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	api.ok(w, r, res)
+}
+
+// getGenres handles /Genres and /MusicGenres. Genres are global, so no library scoping applies.
+func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p := req.Params(r)
+	offset, limit := pageParams(p)
+	opts := model.QueryOptions{Offset: offset, Max: limit}
+	res, err := api.listGenres(ctx, opts)
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	api.ok(w, r, res)
+}
+
+// getStudios handles GET /Studios, exposing record labels (Jellyfin's audio "studio" source) as
+// Studio items, scoped to ParentId's library when accessible.
+func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p := req.Params(r)
+	scope, _, ok := parentIDScope(ctx, r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	opts := model.QueryOptions{Sort: "tag_value", Filters: libraryScopeFilter(scope)}
+	labels, err := api.ds.Tag().GetAll(ctx, model.TagRecordLabel, opts)
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	items := slice.Map(labels, dto.StudioToBaseItem)
+	offset, limit := pageParams(p)
+	api.ok(w, r, result(paginate(items, offset, limit), len(items), offset))
+}
+
+// getQueryFiltersLegacy handles GET /Items/Filters. Genres and Years are scoped to ParentId's
+// library when accessible. Tags/OfficialRatings have no music source, so they are always empty.
+func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	scope, _, ok := parentIDScope(ctx, r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	genreOpts := model.QueryOptions{Sort: "name", Filters: libraryScopeFilter(scope)}
+	genres, err := api.ds.Genre().GetAll(ctx, genreOpts)
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	years, err := api.ds.Album().GetYears(ctx, scope...)
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	api.ok(w, r, dto.QueryFiltersLegacy{
+		Genres:          slice.Map(genres, func(g model.Genre) string { return g.Name }),
+		Tags:            []string{},
+		OfficialRatings: []string{},
+		Years:           years,
+	})
+}

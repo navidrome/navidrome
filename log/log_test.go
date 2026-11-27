@@ -1,12 +1,18 @@
 package log
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 
+	"github.com/kr/pretty"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -22,8 +28,10 @@ func TestLog(t *testing.T) {
 var _ = Describe("Logger", func() {
 	var l *logrus.Logger
 	var hook *test.Hook
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		l, hook = test.NewNullLogger()
 		SetLevel(LevelTrace)
 		SetDefaultLogger(l)
@@ -43,7 +51,7 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("Empty context", func() {
-			Error(context.TODO(), "Simple Message")
+			Error(ctx, "Simple Message")
 			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
 			Expect(hook.LastEntry().Data).To(BeEmpty())
 		})
@@ -71,8 +79,8 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("can get data from the request's context", func() {
-			ctx := NewContext(context.TODO(), "foo", "bar")
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			ctx = NewContext(ctx, "foo", "bar")
+			req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
 
 			Error(req, "Simple Message", "key1", "value1")
 
@@ -90,9 +98,9 @@ var _ = Describe("Logger", func() {
 
 		It("logs source file and line number, if requested", func() {
 			SetLogSourceLine(true)
+			_, _, line, _ := runtime.Caller(0)
 			Error("A crash happened")
-			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:93"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring(fmt.Sprintf("/log/log_test.go:%d", line+1)))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
@@ -105,6 +113,26 @@ var _ = Describe("Logger", func() {
 			var t *time.Time
 			Error("Simple Message", "key1", t)
 			Expect(hook.LastEntry().Data["key1"]).To(Equal("nil"))
+		})
+
+		It("passes the call's context to hooks", func() {
+			ctx := WithSecrets(GinkgoT().Context(), "s3cr3t-value")
+			Error(ctx, "Simple Message")
+			Expect(hook.LastEntry().Context).To(Equal(ctx))
+
+			Error(httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx), "Simple Message")
+			Expect(hook.LastEntry().Context).To(Equal(ctx))
+		})
+
+		It("redacts the context's secrets when redacting is on", func() {
+			l.AddHook(redacted)
+			ctx := WithSecrets(NewContext(GinkgoT().Context(), "user", "admin"), "s3cr3t-value")
+
+			var buf bytes.Buffer
+			l.SetOutput(&buf)
+			Error(ctx, "Saving s3cr3t-value", "args", map[string]any{"value": "s3cr3t-value"})
+			Expect(buf.String()).ToNot(ContainSubstring("s3cr3t-value"))
+			Expect(buf.String()).To(ContainSubstring("user=admin"))
 		})
 	})
 
@@ -135,18 +163,32 @@ var _ = Describe("Logger", func() {
 	})
 
 	Describe("LogLevels", func() {
-		It("logs at specific levels", func() {
-			SetLevel(LevelError)
-			Debug("message 1")
+		BeforeEach(func() {
+			SetLevel(LevelFatal)
+			SetLogLevels(nil)
+		})
+
+		DescribeTable("logs at specific levels", func(logger func(...any), level Level) {
+			logger("message 1")
 			Expect(hook.LastEntry()).To(BeNil())
 
-			SetLogLevels(map[string]string{
-				"log/log_test": "debug",
-			})
+			Log(level, "message 1.5")
+			Expect(hook.LastEntry()).To(BeNil())
 
-			Debug("message 2")
+			SetLogLevels(map[string]string{"log/log_test": "trace"})
+
+			logger("message 2")
 			Expect(hook.LastEntry().Message).To(Equal("message 2"))
-		})
+
+			Log(level, "message 2.5")
+			Expect(hook.LastEntry().Message).To(Equal("message 2.5"))
+		},
+			Entry("Error", Error, LevelError),
+			Entry("Warn", Warn, LevelWarn),
+			Entry("Info", Info, LevelInfo),
+			Entry("Debug", Debug, LevelDebug),
+			Entry("Trace", Trace, LevelTrace),
+		)
 	})
 
 	Describe("IsGreaterOrEqualTo", func() {
@@ -187,17 +229,16 @@ var _ = Describe("Logger", func() {
 	Describe("extractLogger", func() {
 		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns an error if the context is a string", func() {
 			_, err := extractLogger("any msg")
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns the logger from context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
-			ctx := context.Background()
 			ctx = context.WithValue(ctx, loggerCtxKey, logger)
 
 			Expect(extractLogger(ctx)).To(Equal(logger))
@@ -205,9 +246,8 @@ var _ = Describe("Logger", func() {
 
 		It("returns the logger from request's context if it has one", func() {
 			logger := logrus.NewEntry(logrus.New())
-			ctx := context.Background()
 			ctx = context.WithValue(ctx, loggerCtxKey, logger)
-			req := httptest.NewRequest("get", "/", nil).WithContext(ctx)
+			req := httptest.NewRequest(http.MethodGet, "/", nil).WithContext(ctx)
 
 			Expect(extractLogger(req)).To(Equal(logger))
 		})
@@ -244,6 +284,100 @@ var _ = Describe("Logger", func() {
 		Describe("Subsonic API password", func() {
 			msg := "getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=first%20and%20other%20words&title=Title"
 			Expect(Redact(msg)).To(Equal("getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=[REDACTED]&title=Title"))
+		})
+
+		It("redacts a whole JWT in api_key, not just up to its first dot", func() {
+			msg := "/jellyfin/Audio/abc/universal?static=true&api_key=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.c2ln-X_1&other=1"
+			Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/universal?static=true&api_key=[REDACTED]&other=1"))
+		})
+
+		DescribeTable("redacts every api_key spelling the Jellyfin API accepts",
+			func(param string) {
+				msg := "/jellyfin/Audio/abc/File?" + param + "=SECRET&other=1"
+				Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/File?" + param + "=[REDACTED]&other=1"))
+			},
+			Entry("api_key", "api_key"),
+			Entry("apikey", "apikey"),
+			Entry("ApiKey", "ApiKey"),
+			Entry("APIKEY", "APIKEY"),
+		)
+
+		It("redacts sensitive request headers in a logged header blob", func() {
+			h := http.Header{
+				"Authorization":        {`MediaBrowser Client="Finamp", Token="jwt-secret"`},
+				"X-Emby-Token":         {"emby-secret"},
+				"X-Mediabrowser-Token": {"mb-secret"},
+				"X-Nd-Authorization":   {"Bearer nd-secret"},
+				"User-Agent":           {"Finamp/1.0"},
+			}
+			blob, _ := json.Marshal(h)
+			got := Redact(string(blob))
+			Expect(got).ToNot(ContainSubstring("secret"))
+			Expect(got).To(ContainSubstring(`"User-Agent":["Finamp/1.0"]`))
+		})
+
+		// https://github.com/navidrome/navidrome/discussions/6232
+		DescribeTable("redacts config keys in the startup Configuration dump",
+			func(line, expected string) {
+				Expect(Redact(line)).To(Equal(expected))
+			},
+			Entry("unpadded ApiKey", `ApiKey:"0123456789abcdef0123456789abcdef"`, `ApiKey:"[REDACTED]"`),
+			Entry("unpadded Secret", `Secret:"fedcba9876543210fedcba9876543210"`, `Secret:"[REDACTED]"`),
+			Entry("padded ApiKey", `        ApiKey:                  "0123456789abcdef0123456789abcdef",`,
+				`        ApiKey:                  "[REDACTED]",`),
+			Entry("padded Secret", `        Secret:                  "fedcba9876543210fedcba9876543210",`,
+				`        Secret:                  "[REDACTED]",`),
+			Entry("unpadded Prometheus Password", `Password:"p@ss w0rd!"`, `Password:"[REDACTED]"`),
+			Entry("padded Prometheus Password", `        Password:    "p@ss w0rd!",`, `        Password:    "[REDACTED]",`),
+			Entry("Prometheus Password with escaped quotes", `        Password:    "a\"b\\\"c",`,
+				`        Password:    "[REDACTED]",`),
+		)
+
+		It("redacts secrets in a pretty-printed config struct", func() {
+			// Mirrors conf.lastfmOptions and conf.prometheusOptions (conf imports log, so it can't be
+			// used here). pretty only breaks a struct into padded lines when it is long enough, so
+			// keep all the fields.
+			type lastfmOptions struct {
+				Enabled                 bool
+				ApiKey                  string
+				Secret                  string
+				Language                string
+				ScrobbleFirstArtistOnly bool
+				Languages               []string
+			}
+			type prometheusOptions struct {
+				Enabled     bool
+				MetricsPath string
+				Password    string
+			}
+			type configOptions struct {
+				Address    string
+				LastFM     lastfmOptions
+				Prometheus prometheusOptions
+			}
+			cfg := configOptions{
+				Address: "0.0.0.0",
+				LastFM: lastfmOptions{
+					Enabled:   true,
+					ApiKey:    "0123456789abcdef0123456789abcdef",
+					Secret:    "fedcba9876543210fedcba9876543210",
+					Language:  "en",
+					Languages: []string{"en"},
+				},
+				Prometheus: prometheusOptions{
+					Enabled:     true,
+					MetricsPath: "/metrics",
+					Password:    `prom"pass-tail`,
+				},
+			}
+			dump := pretty.Sprintf("Configuration: %# v", cfg)
+			Expect(dump).To(MatchRegexp(`ApiKey:\s{2,}"`), "the dump must use the padded layout")
+
+			got := Redact(dump)
+			Expect(got).ToNot(ContainSubstring(cfg.LastFM.ApiKey))
+			Expect(got).ToNot(ContainSubstring(cfg.LastFM.Secret))
+			Expect(got).ToNot(ContainSubstring("pass-tail"))
+			Expect(got).To(ContainSubstring(`"en"`))
 		})
 	})
 })

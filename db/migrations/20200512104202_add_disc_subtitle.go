@@ -11,18 +11,18 @@ func init() {
 	goose.AddMigrationContext(Up20200512104202, Down20200512104202)
 }
 
-func Up20200512104202(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200512104202(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table media_file 
     add disc_subtitle varchar(255);
     `)
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan will be performed to import disc subtitles")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan will be performed to import disc subtitles")
+	return forceFullRescan(ctx, tx)
 }
 
-func Down20200512104202(_ context.Context, tx *sql.Tx) error {
+func Down20200512104202(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

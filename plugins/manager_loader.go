@@ -3,8 +3,10 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -13,28 +15,36 @@ import (
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/experimental"
 	"golang.org/x/sync/errgroup"
 )
 
 // serviceContext provides dependencies needed by host service factories.
 type serviceContext struct {
-	pluginName       string
-	manager          *Manager
-	permissions      *Permissions
-	config           map[string]string
-	allowedUsers     []string // User IDs this plugin can access
-	allUsers         bool     // If true, plugin can access all users
-	allowedLibraries []int    // Library IDs this plugin can access
-	allLibraries     bool     // If true, plugin can access all libraries
+	pluginName  string
+	manager     *Manager
+	permissions *Permissions
+	config      map[string]string
+	users       userAccess
+	libraries   libraryAccess
+}
+
+// baseCtx returns the manager's lifecycle context, for host services that
+// outlive the plugin call that created them. It falls back to
+// context.Background() when the manager was never started, which is the case
+// for CLI commands (e.g. `navidrome plugin enable`) that load plugins without
+// calling Start.
+func (c *serviceContext) baseCtx() context.Context {
+	if c.manager.ctx == nil {
+		return context.Background()
+	}
+	return c.manager.ctx
 }
 
 // hostServiceEntry defines a host service for table-driven registration.
 type hostServiceEntry struct {
 	name          string
 	hasPermission func(*Permissions) bool
-	create        func(*serviceContext) ([]extism.HostFunction, io.Closer)
+	create        func(*serviceContext) ([]extism.HostFunction, io.Closer, error)
 }
 
 // hostServices defines all available host services.
@@ -43,106 +53,136 @@ var hostServices = []hostServiceEntry{
 	{
 		name:          "Config",
 		hasPermission: func(p *Permissions) bool { return true }, // Always available, no permission required
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newConfigService(ctx.pluginName, ctx.config)
-			return host.RegisterConfigHostFunctions(service), nil
+			return host.RegisterConfigHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "SubsonicAPI",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Subsonicapi != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
-			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
-			return host.RegisterSubsonicAPIHostFunctions(service), nil
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service := newSubsonicAPIService(ctx.pluginName, ctx.manager.subsonicRouter, ctx.manager.ds, ctx.users)
+			return host.RegisterSubsonicAPIHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "Scheduler",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Scheduler != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newSchedulerService(ctx.pluginName, ctx.manager, scheduler.GetInstance())
-			return host.RegisterSchedulerHostFunctions(service), service
+			return host.RegisterSchedulerHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "WebSocket",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Websocket != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Websocket
-			service := newWebSocketService(ctx.pluginName, ctx.manager, perm)
-			return host.RegisterWebSocketHostFunctions(service), service
+			service := newWebSocketService(ctx.baseCtx(), ctx.pluginName, ctx.manager, perm)
+			return host.RegisterWebSocketHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "Artwork",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Artwork != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newArtworkService()
-			return host.RegisterArtworkHostFunctions(service), nil
+			return host.RegisterArtworkHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "Cache",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Cache != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			service := newCacheService(ctx.pluginName)
-			return host.RegisterCacheHostFunctions(service), service
+			return host.RegisterCacheHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "Library",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Library != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Library
-			service := newLibraryService(ctx.manager.ds, perm, ctx.allowedLibraries, ctx.allLibraries)
-			return host.RegisterLibraryHostFunctions(service), nil
+			service := newLibraryService(ctx.manager.ds, perm, ctx.libraries)
+			return host.RegisterLibraryHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "KVStore",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Kvstore != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Kvstore
-			service, err := newKVStoreService(ctx.manager.ctx, ctx.pluginName, perm)
+			service, err := newKVStoreService(ctx.baseCtx(), ctx.pluginName, perm)
 			if err != nil {
-				log.Error("Failed to create KVStore service", "plugin", ctx.pluginName, err)
-				return nil, nil
+				return nil, nil, err
 			}
-			return host.RegisterKVStoreHostFunctions(service), service
+			return host.RegisterKVStoreHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "Users",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Users != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
-			service := newUsersService(ctx.manager.ds, ctx.allowedUsers, ctx.allUsers)
-			return host.RegisterUsersHostFunctions(service), nil
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service := newUsersService(ctx.manager.ds, ctx.users)
+			return host.RegisterUsersHostFunctions(service), nil, nil
+		},
+	},
+	{
+		name:          "Matcher",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Matcher != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			hasFilesystemPerm := ctx.permissions.Library != nil && ctx.permissions.Library.Filesystem
+			service := newMatcherService(
+				ctx.manager.ds, hasFilesystemPerm,
+				ctx.users,
+				ctx.libraries,
+			)
+			return host.RegisterMatcherHostFunctions(service), nil, nil
 		},
 	},
 	{
 		name:          "HTTP",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Http != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Http
 			service := newHTTPService(ctx.pluginName, perm)
-			return host.RegisterHTTPHostFunctions(service), nil
+			return host.RegisterHTTPHostFunctions(service), service, nil
 		},
 	},
 	{
 		name:          "Task",
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Taskqueue != nil },
-		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer) {
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Taskqueue
 			maxConcurrency := int32(1)
 			if perm.MaxConcurrency > 0 {
 				maxConcurrency = int32(perm.MaxConcurrency)
 			}
-			service, err := newTaskQueueService(ctx.pluginName, ctx.manager, maxConcurrency)
+			service, err := newTaskQueueService(ctx.baseCtx(), ctx.pluginName, ctx.manager, maxConcurrency)
 			if err != nil {
-				log.Error("Failed to create Task service", "plugin", ctx.pluginName, err)
-				return nil, nil
+				return nil, nil, err
 			}
-			return host.RegisterTaskHostFunctions(service), service
+			return host.RegisterTaskHostFunctions(service), service, nil
+		},
+	},
+	{
+		name:          "Storage",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.Storage != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service, err := newStorageService(ctx.pluginName)
+			if err != nil {
+				return nil, nil, err
+			}
+			return host.RegisterStorageHostFunctions(service), nil, nil
+		},
+	},
+	{
+		name:          "ScrobbleRetriever",
+		hasPermission: func(p *Permissions) bool { return p != nil && p.ScrobbleRetriever != nil },
+		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			service := newScrobbleRetrieverService(ctx.manager.ds, ctx.users)
+			return host.RegisterScrobbleRetrieverHostFunctions(service), nil, nil
 		},
 	},
 }
@@ -152,15 +192,15 @@ var hostServices = []hostServiceEntry{
 // Unlike the old implementation, this does NOT compile the wasm - just reads the manifest JSON.
 func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 	if m.stopped.Load() {
-		return nil, fmt.Errorf("manager is stopped")
+		return nil, errors.New("manager is stopped")
 	}
 
-	manifest, err := readManifest(ndpPath)
+	manifest, err := ReadManifest(ndpPath)
 	if err != nil {
 		return nil, err
 	}
 
-	sha256Hash, err := computeFileSHA256(ndpPath)
+	sha256Hash, err := ComputeFileSHA256(ndpPath)
 	if err != nil {
 		return nil, fmt.Errorf("computing hash: %w", err)
 	}
@@ -174,13 +214,13 @@ func (m *Manager) extractManifest(ndpPath string) (*PluginMetadata, error) {
 // loadEnabledPlugins loads all enabled plugins from the database.
 func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugins, err := repo.GetAll()
+	plugins, err := repo.GetAll(adminCtx)
 	if err != nil {
 		return fmt.Errorf("reading plugins from DB: %w", err)
 	}
@@ -190,6 +230,11 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 
 	for _, p := range plugins {
 		if !p.Enabled {
+			continue
+		}
+		// Instantiating a plugin creates its host services, so a transient load takes only the
+		// ones it may actually consult.
+		if m.transient != nil && !slices.Contains(m.transient.only, p.ID) {
 			continue
 		}
 
@@ -206,22 +251,24 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			}()
 
 			if err := m.loadPluginWithConfig(&plugin); err != nil {
-				// Store error in DB
-				plugin.LastError = err.Error()
-				plugin.Enabled = false
-				plugin.UpdatedAt = time.Now()
-				if putErr := repo.Put(&plugin); putErr != nil {
-					log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+				// A transient load must not disable the user's plugin just for looking at it.
+				if m.transient == nil {
+					plugin.LastError = err.Error()
+					plugin.Enabled = false
+					plugin.UpdatedAt = time.Now()
+					if putErr := repo.Put(adminCtx, &plugin); putErr != nil {
+						log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+					}
 				}
 				log.Error(ctx, "Failed to load plugin", "plugin", plugin.ID, err)
 				return nil
 			}
 
 			// Clear any previous error
-			if plugin.LastError != "" {
+			if plugin.LastError != "" && m.transient == nil {
 				plugin.LastError = ""
 				plugin.UpdatedAt = time.Now()
-				if putErr := repo.Put(&plugin); putErr != nil {
+				if putErr := repo.Put(adminCtx, &plugin); putErr != nil {
 					log.Error(ctx, "Failed to clear plugin error in DB", "plugin", plugin.ID, putErr)
 				}
 			}
@@ -243,10 +290,15 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 // loadPluginWithConfig loads a plugin with configuration from DB.
 // The p.Path should point to an .ndp package file.
 func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
+	// NewContext falls back to context.Background() when m.ctx is nil (unstarted manager)
 	ctx := log.NewContext(m.ctx, "plugin", p.ID)
 
 	if m.stopped.Load() {
-		return fmt.Errorf("manager is stopped")
+		return errors.New("manager is stopped")
+	}
+
+	if !validPluginID(p.ID) {
+		return fmt.Errorf("invalid plugin ID %q", p.ID)
 	}
 
 	// Track this operation
@@ -254,7 +306,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	defer m.loadWg.Done()
 
 	if m.stopped.Load() {
-		return fmt.Errorf("manager is stopped")
+		return errors.New("manager is stopped")
 	}
 
 	// Parse config from JSON
@@ -270,6 +322,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("parsing plugin users: %w", err)
 		}
 	}
+	users := newUserAccess(allowedUsers, p.AllUsers)
 
 	// Parse libraries from JSON
 	var allowedLibraries []int
@@ -278,6 +331,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 			return fmt.Errorf("parsing plugin libraries: %w", err)
 		}
 	}
+	libraries := newLibraryAccess(allowedLibraries, p.AllLibraries)
 
 	// Open the .ndp package to get manifest and wasm bytes
 	pkg, err := openPackage(p.Path)
@@ -285,50 +339,62 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("opening package: %w", err)
 	}
 
-	// Build extism manifest
-	pluginManifest := extism.Manifest{
-		Wasm: []extism.Wasm{
-			extism.WasmData{Data: pkg.WasmBytes, Name: "main"},
-		},
-		Config:  pluginConfig,
-		Timeout: uint64(defaultTimeout.Milliseconds()),
-	}
+	pluginManifest := buildExtismManifest(pkg, pluginConfig)
 
-	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
-		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
-			pluginManifest.AllowedHosts = hosts
-		}
-	}
+	// Configure filesystem access for library permission, applied per instance
+	var fsConfig wazero.FSConfig
+	if pkg.Manifest.HasLibraryFilesystemPermission() || pkg.Manifest.HasStoragePermission() {
+		mounts := []mount{}
 
-	// Configure filesystem access for library permission
-	if pkg.Manifest.HasLibraryFilesystemPermission() {
-		adminCtx := adminContext(ctx)
-		libraries, err := m.ds.Library(adminCtx).GetAll()
-		if err != nil {
-			return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
+		if pkg.Manifest.HasLibraryFilesystemPermission() {
+			adminCtx := adminContext(ctx)
+			allLibs, err := m.ds.Library().GetAll(adminCtx)
+			if err != nil {
+				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
+			}
+			mounts = buildMounts(ctx, allLibs, libraries, p.AllowWriteAccess)
 		}
 
-		allowedPaths := buildAllowedPaths(ctx, libraries, allowedLibraries, p.AllLibraries, p.AllowWriteAccess)
-		pluginManifest.AllowedPaths = allowedPaths
+		if pkg.Manifest.HasStoragePermission() {
+			pluginStore := getHostStoragePath(p.ID)
+			log.Info(ctx, "Granting read-write filesystem access to plugin storage", "path", pluginStore, "id", p.ID)
+
+			mounts = append(mounts, mount{
+				hostPath:  pluginStore,
+				guestPath: storageMount,
+			})
+		}
+
+		fsConfig = buildFSConfig(mounts)
 	}
 
-	// Build host functions based on permissions from manifest
-	var hostFunctions []extism.HostFunction
+	// Stream functions are for every plugin; the rest depend on manifest permissions
+	hostFunctions := streamHostFunctions()
 	var closers []io.Closer
+	loaded := false
+	// On success the closers are owned by the registered plugin; on any
+	// failure past this point, close them so partially-created services
+	// don't leak goroutines or file handles.
+	defer func() {
+		if !loaded {
+			closeAll(closers)
+		}
+	}()
 
 	svcCtx := &serviceContext{
-		pluginName:       p.ID,
-		manager:          m,
-		permissions:      pkg.Manifest.Permissions,
-		config:           pluginConfig,
-		allowedUsers:     allowedUsers,
-		allUsers:         p.AllUsers,
-		allowedLibraries: allowedLibraries,
-		allLibraries:     p.AllLibraries,
+		pluginName:  p.ID,
+		manager:     m,
+		permissions: pkg.Manifest.Permissions,
+		config:      pluginConfig,
+		users:       users,
+		libraries:   libraries,
 	}
 	for _, entry := range hostServices {
 		if entry.hasPermission(pkg.Manifest.Permissions) {
-			funcs, closer := entry.create(svcCtx)
+			funcs, closer, err := entry.create(svcCtx)
+			if err != nil {
+				return fmt.Errorf("creating %s service: %w", entry.name, err)
+			}
 			hostFunctions = append(hostFunctions, funcs...)
 			if closer != nil {
 				closers = append(closers, closer)
@@ -341,12 +407,6 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		WithCompilationCache(m.cache).
 		WithCloseOnContextDone(true)
 
-	// Enable experimental threads if requested in manifest
-	if pkg.Manifest.HasExperimentalThreads() {
-		runtimeConfig = runtimeConfig.WithCoreFeatures(api.CoreFeaturesV2 | experimental.CoreFeaturesThreads)
-		log.Debug(ctx, "Enabling experimental threads support")
-	}
-
 	extismConfig := extism.PluginConfig{
 		EnableWasi:                true,
 		RuntimeConfig:             runtimeConfig,
@@ -358,7 +418,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	// Create instance to detect capabilities
-	instance, err := compiled.Instance(ctx, extism.PluginInstanceConfig{})
+	instance, err := compiled.Instance(ctx, instanceConfig(fsConfig))
 	if err != nil {
 		compiled.Close(ctx)
 		return fmt.Errorf("creating instance: %w", err)
@@ -373,25 +433,42 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
-	m.mu.Lock()
-	m.plugins[p.ID] = &plugin{
-		name:           p.ID,
-		path:           p.Path,
-		manifest:       pkg.Manifest,
-		compiled:       compiled,
-		capabilities:   capabilities,
-		closers:        closers,
-		metrics:        m.metrics,
-		allowedUserIDs: allowedUsers,
-		allUsers:       p.AllUsers,
-		libraries:      newLibraryAccess(allowedLibraries, p.AllLibraries),
+	streams := newStreamTable()
+	loadedPlugin := &plugin{
+		name:         p.ID,
+		path:         p.Path,
+		manifest:     pkg.Manifest,
+		compiled:     compiled,
+		capabilities: capabilities,
+		closers:      append(closers, streams),
+		metrics:      m.metrics,
+		users:        users,
+		libraries:    libraries,
+		fsConfig:     fsConfig,
+		lyricsSem:    make(chan struct{}, maxConcurrentLyricsCalls),
+		streams:      streams,
 	}
+	m.mu.Lock()
+	m.plugins[p.ID] = loadedPlugin
 	m.mu.Unlock()
+	loaded = true
 
-	// Call plugin init function
-	callPluginInit(ctx, m.plugins[p.ID])
+	// Init is the plugin's first chance to run arbitrary code: open sockets, create task queues,
+	// schedule work. Only a caller that already intends to reach the network asks for it.
+	// Use the local: loads run concurrently, so reading the map back here would race the writes.
+	if m.transient == nil || m.transient.runInit {
+		callPluginInit(ctx, loadedPlugin)
+	}
 
 	return nil
+}
+
+// closeAll closes host service closers accumulated before a load failure,
+// so partially-created services don't leak goroutines or file handles.
+func closeAll(closers []io.Closer) {
+	for _, c := range closers {
+		_ = c.Close()
+	}
 }
 
 // parsePluginConfig parses a JSON config string into a map of string values.
@@ -421,31 +498,18 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 	return pluginConfig, nil
 }
 
-// buildAllowedPaths constructs the extism AllowedPaths map for filesystem access.
-// When allowWriteAccess is false (default), paths are prefixed with "ro:" for read-only.
-// Only libraries that match the allowed set (or all libraries if allLibraries is true) are included.
-func buildAllowedPaths(ctx context.Context, libraries model.Libraries, allowedLibraryIDs []int, allLibraries, allowWriteAccess bool) map[string]string {
-	allowedLibrarySet := make(map[int]struct{}, len(allowedLibraryIDs))
-	for _, id := range allowedLibraryIDs {
-		allowedLibrarySet[id] = struct{}{}
+// extismMaxMemoryPages caps each plugin memory in 64 KiB pages; 0 means no cap. Tests lower it.
+var extismMaxMemoryPages uint32
+
+// buildExtismManifest describes the plugin to extism. It must never set AllowedPaths (extism would replace our
+// jailed FSConfig) nor AllowedHosts (extism's http_request has no SSRF guard; plugins must use host.HTTPSend).
+func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
+	m := extism.Manifest{
+		Wasm:   []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
+		Config: pluginConfig,
 	}
-	allowedPaths := make(map[string]string)
-	for _, lib := range libraries {
-		_, allowed := allowedLibrarySet[lib.ID]
-		if allLibraries || allowed {
-			mountPoint := toPluginMountPoint(int32(lib.ID))
-			hostPath := lib.Path
-			if !allowWriteAccess {
-				hostPath = "ro:" + hostPath
-			}
-			allowedPaths[hostPath] = mountPoint
-			log.Trace(ctx, "Added library to allowed paths", "libraryID", lib.ID, "mountPoint", mountPoint, "writeAccess", allowWriteAccess, "hostPath", hostPath)
-		}
+	if extismMaxMemoryPages > 0 {
+		m.Memory = &extism.ManifestMemory{MaxPages: extismMaxMemoryPages}
 	}
-	if allowWriteAccess {
-		log.Info(ctx, "Granting read-write filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
-	} else {
-		log.Debug(ctx, "Granting read-only filesystem access to libraries", "libraryCount", len(allowedPaths), "allLibraries", allLibraries)
-	}
-	return allowedPaths
+	return m
 }

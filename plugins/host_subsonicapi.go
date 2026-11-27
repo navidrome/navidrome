@@ -26,27 +26,19 @@ const subsonicAPIVersion = "1.16.1"
 // URL Format: Only the path and query parameters are used - host/protocol are ignored.
 // Automatic Parameters: The service adds 'c' (client), 'v' (version), and optionally 'f' (format).
 type subsonicAPIServiceImpl struct {
-	pluginID       string
-	router         SubsonicRouter
-	ds             model.DataStore
-	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
-	allUsers       bool     // If true, plugin can access all users
-	userIDMap      map[string]struct{}
+	pluginID string
+	router   SubsonicRouter
+	ds       model.DataStore
+	users    userAccess // users this plugin may act as (from DB configuration)
 }
 
 // newSubsonicAPIService creates a new SubsonicAPIService for a plugin.
-func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, allowedUserIDs []string, allUsers bool) host.SubsonicAPIService {
-	userIDMap := make(map[string]struct{})
-	for _, id := range allowedUserIDs {
-		userIDMap[id] = struct{}{}
-	}
+func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.DataStore, users userAccess) host.SubsonicAPIService {
 	return &subsonicAPIServiceImpl{
-		pluginID:       pluginID,
-		router:         router,
-		ds:             ds,
-		allowedUserIDs: allowedUserIDs,
-		allUsers:       allUsers,
-		userIDMap:      userIDMap,
+		pluginID: pluginID,
+		router:   router,
+		ds:       ds,
+		users:    users,
 	}
 }
 
@@ -55,7 +47,7 @@ func newSubsonicAPIService(pluginID string, router SubsonicRouter, ds model.Data
 // If setJSON is true, the 'f=json' query parameter is added.
 func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string, setJSON bool) (*httptest.ResponseRecorder, error) {
 	if s.router == nil {
-		return nil, fmt.Errorf("SubsonicAPI router not available")
+		return nil, errors.New("SubsonicAPI router not available")
 	}
 
 	// Parse the input URL
@@ -70,7 +62,7 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 	// Validate that 'u' (username) parameter is present
 	username := query.Get("u")
 	if username == "" {
-		return nil, fmt.Errorf("missing required parameter 'u' (username)")
+		return nil, errors.New("missing required parameter 'u' (username)")
 	}
 
 	if err := s.checkPermissions(ctx, username); err != nil {
@@ -99,7 +91,7 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 	// SubsonicAPI call doesn't inherit routing information from the parent handler,
 	// which would cause Chi to invoke the wrong handler. Authentication context is
 	// explicitly added in the next step via request.WithInternalAuth.
-	httpReq, err := http.NewRequest("GET", finalURL.String(), nil)
+	httpReq, err := http.NewRequest(http.MethodGet, finalURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -136,17 +128,17 @@ func (s *subsonicAPIServiceImpl) CallRaw(ctx context.Context, uri string) (strin
 
 func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username string) error {
 	// If allUsers is true, allow any user
-	if s.allUsers {
+	if s.users.allUsers {
 		return nil
 	}
 
 	// Must have at least one allowed user ID configured
-	if len(s.allowedUserIDs) == 0 {
+	if !s.users.configured() {
 		return fmt.Errorf("no users configured for plugin %s", s.pluginID)
 	}
 
 	// Look up the user by username to get their ID
-	usr, err := s.ds.User(ctx).FindByUsername(username)
+	usr, err := s.ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return fmt.Errorf("username %s not found", username)
@@ -155,7 +147,7 @@ func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username 
 	}
 
 	// Check if the user's ID is in the allowed list
-	if _, ok := s.userIDMap[usr.ID]; !ok {
+	if !s.users.allows(usr.ID) {
 		return fmt.Errorf("user %s is not authorized for this plugin", username)
 	}
 

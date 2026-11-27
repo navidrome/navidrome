@@ -31,11 +31,11 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	user := getUser(ctx)
 	p := req.Params(r)
 
-	if !conf.Server.Jukebox.Enabled {
+	if !conf.Server().Jukebox.Enabled {
 		return nil, newError(responses.ErrorGeneric, "Jukebox is disabled")
 	}
 
-	if conf.Server.Jukebox.AdminOnly && !user.IsAdmin {
+	if conf.Server().Jukebox.AdminOnly && !user.IsAdmin {
 		return nil, newError(responses.ErrorAuthorizationFail, "Jukebox is admin only")
 	}
 
@@ -68,7 +68,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionStatus:
 		return createResponse(pb.Status(ctx))
 	case ActionSet:
-		ids, _ := p.Strings("id")
+		ids := p.Strings("id")
 		return createResponse(pb.Set(ctx, ids))
 	case ActionStart:
 		return createResponse(pb.Start(ctx))
@@ -82,7 +82,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		offset := p.IntOr("offset", 0)
 		return createResponse(pb.Skip(ctx, index, offset))
 	case ActionAdd:
-		ids, _ := p.Strings("id")
+		ids := p.Strings("id")
 		return createResponse(pb.Add(ctx, ids))
 	case ActionClear:
 		return createResponse(pb.Clear(ctx))

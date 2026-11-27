@@ -1,0 +1,1258 @@
+package jellyfin
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math"
+	"net/http"
+	"net/http/httptest"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/utils/req"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+// withChiURLParam simulates chi's routing having captured path parameters (key, value pairs), since
+// these tests call handlers directly instead of going through the full router.
+func withChiURLParam(r *http.Request, kv ...string) *http.Request {
+	rctx := chi.NewRouteContext()
+	for i := 0; i+1 < len(kv); i += 2 {
+		rctx.URLParams.Add(kv[i], kv[i+1])
+	}
+	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+}
+
+// queryRecorder records the options of the last list query each repository ran, for specs about what
+// reaches the query (sort keys, window sizes, id batching) rather than about the rows it returns.
+type queryRecorder struct {
+	albums *recordedQuery
+	songs  *recordedQuery
+}
+
+type recordedQuery struct {
+	Options     model.QueryOptions
+	SearchQuery string
+	GetAlls     int
+	Gets        int
+}
+
+func newQueryRecorder() *queryRecorder {
+	return &queryRecorder{albums: &recordedQuery{}, songs: &recordedQuery{}}
+}
+
+func (q *queryRecorder) stub(ds model.DataStore) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{
+		Album: func(r model.AlbumRepository) model.AlbumRepository {
+			return recordingAlbums{AlbumRepository: r, rec: q.albums}
+		},
+		MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+			return recordingSongs{MediaFileRepository: r, rec: q.songs}
+		},
+	})
+}
+
+func (r *recordedQuery) record(options []model.QueryOptions) {
+	r.Options = model.QueryOptions{}
+	if len(options) > 0 {
+		r.Options = options[0]
+	}
+}
+
+type recordingAlbums struct {
+	model.AlbumRepository
+	rec *recordedQuery
+}
+
+func (r recordingAlbums) GetAll(ctx context.Context, options ...model.QueryOptions) (model.Albums, error) {
+	r.rec.record(options)
+	return r.AlbumRepository.GetAll(ctx, options...)
+}
+
+func (r recordingAlbums) GetCursor(ctx context.Context, options ...model.QueryOptions) (model.AlbumCursor, error) {
+	r.rec.record(options)
+	return r.AlbumRepository.GetCursor(ctx, options...)
+}
+
+func (r recordingAlbums) Search(ctx context.Context, q string, options ...model.QueryOptions) (model.Albums, error) {
+	r.rec.record(options)
+	r.rec.SearchQuery = q
+	return r.AlbumRepository.Search(ctx, q, options...)
+}
+
+type recordingSongs struct {
+	model.MediaFileRepository
+	rec *recordedQuery
+}
+
+func (r recordingSongs) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
+	r.rec.record(options)
+	r.rec.GetAlls++
+	return r.MediaFileRepository.GetAll(ctx, options...)
+}
+
+func (r recordingSongs) Get(ctx context.Context, id string) (*model.MediaFile, error) {
+	r.rec.Gets++
+	return r.MediaFileRepository.Get(ctx, id)
+}
+
+func (r recordingSongs) GetCursorWithArtwork(ctx context.Context, options ...model.QueryOptions) (model.MediaFileCursor, error) {
+	r.rec.record(options)
+	return r.MediaFileRepository.GetCursorWithArtwork(ctx, options...)
+}
+
+func (r recordingSongs) Search(ctx context.Context, q string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	r.rec.record(options)
+	r.rec.SearchQuery = q
+	return r.MediaFileRepository.Search(ctx, q, options...)
+}
+
+func failingSongs(ds model.DataStore) model.DataStore {
+	return persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
+		return failingSongRepo{MediaFileRepository: r}
+	}})
+}
+
+type failingSongRepo struct {
+	model.MediaFileRepository
+}
+
+func (failingSongRepo) GetCursorWithArtwork(context.Context, ...model.QueryOptions) (model.MediaFileCursor, error) {
+	return nil, errors.New("db down")
+}
+
+var _ = Describe("Items", func() {
+	var ctx context.Context
+	var api *Router
+	var ds model.DataStore
+	var rec *queryRecorder
+	var fp *fakePlaylists
+	alice := model.User{ID: testID("u1"), UserName: "alice"}
+	admin := model.User{ID: testID("admin"), UserName: "admin", IsAdmin: true}
+	// ctxUserWithLibraries grants alice exactly libs, in the DB and in the request user.
+	ctxUserWithLibraries := func(libs model.Libraries) context.Context {
+		ids := make([]int, len(libs))
+		for i, lib := range libs {
+			ids[i] = lib.ID
+		}
+		Expect(ds.User().SetUserLibraries(ctx, alice.ID, ids)).To(Succeed())
+		u := alice
+		u.Libraries = libs
+		return request.WithUser(ctx, u)
+	}
+	// alice has access to library 1 only; used by tests that don't care about scoping.
+	ctxUser := func() context.Context {
+		return ctxUserWithLibraries(model.Libraries{{ID: 1, Name: "Music"}})
+	}
+	// admin has no explicit Libraries; access is granted via the IsAdmin bypass, not membership.
+	ctxAdmin := func() context.Context {
+		return request.WithUser(ctx, admin)
+	}
+	getItems := func(url string, ctx context.Context) (int, dto.QueryResult) {
+		GinkgoHelper()
+		w := httptest.NewRecorder()
+		invoke(api.getItems, w, httptest.NewRequest(http.MethodGet, url, nil).WithContext(ctx))
+		var res dto.QueryResult
+		if w.Code == http.StatusOK {
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+		}
+		return w.Code, res
+	}
+	// albumsPerLibrary stores the albums One, Two and Three in libraries 1, 2 and 3.
+	albumsPerLibrary := func() {
+		persistencetest.PutAlbums(ctx, ds,
+			model.Album{ID: testID("a1"), Name: "One", LibraryID: 1},
+			model.Album{ID: testID("a2"), Name: "Two", LibraryID: 2},
+			model.Album{ID: testID("a3"), Name: "Three", LibraryID: 3},
+		)
+	}
+	// manySongs stores n songs titled "Song 00000", "Song 00001", ... and returns their ids in that order.
+	manySongs := func(n int) []string {
+		ids := make([]string, n)
+		inTx(ds, func(tx model.DataStore) {
+			for i := range ids {
+				ids[i] = testID(fmt.Sprintf("s%05d", i))
+				persistencetest.PutMediaFiles(ctx, tx, model.MediaFile{ID: ids[i], Title: fmt.Sprintf("Song %05d", i)})
+			}
+		})
+		return ids
+	}
+	manyAlbums := func(n int) {
+		inTx(ds, func(tx model.DataStore) {
+			for i := range n {
+				persistencetest.PutAlbums(ctx, tx, model.Album{ID: testID(fmt.Sprintf("a%05d", i)), Name: fmt.Sprintf("One %05d", i)})
+			}
+		})
+	}
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		putUser(ctx, ds, alice)
+		putUser(ctx, ds, admin)
+		persistencetest.SetLibraries(ctx, ds, "/music1", "/music2", "/music3")
+		rec = newQueryRecorder()
+		fp = &fakePlaylists{ds: ds}
+		api = &Router{ds: rec.stub(ds), playlists: fp}
+	})
+
+	Describe("getItems", func() {
+		Describe("at the user root", func() {
+			libs := model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}}
+			getRoot := func(query string, ctx context.Context) dto.QueryResult {
+				GinkgoHelper()
+				code, res := getItems("/Items?"+query, ctx)
+				Expect(code).To(Equal(http.StatusOK))
+				return res
+			}
+			BeforeEach(func() {
+				putLibraries(ctx, ds, libs)
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", MaxYear: 2020, MinYear: 2020})
+			})
+
+			It("lists the user's libraries for an unfiltered, non-recursive query", func() {
+				res := getRoot("UserId="+testID("u1"), ctxUser())
+				Expect(res.TotalRecordCount).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(1)))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+				Expect(res.Items[0].CollectionType).To(Equal("music"))
+			})
+
+			It("pages the libraries by StartIndex and Limit", func() {
+				res := getRoot("StartIndex=1&Limit=1", ctxUserWithLibraries(libs))
+				Expect(res.TotalRecordCount).To(Equal(2))
+				Expect(res.StartIndex).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(2)))
+			})
+
+			DescribeTable("sorts the libraries before paging them",
+				func(query string, wantID int) {
+					res := getRoot(query, ctxUserWithLibraries(libs))
+					Expect(res.TotalRecordCount).To(Equal(2))
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(wantID)))
+				},
+				Entry("by name ascending", "SortBy=SortName&Limit=1", 2),
+				Entry("by name descending", "SortBy=SortName&SortOrder=Descending&Limit=1", 1),
+				Entry("descending, second page", "SortBy=Name&SortOrder=Descending&StartIndex=1&Limit=1", 2),
+				Entry("unknown key keeps the repository order", "SortBy=Bogus&Limit=1", 1),
+				Entry("SortOrder pairs with SortBy by index", "SortBy=DateCreated,SortName&SortOrder=Ascending,Descending&Limit=1", 1),
+			)
+
+			It("treats an unknown IncludeItemTypes as absent", func() {
+				res := getRoot("IncludeItemTypes=music", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+			})
+
+			DescribeTable("queries the library contents when the request is recursive or filtered",
+				func(query string) {
+					res := getRoot(query, ctxUser())
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
+				},
+				Entry("Recursive=true", "Recursive=true"),
+				Entry("IncludeItemTypes", "IncludeItemTypes=MusicAlbum"),
+				Entry("SearchTerm", "SearchTerm=one"),
+				Entry("Filters", "Filters=IsUnplayed"),
+				Entry("Years", "Years=2020"),
+			)
+		})
+
+		It("lists albums when IncludeItemTypes=MusicAlbum", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&Recursive=true", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
+			Expect(res.TotalRecordCount).To(Equal(2))
+		})
+
+		Context("with songs in two albums", func() {
+			BeforeEach(func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: testID("s1"), Title: "Song", AlbumID: testID("a1")},
+					model.MediaFile{ID: testID("s2"), Title: "Other", AlbumID: testID("a2")},
+				)
+			})
+
+			It("lists an album's songs when ParentId is an album and type is Audio", func() {
+				_, res := getItems("/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Type).To(Equal("Audio"))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+			})
+
+			It("ignores IncludeItemTypes names that aren't Jellyfin item kinds", func() {
+				_, res := getItems("/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=music", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+			})
+
+			It("falls through to the type dispatch when ParentId is not a playlist", func() {
+				code, res := getItems("/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+			})
+		})
+
+		It("lists a playlist's tracks when ParentId is a playlist, whatever the type", func() {
+			putSongsByID(ctx, ds, testID("s1"), testID("s2"))
+			putPlaylist(ctx, ds, testID("pl1"), testID("s1"), testID("s2"))
+			code, res := getItems("/Items?ParentId="+dto.EncodeID(testID("pl1"))+"&IncludeItemTypes=Audio", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+			Expect(res.Items[0].PlaylistItemId).To(Equal(dto.EncodePlaylistEntryID("1")))
+			Expect(res.TotalRecordCount).To(Equal(2))
+		})
+
+		It("pages a playlist parent's tracks in the query, not in memory", func() {
+			putSongsByID(ctx, ds, testID("s1"), testID("s2"), testID("s3"))
+			putPlaylist(ctx, ds, testID("pl1"), testID("s1"), testID("s2"), testID("s3"))
+			code, res := getItems("/Items?ParentId="+dto.EncodeID(testID("pl1"))+"&StartIndex=1&Limit=1", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.TotalRecordCount).To(Equal(3))
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s2"))))
+			Expect(fp.tracksRepo.Options.Offset).To(Equal(1))
+			Expect(fp.tracksRepo.Options.Max).To(Equal(1))
+		})
+
+		It("returns 500 when the song cursor fails to open, instead of a truncated 200", func() {
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+			api.ds = failingSongs(ds)
+			code, _ := getItems("/Items?IncludeItemTypes=Audio&Recursive=true", ctxUser())
+			Expect(code).To(Equal(http.StatusInternalServerError))
+		})
+
+		// Recursive=false asks for direct children only. Finamp's sync probes a library this way
+		// looking for tracks outside any album; answering with every track streams the whole library.
+		Describe("Recursive=false", func() {
+			BeforeEach(func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), AlbumID: testID("a1")})
+			})
+
+			It("returns no songs for a library parent, as tracks are never its direct children", func() {
+				code, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio&Recursive=false", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(BeEmpty())
+				Expect(res.TotalRecordCount).To(BeZero())
+			})
+
+			It("drops only Audio from a multi-type library query", func() {
+				_, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio,MusicAlbum&Recursive=false", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
+			})
+
+			It("still lists albums for a library parent, as they are its direct children", func() {
+				_, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=MusicAlbum&Recursive=false", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+			})
+
+			It("still lists an album's tracks, as they are its direct children", func() {
+				_, res := getItems("/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=Audio&Recursive=false", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+			})
+
+			It("keeps returning every song when no parent scopes the query", func() {
+				_, res := getItems("/Items?IncludeItemTypes=Audio&Recursive=false", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+			})
+
+			// Jellyfin's own default: ItemsController binds `bool? recursive` and reads it as
+			// `recursive ?? false`, so an omitted Recursive is a non-recursive request.
+			It("treats an omitted Recursive as false, like Jellyfin", func() {
+				_, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio", ctxUser())
+				Expect(res.Items).To(BeEmpty())
+			})
+		})
+
+		It("lists an artist's albums when ParentId is an artist and type is MusicAlbum", func() {
+			putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "Artist"}, model.Artist{ID: testID("ar2"), Name: "Other"})
+			persistencetest.PutAlbums(ctx, ds,
+				model.Album{ID: testID("a1"), Name: "One", AlbumArtistID: testID("ar1"), Participants: credits(model.RoleAlbumArtist, testID("ar1"))},
+				model.Album{ID: testID("a2"), Name: "Two", AlbumArtistID: testID("ar2"), Participants: credits(model.RoleAlbumArtist, testID("ar2"))},
+			)
+			_, res := getItems("/Items?ParentId="+dto.EncodeID(testID("ar1"))+"&IncludeItemTypes=MusicAlbum", ctxUser())
+			Expect(itemNames(res)).To(ConsistOf("One"))
+		})
+
+		It("lists artists when IncludeItemTypes=MusicArtist", func() {
+			putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "Artist"})
+			_, res := getItems("/Items?IncludeItemTypes=MusicArtist", ctxUser())
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Type).To(Equal("MusicArtist"))
+		})
+
+		It("lists genres when IncludeItemTypes=MusicGenre", func() {
+			code, res := getItems("/Items?IncludeItemTypes=MusicGenre", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).NotTo(BeNil())
+		})
+
+		It("lists playlists when IncludeItemTypes=Playlist", func() {
+			Expect(ds.Playlist().Put(ctxUser(), &model.Playlist{ID: testID("p1"), Name: "My Mix", OwnerID: alice.ID})).To(Succeed())
+			code, res := getItems("/Items?IncludeItemTypes=Playlist", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Type).To(Equal("Playlist"))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("p1"))))
+			Expect(res.TotalRecordCount).To(Equal(1))
+		})
+
+		It("merges results from every requested type in IncludeItemTypes", func() {
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+			code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(2))
+			types := []string{res.Items[0].Type, res.Items[1].Type}
+			Expect(types).To(ConsistOf("Audio", "MusicAlbum"))
+			Expect(res.TotalRecordCount).To(Equal(2))
+		})
+
+		Context("with an artist, a song and an album all named Salt", func() {
+			BeforeEach(func() {
+				putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "Salt"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Salt"})
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Salt"})
+			})
+
+			// @jellyfin/sdk (Jellify) sends array params as repeated keys.
+			It("merges results from every repeated IncludeItemTypes key", func() {
+				code, res := getItems("/Items?SearchTerm=Salt&IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio&IncludeItemTypes=MusicAlbum", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(3))
+				types := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type}
+				Expect(types).To(ConsistOf("MusicArtist", "Audio", "MusicAlbum"))
+				Expect(res.TotalRecordCount).To(Equal(3))
+			})
+
+			It("mixes a repeated IncludeItemTypes key with a comma-separated one", func() {
+				code, res := getItems("/Items?IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio,MusicAlbum", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(3))
+				types := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type}
+				Expect(types).To(ConsistOf("MusicArtist", "Audio", "MusicAlbum"))
+			})
+		})
+
+		It("merges favorite songs, albums, and playlists", func() {
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"}, model.MediaFile{ID: testID("s2"), Title: "Plain Song"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Plain Album"})
+			Expect(ds.Playlist().Put(ctxUser(), &model.Playlist{ID: testID("p1"), Name: "My Mix", OwnerID: alice.ID})).To(Succeed())
+			Expect(ds.Playlist().Put(ctxUser(), &model.Playlist{ID: testID("p2"), Name: "Plain Mix", OwnerID: alice.ID})).To(Succeed())
+			annotate(alice.ID, "media_file", testID("s1"), model.Annotations{Starred: true})
+			annotate(alice.ID, "album", testID("a1"), model.Annotations{Starred: true})
+			annotate(alice.ID, "playlist", testID("p1"), model.Annotations{Starred: true})
+			code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(3))
+			Expect(itemNames(res)).To(ConsistOf("Song", "One", "My Mix"))
+			types := []string{res.Items[0].Type, res.Items[1].Type}
+			types = append(types, res.Items[2].Type)
+			Expect(types).To(ConsistOf("Audio", "MusicAlbum", "Playlist"))
+		})
+
+		Context("with albums in every favorite and played combination", func() {
+			BeforeEach(func() {
+				putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "Artist"})
+				byArtist := credits(model.RoleAlbumArtist, testID("ar1"))
+				persistencetest.PutAlbums(ctx, ds,
+					model.Album{ID: testID("fav-played"), Name: "Favorite Played", Participants: byArtist},
+					model.Album{ID: testID("fav-unplayed"), Name: "Favorite Unplayed", Participants: byArtist},
+					model.Album{ID: testID("played"), Name: "Played", Participants: byArtist},
+					model.Album{ID: testID("unplayed"), Name: "Unplayed", Participants: byArtist},
+					model.Album{ID: testID("fav-missing"), Name: "Favorite Missing", Missing: true, Participants: byArtist},
+				)
+				annotate(alice.ID, "album", testID("fav-played"), model.Annotations{Starred: true, PlayCount: 1})
+				annotate(alice.ID, "album", testID("fav-unplayed"), model.Annotations{Starred: true})
+				annotate(alice.ID, "album", testID("played"), model.Annotations{PlayCount: 1})
+				annotate(alice.ID, "album", testID("fav-missing"), model.Annotations{Starred: true})
+			})
+
+			It("applies every repeated Filters key", func() {
+				code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite&Filters=IsPlayed", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(itemNames(res)).To(ConsistOf("Favorite Played"))
+			})
+
+			DescribeTable("translates the Filters list and its standalone equivalents",
+				func(query string, want ...string) {
+					code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&"+query, ctxUser())
+					Expect(code).To(Equal(http.StatusOK))
+					Expect(itemNames(res)).To(ConsistOf(want))
+				},
+				Entry("IsFavorite", "Filters=IsFavorite", "Favorite Played", "Favorite Unplayed"),
+				Entry("IsFavorite,IsUnplayed combined", "Filters=IsFavorite,IsUnplayed", "Favorite Unplayed"),
+				Entry("IsUnplayed", "Filters=IsUnplayed", "Favorite Unplayed", "Unplayed"),
+				Entry("IsPlayed", "Filters=IsPlayed", "Favorite Played", "Played"),
+				Entry("IsFavoriteOrLikes is treated as favorites", "Filters=IsFavoriteOrLikes", "Favorite Played", "Favorite Unplayed"),
+				Entry("isPlayed=false", "isPlayed=false", "Favorite Unplayed", "Unplayed"),
+				Entry("isFavorite=false still filters", "isFavorite=false", "Played", "Unplayed"),
+				// Jellyfin builds the query from the standalone params, then applies Filters over the top.
+				Entry("Filters wins over the standalone param", "isFavorite=false&Filters=IsFavorite",
+					"Favorite Played", "Favorite Unplayed"),
+				// No Navidrome equivalent: these must be dropped, not half-applied.
+				Entry("Likes is ignored", "Filters=Likes", "Favorite Played", "Favorite Unplayed", "Played", "Unplayed"),
+				Entry("IsResumable is ignored", "Filters=IsResumable", "Favorite Played", "Favorite Unplayed", "Played", "Unplayed"),
+				// The artist-parent branch gets notMissing from filter.AlbumsByArtistID, not the default
+				// branch, so favorites must not be the only predicate left on it.
+				Entry("keeps missing excluded under an artist parent",
+					"Filters=IsFavorite&ArtistIds="+dto.EncodeID(testID("ar1")), "Favorite Played", "Favorite Unplayed"),
+			)
+		})
+
+		It("applies StartIndex/Limit to the merged multi-type result set", func() {
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"}, model.MediaFile{ID: testID("s2"), Title: "Song2"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+			code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.TotalRecordCount).To(Equal(4))
+			Expect(res.StartIndex).To(Equal(1))
+		})
+
+		It("caps each per-type query at StartIndex+Limit instead of fetching everything", func() {
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"}, model.MediaFile{ID: testID("s2"), Title: "Song2"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+			code, _ := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=1&Limit=2", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			// The merged window is [1, 3): each type needs at most its first 3 rows, not the table.
+			Expect(rec.songs.Options.Max).To(Equal(3))
+			Expect(rec.albums.Options.Max).To(Equal(3))
+		})
+
+		It("treats a negative StartIndex as 0 on the multi-type merge instead of panicking", func() {
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"}, model.MediaFile{ID: testID("s2"), Title: "Song2"})
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+			code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=-1&Limit=2", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.StartIndex).To(Equal(0))
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.TotalRecordCount).To(Equal(4))
+			// The clamped offset must feed the per-type window too: 0+Limit, not -1+Limit.
+			Expect(rec.songs.Options.Max).To(Equal(2))
+			Expect(rec.albums.Options.Max).To(Equal(2))
+		})
+
+		It("clamps a negative StartIndex to 0 on the single-type path", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&StartIndex=-1&Limit=10", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(rec.albums.Options.Offset).To(Equal(0))
+			Expect(res.StartIndex).To(Equal(0))
+			Expect(res.Items).To(HaveLen(1))
+		})
+
+		// Search runs a two-phase FTS query whose first phase has no annotation join, so an
+		// annotation predicate there is "no such column: starred" -> 500.
+		DescribeTable("does not push annotation filters into a search",
+			func(itemType, filters string) {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "One Song"})
+				annotate(alice.ID, "album", testID("a1"), model.Annotations{Starred: true, PlayCount: 1})
+				annotate(alice.ID, "media_file", testID("s1"), model.Annotations{Starred: true, PlayCount: 1})
+				code, _ := getItems("/Items?IncludeItemTypes="+itemType+"&SearchTerm=one&Filters="+filters, ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+			},
+			Entry("albums, IsFavorite", "MusicAlbum", "IsFavorite"),
+			Entry("albums, IsUnplayed", "MusicAlbum", "IsUnplayed"),
+			Entry("albums, IsPlayed", "MusicAlbum", "IsPlayed"),
+			Entry("songs, IsFavorite", "Audio", "IsFavorite"),
+			Entry("songs, IsUnplayed", "Audio", "IsUnplayed"),
+		)
+
+		It("forwards SearchTerm to the repo's Search method", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(itemNames(res)).To(ConsistOf("One"))
+		})
+
+		It("caps a search the client left unbounded", func() {
+			manyAlbums(defaultSearchLimit + 2)
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(defaultSearchLimit))
+			Expect(res.TotalRecordCount).To(Equal(defaultSearchLimit + 1))
+		})
+
+		It("honors an explicit search Limit up to the ceiling", func() {
+			manyAlbums(502)
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=500", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(500))
+			Expect(res.TotalRecordCount).To(Equal(501))
+		})
+
+		It("clamps a search Limit that would materialize the library", func() {
+			manyAlbums(maxSearchLimit + 2)
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&SearchTerm=one&Limit=999999", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(maxSearchLimit))
+			Expect(res.TotalRecordCount).To(Equal(maxSearchLimit + 1))
+		})
+
+		It("treats an all-whitespace SearchTerm as no search, streaming the unfiltered list", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&SearchTerm=%20%20", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(2))
+			Expect(rec.albums.SearchQuery).To(BeEmpty())
+		})
+
+		DescribeTable("bounds the multi-type search window however large StartIndex is",
+			func(startIndex int) {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+				code, _ := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", startIndex), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(rec.albums.Options.Max).To(Equal(maxSearchLimit + 1))
+			},
+			Entry("large", 500000),
+			// StartIndex+Limit would wrap negative and slice out of range in a worker goroutine.
+			Entry("near the int limit", math.MaxInt),
+		)
+
+		// The specs in each container only read, so they share one seeding of n songs and an album.
+		withSongsAndAnAlbum := func(n int, specs func(songs func() []string)) {
+			Describe(fmt.Sprintf("with %d matching songs and an album", n), Ordered, func() {
+				var songs []string
+				BeforeAll(func() {
+					ctx = GinkgoT().Context()
+					ds = persistence.New(db.Db())
+					songs = manySongs(n)
+					persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "Song Album"})
+				})
+				specs(func() []string { return songs })
+			})
+		}
+
+		withSongsAndAnAlbum(maxSearchLimit+1, func(songs func() []string) {
+			It("stops a multi-type search at the ceiling rather than serving another type's rows", func() {
+				// Bounding the per-type window is what keeps StartIndex from driving it without limit, and
+				// past that window the merged order is no longer the true one.
+				code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", maxSearchLimit), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(BeEmpty())
+				Expect(res.TotalRecordCount).To(Equal(maxSearchLimit))
+			})
+
+			It("serves the last page below the ceiling in full", func() {
+				code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=10", maxSearchLimit-1), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				// Clipped to the window; the interleaved album takes one slot, shifting this song in by one.
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs()[maxSearchLimit-2])))
+			})
+		})
+
+		withSongsAndAnAlbum(defaultSearchLimit*2, func(songs func() []string) {
+			It("bounds an unbounded multi-type search to the default in total, not per type", func() {
+				code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(defaultSearchLimit))
+			})
+
+			It("pages an unbounded multi-type search past the default without dropping matches", func() {
+				code, res := getItems(fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d", defaultSearchLimit+50), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).ToNot(BeEmpty())
+				// The interleaved album takes one slot ahead of it, shifting this song in by one.
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(songs()[defaultSearchLimit+49])))
+			})
+
+			It("reports a multi-type search total past the page, so clients keep paging", func() {
+				code, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&Limit=10", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(10))
+				Expect(res.TotalRecordCount).To(BeNumerically(">", 10))
+			})
+		})
+
+		It("reports a search total beyond the fetched page instead of the page length", func() {
+			putArtists(ctx, ds,
+				model.Artist{ID: testID("r1"), Name: "Alpha"}, model.Artist{ID: testID("r2"), Name: "Alpine"}, model.Artist{ID: testID("r3"), Name: "Alps"},
+			)
+			code, res := getItems("/Items?IncludeItemTypes=MusicArtist&SearchTerm=al&StartIndex=1&Limit=1", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.TotalRecordCount).To(Equal(3))
+		})
+
+		It("forwards StartIndex/Limit as Offset/Max", func() {
+			for i := range 20 {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID(fmt.Sprintf("a%02d", i)), Name: fmt.Sprintf("Album %02d", i)})
+			}
+			code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&SortBy=SortName&StartIndex=5&Limit=10", ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(itemNames(res)).To(Equal([]string{
+				"Album 05", "Album 06", "Album 07", "Album 08", "Album 09",
+				"Album 10", "Album 11", "Album 12", "Album 13", "Album 14",
+			}))
+			Expect(res.TotalRecordCount).To(Equal(20))
+		})
+
+		Describe("Ids batch-fetch", func() {
+			// Finamp's download/sync fetches a track's BaseItemDto via /Items?ids=<id>; without
+			// this, queryItems ignored Ids and returned the default type-dispatched list instead.
+			It("returns exactly the requested item when Ids has a single id", func() {
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1}, model.MediaFile{ID: testID("s2"), Title: "Other", LibraryID: 1})
+				code, res := getItems("/Items?Ids="+dto.EncodeID(testID("s1")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+				Expect(res.Items[0].Name).To(Equal("Song"))
+				Expect(res.TotalRecordCount).To(Equal(1))
+			})
+
+			It("returns items of different types for a lowercase ids param with multiple ids", func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1})
+				code, res := getItems("/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("s1")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(2))
+				ids := []string{res.Items[0].Id, res.Items[1].Id}
+				Expect(ids).To(ConsistOf(dto.EncodeID(testID("a1")), dto.EncodeID(testID("s1"))))
+				types := []string{res.Items[0].Type, res.Items[1].Type}
+				Expect(types).To(ConsistOf("MusicAlbum", "Audio"))
+				Expect(res.TotalRecordCount).To(Equal(2))
+			})
+
+			It("resolves song ids with one batched IN query, not a Get per id", func() {
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 1}, model.MediaFile{ID: testID("s2"), Title: "Song2", LibraryID: 1})
+				code, res := getItems("/Items?ids="+dto.EncodeID(testID("s1"))+","+dto.EncodeID(testID("s2")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(2))
+				sql, args, err := rec.songs.Options.Filters.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(ContainSubstring("media_file.id IN"))
+				Expect(args).To(ConsistOf(testID("s1"), testID("s2")))
+				Expect(rec.songs.GetAlls).To(Equal(1))
+				Expect(rec.songs.Gets).To(BeZero())
+			})
+
+			It("omits an id in a library the user can't access, without erroring the whole batch", func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 2}) // alice only has access to library 1
+				code, res := getItems("/Items?Ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("s1")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("a1"))))
+				Expect(res.TotalRecordCount).To(Equal(1))
+			})
+		})
+
+		Describe("sorting", func() {
+			BeforeEach(func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+			})
+
+			DescribeTable("translates SortBy into the repo's sort keys",
+				func(itemType, sortBy, want string) {
+					code, _ := getItems("/Items?IncludeItemTypes="+itemType+"&SortBy="+sortBy, ctxUser())
+					Expect(code).To(Equal(http.StatusOK))
+					got := rec.songs.Options.Sort
+					if itemType == "MusicAlbum" {
+						got = rec.albums.Options.Sort
+					}
+					Expect(got).To(Equal(want))
+				},
+				Entry("PlayCount", "MusicAlbum", "PlayCount", "play_count"),
+				Entry("DatePlayed", "Audio", "DatePlayed", "play_date"),
+				Entry("Runtime on albums", "MusicAlbum", "Runtime", "duration"),
+				Entry("RunTimeTicks alias", "MusicAlbum", "RunTimeTicks", "duration"),
+				// Finamp leads its track sort with Runtime: unless that resolves, the first recognized
+				// key is AlbumArtist and the list looks sorted while being sorted by the wrong thing.
+				Entry("Finamp's Runtime-led track sort", "Audio", "Runtime,AlbumArtist,Album,SortName",
+					"duration, album_artist, album, title"),
+				Entry("every recognized key, in order", "MusicAlbum", "DateCreated,SortName", "recently_added, name"),
+				Entry("a key repeating a column is dropped", "Audio",
+					"PremiereDate,Album,ParentIndexNumber,IndexNumber,SortName", "year, album, title"),
+				// random is matched by exact string equality in the repo, so it can never share a sort.
+				Entry("Random stays alone", "MusicAlbum", "Random,SortName", "random"),
+				Entry("unrecognized keys are skipped", "Audio", "Runtime,Nonsense,SortName", "duration, title"),
+				Entry("only the last key recognized", "Audio", "Unknown1,Unknown2,SortName", "title"),
+				Entry("Finamp's album view is disc+track", "Audio", "ParentIndexNumber,IndexNumber,SortName", "album, title"),
+				Entry("nothing recognized leaves the repo default", "MusicAlbum", "SeriesSortName", ""),
+			)
+
+			// Jellyfin reuses the first SortOrder for keys past the end of the list.
+			DescribeTable("applies one SortOrder to every sort key",
+				func(sortOrder, want string) {
+					code, _ := getItems("/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder="+sortOrder, ctxUser())
+					Expect(code).To(Equal(http.StatusOK))
+					Expect(rec.albums.Options.Sort).To(Equal("duration, name"))
+					Expect(rec.albums.Options.Order).To(Equal(want))
+					Expect(rec.albums.Options.SortOrders).To(BeEmpty())
+				},
+				Entry("ascending", "Ascending", ""),
+				Entry("descending", "Descending", "desc"),
+			)
+
+			It("pairs each SortOrder with its SortBy key", func() {
+				code, _ := getItems("/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName,PlayCount&SortOrder=Descending,Ascending", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(rec.albums.Options.Sort).To(Equal("duration, name, play_count"))
+				Expect(rec.albums.Options.Order).To(BeEmpty())
+				Expect(rec.albums.Options.SortOrders).To(Equal([]string{"desc", "asc", "desc"}))
+			})
+
+			It("keeps every key of a repeated SortBy", func() {
+				code, _ := getItems("/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime&SortBy=SortName", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(rec.albums.Options.Sort).To(Equal("duration, name"))
+			})
+
+			It("pairs a repeated SortOrder key with its SortBy key", func() {
+				code, _ := getItems("/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder=Ascending&SortOrder=Descending", ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(rec.albums.Options.Sort).To(Equal("duration, name"))
+				Expect(rec.albums.Options.Order).To(BeEmpty())
+				Expect(rec.albums.Options.SortOrders).To(Equal([]string{"asc", "desc"}))
+			})
+		})
+
+		Describe("library scoping", func() {
+			It("scopes a MusicAlbum listing (no ParentId) to the user's accessible libraries", func() {
+				albumsPerLibrary()
+				_, res := getItems("/Items?IncludeItemTypes=MusicAlbum", ctxUserWithLibraries(model.Libraries{{ID: 1}, {ID: 2}}))
+				Expect(itemNames(res)).To(ConsistOf("One", "Two"))
+			})
+
+			It("scopes a Audio listing (no ParentId) to the user's accessible libraries", func() {
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: testID("s1"), Title: "One", LibraryID: 1},
+					model.MediaFile{ID: testID("s2"), Title: "Two", LibraryID: 2},
+					model.MediaFile{ID: testID("s3"), Title: "Three", LibraryID: 3},
+				)
+				_, res := getItems("/Items?IncludeItemTypes=Audio", ctxUserWithLibraries(model.Libraries{{ID: 1}, {ID: 2}}))
+				Expect(itemNames(res)).To(ConsistOf("One", "Two"))
+			})
+
+			It("scopes a MusicArtist listing to the user's accessible libraries", func() {
+				putArtistsIn(ctx, ds, 1, model.Artist{ID: testID("ar1"), Name: "One"})
+				putArtistsIn(ctx, ds, 2, model.Artist{ID: testID("ar2"), Name: "Two"})
+				putArtistsIn(ctx, ds, 3, model.Artist{ID: testID("ar3"), Name: "Three"})
+				_, res := getItems("/Items?IncludeItemTypes=MusicArtist", ctxUserWithLibraries(model.Libraries{{ID: 1}, {ID: 2}}))
+				Expect(itemNames(res)).To(ConsistOf("One", "Two"))
+			})
+
+			It("treats a numeric ParentId matching an accessible library as a library scope, not an artist id", func() {
+				albumsPerLibrary()
+				_, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(2)+"&IncludeItemTypes=MusicAlbum", ctxUserWithLibraries(model.Libraries{{ID: 1}, {ID: 2}}))
+				Expect(itemNames(res)).To(ConsistOf("Two"))
+			})
+
+			It("does not let ParentId=<inaccessible library id> scope results to that library", func() {
+				// The library GUID decodes to "3", so an artist with that id shows the artist-parent fallback.
+				putArtistsIn(ctx, ds, 1, model.Artist{ID: "3", Name: "Three"})
+				byArtist := credits(model.RoleAlbumArtist, "3")
+				persistencetest.PutAlbums(ctx, ds,
+					model.Album{ID: testID("a1"), Name: "One", LibraryID: 1, Participants: byArtist},
+					model.Album{ID: testID("a2"), Name: "Two", LibraryID: 1},
+					model.Album{ID: testID("a3"), Name: "Three", LibraryID: 3, Participants: byArtist},
+				)
+				code, res := getItems("/Items?ParentId="+dto.EncodeLibraryID(3)+"&IncludeItemTypes=MusicAlbum", ctxUserWithLibraries(model.Libraries{{ID: 1}}))
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(itemNames(res)).To(ConsistOf("One"))
+			})
+
+			It("does not restrict a default MusicAlbum listing for an admin user", func() {
+				albumsPerLibrary()
+				_, res := getItems("/Items?IncludeItemTypes=MusicAlbum", ctxAdmin())
+				Expect(itemNames(res)).To(ConsistOf("One", "Two", "Three"))
+			})
+		})
+
+		// A malformed id must 404, not silently drop the filter; a well-formed but unknown one must
+		// still reach the entity filter, not the unfiltered default.
+		Describe("stale and malformed id filtering", func() {
+			BeforeEach(func() {
+				putArtists(ctx, ds,
+					model.Artist{ID: testID("ar1"), Name: "One"},
+					model.Artist{ID: testID("ar2"), Name: "Two"},
+					model.Artist{ID: testID("ar3"), Name: "Three"},
+				)
+			})
+
+			It("404s a malformed ParentId instead of listing every song", func() {
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+				code, _ := getItems("/Items?IncludeItemTypes=Audio&ParentId=not-a-valid-id", ctxUser())
+				Expect(code).To(Equal(http.StatusNotFound))
+			})
+
+			It("404s a malformed AlbumArtistIds instead of listing every album", func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+				code, _ := getItems("/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds=not-a-valid-id", ctxUser())
+				Expect(code).To(Equal(http.StatusNotFound))
+			})
+
+			It("404s a malformed ArtistIds instead of listing every song", func() {
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+				code, _ := getItems("/Items?IncludeItemTypes=Audio&ArtistIds=not-a-valid-id", ctxUser())
+				Expect(code).To(Equal(http.StatusNotFound))
+			})
+
+			It("404s when a later repeated ArtistIds value is malformed", func() {
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+				code, _ := getItems("/Items?IncludeItemTypes=Audio&ArtistIds="+dto.EncodeID(testID("ar1"))+"&ArtistIds=not-a-valid-id", ctxUser())
+				Expect(code).To(Equal(http.StatusNotFound))
+			})
+
+			It("filters songs by every repeated ArtistIds key", func() {
+				persistencetest.PutMediaFiles(ctx, ds,
+					model.MediaFile{ID: testID("s1"), Title: "One", Participants: credits(model.RoleArtist, testID("ar1"))},
+					model.MediaFile{ID: testID("s2"), Title: "Two", Participants: credits(model.RoleArtist, testID("ar2"))},
+					model.MediaFile{ID: testID("s3"), Title: "Three", Participants: credits(model.RoleArtist, testID("ar3"))},
+				)
+				code, res := getItems("/Items?IncludeItemTypes=Audio&ArtistIds="+dto.EncodeID(testID("ar1"))+"&ArtistIds="+dto.EncodeID(testID("ar2")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(itemNames(res)).To(ConsistOf("One", "Two"))
+			})
+
+			It("filters albums by every artist in a comma-separated AlbumArtistIds", func() {
+				persistencetest.PutAlbums(ctx, ds,
+					model.Album{ID: testID("a1"), Name: "One", Participants: credits(model.RoleAlbumArtist, testID("ar1"))},
+					model.Album{ID: testID("a2"), Name: "Two", Participants: credits(model.RoleAlbumArtist, testID("ar2"))},
+					model.Album{ID: testID("a3"), Name: "Three", Participants: credits(model.RoleAlbumArtist, testID("ar3"))},
+				)
+				code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds="+dto.EncodeID(testID("ar1"))+","+dto.EncodeID(testID("ar2")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(itemNames(res)).To(ConsistOf("One", "Two"))
+			})
+
+			It("excludes an album artist from a multi-id contributingArtistIds Featured On filter", func() {
+				albumBy := func(albumArtist, artist string) model.Participants {
+					p := credits(model.RoleAlbumArtist, testID(albumArtist))
+					p.Add(model.RoleArtist, model.Artist{ID: testID(artist)})
+					return p
+				}
+				persistencetest.PutAlbums(ctx, ds,
+					model.Album{ID: testID("a1"), Name: "Own Album", Participants: albumBy("ar1", "ar1")},
+					model.Album{ID: testID("a2"), Name: "Featured On", Participants: albumBy("ar3", "ar2")},
+					model.Album{ID: testID("a3"), Name: "Other Artist", Participants: albumBy("ar3", "ar3")},
+					model.Album{ID: testID("a4"), Name: "Other Id's Album", Participants: albumBy("ar2", "ar1")},
+				)
+				code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&contributingArtistIds="+dto.EncodeID(testID("ar1"))+","+dto.EncodeID(testID("ar2")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(itemNames(res)).To(ConsistOf("Featured On"))
+			})
+
+			It("still applies the artist filter (rather than dropping it) for a well-formed but unknown AlbumArtistIds", func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"})
+				code, res := getItems("/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds="+dto.EncodeID(testID("no-such-artist")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(BeEmpty())
+			})
+
+			It("still applies the album filter (rather than dropping it) for a well-formed but unknown ParentId", func() {
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song"})
+				code, res := getItems("/Items?IncludeItemTypes=Audio&ParentId="+dto.EncodeID(testID("no-such-album")), ctxUser())
+				Expect(code).To(Equal(http.StatusOK))
+				Expect(res.Items).To(BeEmpty())
+			})
+		})
+
+		Describe("mixed IncludeItemTypes merge", func() {
+			BeforeEach(func() {
+				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One"}, model.Album{ID: testID("a2"), Name: "Two"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "S1"}, model.MediaFile{ID: testID("s2"), Title: "S2"})
+			})
+
+			It("returns a mix of both types, not all of one", func() {
+				_, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", ctxUser())
+				Expect(res.Items).To(HaveLen(4))
+				Expect(res.TotalRecordCount).To(Equal(4))
+				types := map[string]int{}
+				for _, it := range res.Items {
+					types[it.Type]++
+				}
+				Expect(types["Audio"]).To(Equal(2))
+				Expect(types["MusicAlbum"]).To(Equal(2))
+			})
+
+			It("interleaves types round-robin (Audio first, per IncludeItemTypes order)", func() {
+				_, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", ctxUser())
+				got := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type, res.Items[3].Type}
+				Expect(got).To(Equal([]string{"Audio", "MusicAlbum", "Audio", "MusicAlbum"}))
+			})
+
+			It("honors Limit across the merged set", func() {
+				_, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=1", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.TotalRecordCount).To(Equal(4))
+			})
+
+			It("serves a full random page from offset 0 regardless of StartIndex", func() {
+				// A deep StartIndex on a random merge must not materialize offset+limit rows; since random
+				// reshuffles per request, offset 0 is an equivalent fresh draw. Old behavior returned empty.
+				_, res := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&SortBy=Random&Recursive=true&StartIndex=1000&Limit=4", ctxUser())
+				Expect(res.Items).To(HaveLen(4))
+			})
+
+			It("propagates a per-type query error", func() {
+				api.ds = failingSongs(ds)
+				code, _ := getItems("/Items?IncludeItemTypes=Audio,MusicAlbum&Recursive=true&Limit=4", ctxUser())
+				Expect(code).To(Equal(http.StatusInternalServerError))
+			})
+		})
+	})
+
+	Describe("getItem", func() {
+		getItem := func(itemID string, ctx context.Context) (int, dto.BaseItemDto) {
+			GinkgoHelper()
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/Items/"+itemID, nil).WithContext(ctx)
+			invoke(api.getItem, w, withChiURLParam(r, "itemId", itemID))
+			var item dto.BaseItemDto
+			if w.Code == http.StatusOK {
+				Expect(json.Unmarshal(w.Body.Bytes(), &item)).To(Succeed())
+			}
+			return w.Code, item
+		}
+
+		It("returns an album by id", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
+			code, item := getItem(dto.EncodeID(testID("a1")), ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(item.Id).To(Equal(dto.EncodeID(testID("a1"))))
+			Expect(item.Type).To(Equal("MusicAlbum"))
+		})
+
+		It("returns 404 when the id doesn't match any entity", func() {
+			code, _ := getItem(dto.EncodeID(testID("missing")), ctxUser())
+			Expect(code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 404 for an album in a library the user can't access", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
+			code, _ := getItem(dto.EncodeID(testID("a1")), ctxUser()) // only has access to library 1
+			Expect(code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 404 for a song in a library the user can't access", func() {
+			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 2})
+			code, _ := getItem(dto.EncodeID(testID("s1")), ctxUser()) // only has access to library 1
+			Expect(code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns an album to an admin even when it's outside their (empty) Libraries", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
+			code, item := getItem(dto.EncodeID(testID("a1")), ctxAdmin()) // admin, Libraries: nil
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(item.Id).To(Equal(dto.EncodeID(testID("a1"))))
+		})
+
+		// Finamp fetches a /UserViews entry (Id=library id) as a plain item to resolve the
+		// library node before it can load the home screen or any library tab.
+		It("resolves a library-view id (from /UserViews) as a CollectionFolder item", func() {
+			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
+			putLibraries(ctx, ds, libs)
+			code, item := getItem(dto.EncodeLibraryID(1), ctxUserWithLibraries(libs))
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(item.Id).To(Equal(dto.EncodeLibraryID(1)))
+			Expect(item.Name).To(Equal("Music Library"))
+			Expect(item.Type).To(Equal("CollectionFolder"))
+			Expect(item.CollectionType).To(Equal("music"))
+			Expect(item.IsFolder).To(BeTrue())
+		})
+
+		It("does not resolve a library-view id the user has no access to", func() {
+			libs := model.Libraries{{ID: 2, Name: "Other"}} // no access to library 1
+			code, _ := getItem(dto.EncodeLibraryID(1), ctxUserWithLibraries(libs))
+			Expect(code).To(Equal(http.StatusNotFound))
+		})
+
+		// Finamp's SyncBuffer fetches a playlist by id as a plain item; without this probe it
+		// 404s with "Could not fetch BaseItemDto <playlist> from server."
+		It("resolves a playlist id via the playlists service", func() {
+			fp.getByIDPls = &model.Playlist{ID: testID("p1"), Name: "My Mix", SongCount: 5}
+			code, item := getItem(dto.EncodeID(testID("p1")), ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(item.Id).To(Equal(dto.EncodeID(testID("p1"))))
+			Expect(item.Name).To(Equal("My Mix"))
+			Expect(item.Type).To(Equal("Playlist"))
+		})
+
+		It("returns 404 for a non-owned or absent playlist id", func() {
+			fp.getByIDErr = model.ErrNotFound
+			code, _ := getItem(dto.EncodeID(testID("p1")), ctxUser())
+			Expect(code).To(Equal(http.StatusNotFound))
+		})
+
+		// Finamp's genre "See all" fetches the genre by id; a 404 white-screens it (see resolveItemByID).
+		It("resolves a genre id as a MusicGenre item", func() {
+			Expect(ds.Tag().Add(ctx, 1, model.Tag{ID: testID("g1"), TagName: model.TagGenre, TagValue: "Rock"})).To(Succeed())
+			code, item := getItem(dto.EncodeID(testID("g1")), ctxUser())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(item.Id).To(Equal(dto.EncodeID(testID("g1"))))
+			Expect(item.Name).To(Equal("Rock"))
+			Expect(item.Type).To(Equal("MusicGenre"))
+		})
+
+		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
+			putLibraries(ctx, ds, model.Libraries{{ID: 1, Name: "Music Library"}})
+			code, item := getItem(dto.EncodeLibraryID(1), ctxAdmin())
+			Expect(code).To(Equal(http.StatusOK))
+			Expect(item.Id).To(Equal(dto.EncodeLibraryID(1)))
+			Expect(item.Name).To(Equal("Music Library"))
+			Expect(item.Type).To(Equal("CollectionFolder"))
+		})
+	})
+
+	Describe("getLatest", func() {
+		latest := func(ctx context.Context) []dto.BaseItemDto {
+			GinkgoHelper()
+			w := httptest.NewRecorder()
+			invoke(api.getLatest, w, httptest.NewRequest(http.MethodGet, "/Users/u1/Items/Latest", nil).WithContext(ctx))
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var items []dto.BaseItemDto
+			Expect(json.Unmarshal(w.Body.Bytes(), &items)).To(Succeed())
+			return items
+		}
+
+		It("returns a bare array of the newest albums", func() {
+			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
+			items := latest(ctxUser())
+			Expect(items).To(HaveLen(1))
+			Expect(items[0].Id).To(Equal(dto.EncodeID(testID("a1"))))
+		})
+
+		It("scopes to the user's accessible libraries", func() {
+			albumsPerLibrary()
+			items := latest(ctxUserWithLibraries(model.Libraries{{ID: 1}, {ID: 2}}))
+			Expect(itemNames(dto.QueryResult{Items: items})).To(ConsistOf("One", "Two"))
+		})
+	})
+
+	Describe("applySort random for all merge types", func() {
+		DescribeTable("maps Random -> random",
+			func(itemType string) {
+				var opts model.QueryOptions
+				applySort(&opts, itemType, "Random", "")
+				Expect(opts.Sort).To(Equal("random"))
+			},
+			Entry("Audio", "Audio"),
+			Entry("MusicAlbum", "MusicAlbum"),
+			Entry("MusicArtist", "MusicArtist"),
+			Entry("MusicGenre", "MusicGenre"),
+			Entry("Playlist", "Playlist"),
+		)
+	})
+
+	Describe("interleave", func() {
+		It("round-robins one item per list in turn", func() {
+			lists := [][]dto.BaseItemDto{
+				{{Id: "a0"}, {Id: "a1"}, {Id: "a2"}},
+				{{Id: "b0"}, {Id: "b1"}},
+			}
+			got := interleave(lists)
+			ids := make([]string, len(got))
+			for i, it := range got {
+				ids[i] = it.Id
+			}
+			Expect(ids).To(Equal([]string{"a0", "b0", "a1", "b1", "a2"}))
+		})
+
+		It("returns empty for no lists", func() {
+			Expect(interleave(nil)).To(BeEmpty())
+		})
+	})
+
+	Describe("parseTypes", func() {
+		It("dedupes repeated types, preserving first-seen order", func() {
+			Expect(parseTypes("Audio,MusicAlbum,Audio")).To(Equal([]string{"Audio", "MusicAlbum"}))
+		})
+
+		It("matches type names case-insensitively, like Jellyfin's enum binding", func() {
+			Expect(parseTypes("musicalbum, AUDIO")).To(Equal([]string{"MusicAlbum", "Audio"}))
+		})
+
+		It("returns no types for real Jellyfin kinds Navidrome has none of", func() {
+			Expect(parseTypes("Boxset")).To(BeEmpty())
+			Expect(parseTypes("BoxSet,Movie")).To(BeEmpty())
+		})
+
+		It("drops names that aren't Jellyfin item kinds, case-insensitively", func() {
+			Expect(knownItemKinds("music")).To(BeEmpty())
+			Expect(knownItemKinds("music, audio,MUSICVIDEO")).To(Equal("audio,MUSICVIDEO"))
+		})
+
+		It("keeps entries from every value of a repeated param", func() {
+			repeated := func(rawURL string) string {
+				r := httptest.NewRequest(http.MethodGet, rawURL, nil)
+				return knownItemKinds(joinedStrings(req.Params(r), "includeitemtypes"))
+			}
+			Expect(repeated("/Items?includeitemtypes=MusicArtist&includeitemtypes=Audio&includeitemtypes=MusicAlbum")).
+				To(Equal("MusicArtist,Audio,MusicAlbum"))
+			Expect(repeated("/Items?includeitemtypes=Nonsense&includeitemtypes=music")).To(BeEmpty())
+			Expect(repeated("/Items")).To(BeEmpty())
+		})
+
+		It("defaults to albums only when IncludeItemTypes is absent", func() {
+			Expect(parseTypes("")).To(Equal([]string{"MusicAlbum"}))
+			Expect(parseTypes("Nonsense")).To(BeEmpty())
+		})
+	})
+
+	Describe("decodeFilterParam", func() {
+		It("reports ok for an absent param, decoding to \"\"", func() {
+			id, ok := decodeFilterParam("")
+			Expect(id).To(BeEmpty())
+			Expect(ok).To(BeTrue())
+		})
+
+		It("reports ok for a well-formed id, whether or not it exists", func() {
+			id, ok := decodeFilterParam(dto.EncodeID(testID("a1")))
+			Expect(id).To(Equal(testID("a1")))
+			Expect(ok).To(BeTrue())
+		})
+
+		It("reports not ok for a non-empty param that fails to decode", func() {
+			id, ok := decodeFilterParam("not-a-valid-id")
+			Expect(id).To(BeEmpty())
+			Expect(ok).To(BeFalse())
+		})
+	})
+
+	Describe("decodedQueryIDs", func() {
+		It("decodes every entry when all are well-formed", func() {
+			r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+","+dto.EncodeID(testID("a2")), nil)
+			ids, ok := decodedQueryIDs(r, "ids")
+			Expect(ok).To(BeTrue())
+			Expect(ids).To(Equal([]string{testID("a1"), testID("a2")}))
+		})
+
+		It("reports not ok and an empty list, not a partially-decoded one, for a mix of valid and malformed entries", func() {
+			r := httptest.NewRequest(http.MethodGet, "/Items?ids="+dto.EncodeID(testID("a1"))+",not-a-valid-id", nil)
+			ids, ok := decodedQueryIDs(r, "ids")
+			Expect(ok).To(BeFalse())
+			Expect(ids).To(BeEmpty())
+		})
+
+		It("reports ok for an absent param, decoding to an empty list", func() {
+			r := httptest.NewRequest(http.MethodGet, "/Items", nil)
+			ids, ok := decodedQueryIDs(r, "ids")
+			Expect(ok).To(BeTrue())
+			Expect(ids).To(BeEmpty())
+		})
+	})
+})

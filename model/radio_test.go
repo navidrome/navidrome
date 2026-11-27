@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,19 +13,17 @@ import (
 var _ = Describe("Radio", func() {
 	Describe("CoverArtID", func() {
 		It("returns a radio artwork ID", func() {
-			now := time.Now()
-			r := model.Radio{ID: "rd-1", UpdatedAt: now}
+			r := model.Radio{ID: "rd-1", UpdatedAt: time.Now()}
 			artID := r.CoverArtID()
 			Expect(artID.Kind).To(Equal(model.KindRadioArtwork))
 			Expect(artID.ID).To(Equal("rd-1"))
-			Expect(artID.LastUpdate).To(Equal(now))
+			Expect(artID.LastUpdate.IsZero()).To(BeTrue())
 		})
 	})
 
 	Describe("UploadedImagePath", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DataFolder = conf.NewDir("/data")
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir("/data") })
 		})
 
 		It("returns empty string when no image uploaded", func() {

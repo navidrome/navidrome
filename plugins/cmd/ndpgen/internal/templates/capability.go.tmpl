@@ -8,8 +8,20 @@
 package {{.Package}}
 
 import (
+{{- if .Capability.ImportsSharedTypes}}
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
+{{- end}}
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 )
+
+{{- /* Generate deprecated shared-type aliases */ -}}
+{{- range .Capability.SharedAliases}}
+
+{{- if .Doc}}
+{{formatDoc .Doc}}
+{{- end}}
+type {{.Name}} = {{.Target}}
+{{- end}}
 
 {{- /* Generate type alias definitions */ -}}
 {{- range .Capability.TypeAliases}}

@@ -38,6 +38,63 @@ type ClientInfo struct {
 	DirectPlayProfiles         []DirectPlayProfile
 	TranscodingProfiles        []Profile
 	CodecProfiles              []CodecProfile
+	// AllowLossyToLossless is set when a format was requested by name rather than
+	// negotiated from a preference list, where it would only inflate lossy files.
+	AllowLossyToLossless bool
+}
+
+// CapBitrate lowers the client's declared audio bitrate limits to maxKbps,
+// never raising them. A zero limit means "unlimited" and is set to maxKbps.
+// Returns true if anything changed. No-op when maxKbps <= 0.
+func (ci *ClientInfo) CapBitrate(maxKbps int) bool {
+	if maxKbps <= 0 {
+		return false
+	}
+	changed := false
+	if ci.MaxAudioBitrate == 0 || maxKbps < ci.MaxAudioBitrate {
+		ci.MaxAudioBitrate = maxKbps
+		changed = true
+	}
+	if ci.MaxTranscodingAudioBitrate == 0 || maxKbps < ci.MaxTranscodingAudioBitrate {
+		ci.MaxTranscodingAudioBitrate = maxKbps
+		changed = true
+	}
+	return changed
+}
+
+// ForceFormat narrows the client to transcoding to targetFormat, but only if the
+// client already declares a profile for it. All matching profiles are kept so
+// negotiation can still pick among them (e.g. by protocol). Direct play is rebuilt
+// from those profiles rather than dropped, since declaring a transcoding profile
+// for a format is proof the client can play it. Returns false when unsupported.
+func (ci *ClientInfo) ForceFormat(targetFormat string) bool {
+	if targetFormat == "" {
+		return false
+	}
+	var matched []Profile
+	var directPlay []DirectPlayProfile
+	for i := range ci.TranscodingProfiles {
+		p := &ci.TranscodingProfiles[i]
+		// matchesContainer is alias-aware, so a forced "oga" (legacy Opus
+		// target_format) still matches a resolved "opus" profile.
+		container, format := resolveTargetFormat(p)
+		if !matchesContainer(format, []string{targetFormat}) {
+			continue
+		}
+		matched = append(matched, *p)
+		directPlay = append(directPlay, DirectPlayProfile{
+			Containers:       []string{container},
+			AudioCodecs:      []string{format},
+			Protocols:        []string{ProtocolHTTP},
+			MaxAudioChannels: p.MaxAudioChannels,
+		})
+	}
+	if len(matched) == 0 {
+		return false
+	}
+	ci.TranscodingProfiles = matched
+	ci.DirectPlayProfiles = directPlay
+	return true
 }
 
 // DirectPlayProfile describes a format the client can play directly

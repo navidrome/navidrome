@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,11 +27,12 @@ type TranscodeOptions struct {
 	Command    string // DB command template (used to detect custom vs default)
 	Format     string // Target format (mp3, opus, aac, flac)
 	FilePath   string
-	BitRate    int // kbps, 0 = codec default
-	SampleRate int // 0 = no constraint
-	Channels   int // 0 = no constraint
-	BitDepth   int // 0 = no constraint; valid values: 16, 24, 32
-	Offset     int // seconds
+	BitRate    int     // kbps, 0 = codec default
+	SampleRate int     // 0 = no constraint
+	Channels   int     // 0 = no constraint
+	BitDepth   int     // 0 = no constraint; valid values: 16, 24, 32
+	Offset     int     // seconds
+	Duration   float32 // seconds; 0 = unknown. Only used to repair a header ffmpeg piped out unfinished.
 }
 
 // AudioProbeResult contains authoritative audio stream properties from ffprobe.
@@ -47,7 +49,6 @@ type FFmpeg interface {
 	Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
 	ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error)
-	Probe(ctx context.Context, files []string) (string, error)
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
@@ -66,8 +67,7 @@ var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder �
 
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
-	probeCmd            = "ffmpeg %s -f ffmetadata"
-	probeAudioStreamCmd = "ffprobe -v quiet -select_streams a:0 -print_format json -show_streams -show_format %s"
+	probeAudioStreamCmd = "ffprobe -v error -select_streams a:0 -print_format json -show_streams -show_format %s"
 )
 
 type ffmpeg struct{}
@@ -85,7 +85,11 @@ func (e *ffmpeg) Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadC
 	} else {
 		args = buildTemplateArgs(opts)
 	}
-	return e.start(ctx, args)
+	out, err := e.start(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return patchPipedHeader(out, opts.Duration-float32(opts.Offset)), nil
 }
 
 func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error) {
@@ -143,32 +147,85 @@ func fileExists(path string) error {
 	return nil
 }
 
-func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
-	if _, err := ffmpegCmd(); err != nil {
-		return "", err
-	}
-	args := createProbeCommand(probeCmd, files)
-	log.Trace(ctx, "Executing ffmpeg command", "args", args)
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
-	output, _ := cmd.CombinedOutput()
-	return string(output), nil
-}
-
 func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error) {
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
 	if err := fileExists(filePath); err != nil {
-		return nil, err
+		return nil, &ProbeError{Path: filePath, Reason: fileAccessReason(err),
+			NotFound: errors.Is(err, fs.ErrNotExist), err: err}
 	}
 	args := createFFmpegCommand(probeAudioStreamCmd, filePath, 0, 0)
 	log.Trace(ctx, "Executing ffprobe command", "args", args)
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("running ffprobe on %q: %w", filePath, err)
+		return nil, &ProbeError{Path: filePath, Reason: probeClientReason(err, filePath), err: err}
 	}
-	return parseProbeOutput(output)
+	result, err := parseProbeOutput(output)
+	if err != nil {
+		return nil, &ProbeError{Path: filePath, Reason: err.Error(), err: err}
+	}
+	return result, nil
+}
+
+// ProbeError reports an ffprobe failure. Reason is a path-free message safe to
+// expose to clients; the wrapped cause carries the full detail for logging.
+// NotFound marks the media file itself as missing — a launch failure of a
+// deleted ffprobe binary also wraps fs.ErrNotExist, so callers must not infer
+// it from the error chain.
+type ProbeError struct {
+	Path     string
+	Reason   string
+	NotFound bool
+	err      error
+}
+
+func (e *ProbeError) Error() string {
+	if e.err == nil {
+		return fmt.Sprintf("probe failed on %q: %s", e.Path, e.Reason)
+	}
+	return fmt.Sprintf("probe failed on %q: %s", e.Path, probeDetail(e.err))
+}
+
+// Unwrap exposes the underlying cause so callers can test it with errors.Is
+// (e.g. fs.ErrNotExist to detect a missing file).
+func (e *ProbeError) Unwrap() error { return e.err }
+
+// SafeReason returns the path-free reason, safe to send to clients.
+func (e *ProbeError) SafeReason() string { return e.Reason }
+
+// fileAccessReason maps a stat failure to a clear, path-free reason, so a moved
+// or unreadable file reads as "file not found" rather than a raw ffprobe message.
+func fileAccessReason(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "file not found"
+	case errors.Is(err, fs.ErrPermission):
+		return "permission denied"
+	default:
+		return "file not accessible"
+	}
+}
+
+// probeDetail returns the full diagnostic for logging (may contain paths):
+// ffprobe's stderr when present, otherwise the raw error text.
+func probeDetail(err error) string {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok && len(exitErr.Stderr) > 0 {
+		return strings.TrimSpace(string(exitErr.Stderr))
+	}
+	return err.Error()
+}
+
+// probeClientReason returns a path-free reason for an ffprobe execution failure:
+// ffprobe's stderr with the file path stripped, or a generic reason when ffprobe
+// couldn't run at all (its launch error may embed the binary path).
+func probeClientReason(err error, path string) string {
+	exitErr, ok := errors.AsType[*exec.ExitError](err)
+	if !ok || len(exitErr.Stderr) == 0 {
+		return "could not read file"
+	}
+	return strings.TrimSpace(strings.ReplaceAll(string(exitErr.Stderr), path, "the file"))
 }
 
 type probeOutput struct {
@@ -236,7 +293,7 @@ func parseProbeOutput(data []byte) (*AudioProbeResult, error) {
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("no audio stream found in ffprobe output")
+	return nil, errors.New("no audio stream found in ffprobe output")
 }
 
 func (e *ffmpeg) CmdPath() (string, error) {
@@ -403,6 +460,14 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 	args = append(args, "-i", opts.FilePath)
 	args = append(args, "-map", "0:a:0")
 
+	// Preserve source tags. -map_metadata 0 copies format-level tags (MP3/FLAC);
+	// -map_metadata 0:s:a:0 copies tags from the first audio stream (OPUS/OGG).
+	// Both are needed because the two source families store tags at different
+	// levels. Targeting the audio stream explicitly (s:a:0 rather than s:0) avoids
+	// pulling metadata from an embedded cover-art/video stream at index 0. Note:
+	// adts (AAC) output cannot hold tags, so these are a no-op there.
+	args = append(args, "-map_metadata", "0", "-map_metadata", "0:s:a:0")
+
 	if codec, ok := formatCodecMap[opts.Format]; ok {
 		args = append(args, "-c:a", codec)
 	}
@@ -425,7 +490,7 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 // buildTemplateArgs handles user-customized command templates, with dynamic injection
 // of sample rate, channels, and bit depth when requested by the transcode decision.
 // Values in opts have already been clamped to codec limits upstream (see
-// core/stream/codec.go codecMax* helpers), so injecting them unconditionally is safe —
+// core/stream/codec.go), so injecting them unconditionally is safe —
 // ffmpeg honors the last occurrence of a duplicate flag.
 func buildTemplateArgs(opts TranscodeOptions) []string {
 	args := createFFmpegCommand(opts.Command, opts.FilePath, opts.BitRate, opts.Offset)
@@ -487,7 +552,7 @@ func bitDepthToSampleFmt(bitDepth int) string {
 	}
 }
 
-// Path will always be an absolute path
+// createFFmpegCommand expects path to always be an absolute path
 func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 	var args []string
 	for _, s := range fixCmd(cmd) {
@@ -509,20 +574,6 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 		} else {
 			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
 			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
-			args = append(args, s)
-		}
-	}
-	return args
-}
-
-func createProbeCommand(cmd string, inputs []string) []string {
-	var args []string
-	for _, s := range fixCmd(cmd) {
-		if s == "%s" {
-			for _, inp := range inputs {
-				args = append(args, "-i", inp)
-			}
-		} else {
 			args = append(args, s)
 		}
 	}
@@ -552,8 +603,8 @@ func ffprobePath(ffmpegCmd string) string {
 
 func ffmpegCmd() (string, error) {
 	ffOnce.Do(func() {
-		if conf.Server.FFmpegPath != "" {
-			ffmpegPath = conf.Server.FFmpegPath
+		if conf.Server().FFmpegPath != "" {
+			ffmpegPath = conf.Server().FFmpegPath
 			ffmpegPath, ffmpegErr = exec.LookPath(ffmpegPath)
 		} else {
 			ffmpegPath, ffmpegErr = exec.LookPath("ffmpeg")
@@ -592,6 +643,7 @@ func (p *encoderProbe) has(cmdPath, encoder string) bool {
 		return true
 	case encoderProbeUnavailable:
 		return false
+	case encoderProbeUnknown:
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
@@ -15,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -107,7 +111,7 @@ func secureMiddleware() func(http.Handler) http.Handler {
 		FrameDeny:               true,
 		ReferrerPolicy:          "same-origin",
 		PermissionsPolicy:       "autoplay=(), camera=(), microphone=(), usb=()",
-		CustomFrameOptionsValue: conf.Server.HTTPHeaders.FrameOptions,
+		CustomFrameOptionsValue: conf.Server().HTTPHeaders.FrameOptions,
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
@@ -143,7 +147,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     cmp.Or(conf.Server.BasePath, "/"),
+				Path:     cmp.Or(conf.Server().BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {
@@ -165,20 +169,93 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// realIPMiddleware applies middleware.RealIP, and additionally saves the request's original RemoteAddr to the request's
-// context if navidrome is behind a trusted reverse proxy.
+// realIPMiddleware resolves the request's client IP into the context, where it can be read with
+// middleware.GetClientIP, and mirrors it into RemoteAddr for logging and player registration.
+// Forwarding headers are only honoured when the peer is listed in ExtAuth.TrustedSources, so that
+// a client cannot pick its own identity and evade controls keyed on it. The peer address is kept
+// in the context as request.ReverseProxyIp.
 func realIPMiddleware(next http.Handler) http.Handler {
-	if conf.Server.ExtAuth.TrustedSources != "" {
-		return chi.Chain(
-			reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr }),
-			middleware.RealIP,
-		).Handler(next)
+	trusted := conf.Server().ExtAuth.TrustedSources
+	fromPeer := middleware.ClientIPFromRemoteAddr(next)
+	if trusted == "" {
+		return fromPeer
 	}
 
-	// The middleware is applied without a trusted reverse proxy to support other use-cases such as multiple clients
-	// behind a caching proxy. In this case, navidrome only uses the request's RemoteAddr for logging, so the security
-	// impact of reading the headers from untrusted sources is limited.
-	return middleware.RealIP(next)
+	// ClientIPFromXFF ignores the header unless the peer is in a trusted CIDR, which a socket peer
+	// ("@") never is. dispatch already checked the peer, so trust the hop the local proxy wrote.
+	xff := middleware.ClientIPFromXFFTrustedProxies(1)
+	if prefixes := trustedProxyPrefixes(trusted); len(prefixes) > 0 && !strings.HasPrefix(conf.Server().Address, "unix:") {
+		xff = middleware.ClientIPFromXFF(prefixes...)
+	}
+
+	// Last match wins, so this order reproduces RealIP's precedence: True-Client-IP, X-Real-IP,
+	// X-Forwarded-For, peer. Only X-Forwarded-For is checked against the trusted list.
+	fromProxy := chi.Chain(
+		middleware.ClientIPFromRemoteAddr,
+		xff,
+		middleware.ClientIPFromHeader("X-Real-IP"),
+		middleware.ClientIPFromHeader("True-Client-IP"),
+	).Handler(mirrorClientIP(next))
+
+	dispatch := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if validateIPAgainstList(r.RemoteAddr, trusted) {
+			fromProxy.ServeHTTP(w, r)
+			return
+		}
+		log.Trace(r.Context(), "Ignoring forwarding headers from untrusted peer", "peer", r.RemoteAddr)
+		fromPeer.ServeHTTP(w, r)
+	})
+	return reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr })(dispatch)
+}
+
+// mirrorClientIP copies the resolved client IP into RemoteAddr when it differs from the peer.
+func mirrorClientIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if ip := middleware.GetClientIP(r.Context()); ip != "" && ip != peerHost(r) {
+			r.RemoteAddr = ip
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// peerHost returns the host part of RemoteAddr, which may already be a bare IP.
+func peerHost(r *http.Request) string {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
+}
+
+// trustedProxyPrefixes returns the CIDR entries of a trusted sources list, skipping non-CIDR
+// entries such as the "@" unix socket marker.
+func trustedProxyPrefixes(list string) []string {
+	var prefixes []string
+	for entry := range strings.SplitSeq(list, ",") {
+		entry = strings.TrimSpace(entry)
+		if _, err := netip.ParsePrefix(entry); err == nil {
+			prefixes = append(prefixes, entry)
+		}
+	}
+	return prefixes
+}
+
+// ClientIPRateLimiter returns a rate limiter keyed by ClientIP, so spoofed forwarding headers
+// cannot be rotated for a fresh bucket.
+func ClientIPRateLimiter(requestLimit int, windowLength time.Duration, opts ...httprate.Option) func(http.Handler) http.Handler {
+	return httprate.LimitBy(requestLimit, windowLength, func(r *http.Request) (string, error) {
+		return ClientIP(r), nil
+	}, opts...)
+}
+
+// ClientIP returns the canonical client IP resolved by realIPMiddleware, for keying rate limits. The
+// peer address fallback degrades a missing middleware to per-peer limiting, not one shared bucket.
+func ClientIP(r *http.Request) string {
+	return httprate.CanonicalizeIP(ClientAddr(r))
+}
+
+// ClientAddr returns the client IP resolved by realIPMiddleware unmasked, for recording who made a request.
+func ClientAddr(r *http.Request) string {
+	return cmp.Or(middleware.GetClientIP(r.Context()), peerHost(r))
 }
 
 // reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key
@@ -202,12 +279,14 @@ func reqToCtx(key any, fn func(req *http.Request) any) func(http.Handler) http.H
 func serverAddressMiddleware(h http.Handler) http.Handler {
 	// Define a new handler function that will be returned by this middleware function.
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		// Call the serverAddress function to get the scheme and host of the server
+		// Call the ServerAddress function to get the scheme and host of the server
 		// handling the request. If a host is found, modify the request object to use
 		// that host and scheme instead of the original ones.
-		if rScheme, rHost := serverAddress(r); rHost != "" {
+		if rScheme, rHost := ServerAddress(r); rHost != "" {
 			r.Host = rHost
 			r.URL.Scheme = rScheme
+			// Recorded so code running without the request (e.g. plugins) can build public URLs.
+			r = r.WithContext(request.WithServerAddress(r.Context(), rScheme, rHost))
 		}
 
 		// Call the next handler in the chain with the modified request and response.
@@ -225,10 +304,10 @@ var (
 	xForwardedScheme = http.CanonicalHeaderKey("X-Forwarded-Scheme")
 )
 
-// serverAddress is a helper function that returns the scheme and host of the server
+// ServerAddress is a helper function that returns the scheme and host of the server
 // handling the given request, as determined by the presence of X-Forwarded-* headers
 // or the scheme and host of the request URL.
-func serverAddress(r *http.Request) (scheme, host string) {
+func ServerAddress(r *http.Request) (scheme, host string) {
 	// Save the original request host for later comparison.
 	origHost := r.Host
 
@@ -307,13 +386,15 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			usr, ok := request.UserFrom(ctx)
-			if ok {
+			// Internal calls (e.g. plugins) are not user activity: skip the last access update.
+			_, internal := request.InternalAuthFrom(ctx)
+			if ok && !internal {
 				userAccessLimiter.Do(usr.ID, func() {
 					start := time.Now()
 					ctx, cancel := context.WithTimeout(ctx, time.Second)
 					defer cancel()
 
-					err := ds.User(ctx).UpdateLastAccessAt(usr.ID)
+					err := ds.User().UpdateLastAccessAt(ctx, usr.ID)
 					if err != nil {
 						log.Warn(ctx, "Could not update user's lastAccessAt", "username", usr.UserName,
 							"elapsed", time.Since(start), err)
@@ -325,5 +406,43 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 			}
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// DecodeJSONBody decodes exactly one JSON value of at most limit bytes into v, answering 413 or 400 itself on failure.
+func DecodeJSONBody(w http.ResponseWriter, r *http.Request, limit int64, v any) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
+	if err := dec.Decode(v); err != nil {
+		status, msg := jsonBodyError(err)
+		http.Error(w, msg, status)
+		return false
+	}
+	// Decode alone would ignore anything after the first value.
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		status, msg := jsonBodyError(err)
+		if status == http.StatusBadRequest {
+			msg = "Request body must only contain a single JSON value"
+		}
+		http.Error(w, msg, status)
+		return false
+	}
+	return true
+}
+
+func jsonBodyError(err error) (int, string) {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	var sizeErr *http.MaxBytesError
+	switch {
+	case errors.As(err, &sizeErr):
+		return http.StatusRequestEntityTooLarge, fmt.Sprintf("Request body must not be larger than %d bytes", sizeErr.Limit)
+	case errors.Is(err, io.EOF):
+		return http.StatusBadRequest, "Request body must not be empty"
+	case errors.As(err, &syntaxErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains badly-formed JSON (at position %d)", syntaxErr.Offset)
+	case errors.As(err, &typeErr):
+		return http.StatusBadRequest, fmt.Sprintf("Request body contains an invalid value for the %q field (at position %d)", typeErr.Field, typeErr.Offset)
+	default:
+		return http.StatusBadRequest, "Request body contains badly-formed JSON"
 	}
 }

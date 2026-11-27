@@ -24,7 +24,7 @@ jobs:
       git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
       git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -32,7 +32,7 @@ jobs:
       - name: Show git version info
         run: |
           echo "git describe (dirty): $(git describe --dirty --always --tags)"
-          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
+          echo "git describe --tags --abbrev=0: $(git describe --tags --abbrev=0)"
           echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
           echo "github_ref: $GITHUB_REF"
           echo "github_head_sha: ${{ github.event.pull_request.head.sha }}"
@@ -40,7 +40,7 @@ jobs:
       - name: Determine git current SHA and latest tag
         id: git-version
         run: |
-          GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
+          GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
           if [ -n "$GIT_TAG" ]; then
             if [[ "$GITHUB_REF" != refs/tags/* ]]; then
               GIT_TAG=${GIT_TAG}-SNAPSHOT
@@ -62,18 +62,24 @@ jobs:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
+      # Keep CI on the same version `make lint` installs, so a clean local run
+      # cannot turn red in CI just because a new golangci-lint was released.
+      - name: Resolve golangci-lint version
+        id: golangci-version
+        run: echo "version=$(grep '^GOLANGCI_LINT_VERSION' Makefile | cut -d ' ' -f 3)" >> "$GITHUB_OUTPUT"
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: ${{ steps.golangci-version.outputs.version }}
           problem-matchers: true
-          args: --timeout 2m
+          args: --timeout 3m
 
       - name: Run go goimports
         run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$' | grep -v '.pb.go$'`
@@ -86,8 +92,23 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve OpenAPI tool versions
+        id: api-tools
+        run: echo "key=$(grep -E '^(VACUUM|OAPI_CODEGEN|OASDIFF)_VERSION' Makefile | tr -d ' \n')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OpenAPI tools
+        uses: actions/cache@v6
+        with:
+          path: bin
+          key: api-tools-${{ runner.os }}-${{ steps.api-tools.outputs.key }}
+
+      - name: Lint OpenAPI spec
+        run: make api-lint
+
       - name: Run go generate
-        run: go generate ./...
+        run: |
+          make api-gen
+          go generate ./...
       - name: Verify no changes from go generate
         run: |
           git status --porcelain
@@ -96,12 +117,39 @@ jobs:
             exit 1
           fi
 
+      - name: Check for breaking OpenAPI changes
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.sha }}
+          make api-diff API_DIFF_BASE=${{ github.event.pull_request.base.sha }}
+
+  validate-migrations:
+    name: Validate DB migrations
+    runs-on: ubuntu-latest
+    # PR-only gate is at step level: a job-level skip would propagate through
+    # the needs chain (actions/runner#491) and skip all release jobs on tag pushes.
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      # Refresh the base branch so the check compares against its CURRENT tip,
+      # not the (possibly stale) commit the PR was opened against.
+      - name: Fetch latest base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
+      - name: Validate migration ordering and naming
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: ./.github/workflows/validate-migrations.sh
+
   go:
     name: Test Go code
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -110,8 +158,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Test
-        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
+      # Name must stay unique across the workflow: octocov matches step names
+      # by name across every job, and waits for each match to finish.
+      - name: Test with coverage
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v -covermode=atomic -coverprofile=coverage.out $(go list ./... | grep -v '/plugins$')
 
       - name: Test ndpgen
         run: |
@@ -120,6 +170,84 @@ jobs:
           go build -o ndpgen .
           ./ndpgen --help
 
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-go
+          path: coverage.out
+          if-no-files-found: error
+
+  go-plugins:
+    name: Test Go plugins
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        id: setup-go
+        with:
+          go-version-file: go.mod
+
+      # Without this, the suite recompiles every test plugin WASM module,
+      # which dominates its runtime under -race.
+      - name: Cache the WASM compilation cache
+        uses: actions/cache@v6
+        with:
+          path: plugins/testdata/.wazero-cache
+          key: wazero-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('plugins/testdata/*/*.go', 'plugins/testdata/*/go.*', 'plugins/pdk/go/**/*.go', 'plugins/pdk/go/go.*') }}
+          restore-keys: wazero-${{ runner.os }}-
+
+      - name: Test plugins
+        run: go tool ginkgo -p -race -tags netgo,sqlite_fts5 --cover --covermode=atomic --coverprofile=coverage.out --output-dir=. ./plugins/
+
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-plugins
+          path: coverage.out
+          if-no-files-found: error
+
+  coverage:
+    name: Report coverage
+    runs-on: ubuntu-latest
+    needs: [go, go-plugins]
+    permissions:
+      contents: read
+      actions: write
+    env:
+      COVERAGE_COMMENT: 'false'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: octocov-*
+
+      # Merge here rather than letting octocov do it: octocov reports statement
+      # coverage for a single profile, but switches to line counting for several.
+      - name: Merge coverage profiles
+        run: |
+          echo "mode: atomic" > coverage.out
+          awk 'FNR==1 && /^mode:/ {next} {k=$1" "$2; c[k]+=$3} END {for (k in c) print k, c[k]}' \
+            octocov-*/coverage.out | sort >> coverage.out
+
+      - uses: k1LoW/octocov-action@v1
+
+      - name: Save the PR number for the comment workflow
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > pr_number
+
+      - name: Upload the merged profile for the comment workflow
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-pr
+          path: |
+            coverage.out
+            pr_number
+          if-no-files-found: error
+
   go-windows:
     name: Test Go code (Windows)
     runs-on: windows-2022
@@ -127,25 +255,26 @@ jobs:
       FFMPEG_VERSION: "7.1"
       FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
       - uses: msys2/setup-msys2@v2
+        id: msys2
         with:
-          msystem: MINGW64
-          install: mingw-w64-x86_64-gcc
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-gcc
           update: false
 
-      - name: Add mingw64 to PATH
+      - name: Add MSYS2 UCRT64 to PATH
         shell: bash
-        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+        run: echo "${{ steps.msys2.outputs.msys2-location }}/ucrt64/bin" >> $GITHUB_PATH
 
       - name: Cache ffmpeg
         id: ffmpeg-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: C:\ffmpeg
           key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64
@@ -186,12 +315,12 @@ jobs:
         run: go test -shuffle=on -tags netgo,sqlite_fts5 ./... -v
 
       - name: Test ndpgen
-        shell: pwsh
+        shell: bash
         run: |
-          cd plugins\cmd\ndpgen
+          cd plugins/cmd/ndpgen
           go test -shuffle=on -v
           go build -o ndpgen.exe .
-          .\ndpgen.exe --help
+          ./ndpgen.exe --help
 
   js:
     name: Test JS code
@@ -199,7 +328,7 @@ jobs:
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -230,7 +359,7 @@ jobs:
     name: Lint i18n files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: |
           set -e
           for file in resources/i18n/*.json; do
@@ -257,7 +386,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-windows, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-plugins, go-windows, go-lint, i18n-lint, git-version, check-push-enabled, validate-migrations]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -276,7 +405,7 @@ jobs:
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
@@ -299,6 +428,21 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
+
+      - name: Set up QEMU for smoke test
+        if: env.IS_LINUX == 'true'
+        uses: docker/setup-qemu-action@v4
+
+      # The binary is static, so binfmt+qemu runs it directly on the runner.
+      # Catches startup crashes in cross-compiled binaries before they ship,
+      # e.g. the broken ifunc relocations on 32-bit arm from issue #5738.
+      - name: Smoke-test binary
+        if: env.IS_LINUX == 'true'
+        run: |
+          BIN=./output/${{ env.PLATFORM }}/navidrome
+          chmod +x "$BIN"
+          "$BIN" --help >/dev/null
+          echo "OK: ${{ matrix.platform }} binary starts"
 
       - name: Upload Binaries
         uses: actions/upload-artifact@v7
@@ -350,7 +494,7 @@ jobs:
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download digests
         uses: actions/download-artifact@v8
@@ -376,15 +520,20 @@ jobs:
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
 
   push-manifest-dockerhub:
-    name: Push to Docker Hub
+    name: Push to Docker Hub (${{ matrix.repository }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # Always push to DOCKER_HUB_REPO. The upstream repository also pushes to the navidrome/navidrome org repository.
+        repository: ${{ fromJSON(github.repository == 'navidrome/navidrome' && format('["{0}","navidrome/navidrome"]', vars.DOCKER_HUB_REPO) || format('["{0}"]', vars.DOCKER_HUB_REPO)) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Download digests
         uses: actions/download-artifact@v8
@@ -398,7 +547,7 @@ jobs:
         id: docker
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          hub_repository: ${{ vars.DOCKER_HUB_REPO }}
+          hub_repository: ${{ matrix.repository }}
           hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
@@ -415,7 +564,7 @@ jobs:
 
       - name: Inspect image in Docker Hub
         run: |
-          docker buildx imagetools inspect ${{ vars.DOCKER_HUB_REPO }}:${{ steps.docker.outputs.version }}
+          docker buildx imagetools inspect ${{ matrix.repository }}:${{ steps.docker.outputs.version }}
 
   cleanup-digests:
     name: Cleanup digest artifacts
@@ -427,7 +576,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
+          for artifact in $(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
             gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
           done
 
@@ -437,7 +586,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v8
         with:
@@ -471,7 +620,7 @@ jobs:
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -491,7 +640,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
-          version: '~> v2'
+          version: '2.16.0'
           args: "release --clean -f release/goreleaser.yml ${{ env.RELEASE_FLAGS }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

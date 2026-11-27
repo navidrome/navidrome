@@ -17,14 +17,16 @@ import (
 )
 
 var _ = XDescribe("Watcher", func() {
+	var ctx context.Context
 	var lsw storage.Watcher
 	var tmpFolder string
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		tmpFolder = GinkgoT().TempDir()
 
 		local.RegisterExtractor("noop", func(fs fs.FS, path string) local.Extractor { return noopExtractor{} })
-		conf.Server.Scanner.Extractor = "noop"
+		conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "noop" })
 
 		ls, err := storage.For(tmpFolder)
 		Expect(err).ToNot(HaveOccurred())
@@ -42,19 +44,16 @@ var _ = XDescribe("Watcher", func() {
 	})
 
 	It("should start and stop watcher", func() {
-		ctx, cancel := context.WithCancel(context.Background())
+		watchCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		w, err := lsw.Start(ctx)
+		w, err := lsw.Start(watchCtx)
 		Expect(err).ToNot(HaveOccurred())
 		cancel()
 		Eventually(w).Should(BeClosed())
 	})
 
 	It("should return error if watcher is already started", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		_, err := lsw.Start(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		_, err = lsw.Start(ctx)
@@ -62,9 +61,6 @@ var _ = XDescribe("Watcher", func() {
 	})
 
 	It("should detect new files", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		changes, err := lsw.Start(ctx)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -75,9 +71,6 @@ var _ = XDescribe("Watcher", func() {
 	})
 
 	It("should detect new subfolders", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		changes, err := lsw.Start(ctx)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -87,9 +80,6 @@ var _ = XDescribe("Watcher", func() {
 	})
 
 	It("should detect changes in subfolders recursively", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		subfolder := filepath.Join(tmpFolder, "subfolder1/subfolder2")
 		Expect(os.MkdirAll(subfolder, 0755)).To(Succeed())
 
@@ -103,8 +93,6 @@ var _ = XDescribe("Watcher", func() {
 	})
 
 	It("should detect removed in files", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 		changes, err := lsw.Start(ctx)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -118,9 +106,6 @@ var _ = XDescribe("Watcher", func() {
 	})
 
 	It("should detect file moves", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
 		filePath := filepath.Join(tmpFolder, "test.txt")
 		Expect(os.WriteFile(filePath, []byte("test"), 0600)).To(Succeed())
 
@@ -137,3 +122,18 @@ type noopExtractor struct{}
 
 func (s noopExtractor) Parse(files ...string) (map[string]metadata.Info, error) { return nil, nil }
 func (s noopExtractor) Version() string                                         { return "0" }
+
+var _ = Describe("Watcher.Start", func() {
+	It("returns an error instead of hanging when the path cannot be watched", func() {
+		local.RegisterExtractor("noop", func(fs fs.FS, path string) local.Extractor { return noopExtractor{} })
+		conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "noop" })
+		ls, err := storage.For(filepath.Join(GinkgoT().TempDir(), "does-not-exist"))
+		Expect(err).ToNot(HaveOccurred())
+		lsw := ls.(storage.Watcher)
+
+		ctx, cancel := context.WithTimeout(GinkgoT().Context(), 3*time.Second)
+		defer cancel()
+		_, err = lsw.Start(ctx)
+		Expect(err).To(HaveOccurred())
+	})
+})

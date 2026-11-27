@@ -31,5 +31,8 @@ pub use nd_pdk_host as host;
 /// Capability wrappers for implementing plugin exports.
 pub use nd_pdk_capabilities::*;
 
+/// Shared plugin data types.
+pub use nd_pdk_types as types;
+
 /// Re-export extism-pdk for convenience.
 pub use extism_pdk;

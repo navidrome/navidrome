@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200327193744, Down20200327193744)
 }
 
-func Up20200327193744(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200327193744(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table album_dg_tmp
 (
 	id varchar(255) not null
@@ -72,10 +72,10 @@ create index album_max_year
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan will be performed!")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan will be performed!")
+	return forceFullRescan(ctx, tx)
 }
 
-func Down20200327193744(_ context.Context, tx *sql.Tx) error {
+func Down20200327193744(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

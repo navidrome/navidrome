@@ -52,11 +52,11 @@ struct ConfigHasResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn config_get(input: Json<ConfigGetRequest>) -> Json<ConfigGetResponse>;
-    fn config_set(input: Json<ConfigSetRequest>) -> Json<ConfigSetResponse>;
-    fn config_has(input: Json<ConfigHasRequest>) -> Json<ConfigHasResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn config_get(input: u64) -> u64;
+    fn config_set(input: u64) -> u64;
+    fn config_has(input: u64) -> u64;
 }
 
 /// Calls the config_get host function.
@@ -70,18 +70,16 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(key: &str) -> Result<Option<String>, Error> {
-    let response = unsafe {
-        config_get(Json(ConfigGetRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: ConfigGetResponse = unsafe { nd_pdk_types::hostcall::call(config_get, &ConfigGetRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    if response.0.exists {
-        Ok(Some(response.0.value))
+    if response.exists {
+        Ok(Some(response.value))
     } else {
         Ok(None)
     }
@@ -96,14 +94,12 @@ pub fn get(key: &str) -> Result<Option<String>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set(key: &str, value: &str) -> Result<(), Error> {
-    let response = unsafe {
-        config_set(Json(ConfigSetRequest {
-            key: key.to_owned(),
-            value: value.to_owned(),
-        }))?
-    };
+    let response: ConfigSetResponse = unsafe { nd_pdk_types::hostcall::call(config_set, &ConfigSetRequest {
+        key: key.to_owned(),
+        value: value.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -121,15 +117,13 @@ pub fn set(key: &str, value: &str) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn has(key: &str) -> Result<bool, Error> {
-    let response = unsafe {
-        config_has(Json(ConfigHasRequest {
-            key: key.to_owned(),
-        }))?
-    };
+    let response: ConfigHasResponse = unsafe { nd_pdk_types::hostcall::call(config_has, &ConfigHasRequest {
+        key: key.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.exists)
+    Ok(response.exists)
 }

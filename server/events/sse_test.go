@@ -19,7 +19,7 @@ var _ = Describe("Broker", func() {
 		var c client
 		var ctx context.Context
 		BeforeEach(func() {
-			ctx = context.Background()
+			ctx = GinkgoT().Context()
 			c = client{
 				clientUniqueId: "1111",
 				username:       "janedoe",

@@ -2,7 +2,6 @@ package mpv
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -21,12 +19,13 @@ import (
 
 var _ = Describe("MPV", func() {
 	var (
+		ctx        context.Context
 		testScript string
 		tempDir    string
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		ctx = GinkgoT().Context()
 
 		// Reset MPV cache
 		mpvOnce = sync.Once{}
@@ -43,13 +42,15 @@ var _ = Describe("MPV", func() {
 		testScript = createMockMPVScript(tempDir)
 
 		// Configure test MPV path
-		conf.Server.MPVPath = testScript
+		conf.Update(func(c *conf.Options) { c.MPVPath = testScript })
 	})
 
 	Describe("createMPVCommand", func() {
 		Context("with default template", func() {
 			BeforeEach(func() {
-				conf.Server.MPVCmdTemplate = "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s"
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s"
+				})
 			})
 
 			It("creates correct command with simple paths", func() {
@@ -93,7 +94,9 @@ var _ = Describe("MPV", func() {
 		Context("with snapcast template (issue #3619)", func() {
 			BeforeEach(func() {
 				// This is the template that fails with naive space splitting
-				conf.Server.MPVCmdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s --audio-channels=stereo --audio-samplerate=48000 --audio-format=s16 --ao=pcm --ao-pcm-file=/audio/snapcast_fifo"
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s --audio-channels=stereo --audio-samplerate=48000 --audio-format=s16 --ao=pcm --ao-pcm-file=/audio/snapcast_fifo"
+				})
 			})
 
 			It("creates correct command for snapcast integration", func() {
@@ -116,7 +119,9 @@ var _ = Describe("MPV", func() {
 		Context("with wrapper script template", func() {
 			BeforeEach(func() {
 				// Test case that would break with naive splitting due to quoted arguments
-				conf.Server.MPVCmdTemplate = `/tmp/mpv.sh --no-audio-display --pause %f --input-ipc-server=%s --audio-channels=stereo`
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = `/tmp/mpv.sh --no-audio-display --pause %f --input-ipc-server=%s --audio-channels=stereo`
+				})
 			})
 
 			It("handles wrapper script paths", func() {
@@ -134,7 +139,9 @@ var _ = Describe("MPV", func() {
 
 		Context("with extra spaces in template", func() {
 			BeforeEach(func() {
-				conf.Server.MPVCmdTemplate = "mpv    --audio-device=%d   --no-audio-display     --pause %f --input-ipc-server=%s"
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = "mpv    --audio-device=%d   --no-audio-display     --pause %f --input-ipc-server=%s"
+				})
 			})
 
 			It("handles extra spaces correctly", func() {
@@ -152,7 +159,9 @@ var _ = Describe("MPV", func() {
 		Context("with paths containing spaces in template arguments", func() {
 			BeforeEach(func() {
 				// Template with spaces in the path arguments themselves
-				conf.Server.MPVCmdTemplate = `mpv --no-audio-display --pause %f --ao-pcm-file="/audio/my folder/snapcast_fifo" --input-ipc-server=%s`
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = `mpv --no-audio-display --pause %f --ao-pcm-file="/audio/my folder/snapcast_fifo" --input-ipc-server=%s`
+				})
 			})
 
 			It("handles spaces in quoted template argument paths", func() {
@@ -173,7 +182,9 @@ var _ = Describe("MPV", func() {
 		Context("with malformed template", func() {
 			BeforeEach(func() {
 				// Template with unmatched quotes that will cause shell parsing to fail
-				conf.Server.MPVCmdTemplate = `mpv --no-audio-display --pause %f --input-ipc-server=%s --ao-pcm-file="/unclosed/quote`
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = `mpv --no-audio-display --pause %f --input-ipc-server=%s --ao-pcm-file="/unclosed/quote`
+				})
 			})
 
 			It("returns nil when shell parsing fails", func() {
@@ -184,7 +195,7 @@ var _ = Describe("MPV", func() {
 
 		Context("with empty template", func() {
 			BeforeEach(func() {
-				conf.Server.MPVCmdTemplate = ""
+				conf.Update(func(c *conf.Options) { c.MPVCmdTemplate = "" })
 			})
 
 			It("returns empty slice for empty template", func() {
@@ -196,12 +207,14 @@ var _ = Describe("MPV", func() {
 
 	Describe("start", func() {
 		BeforeEach(func() {
-			conf.Server.MPVCmdTemplate = "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s"
+			conf.Update(func(c *conf.Options) {
+				c.MPVCmdTemplate = "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s"
+			})
 		})
 
 		It("executes MPV command and captures arguments correctly", func() {
 			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
 			deviceName := "auto"
@@ -229,7 +242,7 @@ var _ = Describe("MPV", func() {
 
 		It("handles file paths with spaces", func() {
 			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
 			deviceName := "auto"
@@ -252,12 +265,14 @@ var _ = Describe("MPV", func() {
 
 		Context("with complex snapcast configuration", func() {
 			BeforeEach(func() {
-				conf.Server.MPVCmdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s --audio-channels=stereo --audio-samplerate=48000 --audio-format=s16 --ao=pcm --ao-pcm-file=/audio/snapcast_fifo"
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s --audio-channels=stereo --audio-samplerate=48000 --audio-format=s16 --ao=pcm --ao-pcm-file=/audio/snapcast_fifo"
+				})
 			})
 
 			It("passes all snapcast arguments correctly", func() {
 				tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 				defer cancel()
 
 				deviceName := "auto"
@@ -290,7 +305,7 @@ var _ = Describe("MPV", func() {
 
 		Context("with nil args", func() {
 			It("returns error when args is nil", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 				defer cancel()
 
 				_, err := start(ctx, nil)
@@ -299,7 +314,7 @@ var _ = Describe("MPV", func() {
 			})
 
 			It("returns error when args is empty", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 				defer cancel()
 
 				_, err := start(ctx, []string{})
@@ -318,7 +333,7 @@ var _ = Describe("MPV", func() {
 		})
 
 		It("finds the configured MPV path", func() {
-			conf.Server.MPVPath = testScript
+			conf.Update(func(c *conf.Options) { c.MPVPath = testScript })
 			path, err := mpvCommand()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(path).To(Equal(testScript))
@@ -329,8 +344,7 @@ var _ = Describe("MPV", func() {
 		var testMediaFile model.MediaFile
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.MPVPath = testScript
+			conf.Update(func(c *conf.Options) { c.MPVPath = testScript })
 
 			// Create a test media file
 			testMediaFile = model.MediaFile{
@@ -342,11 +356,13 @@ var _ = Describe("MPV", func() {
 		Context("with malformed template", func() {
 			BeforeEach(func() {
 				// Template with unmatched quotes that will cause shell parsing to fail
-				conf.Server.MPVCmdTemplate = `mpv --no-audio-display --pause %f --input-ipc-server=%s --ao-pcm-file="/unclosed/quote`
+				conf.Update(func(c *conf.Options) {
+					c.MPVCmdTemplate = `mpv --no-audio-display --pause %f --input-ipc-server=%s --ao-pcm-file="/unclosed/quote`
+				})
 			})
 
 			It("returns error when createMPVCommand fails", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 				defer cancel()
 
 				playbackDone := make(chan bool, 1)
@@ -360,6 +376,7 @@ var _ = Describe("MPV", func() {
 
 // createMockMPVScript creates a mock script that outputs arguments to stdout
 func createMockMPVScript(tempDir string) string {
+	GinkgoHelper()
 	var scriptContent string
 	var scriptExt string
 
@@ -385,10 +402,7 @@ done
 	}
 
 	scriptPath := filepath.Join(tempDir, "mock_mpv"+scriptExt)
-	err := os.WriteFile(scriptPath, []byte(scriptContent), 0755) // nolint:gosec
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create mock script: %v", err))
-	}
+	Expect(os.WriteFile(scriptPath, []byte(scriptContent), 0755)).To(Succeed()) //nolint:gosec
 
 	return scriptPath
 }

@@ -558,6 +558,6 @@ create index media_file_mbz_track_id
 	return err
 }
 
-func Down20240122223340(context.Context, *sql.Tx) error {
+func Down20240122223340(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // Library represents the Library data structure.
 // Library represents a music library with metadata.
@@ -37,7 +39,11 @@ var LibraryMock = &mockLibraryService{}
 // GetLibrary is the mock method for LibraryGetLibrary.
 func (m *mockLibraryService) GetLibrary(id int32) (*Library, error) {
 	args := m.Called(id)
-	return args.Get(0).(*Library), args.Error(1)
+	var r0 *Library
+	if v := args.Get(0); v != nil {
+		r0 = v.(*Library)
+	}
+	return r0, args.Error(1)
 }
 
 // LibraryGetLibrary delegates to the mock instance.
@@ -54,7 +60,11 @@ func LibraryGetLibrary(id int32) (*Library, error) {
 // GetAllLibraries is the mock method for LibraryGetAllLibraries.
 func (m *mockLibraryService) GetAllLibraries() ([]Library, error) {
 	args := m.Called()
-	return args.Get(0).([]Library), args.Error(1)
+	var r0 []Library
+	if v := args.Get(0); v != nil {
+		r0 = v.([]Library)
+	}
+	return r0, args.Error(1)
 }
 
 // LibraryGetAllLibraries delegates to the mock instance.

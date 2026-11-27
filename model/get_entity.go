@@ -2,29 +2,42 @@ package model
 
 import (
 	"context"
+	"errors"
 )
 
 // TODO: Should the type be encoded in the ID?
+
 func GetEntityByID(ctx context.Context, ds DataStore, id string) (any, error) {
-	ar, err := ds.Artist(ctx).Get(id)
-	if err == nil {
-		return ar, nil
+	entity, _, err := getEntity(ctx, ds, id)
+	return entity, err
+}
+
+// GetEntityKindByID resolves a bare entity id to its artwork Kind, searching the same tables as
+// GetEntityByID. It reports ErrNotFound when no entity owns the id.
+func GetEntityKindByID(ctx context.Context, ds DataStore, id string) (Kind, error) {
+	_, kind, err := getEntity(ctx, ds, id)
+	return kind, err
+}
+
+func getEntity(ctx context.Context, ds DataStore, id string) (any, Kind, error) {
+	getters := []struct {
+		kind Kind
+		get  func() (any, error)
+	}{
+		{KindArtistArtwork, func() (any, error) { return ds.Artist().Get(ctx, id) }},
+		{KindAlbumArtwork, func() (any, error) { return ds.Album().Get(ctx, id) }},
+		{KindPlaylistArtwork, func() (any, error) { return ds.Playlist().Get(ctx, id) }},
+		{KindMediaFileArtwork, func() (any, error) { return ds.MediaFile().Get(ctx, id) }},
+		{KindRadioArtwork, func() (any, error) { return ds.Radio().Get(ctx, id) }},
 	}
-	al, err := ds.Album(ctx).Get(id)
-	if err == nil {
-		return al, nil
+	for _, g := range getters {
+		entity, err := g.get()
+		if err == nil {
+			return entity, g.kind, nil
+		}
+		if !errors.Is(err, ErrNotFound) {
+			return nil, Kind{}, err
+		}
 	}
-	pls, err := ds.Playlist(ctx).Get(id)
-	if err == nil {
-		return pls, nil
-	}
-	mf, err := ds.MediaFile(ctx).Get(id)
-	if err == nil {
-		return mf, nil
-	}
-	r, err := ds.Radio(ctx).Get(id)
-	if err == nil {
-		return r, nil
-	}
-	return nil, err
+	return nil, Kind{}, ErrNotFound
 }

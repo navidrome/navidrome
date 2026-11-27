@@ -49,6 +49,7 @@ func MathAdd(a int32, b int32) (int32, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response mathAddResponse

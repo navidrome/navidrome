@@ -1,0 +1,95 @@
+version: '1.0'
+metadata:
+  title: 'Auld Lang Syne'
+  artist: 'Robert Burns'
+  album: 'Traditional'
+  language: 'eng'
+lines:
+  - text: "Should auld acquaintance be forgot,"
+    start_ms: 0
+    end_ms: 4500
+    words:
+      - text: "Should "
+        start_ms: 0
+        end_ms: 900
+      - text: "auld "
+        start_ms: 900
+        end_ms: 1800
+      - text: "acquaintance "
+        start_ms: 1800
+        end_ms: 2700
+      - text: "be "
+        start_ms: 2700
+        end_ms: 3600
+      - text: "forgot,"
+        start_ms: 3600
+        end_ms: 4500
+  - text: "And never brought to mind?"
+    start_ms: 4500
+    end_ms: 9000
+  - text: "Should auld acquaintance be forgot,"
+    start_ms: 9000
+    end_ms: 13500
+  - text: "And auld lang syne?"
+    start_ms: 13500
+    end_ms: 18000
+  - text: "For auld lang syne, my dear,"
+    start_ms: 18000
+    end_ms: 22500
+  - text: "For auld lang syne,"
+    start_ms: 22500
+    end_ms: 27000
+  - text: "We'll tak a cup o' kindness yet,"
+    start_ms: 27000
+    end_ms: 31500
+  - text: "For auld lang syne."
+    start_ms: 31500
+    end_ms: 36000
+  - text: "And surely ye'll be your pint-stowp,"
+    start_ms: 36000
+    end_ms: 40500
+  - text: "And surely I'll be mine,"
+    start_ms: 40500
+    end_ms: 45000
+  - text: "And we'll tak a cup o' kindness yet,"
+    start_ms: 45000
+    end_ms: 49500
+  - text: "For auld lang syne."
+    start_ms: 49500
+    end_ms: 54000
+  - text: "We twa hae run about the braes,"
+    start_ms: 54000
+    end_ms: 58500
+  - text: "And pou'd the gowans fine,"
+    start_ms: 58500
+    end_ms: 63000
+  - text: "But we've wander'd mony a weary fit,"
+    start_ms: 63000
+    end_ms: 67500
+  - text: "Sin auld lang syne."
+    start_ms: 67500
+    end_ms: 72000
+  - text: "We twa hae paidl'd in the burn,"
+    start_ms: 72000
+    end_ms: 76500
+  - text: "Frae morning sun till dine,"
+    start_ms: 76500
+    end_ms: 81000
+  - text: "But seas between us braid hae roar'd"
+    start_ms: 81000
+    end_ms: 85500
+  - text: "Sin auld lang syne."
+    start_ms: 85500
+    end_ms: 90000
+  - text: "And there's a hand, my trusty fiere,"
+    start_ms: 90000
+    end_ms: 94500
+  - text: "And gie's a hand o' thine,"
+    start_ms: 94500
+    end_ms: 99000
+  - text: "And we'll tak a right gude-willie waught,"
+    start_ms: 99000
+    end_ms: 103500
+  - text: "For auld lang syne."
+    start_ms: 103500
+    end_ms: 108000

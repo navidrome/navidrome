@@ -36,18 +36,18 @@ var ssSeekPairs = [][2]string{
 	},
 }
 
-func upMoveSsBeforeInput(_ context.Context, tx *sql.Tx) error {
+func upMoveSsBeforeInput(ctx context.Context, tx *sql.Tx) error {
 	for _, p := range ssSeekPairs {
-		if _, err := tx.Exec(`UPDATE transcoding SET command = ? WHERE command = ?`, p[1], p[0]); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE transcoding SET command = ? WHERE command = ?`, p[1], p[0]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func downMoveSsBeforeInput(_ context.Context, tx *sql.Tx) error {
+func downMoveSsBeforeInput(ctx context.Context, tx *sql.Tx) error {
 	for _, p := range ssSeekPairs {
-		if _, err := tx.Exec(`UPDATE transcoding SET command = ? WHERE command = ?`, p[0], p[1]); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE transcoding SET command = ? WHERE command = ?`, p[0], p[1]); err != nil {
 			return err
 		}
 	}

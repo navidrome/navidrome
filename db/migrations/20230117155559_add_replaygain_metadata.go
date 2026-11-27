@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddReplaygainMetadata, downAddReplaygainMetadata)
 }
 
-func upAddReplaygainMetadata(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddReplaygainMetadata(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table media_file add 
 	rg_album_gain real;
 alter table media_file add 
@@ -26,10 +26,10 @@ alter table media_file add
 		return err
 	}
 
-	notice(tx, "A full rescan needs to be performed to import more tags")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan needs to be performed to import more tags")
+	return forceFullRescan(ctx, tx)
 }
 
-func downAddReplaygainMetadata(_ context.Context, tx *sql.Tx) error {
+func downAddReplaygainMetadata(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

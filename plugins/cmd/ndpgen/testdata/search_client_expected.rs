@@ -6,7 +6,7 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Result {
     pub id: String,
@@ -29,9 +29,9 @@ struct SearchFindResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn search_find(input: Json<SearchFindRequest>) -> Json<SearchFindResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn search_find(input: u64) -> u64;
 }
 
 /// Calls the search_find host function.
@@ -45,15 +45,13 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn find(query: &str) -> Result<(Vec<Result>, i32), Error> {
-    let response = unsafe {
-        search_find(Json(SearchFindRequest {
-            query: query.to_owned(),
-        }))?
-    };
+    let response: SearchFindResponse = unsafe { nd_pdk_types::hostcall::call(search_find, &SearchFindRequest {
+        query: query.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok((response.0.results, response.0.total))
+    Ok((response.results, response.total))
 }

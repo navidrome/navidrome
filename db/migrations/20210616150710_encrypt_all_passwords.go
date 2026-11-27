@@ -16,7 +16,7 @@ func init() {
 }
 
 func upEncodeAllPasswords(ctx context.Context, tx *sql.Tx) error {
-	rows, err := tx.Query(`SELECT id, user_name, password from user;`)
+	rows, err := tx.QueryContext(ctx, `SELECT id, user_name, password from user;`)
 	if err != nil {
 		return err
 	}
@@ -51,6 +51,6 @@ func upEncodeAllPasswords(ctx context.Context, tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downEncodeAllPasswords(_ context.Context, tx *sql.Tx) error {
+func downEncodeAllPasswords(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

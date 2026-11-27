@@ -3,8 +3,13 @@ package db_test
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/mattn/go-sqlite3"
+
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
@@ -19,11 +24,25 @@ func TestDB(t *testing.T) {
 	RunSpecs(t, "DB Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
+var _ = DescribeTable("IsBusy",
+	func(err error, expected bool) {
+		Expect(db.IsBusy(err)).To(Equal(expected))
+	},
+	Entry("SQLITE_BUSY", sqlite3.Error{Code: sqlite3.ErrBusy}, true),
+	Entry("SQLITE_BUSY_SNAPSHOT", sqlite3.Error{Code: sqlite3.ErrBusy, ExtendedCode: sqlite3.ErrBusySnapshot}, true),
+	Entry("a wrapped SQLITE_BUSY", fmt.Errorf("persisting: %w", sqlite3.Error{Code: sqlite3.ErrBusy}), true),
+	Entry("another SQLite error", sqlite3.Error{Code: sqlite3.ErrConstraint}, false),
+	Entry("a non-SQLite error", errors.New("database is locked"), false),
+	Entry("nil", nil, false),
+)
+
 var _ = Describe("IsSchemaEmpty", func() {
 	var database *sql.DB
 	var ctx context.Context
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		path := "file::memory:"
 		database, _ = sql.Open(db.Dialect, path)
 	})

@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddScrobbleBuffer, downAddScrobbleBuffer)
 }
 
-func upAddScrobbleBuffer(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddScrobbleBuffer(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table if not exists scrobble_buffer
 (
 	user_id varchar not null
@@ -34,6 +34,6 @@ create table if not exists scrobble_buffer
 	return err
 }
 
-func downAddScrobbleBuffer(_ context.Context, tx *sql.Tx) error {
+func downAddScrobbleBuffer(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

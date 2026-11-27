@@ -27,6 +27,14 @@ const adminUser = {
   isAdmin: true,
 }
 
+const hooks = vi.hoisted(() => ({
+  save: null,
+  mutate: vi.fn(),
+  notify: vi.fn(),
+  redirect: vi.fn(),
+  refresh: vi.fn(),
+}))
+
 // Mock React-Admin completely with simpler implementations
 vi.mock('react-admin', () => ({
   Edit: ({ children, title }) => (
@@ -35,15 +43,13 @@ vi.mock('react-admin', () => ({
       {children}
     </div>
   ),
-  SimpleForm: ({ children }) => (
-    <form data-testid="simple-form">{children}</form>
-  ),
+  SimpleForm: ({ children, save }) => {
+    hooks.save = save
+    return <form data-testid="simple-form">{children}</form>
+  },
   TextInput: ({ source }) => <input data-testid={`text-input-${source}`} />,
   BooleanInput: ({ source }) => (
     <input type="checkbox" data-testid={`boolean-input-${source}`} />
-  ),
-  DateField: ({ source }) => (
-    <div data-testid={`date-field-${source}`}>Date</div>
   ),
   PasswordInput: ({ source }) => (
     <input type="password" data-testid={`password-input-${source}`} />
@@ -54,10 +60,10 @@ vi.mock('react-admin', () => ({
   Typography: ({ children }) => <p>{children}</p>,
   required: () => () => null,
   email: () => () => null,
-  useMutation: () => [vi.fn()],
-  useNotify: () => vi.fn(),
-  useRedirect: () => vi.fn(),
-  useRefresh: () => vi.fn(),
+  useMutation: () => [hooks.mutate],
+  useNotify: () => hooks.notify,
+  useRedirect: () => hooks.redirect,
+  useRefresh: () => hooks.refresh,
   usePermissions: () => ({ permissions: 'admin' }),
   useTranslate: () => (key) => key,
 }))
@@ -73,6 +79,9 @@ vi.mock('./DeleteUserButton', () => ({
 
 vi.mock('../common', () => ({
   Title: ({ subTitle }) => <div data-testid="title">{subTitle}</div>,
+  ReadOnlyDateField: ({ source }) => (
+    <div data-testid={`date-field-${source}`}>Date</div>
+  ),
 }))
 
 // Mock Material-UI
@@ -118,6 +127,12 @@ describe('<UserEdit />', () => {
     expect(screen.getByTestId('date-field-createdAt')).toBeInTheDocument()
   })
 
+  it('should render the scrobble filter input', () => {
+    render(<UserEdit id="user1" permissions="admin" />)
+
+    expect(screen.getByTestId('text-input-scrobbleFilter')).toBeInTheDocument()
+  })
+
   it('should not render username input for non-admin users', () => {
     render(<UserEdit id="user1" permissions="user" />)
 
@@ -126,5 +141,61 @@ describe('<UserEdit />', () => {
     // But should still render name and email
     expect(screen.getByTestId('text-input-name')).toBeInTheDocument()
     expect(screen.getByTestId('text-input-email')).toBeInTheDocument()
+  })
+
+  describe('save', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      hooks.save = null
+    })
+
+    it('notifies success and redirects when the update succeeds', async () => {
+      hooks.mutate.mockResolvedValue({ data: defaultUser })
+      render(<UserEdit id="user1" permissions="admin" />)
+
+      await hooks.save({ id: 'user1', name: 'New Name' })
+
+      expect(hooks.notify).toHaveBeenCalledWith(
+        'resources.user.notifications.updated',
+        'info',
+        { smart_count: 1 },
+      )
+      expect(hooks.redirect).toHaveBeenCalledWith('/user')
+    })
+
+    it('returns field errors when the update fails validation', async () => {
+      const fieldErrors = { currentPassword: 'ra.validation.required' }
+      hooks.mutate.mockRejectedValue({ body: { errors: fieldErrors } })
+      render(<UserEdit id="user1" permissions="admin" />)
+
+      const result = await hooks.save({ id: 'user1' })
+
+      expect(result).toEqual(fieldErrors)
+      expect(hooks.notify).not.toHaveBeenCalledWith(
+        'resources.user.notifications.updated',
+        'info',
+        { smart_count: 1 },
+      )
+    })
+
+    it('notifies an error when the update fails without field errors', async () => {
+      hooks.mutate.mockRejectedValue(new Error('Forbidden'))
+      render(<UserEdit id="user1" permissions="admin" />)
+
+      await hooks.save({ id: 'user1' })
+
+      expect(hooks.notify).toHaveBeenCalledWith('ra.page.error', 'warning')
+      expect(hooks.redirect).not.toHaveBeenCalled()
+    })
+
+    it('notifies an error when the update rejects with a non-object error', async () => {
+      hooks.mutate.mockRejectedValue(undefined)
+      render(<UserEdit id="user1" permissions="admin" />)
+
+      await hooks.save({ id: 'user1' })
+
+      expect(hooks.notify).toHaveBeenCalledWith('ra.page.error', 'warning')
+      expect(hooks.redirect).not.toHaveBeenCalled()
+    })
   })
 })

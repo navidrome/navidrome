@@ -10,8 +10,10 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,8 +21,7 @@ import (
 
 var _ = Describe("auth_router", func() {
 	var (
-		ds         *tests.MockDataStore
-		userProps  *tests.MockedUserPropsRepo
+		ds         model.DataStore
 		httpClient *tests.FakeHttpClient
 		router     *Router
 	)
@@ -31,10 +32,10 @@ var _ = Describe("auth_router", func() {
 	)
 
 	BeforeEach(func() {
-		userProps = &tests.MockedUserPropsRepo{}
-		ds = &tests.MockDataStore{
-			MockedProperty:  &tests.MockedPropertyRepo{},
-			MockedUserProps: userProps,
+		ctx := GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		for _, id := range []string{victimID, attackerID} {
+			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: id})).To(Succeed())
 		}
 		auth.Init(ds)
 
@@ -50,14 +51,14 @@ var _ = Describe("auth_router", func() {
 	})
 
 	storedSessionKey := func(userID string) string {
-		key, _ := userProps.Get(userID, sessionKeyProperty)
+		key, _ := ds.UserProps().Get(GinkgoT().Context(), userID, sessionKeyProperty)
 		return key
 	}
 
 	stubGetSessionOK := func(sessionKey string) {
 		httpClient.Res = http.Response{
 			Body:       io.NopCloser(bytes.NewBufferString(`{"session":{"name":"Navidrome","key":"` + sessionKey + `","subscriber":0}}`)),
-			StatusCode: 200,
+			StatusCode: http.StatusOK,
 		}
 	}
 
@@ -74,7 +75,7 @@ var _ = Describe("auth_router", func() {
 			var body map[string]any
 			Expect(json.Unmarshal(rec.Body.Bytes(), &body)).To(Succeed())
 			Expect(body["apiKey"]).To(Equal("API_KEY"))
-			Expect(body["status"]).To(Equal(false))
+			Expect(body["status"]).To(BeFalse())
 			token, ok := body["linkToken"].(string)
 			Expect(ok).To(BeTrue())
 			Expect(token).ToNot(BeEmpty())
@@ -213,6 +214,15 @@ var _ = Describe("auth_router", func() {
 
 			_, err = verifyLinkToken(nonExpiringToken)
 			Expect(err).To(MatchError("link token missing expiration"))
+		})
+
+		It("rejects a Jellyfin access token", func() {
+			usr := &model.User{ID: "u1", UserName: "johndoe"}
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = verifyLinkToken(tokenStr)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

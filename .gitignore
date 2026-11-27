@@ -28,7 +28,7 @@ docker-compose.yml
 binaries
 navidrome-*
 /ndpgen
-AGENTS.md
+AGENTS.override.md
 .github/prompts
 .github/instructions
 .github/git-commit-instructions.md
@@ -40,3 +40,11 @@ openspec/
 .agents
 go.work*
 .worktrees/
+.playwright-mcp/
+
+# Temp benchmark files
+zz_*_test.go
+
+# wazero compilation cache for the plugins test suite
+/plugins/testdata/.wazero-cache/
+/plugins/testdata/*.stage/

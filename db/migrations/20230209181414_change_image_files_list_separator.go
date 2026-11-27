@@ -16,8 +16,8 @@ func init() {
 	goose.AddMigrationContext(upChangeImageFilesListSeparator, downChangeImageFilesListSeparator)
 }
 
-func upChangeImageFilesListSeparator(_ context.Context, tx *sql.Tx) error {
-	rows, err := tx.Query(`select id, image_files from album`)
+func upChangeImageFilesListSeparator(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `select id, image_files from album`)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func upChangeImageFilesListSeparatorDirs(filePaths string) string {
 	return strings.Join(allPaths, consts.Zwsp)
 }
 
-func downChangeImageFilesListSeparator(_ context.Context, tx *sql.Tx) error {
+func downChangeImageFilesListSeparator(ctx context.Context, tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	return nil
 }

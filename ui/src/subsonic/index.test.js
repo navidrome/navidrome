@@ -1,6 +1,13 @@
 import { vi } from 'vitest'
 import config from '../config'
 import subsonic from './index'
+import { httpClient } from '../dataProvider'
+
+vi.mock('../dataProvider', () => ({
+  httpClient: vi.fn(),
+  clientUniqueId: 'test-client-id',
+  clientUniqueIdHeader: 'X-ND-Client-Unique-Id',
+}))
 
 describe('getCoverArtUrl', () => {
   beforeEach(() => {
@@ -120,6 +127,47 @@ describe('getCoverArtUrl', () => {
     expect(url).toContain('ar-test-123')
     expect(url).not.toContain('_=')
   })
+
+  it('appends the content hash to the artwork id', () => {
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      imageHash: '0123456789abcdef',
+    })
+    expect(url).toContain('al-album-123_0123456789abcdef')
+  })
+
+  it('drops the updatedAt buster once the url is hash-versioned', () => {
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      updatedAt: '2023-01-01T00:00:00Z',
+      imageHash: '0123456789abcdef',
+    })
+    expect(url).toContain('al-album-123_0123456789abcdef')
+    expect(url).not.toContain('_=')
+  })
+
+  it('keeps the updatedAt buster while artwork is unresolved', () => {
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      updatedAt: '2023-01-01T00:00:00Z',
+    })
+    expect(url).toContain('al-album-123')
+    expect(url).toContain('_=')
+  })
+
+  it('still builds a url for known-absent artwork so the server placeholder renders', () => {
+    // Returning '' here made <img src=undefined> render as a broken icon; the server serves a
+    // proper placeholder for absent art, so the client must still request it.
+    const url = subsonic.getCoverArtUrl({
+      id: 'album-123',
+      albumArtist: 'AA',
+      imageAbsent: true,
+    })
+    expect(url).toContain('al-album-123')
+  })
 })
 
 describe('getDiscCoverArtUrl', () => {
@@ -222,5 +270,74 @@ describe('reportPlayback', () => {
     expect(url).toContain('mediaType=song')
     expect(url).toContain('positionMs=5000')
     expect(url).toContain('state=playing')
+  })
+})
+
+describe('getTranscodeDecision', () => {
+  const profile = {
+    name: 'NavidromeUI',
+    directPlayProfiles: [{ containers: ['mp3'], audioCodecs: ['mp3'] }],
+  }
+  const decision = { canDirectPlay: true, transcodeParams: 'jwt-token' }
+
+  beforeEach(() => {
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+    httpClient.mockReset()
+    httpClient.mockResolvedValue({
+      json: {
+        'subsonic-response': { status: 'ok', transcodeDecision: decision },
+      },
+    })
+  })
+
+  it('posts the browser profile to getTranscodeDecision for the song', async () => {
+    await subsonic.getTranscodeDecision('song-1', profile)
+
+    expect(httpClient).toHaveBeenCalledTimes(1)
+    const [url, options] = httpClient.mock.calls[0]
+    expect(url).toMatch(/^\/rest\/getTranscodeDecision\?/)
+    expect(url).toContain('mediaId=song-1')
+    expect(url).toContain('mediaType=song')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(options.body)).toEqual(profile)
+  })
+
+  it('returns the transcodeDecision from the subsonic response', async () => {
+    await expect(
+      subsonic.getTranscodeDecision('song-1', profile),
+    ).resolves.toEqual(decision)
+  })
+
+  it('rejects when the request fails', async () => {
+    httpClient.mockRejectedValue(new Error('Server Error'))
+
+    await expect(
+      subsonic.getTranscodeDecision('song-1', profile),
+    ).rejects.toThrow('Server Error')
+  })
+
+  it('throws with the subsonic error code and message on a failed response', async () => {
+    httpClient.mockResolvedValue({
+      json: {
+        'subsonic-response': {
+          status: 'failed',
+          error: { code: 70, message: 'not found' },
+        },
+      },
+    })
+
+    await expect(
+      subsonic.getTranscodeDecision('song-1', profile),
+    ).rejects.toThrow('getTranscodeDecision error: 70 not found')
   })
 })

@@ -3,6 +3,7 @@ package deezer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,9 +11,8 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -21,16 +21,137 @@ var _ = Describe("deezerAgent", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Deezer.Enabled = true
+		ctx = GinkgoT().Context()
+		conf.Update(func(c *conf.Options) { c.Deezer.Enabled = true })
 	})
 
 	Describe("deezerConstructor", func() {
 		It("uses configured languages", func() {
-			conf.Server.Deezer.Languages = []string{"pt", "en"}
-			agent := deezerConstructor(&tests.MockDataStore{}).(*deezerAgent)
+			conf.Update(func(c *conf.Options) { c.Deezer.Languages = []string{"pt", "en"} })
+			agent := deezerConstructor(struct{ model.DataStore }{}).(*deezerAgent)
 			Expect(agent.languages).To(Equal([]string{"pt", "en"}))
+		})
+	})
+
+	Describe("searchArtist", func() {
+		var agent *deezerAgent
+		var httpClient *fakeHttpClient
+
+		BeforeEach(func() {
+			httpClient = &fakeHttpClient{}
+			agent = &deezerAgent{
+				client: newClient(httpClient),
+			}
+		})
+
+		It("picks the exact-name match with the most fans when several share the name", func() {
+			// Deezer RANKING order returns a low-popularity homonym first (see issue #5802)
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":61045802,"name":"Queen","nb_fan":75},
+					{"id":141954732,"name":"Queen","nb_fan":397},
+					{"id":135041032,"name":"Queen(Ares)","nb_fan":133},
+					{"id":183179807,"name":"Queen","nb_fan":53},
+					{"id":412,"name":"Queen","nb_fan":12744378}
+				],"total":5}`)),
+			})
+
+			artist, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.ID).To(Equal(412))
+		})
+
+		It("matches the name case-insensitively", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":1,"name":"QUEEN","nb_fan":10},
+					{"id":2,"name":"queen","nb_fan":20}
+				],"total":2}`)),
+			})
+
+			artist, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.ID).To(Equal(2))
+		})
+
+		// The artwork worker settles an artist as "no image" on agents.ErrNotFound, so a throttled
+		// lookup reaching that here would record a permanent absence.
+		It("surfaces an exhausted quota instead of reporting the artist as not found", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(bytes.NewBufferString(
+					`{"error":{"type":"Exception","message":"Quota limit exceeded","code":4}}`)),
+			})
+
+			_, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).ToNot(MatchError(agents.ErrNotFound))
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+		})
+
+		It("returns ErrNotFound when no result matches the name exactly", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":1,"name":"Queens of the Stone Age","nb_fan":100}
+				],"total":1}`)),
+			})
+
+			_, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+		})
+	})
+
+	Describe("GetArtistImages", func() {
+		var agent *deezerAgent
+		var httpClient *fakeHttpClient
+
+		BeforeEach(func() {
+			httpClient = &fakeHttpClient{}
+			agent = &deezerAgent{
+				client: newClient(httpClient),
+			}
+		})
+
+		It("returns the real images when the artist has a picture", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":412,"name":"Queen","nb_fan":12744378,
+					 "picture_xl":"https://cdn-images.dzcdn.net/images/artist/abc/1000x1000-000000-80-0-0.jpg",
+					 "picture_big":"https://cdn-images.dzcdn.net/images/artist/abc/500x500-000000-80-0-0.jpg"}
+				],"total":1}`)),
+			})
+
+			images, err := agent.GetArtistImages(ctx, "", "Queen", "")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(images).To(HaveLen(2))
+			Expect(images[0].URL).To(ContainSubstring("1000x1000"))
+		})
+
+		It("returns ErrNotFound when the artist only has empty-id placeholder pictures", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: http.StatusOK,
+				Body: io.NopCloser(bytes.NewBufferString(`{"data":[
+					{"id":412,"name":"Queen","nb_fan":12744378,
+					 "picture_xl":"https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg",
+					 "picture_big":"https://cdn-images.dzcdn.net/images/artist//500x500-000000-80-0-0.jpg",
+					 "picture_medium":"https://cdn-images.dzcdn.net/images/artist//250x250-000000-80-0-0.jpg",
+					 "picture_small":"https://cdn-images.dzcdn.net/images/artist//56x56-000000-80-0-0.jpg"}
+				],"total":1}`)),
+			})
+
+			images, err := agent.GetArtistImages(ctx, "", "Queen", "")
+
+			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(images).To(BeEmpty())
 		})
 	})
 
@@ -43,20 +164,19 @@ var _ = Describe("deezerAgent", func() {
 
 			// Mock search artist (returns Michael Jackson)
 			fSearch, _ := os.Open("tests/fixtures/deezer.search.artist.json")
-			httpClient.searchResponse = &http.Response{Body: fSearch, StatusCode: 200}
+			httpClient.searchResponse = &http.Response{Body: fSearch, StatusCode: http.StatusOK}
 
 			// Mock JWT token
 			testJWT := createTestJWT(5 * time.Minute)
 			httpClient.jwtResponse = &http.Response{
-				StatusCode: 200,
+				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(bytes.NewBufferString(fmt.Sprintf(`{"jwt":"%s","refresh_token":""}`, testJWT))),
 			}
 		})
 
 		setupAgent := func(languages []string) {
-			conf.Server.Deezer.Languages = languages
+			conf.Update(func(c *conf.Options) { c.Deezer.Languages = languages })
 			agent = &deezerAgent{
-				dataStore: &tests.MockDataStore{},
 				client:    newClient(httpClient),
 				languages: languages,
 			}
@@ -67,7 +187,7 @@ var _ = Describe("deezerAgent", func() {
 
 			// French biography available
 			fFr, _ := os.Open("tests/fixtures/deezer.artist.bio.fr.json")
-			httpClient.bioResponses["fr"] = &http.Response{Body: fFr, StatusCode: 200}
+			httpClient.bioResponses["fr"] = &http.Response{Body: fFr, StatusCode: http.StatusOK}
 
 			bio, err := agent.GetArtistBiography(ctx, "", "Michael Jackson", "")
 
@@ -82,10 +202,10 @@ var _ = Describe("deezerAgent", func() {
 
 			// Japanese returns empty biography
 			fJa, _ := os.Open("tests/fixtures/deezer.artist.bio.empty.json")
-			httpClient.bioResponses["ja"] = &http.Response{Body: fJa, StatusCode: 200}
+			httpClient.bioResponses["ja"] = &http.Response{Body: fJa, StatusCode: http.StatusOK}
 			// English returns full biography
 			fEn, _ := os.Open("tests/fixtures/deezer.artist.bio.en.json")
-			httpClient.bioResponses["en"] = &http.Response{Body: fEn, StatusCode: 200}
+			httpClient.bioResponses["en"] = &http.Response{Body: fEn, StatusCode: http.StatusOK}
 
 			bio, err := agent.GetArtistBiography(ctx, "", "Michael Jackson", "")
 
@@ -101,9 +221,9 @@ var _ = Describe("deezerAgent", func() {
 
 			// Both languages return empty biography
 			fJa, _ := os.Open("tests/fixtures/deezer.artist.bio.empty.json")
-			httpClient.bioResponses["ja"] = &http.Response{Body: fJa, StatusCode: 200}
+			httpClient.bioResponses["ja"] = &http.Response{Body: fJa, StatusCode: http.StatusOK}
 			fXx, _ := os.Open("tests/fixtures/deezer.artist.bio.empty.json")
-			httpClient.bioResponses["xx"] = &http.Response{Body: fXx, StatusCode: 200}
+			httpClient.bioResponses["xx"] = &http.Response{Body: fXx, StatusCode: http.StatusOK}
 
 			_, err := agent.GetArtistBiography(ctx, "", "Michael Jackson", "")
 
@@ -136,7 +256,7 @@ func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
 			return c.searchResponse, nil
 		}
 		return &http.Response{
-			StatusCode: 200,
+			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBufferString(`{"data":[],"total":0}`)),
 		}, nil
 	}
@@ -147,7 +267,7 @@ func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
 			return c.jwtResponse, nil
 		}
 		return &http.Response{
-			StatusCode: 500,
+			StatusCode: http.StatusInternalServerError,
 			Body:       io.NopCloser(bytes.NewBufferString(`{"error":"no mock"}`)),
 		}, nil
 	}
@@ -162,10 +282,11 @@ func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
 		}
 		// Return empty bio by default
 		return &http.Response{
-			StatusCode: 200,
+			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBufferString(`{"data":{"artist":{"bio":{"full":""}}}}`)),
 		}, nil
 	}
 
-	panic("URL not mocked: " + req.URL.String())
+	Fail("URL not mocked: " + req.URL.String())
+	return nil, nil
 }

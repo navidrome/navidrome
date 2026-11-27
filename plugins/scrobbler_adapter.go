@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/navidrome/navidrome/plugins/types"
 )
 
 // CapabilityScrobbler indicates the plugin can receive scrobble events.
@@ -34,27 +35,13 @@ func init() {
 }
 
 func newScrobblerPlugin(p *plugin) *ScrobblerPlugin {
-	userIDMap := make(map[string]struct{})
-	for _, id := range p.allowedUserIDs {
-		userIDMap[id] = struct{}{}
-	}
-	return &ScrobblerPlugin{
-		name:           p.name,
-		plugin:         p,
-		allowedUserIDs: p.allowedUserIDs,
-		allUsers:       p.allUsers,
-		userIDMap:      userIDMap,
-	}
+	return &ScrobblerPlugin{plugin: p}
 }
 
 // ScrobblerPlugin is an adapter that wraps an Extism plugin and implements
 // the scrobbler.Scrobbler interface for scrobbling to external services.
 type ScrobblerPlugin struct {
-	name           string
-	plugin         *plugin
-	allowedUserIDs []string            // User IDs this plugin can access (from DB configuration)
-	allUsers       bool                // If true, plugin can access all users
-	userIDMap      map[string]struct{} // Cached map for fast lookups
+	plugin *plugin
 }
 
 // IsAuthorized checks if the user is authorized with this scrobbler.
@@ -62,7 +49,7 @@ type ScrobblerPlugin struct {
 // then delegates to the plugin for service-specific authorization.
 func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
 	// First check server-side authorization based on plugin configuration
-	if !s.isUserAllowed(userId) {
+	if !s.plugin.users.allows(userId) {
 		return false
 	}
 
@@ -78,18 +65,6 @@ func (s *ScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool 
 	}
 
 	return result
-}
-
-// isUserAllowed checks if the given user ID is allowed to use this plugin.
-func (s *ScrobblerPlugin) isUserAllowed(userId string) bool {
-	if s.allUsers {
-		return true
-	}
-	if len(s.allowedUserIDs) == 0 {
-		return false
-	}
-	_, ok := s.userIDMap[userId]
-	return ok
 }
 
 // NowPlaying sends a now playing notification to the scrobbler
@@ -154,10 +129,10 @@ func mediaFileToTrackInfo(p *plugin, mf *model.MediaFile) capabilities.TrackInfo
 }
 
 // participantsToArtistRefs converts a ParticipantList to a slice of ArtistRef
-func participantsToArtistRefs(participants model.ParticipantList) []capabilities.ArtistRef {
-	refs := make([]capabilities.ArtistRef, len(participants))
+func participantsToArtistRefs(participants model.ParticipantList) []types.ArtistRef {
+	refs := make([]types.ArtistRef, len(participants))
 	for i, p := range participants {
-		refs[i] = capabilities.ArtistRef{
+		refs[i] = types.ArtistRef{
 			ID:   p.ID,
 			Name: p.Name,
 			MBID: p.MbzArtistID,
@@ -173,11 +148,12 @@ func mapScrobblerError(err error) error {
 		return nil
 	}
 	errMsg := err.Error()
+	retryLater, isRetryLater := parseRetryLater(scrobblerRetryLaterRe, errMsg)
 	switch {
 	case strings.Contains(errMsg, capabilities.ScrobblerErrorNotAuthorized.Error()):
 		return scrobbler.ErrNotAuthorized
-	case strings.Contains(errMsg, capabilities.ScrobblerErrorRetryLater.Error()):
-		return scrobbler.ErrRetryLater
+	case isRetryLater:
+		return retryLater
 	case strings.Contains(errMsg, capabilities.ScrobblerErrorUnrecoverable.Error()):
 		return scrobbler.ErrUnrecoverable
 	default:

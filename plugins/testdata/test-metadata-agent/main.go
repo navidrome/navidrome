@@ -8,6 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/metadata"
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 )
 
 func init() {
@@ -67,9 +68,9 @@ func (t *testMetadataAgent) GetSimilarArtists(input metadata.SimilarArtistsReque
 	if limit == 0 {
 		limit = 5
 	}
-	artists := make([]metadata.ArtistRef, 0, limit)
+	artists := make([]types.ArtistRef, 0, limit)
 	for i := range limit {
-		artists = append(artists, metadata.ArtistRef{
+		artists = append(artists, types.ArtistRef{
 			ID:   "similar-artist-id-" + strconv.Itoa(i+1),
 			Name: input.Name + " Similar " + string(rune('A'+i)),
 			MBID: "similar-mbid-" + strconv.Itoa(i+1),
@@ -86,9 +87,9 @@ func (t *testMetadataAgent) GetArtistTopSongs(input metadata.TopSongsRequest) (*
 	if count == 0 {
 		count = 5
 	}
-	songs := make([]metadata.SongRef, 0, count)
+	songs := make([]types.SongRef, 0, count)
 	for i := range count {
-		songs = append(songs, metadata.SongRef{
+		songs = append(songs, types.SongRef{
 			ID:   "song-id-" + strconv.Itoa(i+1),
 			Name: input.Name + " Song " + strconv.Itoa(i+1),
 			MBID: "song-mbid-" + strconv.Itoa(i+1),
@@ -128,9 +129,9 @@ func (t *testMetadataAgent) GetSimilarSongsByTrack(input metadata.SimilarSongsBy
 	if count == 0 {
 		count = 5
 	}
-	songs := make([]metadata.SongRef, 0, count)
+	songs := make([]types.SongRef, 0, count)
 	for i := range count {
-		songs = append(songs, metadata.SongRef{
+		songs = append(songs, types.SongRef{
 			ID:         "similar-track-id-" + strconv.Itoa(i+1),
 			Name:       "Similar to " + input.Name + " #" + strconv.Itoa(i+1),
 			MBID:       "similar-mbid-" + strconv.Itoa(i+1),
@@ -150,9 +151,9 @@ func (t *testMetadataAgent) GetSimilarSongsByAlbum(input metadata.SimilarSongsBy
 	if count == 0 {
 		count = 5
 	}
-	songs := make([]metadata.SongRef, 0, count)
+	songs := make([]types.SongRef, 0, count)
 	for i := range count {
-		songs = append(songs, metadata.SongRef{
+		songs = append(songs, types.SongRef{
 			ID:     "album-similar-id-" + strconv.Itoa(i+1),
 			Name:   "Album Similar #" + strconv.Itoa(i+1),
 			Artist: input.Artist,
@@ -170,9 +171,9 @@ func (t *testMetadataAgent) GetSimilarSongsByArtist(input metadata.SimilarSongsB
 	if count == 0 {
 		count = 5
 	}
-	songs := make([]metadata.SongRef, 0, count)
+	songs := make([]types.SongRef, 0, count)
 	for i := range count {
-		songs = append(songs, metadata.SongRef{
+		songs = append(songs, types.SongRef{
 			ID:     "artist-similar-id-" + strconv.Itoa(i+1),
 			Name:   input.Name + " Style Song #" + strconv.Itoa(i+1),
 			Artist: input.Name + " Similar Artist",

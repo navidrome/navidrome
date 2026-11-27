@@ -60,16 +60,18 @@ type (
 func GenerateSchema(cap Capability) ([]byte, error) {
 	schema := xtpSchema{Version: "v1-draft"}
 
+	aliasToCanonical := buildAliasToCanonical(cap)
+
 	// Build exports as ordered map
 	if len(cap.Methods) > 0 {
 		schema.Exports = yaml.Node{Kind: yaml.MappingNode}
 		for _, export := range cap.Methods {
-			addToMap(&schema.Exports, export.ExportName, buildExport(export))
+			addToMap(&schema.Exports, export.ExportName, buildExport(export, aliasToCanonical))
 		}
 	}
 
 	// Build components/schemas
-	schemas := buildSchemas(cap)
+	schemas := buildSchemas(cap, aliasToCanonical)
 	if len(schemas.Content) > 0 {
 		schema.Components = &xtpComponents{Schemas: schemas}
 	}
@@ -77,11 +79,22 @@ func GenerateSchema(cap Capability) ([]byte, error) {
 	return yaml.Marshal(schema)
 }
 
-func buildExport(export Export) xtpExport {
+// buildAliasToCanonical maps each deprecated shared-alias name to the canonical
+// shared type it targets (e.g. TrackInfo -> Track). Schema components are emitted
+// under the canonical name, so every $ref site must resolve through this map.
+func buildAliasToCanonical(cap Capability) map[string]string {
+	m := map[string]string{}
+	for _, a := range cap.SharedAliases {
+		m[a.Name] = strings.TrimPrefix(a.Target, sharedTypesPrefix)
+	}
+	return m
+}
+
+func buildExport(export Export, aliasToCanonical map[string]string) xtpExport {
 	e := xtpExport{Description: cleanDocForYAML(export.Doc)}
 	if export.Input.Type != "" {
 		e.Input = &xtpIOParam{
-			Ref:         "#/components/schemas/" + strings.TrimPrefix(export.Input.Type, "*"),
+			Ref:         "#/components/schemas/" + canonicalRefName(fieldBaseType(export.Input.Type), aliasToCanonical),
 			ContentType: "application/json",
 		}
 	}
@@ -95,7 +108,7 @@ func buildExport(export Export) xtpExport {
 			}
 		} else {
 			e.Output = &xtpIOParam{
-				Ref:         "#/components/schemas/" + outputType,
+				Ref:         "#/components/schemas/" + canonicalRefName(fieldBaseType(outputType), aliasToCanonical),
 				ContentType: "application/json",
 			}
 		}
@@ -112,15 +125,38 @@ func isPrimitiveGoType(goType string) bool {
 	return false
 }
 
-func buildSchemas(cap Capability) yaml.Node {
+func buildSchemas(cap Capability, aliasToCanonical map[string]string) yaml.Node {
 	schemas := yaml.Node{Kind: yaml.MappingNode}
 	knownTypes := cap.KnownStructs()
 	for _, alias := range cap.TypeAliases {
 		knownTypes[alias.Name] = true
 	}
 
+	// Register shared types under their canonical name (e.g. types.Track -> Track)
+	// and stash their struct shapes for inlining. SharedTypes covers every used
+	// shared type, including ones referenced directly as types.X with no declared
+	// deprecated alias; SharedAliases is folded in for completeness.
+	sharedDefs := map[string]StructDef{}
+	for _, def := range cap.SharedTypes {
+		knownTypes[def.Name] = true
+		sharedDefs[def.Name] = def
+	}
+	for _, a := range cap.SharedAliases {
+		canonical := strings.TrimPrefix(a.Target, sharedTypesPrefix)
+		knownTypes[canonical] = true
+		sharedDefs[canonical] = a.Def
+	}
+
 	// Collect types that are actually used by exports
-	usedTypes := collectUsedTypes(cap, knownTypes)
+	usedTypes := collectUsedTypes(cap, knownTypes, sharedDefs)
+
+	// A used alias name (e.g. TrackInfo) implies its canonical component (Track) is
+	// used, since the alias-typed field's $ref resolves to the canonical name.
+	for alias, canonical := range aliasToCanonical {
+		if usedTypes[alias] {
+			usedTypes[canonical] = true
+		}
+	}
 
 	// Sort structs by name for consistent output
 	structNames := make([]string, 0, len(cap.Structs))
@@ -135,7 +171,19 @@ func buildSchemas(cap Capability) yaml.Node {
 
 	for _, name := range structNames {
 		st := structMap[name]
-		addToMap(&schemas, name, buildObjectSchema(st, knownTypes))
+		addToMap(&schemas, name, buildObjectSchema(st, knownTypes, aliasToCanonical))
+	}
+
+	// Emit components for used shared aliases (sorted for deterministic output).
+	sharedNames := make([]string, 0, len(sharedDefs))
+	for name, def := range sharedDefs {
+		if usedTypes[name] && len(def.Fields) > 0 {
+			sharedNames = append(sharedNames, name)
+		}
+	}
+	sort.Strings(sharedNames)
+	for _, name := range sharedNames {
+		addToMap(&schemas, name, buildObjectSchema(sharedDefs[name], knownTypes, aliasToCanonical))
 	}
 
 	// Build enum types from type aliases (only if used by exports)
@@ -157,18 +205,18 @@ func buildSchemas(cap Capability) yaml.Node {
 }
 
 // collectUsedTypes returns a set of type names that are reachable from exports.
-func collectUsedTypes(cap Capability, knownTypes map[string]bool) map[string]bool {
+func collectUsedTypes(cap Capability, knownTypes map[string]bool, sharedDefs map[string]StructDef) map[string]bool {
 	used := make(map[string]bool)
 
 	// Start with types directly referenced by exports
 	for _, export := range cap.Methods {
 		if export.Input.Type != "" {
-			addTypeAndDeps(strings.TrimPrefix(export.Input.Type, "*"), cap, knownTypes, used)
+			addTypeAndDeps(strings.TrimPrefix(export.Input.Type, "*"), cap, knownTypes, sharedDefs, used)
 		}
 		if export.Output.Type != "" {
 			outputType := strings.TrimPrefix(export.Output.Type, "*")
 			if !isPrimitiveGoType(outputType) {
-				addTypeAndDeps(outputType, cap, knownTypes, used)
+				addTypeAndDeps(outputType, cap, knownTypes, sharedDefs, used)
 			}
 		}
 	}
@@ -177,28 +225,55 @@ func collectUsedTypes(cap Capability, knownTypes map[string]bool) map[string]boo
 }
 
 // addTypeAndDeps adds a type and all its dependencies to the used set.
-func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool, used map[string]bool) {
+func addTypeAndDeps(typeName string, cap Capability, knownTypes map[string]bool, sharedDefs map[string]StructDef, used map[string]bool) {
+	typeName = strings.TrimPrefix(typeName, sharedTypesPrefix)
 	if used[typeName] || !knownTypes[typeName] {
 		return
 	}
 	used[typeName] = true
 
-	// Find the struct and add its field types
+	// Walk fields of capability-local structs.
 	for _, st := range cap.Structs {
 		if st.Name == typeName {
 			for _, field := range st.Fields {
-				fieldType := strings.TrimPrefix(field.Type, "*")
-				fieldType = strings.TrimPrefix(fieldType, "[]")
-				if knownTypes[fieldType] {
-					addTypeAndDeps(fieldType, cap, knownTypes, used)
+				if base := fieldBaseType(field.Type); knownTypes[base] {
+					addTypeAndDeps(base, cap, knownTypes, sharedDefs, used)
 				}
 			}
 			return
 		}
 	}
+
+	// Walk fields of shared structs so their nested refs are also marked used.
+	if def, ok := sharedDefs[typeName]; ok {
+		for _, field := range def.Fields {
+			if base := fieldBaseType(field.Type); knownTypes[base] {
+				addTypeAndDeps(base, cap, knownTypes, sharedDefs, used)
+			}
+		}
+	}
 }
 
-func buildObjectSchema(st StructDef, knownTypes map[string]bool) xtpObjectSchema {
+// fieldBaseType reduces a field type to the base named type used for schema
+// lookups: it strips a leading pointer/slice and any shared `types.` selector.
+func fieldBaseType(goType string) string {
+	goType = strings.TrimPrefix(goType, "*")
+	goType = strings.TrimPrefix(goType, "[]")
+	return strings.TrimPrefix(goType, sharedTypesPrefix)
+}
+
+// canonicalRefName resolves a deprecated shared-alias name to the canonical type
+// the schema component is emitted under (e.g. TrackInfo -> Track). Non-alias
+// names pass through unchanged, so $ref targets always point at an emitted
+// component instead of a dangling alias name.
+func canonicalRefName(name string, aliasToCanonical map[string]string) string {
+	if canonical, ok := aliasToCanonical[name]; ok {
+		return canonical
+	}
+	return name
+}
+
+func buildObjectSchema(st StructDef, knownTypes map[string]bool, aliasToCanonical map[string]string) xtpObjectSchema {
 	schema := xtpObjectSchema{
 		Description: cleanDocForYAML(st.Doc),
 		Properties:  yaml.Node{Kind: yaml.MappingNode},
@@ -206,7 +281,7 @@ func buildObjectSchema(st StructDef, knownTypes map[string]bool) xtpObjectSchema
 
 	for _, field := range st.Fields {
 		propName := getJSONFieldName(field)
-		addToMap(&schema.Properties, propName, buildProperty(field, knownTypes))
+		addToMap(&schema.Properties, propName, buildProperty(field, knownTypes, aliasToCanonical))
 
 		if !strings.HasPrefix(field.Type, "*") && !field.OmitEmpty {
 			schema.Required = append(schema.Required, propName)
@@ -228,7 +303,7 @@ func buildEnumSchema(alias TypeAlias, cg ConstGroup) xtpEnumSchema {
 	}
 }
 
-func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
+func buildProperty(field FieldDef, knownTypes map[string]bool, aliasToCanonical map[string]string) xtpProperty {
 	goType := field.Type
 	isPointer := strings.HasPrefix(goType, "*")
 	if isPointer {
@@ -240,9 +315,10 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 		Nullable:    isPointer,
 	}
 
-	// Handle reference types (use $ref instead of type)
-	if isKnownType(goType, knownTypes) && !strings.HasPrefix(goType, "[]") {
-		prop.Ref = "#/components/schemas/" + goType
+	// Handle reference types (use $ref instead of type). Qualified shared
+	// references (types.X) are referenced by their canonical name.
+	if refType := strings.TrimPrefix(goType, sharedTypesPrefix); isKnownType(refType, knownTypes) && !strings.HasPrefix(goType, "[]") {
+		prop.Ref = "#/components/schemas/" + canonicalRefName(refType, aliasToCanonical)
 		return prop
 	}
 
@@ -254,11 +330,11 @@ func buildProperty(field FieldDef, knownTypes map[string]bool) xtpProperty {
 
 	// Handle slice types
 	if strings.HasPrefix(goType, "[]") {
-		elemType := goType[2:]
+		elemType := strings.TrimPrefix(goType[2:], sharedTypesPrefix)
 		prop.Type = "array"
 		prop.Items = &xtpProperty{}
 		if isKnownType(elemType, knownTypes) {
-			prop.Items.Ref = "#/components/schemas/" + elemType
+			prop.Items.Ref = "#/components/schemas/" + canonicalRefName(elemType, aliasToCanonical)
 		} else {
 			prop.Items.Type = goTypeToXTPType(elemType)
 		}

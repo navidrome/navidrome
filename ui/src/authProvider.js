@@ -1,7 +1,6 @@
 import { jwtDecode } from 'jwt-decode'
 import { baseUrl } from './utils'
 import config from './config'
-import { removeHomeCache } from './utils/removeHomeCache'
 
 // config sent from server may contain authentication info, for example when the user is authenticated
 // by a reverse proxy request header
@@ -49,7 +48,6 @@ const authProvider = {
         storeAuthenticationInfo(response)
         // Avoid "going to create admin" dialog after logout/login without a refresh
         config.firstTime = false
-        removeHomeCache()
         return response
       })
       .catch((error) => {
@@ -66,7 +64,8 @@ const authProvider = {
 
   logout: () => {
     removeItems()
-    if (config.extAuthLogoutURL) {
+    // Only proxy-authenticated sessions go to the IdP; others (e.g. direct LAN access) get the login form
+    if (config.extAuthLogoutURL && config.auth) {
       window.location.href = config.extAuthLogoutURL
       return Promise.resolve(false)
     }

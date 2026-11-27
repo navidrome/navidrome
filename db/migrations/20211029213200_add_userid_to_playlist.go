@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddUseridToPlaylist, downAddUseridToPlaylist)
 }
 
-func upAddUseridToPlaylist(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddUseridToPlaylist(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table playlist_dg_tmp
 (
 	id varchar(255) not null
@@ -56,6 +56,6 @@ create index playlist_updated_at
 	return err
 }
 
-func downAddUseridToPlaylist(_ context.Context, tx *sql.Tx) error {
+func downAddUseridToPlaylist(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

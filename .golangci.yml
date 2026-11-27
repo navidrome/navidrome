@@ -9,23 +9,144 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
+    - containedctx
     - copyloopvar
+    - depguard
     - dogsled
     - durationcheck
+    - errchkjson
     - errorlint
+    - exhaustive
+    - forbidigo
+    - ginkgolinter
     - gocritic
     - gocyclo
+    - godoclint
     - goprintffuncname
     - gosec
     - misspell
+    - modernize
     - nakedret
     - nilerr
+    - nolintlint
+    - perfsprint
     - rowserrcheck
-    - unconvert
-    - whitespace
-  disable:
     - staticcheck
+    - thelper
+    - unconvert
+    - usestdlibvars
+    - usetesting
+    - whitespace
   settings:
+    depguard:
+      rules:
+        api-subsonic:
+          list-mode: lax
+          files:
+            - "**/server/subsonic/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: &api_isolation "API packages must not import each other. Move shared code to a neutral package (for example server/filter or core/publicurl)."
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-nativeapi:
+          list-mode: lax
+          files:
+            - "**/server/nativeapi/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-jellyfin:
+          list-mode: lax
+          files:
+            - "**/server/jellyfin/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-apiv1:
+          list-mode: lax
+          files:
+            - "**/server/apiv1/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/public
+              desc: *api_isolation
+        api-public:
+          list-mode: lax
+          files:
+            - "**/server/public/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/server/subsonic
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/nativeapi
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/jellyfin
+              desc: *api_isolation
+            - pkg: github.com/navidrome/navidrome/server/apiv1
+              desc: *api_isolation
+        persistence-layer:
+          list-mode: lax
+          files:
+            - "**/persistence/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/navidrome/navidrome/core
+              desc: &persistence_layer "persistence implements the model repositories. Do not depend on business logic or HTTP layers; move the logic to core."
+            - pkg: github.com/navidrome/navidrome/server
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/scanner
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/plugins
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/adapters
+              desc: *persistence_layer
+            - pkg: github.com/navidrome/navidrome/cmd
+              desc: *persistence_layer
+    errcheck:
+      exclude-functions:
+        - (*github.com/zeebo/xxh3.Hasher).Write
+    errchkjson:
+      report-no-exported: true
+    ginkgolinter:
+      forbid-focus-container: true
+      force-expect-to: true
+      force-succeed: true
+      force-tonot: true
+      validate-async-intervals: true
+    godoclint:
+      # a doc comment that names another symbol (left behind by a move or a paste) is a bug
+      default: none
+      enable:
+        - start-with-name
+      options:
+        start-with-name:
+          include-unexported: true
     gocritic:
       disable-all: true
       enabled-checks:
@@ -36,15 +157,63 @@ linters:
         - G401
         - G505
         - G115
+    exhaustive:
+      # third-party enums: listing every value only adds noise; our own enums must be listed in full
+      ignore-enum-types: ^(reflect\.Kind|go\.senan\.xyz/taglib\.FileFormat)$
+    forbidigo:
+      forbid:
+        - pattern: 'tx\.Exec$'
+          msg: "use tx.ExecContext(ctx, ...) in migrations to propagate context"
+        - pattern: 'tx\.Query$'
+          msg: "use tx.QueryContext(ctx, ...) in migrations to propagate context"
+        - pattern: 'tx\.QueryRow$'
+          msg: "use tx.QueryRowContext(ctx, ...) in migrations to propagate context"
+        - pattern: '^context\.(Background|TODO)$'
+          msg: "in tests use the spec's ctx (from GinkgoT().Context()), t.Context() or b.Context()"
+        - pattern: '^panic$'
+          msg: "don't panic: return an error, or Expect(...)/Fail(...) in tests; log.Fatal only for startup failures that must stop the server"
+    nolintlint:
+      require-specific: true
+      allow-unused: false
     govet:
       enable:
         - nilness
+    staticcheck:
+      dot-import-whitelist:
+        - github.com/Masterminds/squirrel
+    thelper:
+      # Helper() is what fixes failure line numbers; the t/tb/b/f parameter name does not
+      test:
+        name: false
+      benchmark:
+        name: false
+      tb:
+        name: false
+      fuzz:
+        name: false
   exclusions:
     rules:
       - linters:
           - gosec
         path: _test\.go
         text: "G703"
+      - path: _test\.go
+        linters:
+          - containedctx
+      # forbidigo rules are scoped by their msg: "in migrations" or "in tests use"
+      - path-except: 'db/migrations/'
+        linters:
+          - forbidigo
+        text: "in migrations"
+      - path-except: '(_test\.go|^tests/)'
+        linters:
+          - forbidigo
+        text: "in tests use"
+      # the host must keep reading and writing these deprecated fields for older plugins
+      - path: ^plugins/
+        linters:
+          - staticcheck
+        text: 'SA1019: \(github\.com/navidrome/navidrome/plugins/types\.SongRef\)\.(Artist|ArtistMBID|Duration) is deprecated'
     generated: lax
     presets:
       - comments
@@ -56,6 +225,8 @@ linters:
       - builtin$
       - examples$
       - node_modules
+      - _gen\.go$
+      - .worktrees
 formatters:
   exclusions:
     generated: lax

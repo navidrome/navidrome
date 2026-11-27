@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// User represents a Navidrome user with minimal information exposed to plugins.
 /// Sensitive fields like password, email, and internal IDs are intentionally excluded.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub user_name: String,
@@ -34,10 +34,10 @@ struct UsersGetAdminsResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn users_getusers(input: Json<serde_json::Value>) -> Json<UsersGetUsersResponse>;
-    fn users_getadmins(input: Json<serde_json::Value>) -> Json<UsersGetAdminsResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn users_getusers(input: u64) -> u64;
+    fn users_getadmins(input: u64) -> u64;
 }
 
 /// GetUsers returns all users the plugin has been granted access to.
@@ -52,15 +52,13 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_users() -> Result<Vec<User>, Error> {
-    let response = unsafe {
-        users_getusers(Json(serde_json::json!({})))?
-    };
+    let response: UsersGetUsersResponse = unsafe { nd_pdk_types::hostcall::call(users_getusers, &serde_json::json!({})) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// GetAdmins returns only admin users the plugin has been granted access to.
@@ -74,13 +72,11 @@ pub fn get_users() -> Result<Vec<User>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_admins() -> Result<Vec<User>, Error> {
-    let response = unsafe {
-        users_getadmins(Json(serde_json::json!({})))?
-    };
+    let response: UsersGetAdminsResponse = unsafe { nd_pdk_types::hostcall::call(users_getadmins, &serde_json::json!({})) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

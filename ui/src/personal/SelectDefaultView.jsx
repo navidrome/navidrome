@@ -1,13 +1,10 @@
 import { SelectInput, useTranslate } from 'react-admin'
-import albumLists, { defaultAlbumList } from '../album/albumLists'
+import { getDefaultViewChoices, getStoredDefaultView } from './defaultViews'
 
 export const SelectDefaultView = (props) => {
   const translate = useTranslate()
-  const current = localStorage.getItem('defaultView') || defaultAlbumList
-  const choices = Object.keys(albumLists).map((type) => ({
-    id: type,
-    name: translate(`resources.album.lists.${type}`),
-  }))
+  const current = getStoredDefaultView()
+  const choices = getDefaultViewChoices(translate)
 
   return (
     <SelectInput

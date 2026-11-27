@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -52,7 +53,7 @@ var _ = Describe("Helpers", func() {
 			now := time.Now()
 			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
 			args, err := toSQLArgs(m)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(args).To(SatisfyAll(
 				HaveKeyWithValue("id", "123"),
 				HaveKeyWithValue("album_id", "456"),
@@ -70,7 +71,7 @@ var _ = Describe("Helpers", func() {
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(ConsistOf(1))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -80,27 +81,52 @@ var _ = Describe("Helpers", func() {
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
 			Expect(args).To(BeEmpty())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
 	Describe("mapSortOrder", func() {
+
 		It("does not change the sort string if there are no order columns", func() {
-			sort := "album_name asc"
-			mapped := mapSortOrder("album", sort)
-			Expect(mapped).To(Equal(sort))
+			Expect(mapSortOrder("album", "album_name asc")).To(Equal("album_name asc"))
 		})
-		It("changes order columns to sort expression", func() {
-			sort := "ORDER_ALBUM_NAME asc"
-			mapped := mapSortOrder("album", sort)
-			Expect(mapped).To(Equal(`(coalesce(nullif(album.sort_album_name,''),album.order_album_name)` +
-				` collate nocase) asc`))
-		})
+
+		DescribeTable("maps order columns to a collated expression",
+			func(preferSortTags, naturalSorting bool, expected string) {
+				conf.Update(func(c *conf.Options) {
+					c.PreferSortTags = preferSortTags
+					c.EnableNaturalSorting = naturalSorting
+				})
+				Expect(mapSortOrder("album", "ORDER_ALBUM_NAME asc")).To(Equal(expected))
+			},
+			Entry("qualified column", false, false,
+				"(album.order_album_name collate nocase) asc"),
+			Entry("natural collation", false, true,
+				"(album.order_album_name collate NATSORT) asc"),
+			Entry("sort tags preferred", true, false,
+				`(coalesce(nullif(album.sort_album_name,''),album.order_album_name) collate nocase) asc`),
+			Entry("sort tags preferred, natural collation", true, true,
+				`(coalesce(nullif(album.sort_album_name,''),album.order_album_name) collate NATSORT) asc`),
+		)
+
 		It("changes multiple order columns to sort expressions", func() {
+			conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
-			mapped := mapSortOrder("album", sort)
-			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
-				` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
+			Expect(mapSortOrder("album", sort)).To(Equal(
+				`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
+					` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
+		})
+	})
+
+	Describe("naturalSort", func() {
+
+		It("leaves the column alone by default, keeping its declared collation", func() {
+			Expect(naturalSort("media_file.title")).To(Equal("media_file.title"))
+		})
+
+		It("applies the natural collation when enabled", func() {
+			conf.Update(func(c *conf.Options) { c.EnableNaturalSorting = true })
+			Expect(naturalSort("media_file.title")).To(Equal("(media_file.title collate NATSORT)"))
 		})
 	})
 })

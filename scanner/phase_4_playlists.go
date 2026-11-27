@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -10,7 +11,7 @@ import (
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -18,21 +19,20 @@ import (
 )
 
 type phasePlaylists struct {
-	ctx       context.Context
-	scanState *scanState
-	ds        model.DataStore
-	pls       playlists.Playlists
-	cw        artwork.CacheWarmer
-	refreshed atomic.Uint32
+	ctx           context.Context //nolint:containedctx // phase runs under a single scan ctx
+	scanState     *scanState
+	ds            model.DataStore
+	pls           playlists.Playlists
+	refreshed     atomic.Uint32
+	pendingImport bool
 }
 
-func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists, cw artwork.CacheWarmer) *phasePlaylists {
+func createPhasePlaylists(ctx context.Context, scanState *scanState, ds model.DataStore, pls playlists.Playlists) *phasePlaylists {
 	return &phasePlaylists{
 		ctx:       ctx,
 		scanState: scanState,
 		ds:        ds,
 		pls:       pls,
-		cw:        cw,
 	}
 }
 
@@ -45,26 +45,45 @@ func (p *phasePlaylists) producer() ppl.Producer[*model.Folder] {
 }
 
 func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
-	if !conf.Server.AutoImportPlaylists {
+	if !conf.Server().AutoImportPlaylists {
 		log.Info(p.ctx, "Playlists will not be imported, AutoImportPlaylists is set to false")
 		return nil
 	}
-	u, _ := request.UserFrom(p.ctx)
-	if !u.IsAdmin || u.ID == "" {
-		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
-			"Please create an admin user first, and then update the playlists for them to be imported")
-		return nil
+
+	// Resolve the admin at phase time (the producer runs late in the scan), so an
+	// admin created while the scan was in progress is picked up. Assigned once,
+	// before any put() below, so the channel send synchronizes it with the stages.
+	admin, err := p.ds.User().FindFirstAdmin(p.ctx)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return fmt.Errorf("finding admin user: %w", err)
+	}
+	noAdmin := admin == nil || admin.ID == ""
+	if noAdmin {
+		return p.deferImport()
+	}
+	p.ctx = request.WithUser(p.ctx, *admin)
+
+	// When recovering a deferred import, scan all playlist folders, not just touched ones.
+	pending, err := p.importPending()
+	if err != nil {
+		return fmt.Errorf("checking pending playlist import: %w", err)
+	}
+	p.pendingImport = pending
+	var cursor model.FolderCursor
+	if p.pendingImport {
+		cursor, err = p.ds.Folder().GetAllWithPlaylists(p.ctx)
+	} else {
+		cursor, err = p.ds.Folder().GetTouchedWithPlaylists(p.ctx)
+	}
+	if err != nil {
+		return fmt.Errorf("loading folders with playlists: %w", err)
 	}
 
 	count := 0
-	cursor, err := p.ds.Folder(p.ctx).GetTouchedWithPlaylists()
-	if err != nil {
-		return fmt.Errorf("loading touched folders: %w", err)
-	}
-	log.Debug(p.ctx, "Scanner: Checking playlists that may need refresh")
+	log.Debug(p.ctx, "Scanner: Checking playlists that may need refresh", "pendingImport", p.pendingImport)
 	for folder, err := range cursor {
 		if err != nil {
-			return fmt.Errorf("loading touched folder: %w", err)
+			return fmt.Errorf("loading folder with playlists: %w", err)
 		}
 		count++
 		put(&folder)
@@ -76,6 +95,26 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 	}
 
 	return nil
+}
+
+// deferImport records the pending-import flag so a later scan with an admin can
+// import the playlists, and returns an error if the flag can't be persisted (so
+// the scan does not complete as successful without recording the recovery).
+func (p *phasePlaylists) deferImport() error {
+	err := p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
+		return tx.Property().Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")
+	}, "scanner: defer playlist import")
+	if err != nil {
+		return fmt.Errorf("recording pending playlist import: %w", err)
+	}
+	log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet. "+
+		"They will be imported automatically once an admin user is created.")
+	return nil
+}
+
+func (p *phasePlaylists) importPending() (bool, error) {
+	v, err := p.ds.Property().DefaultGet(p.ctx, consts.PlaylistsImportPendingFlagKey, "0")
+	return v == "1", err
 }
 
 func (p *phasePlaylists) stages() []ppl.Stage[*model.Folder] {
@@ -109,7 +148,11 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 		} else {
 			log.Debug("Scanner: Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
 		}
-		p.cw.PreCache(pls.CoverArtID())
+		item := model.ArtworkQueueItem{ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: pls.ID, ImageType: model.ImageTypePrimary,
+			Priority: model.ArtworkPriorityScan}
+		if err := p.ds.ArtworkQueue().Enqueue(p.ctx, item); err != nil {
+			log.Warn(p.ctx, "Scanner: could not enqueue playlist artwork", "id", pls.ID, err)
+		}
 		p.refreshed.Add(1)
 	}
 	return folder, nil
@@ -122,6 +165,11 @@ func (p *phasePlaylists) finalize(err error) error {
 		logF = log.Debug
 	} else {
 		p.scanState.changesDetected.Store(true)
+	}
+	if p.pendingImport && err == nil {
+		if derr := p.ds.Property().Delete(p.ctx, consts.PlaylistsImportPendingFlagKey); derr != nil {
+			log.Warn(p.ctx, "Scanner: Could not clear pending playlist-import flag", derr)
+		}
 	}
 	logF(p.ctx, "Scanner: Finished refreshing playlists", "refreshed", refreshed, err)
 	return err

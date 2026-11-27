@@ -3,7 +3,6 @@ package listenbrainz
 import (
 	"context"
 	"errors"
-	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -12,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -31,11 +31,9 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 	l := &listenBrainzAgent{
 		ds:          ds,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
-		baseURL:     conf.Server.ListenBrainz.BaseURL,
+		baseURL:     conf.Server().ListenBrainz.BaseURL,
 	}
-	hc := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.client = newClient(l.baseURL, chc)
 	return l
@@ -82,7 +80,7 @@ func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track
 	li := l.formatListen(track)
 	err = l.client.updateNowPlaying(ctx, sk, li)
 	if err != nil {
-		log.Warn(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
+		log.Debug(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
 		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
@@ -141,22 +139,35 @@ func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistNam
 
 	res := make([]agents.Song, len(resp))
 	for i, t := range resp {
-		mbid := ""
-		if len(t.ArtistMBIDs) > 0 {
-			mbid = t.ArtistMBIDs[0]
-		}
-
 		res[i] = agents.Song{
-			Album:      t.ReleaseName,
-			AlbumMBID:  t.ReleaseMBID,
-			Artist:     t.ArtistName,
-			ArtistMBID: mbid,
-			Duration:   t.DurationMs,
-			Name:       t.RecordingName,
-			MBID:       t.RecordingMbid,
+			Album:     t.ReleaseName,
+			AlbumMBID: t.ReleaseMBID,
+			Artists:   topSongArtists(t.ArtistName, t.ArtistMBIDs),
+			Duration:  t.DurationMs,
+			Name:      t.RecordingName,
+			MBID:      t.RecordingMbid,
 		}
 	}
 	return res, nil
+}
+
+// topSongArtists maps the top-recordings response, which carries a single combined display name
+// (e.g. "X feat. Y") plus a per-artist MBID list, onto agents.Artist. Names and MBIDs are not
+// positionally pairable, so the display name attaches to the first credit and any further MBIDs
+// become MBID-only collaborators — still valid identity signals for the matcher.
+func topSongArtists(name string, mbids []string) []agents.Artist {
+	if len(mbids) == 0 {
+		if name == "" {
+			return nil
+		}
+		return []agents.Artist{{Name: name}}
+	}
+	artists := make([]agents.Artist, len(mbids))
+	artists[0] = agents.Artist{Name: name, MBID: mbids[0]}
+	for i, m := range mbids[1:] {
+		artists[i+1] = agents.Artist{MBID: m}
+	}
+	return artists
 }
 
 func (l *listenBrainzAgent) GetSimilarArtists(ctx context.Context, id string, name string, mbid string, limit int) ([]agents.Artist, error) {
@@ -203,7 +214,7 @@ func (l *listenBrainzAgent) GetSimilarSongsByTrack(ctx context.Context, id strin
 		songs[i] = agents.Song{
 			Album:     song.ReleaseName,
 			AlbumMBID: song.ReleaseMBID,
-			Artist:    song.Artist,
+			Artists:   []agents.Artist{{Name: song.Artist}},
 			MBID:      song.MBID,
 			Name:      song.Name,
 		}
@@ -217,29 +228,30 @@ func (l *listenBrainzAgent) PlaybackReport(context.Context, scrobbler.PlaybackSe
 }
 
 func init() {
-	conf.AddHook(func() {
-		if conf.Server.ListenBrainz.Enabled {
-			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzAgent)(nil)
-				// See https://go.dev/doc/faq#nil_error
-				a := listenBrainzConstructor(ds)
-				if a != nil {
-					return a
-				}
-				return nil
-			})
+	conf.AddHook(register)
+}
 
-			agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
-				// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*listenBrainzAgent)(nil)
-				// See https://go.dev/doc/faq#nil_error
-				a := listenBrainzConstructor(ds)
-				if a != nil {
-					return a
-				}
-				return nil
-			})
-		}
-	})
+func register() {
+	scrobbler.Register(listenBrainzAgentName, newScrobbler)
+	agents.Register(listenBrainzAgentName, newAgent)
+}
+
+func listenBrainzEnabled() bool {
+	return conf.Server().ListenBrainz.Enabled
+}
+
+func newScrobbler(ds model.DataStore) scrobbler.Scrobbler {
+	if !listenBrainzEnabled() {
+		return nil
+	}
+	return listenBrainzConstructor(ds)
+}
+
+func newAgent(ds model.DataStore) agents.Interface {
+	if !listenBrainzEnabled() {
+		return nil
+	}
+	return listenBrainzConstructor(ds)
 }
 
 var (

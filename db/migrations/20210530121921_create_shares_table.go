@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upCreateSharesTable, downCreateSharesTable)
 }
 
-func upCreateSharesTable(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upCreateSharesTable(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table share
 (
 	id             varchar(255) not null primary key,
@@ -30,6 +30,6 @@ create table share
 	return err
 }
 
-func downCreateSharesTable(_ context.Context, tx *sql.Tx) error {
+func downCreateSharesTable(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

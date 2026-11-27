@@ -7,6 +7,7 @@ import (
 
 	"github.com/djherbis/times"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -20,6 +21,8 @@ func TestMetadata(t *testing.T) {
 	RunSpecs(t, "Metadata Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 type testFileInfo struct {
 	fs.FileInfo
 }
@@ -28,5 +31,5 @@ func (t testFileInfo) BirthTime() time.Time {
 	if ts := times.Get(t.FileInfo); ts.HasBirthTime() {
 		return ts.BirthTime()
 	}
-	return t.FileInfo.ModTime()
+	return t.ModTime()
 }

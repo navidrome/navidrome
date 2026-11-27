@@ -2,10 +2,10 @@ package subsonic
 
 import (
 	"errors"
+	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -18,7 +18,6 @@ var _ = Describe("Users", func() {
 	var testUser model.User
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		router = &Router{}
 
 		testUser = model.User{
@@ -32,9 +31,11 @@ var _ = Describe("Users", func() {
 
 	Describe("Happy path", func() {
 		It("should return consistent user data in both GetUser and GetUsers", func() {
-			conf.Server.EnableDownloads = true
-			conf.Server.EnableSharing = true
-			conf.Server.Jukebox.Enabled = false
+			conf.Update(func(c *conf.Options) {
+				c.EnableDownloads = true
+				c.EnableSharing = true
+				c.Jukebox.Enabled = false
+			})
 
 			// Set up user with libraries
 			testUser.Libraries = model.Libraries{
@@ -43,7 +44,7 @@ var _ = Describe("Users", func() {
 			}
 
 			// Create request with user in context
-			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=testuser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -90,8 +91,10 @@ var _ = Describe("Users", func() {
 
 	DescribeTable("Jukebox role permissions",
 		func(jukeboxEnabled, adminOnly, isAdmin, expectedJukeboxRole bool) {
-			conf.Server.Jukebox.Enabled = jukeboxEnabled
-			conf.Server.Jukebox.AdminOnly = adminOnly
+			conf.Update(func(c *conf.Options) {
+				c.Jukebox.Enabled = jukeboxEnabled
+				c.Jukebox.AdminOnly = adminOnly
+			})
 			testUser.IsAdmin = isAdmin
 
 			response := buildUserResponse(testUser)
@@ -106,7 +109,7 @@ var _ = Describe("Users", func() {
 
 	DescribeTable("CoverArt role permissions",
 		func(enableArtworkUpload, isAdmin, expectedCoverArtRole bool) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			testUser.IsAdmin = isAdmin
 
 			response := buildUserResponse(testUser)
@@ -135,7 +138,7 @@ var _ = Describe("Users", func() {
 
 	Describe("GetUser authorization", func() {
 		It("should allow user to request their own information", func() {
-			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=testuser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -148,7 +151,7 @@ var _ = Describe("Users", func() {
 		})
 
 		It("should deny user from requesting another user's information", func() {
-			req := httptest.NewRequest("GET", "/rest/getUser?username=anotheruser", nil)
+			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=anotheruser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -164,7 +167,7 @@ var _ = Describe("Users", func() {
 		})
 
 		It("should return error when username parameter is missing", func() {
-			req := httptest.NewRequest("GET", "/rest/getUser", nil)
+			req := httptest.NewRequest(http.MethodGet, "/rest/getUser", nil)
 			ctx := request.WithUser(GinkgoT().Context(), testUser)
 			req = req.WithContext(ctx)
 
@@ -175,7 +178,7 @@ var _ = Describe("Users", func() {
 		})
 
 		It("should return error when user context is missing", func() {
-			req := httptest.NewRequest("GET", "/rest/getUser?username=testuser", nil)
+			req := httptest.NewRequest(http.MethodGet, "/rest/getUser?username=testuser", nil)
 
 			response, err := router.GetUser(req)
 
