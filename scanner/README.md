@@ -457,7 +457,7 @@ The scanner's behavior can be customized through several configuration settings 
 | Setting     | Description                                                         | Default                                                             |
 |-------------|---------------------------------------------------------------------|---------------------------------------------------------------------|
 | `PID.Track` | Format for track persistent IDs (critical for tracking moved files) | "musicbrainz_trackid\|albumid,discnumber,tracknumber,title"         |
-| `PID.Album` | Format for album persistent IDs (affects album grouping)            | "musicbrainz_albumid\|albumartistid,album,albumversion,releasedate" |
+| `PID.Album` | Format for album persistent IDs (affects album grouping)            | "musicbrainz_albumid\|albumartistid,album,albumversion"             |
 
 These options can be set in the Navidrome configuration file (e.g., `navidrome.toml`) or via environment variables with the `ND_` prefix (e.g., `ND_SCANNER_ENABLED=false`). For environment variables, dots in option names are replaced with underscores.
 

@@ -2,6 +2,7 @@ package metadata_test
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"sort"
 
@@ -45,6 +46,23 @@ var _ = Describe("ToMediaFile", func() {
 			Expect(byFolder.AlbumID).To(Equal(md.AlbumID(byFolder, "folder")))
 			Expect(byFolder.PID).ToNot(Equal(byTags.PID))
 		})
+
+		// TagLib sends the M4A/WMA year as DATE and as the raw atom, which is a release date alias
+		DescribeTable("gives the same album ID to tracks of one album in different formats",
+			func(formatYearTag string) {
+				albumTags := model.RawTags{"ALBUM": {"Hello"}, "ALBUMARTIST": {"Adele"}, "DATE": {"2022"}}
+				mp3 := toMediaFile(albumTags)
+
+				otherTags := maps.Clone(albumTags)
+				otherTags[formatYearTag] = []string{"2022"}
+				other := toMediaFile(otherTags)
+
+				Expect(other.AlbumID).To(Equal(mp3.AlbumID))
+				Expect(other.ReleaseDate).To(Equal("2022"))
+			},
+			Entry("M4A", "©day"),
+			Entry("WMA", "WM/Year"),
+		)
 	})
 
 	Describe("Dates", func() {
