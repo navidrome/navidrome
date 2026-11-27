@@ -1,11 +1,16 @@
 package jellyfin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
@@ -13,7 +18,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -25,10 +29,12 @@ func (fullQuickConnect) Initiate(quickconnect.Device) (quickconnect.Request, err
 }
 
 var _ = Describe("QuickConnect", func() {
+	var ctx context.Context
+
 	const finamp = `MediaBrowser Client="Finamp", Device="Pixel 7", DeviceId="dev-1", Version="1.0.0"`
 	var (
 		api   *Router
-		ds    *tests.MockDataStore
+		ds    model.DataStore
 		qc    quickconnect.QuickConnect
 		alice = model.User{ID: testID("alice"), UserName: "alice"}
 		bob   = model.User{ID: testID("bob"), UserName: "bob"}
@@ -36,12 +42,12 @@ var _ = Describe("QuickConnect", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
-		ds = &tests.MockDataStore{}
-		auth.Init(GinkgoT().Context(), ds)
-		ur := ds.User().(*tests.MockedUserRepo)
+		ds = persistence.New(db.Db())
+		auth.Init(ctx, ds)
 		for _, u := range []model.User{alice, bob, admin} {
-			Expect(ur.Put(GinkgoT().Context(), &u)).To(Succeed())
+			Expect(ds.User().Put(GinkgoT().Context(), &u)).To(Succeed())
 		}
 		qc = quickconnect.New()
 		api = &Router{ds: ds, quickConnect: qc}
@@ -61,7 +67,7 @@ var _ = Describe("QuickConnect", func() {
 			func(enabled bool, expected string) {
 				conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = enabled })
 				w := httptest.NewRecorder()
-				api.quickConnectEnabled(w, httptest.NewRequest(http.MethodGet, "/QuickConnect/Enabled", nil))
+				api.quickConnectEnabled(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/QuickConnect/Enabled", nil))
 				Expect(w.Code).To(Equal(http.StatusOK))
 				Expect(w.Body.String()).To(MatchJSON(expected))
 			},
@@ -76,13 +82,13 @@ var _ = Describe("QuickConnect", func() {
 		It("rejects requests with 401 when Quick Connect is disabled", func() {
 			conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = false })
 			w := httptest.NewRecorder()
-			requireQuickConnect(next).ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/QuickConnect/Initiate", nil))
+			requireQuickConnect(next).ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodPost, "/QuickConnect/Initiate", nil))
 			Expect(w.Code).To(Equal(http.StatusUnauthorized))
 		})
 
 		It("passes requests through when Quick Connect is enabled", func() {
 			w := httptest.NewRecorder()
-			requireQuickConnect(next).ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/QuickConnect/Initiate", nil))
+			requireQuickConnect(next).ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodPost, "/QuickConnect/Initiate", nil))
 			Expect(w.Code).To(Equal(http.StatusTeapot))
 		})
 	})
@@ -90,7 +96,7 @@ var _ = Describe("QuickConnect", func() {
 	Describe("POST /QuickConnect/Initiate", func() {
 		initiateWith := func(authHeader string) *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/QuickConnect/Initiate", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/QuickConnect/Initiate", nil)
 			r.Header.Set("Authorization", authHeader)
 			api.quickConnectInitiate(w, r)
 			return w
@@ -137,7 +143,7 @@ var _ = Describe("QuickConnect", func() {
 	Describe("GET /QuickConnect/Connect", func() {
 		connect := func(secret string) (int, dto.QuickConnectResult) {
 			w := httptest.NewRecorder()
-			invoke(api.quickConnectConnect, w, httptest.NewRequest(http.MethodGet, "/QuickConnect/Connect?Secret="+secret, nil))
+			invoke(api.quickConnectConnect, w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/QuickConnect/Connect?Secret="+secret, nil))
 			var res dto.QuickConnectResult
 			if w.Code == http.StatusOK {
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -168,7 +174,7 @@ var _ = Describe("QuickConnect", func() {
 	Describe("POST /QuickConnect/Authorize", func() {
 		authorize := func(query string, u model.User) *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			invoke(api.quickConnectAuthorize, w, as(httptest.NewRequest(http.MethodPost, "/QuickConnect/Authorize?"+query, nil), u))
+			invoke(api.quickConnectAuthorize, w, as(httptest.NewRequestWithContext(ctx, http.MethodPost, "/QuickConnect/Authorize?"+query, nil), u))
 			return w
 		}
 		approver := func(req quickconnect.Request) string {
@@ -235,7 +241,7 @@ var _ = Describe("QuickConnect", func() {
 	Describe("POST /Users/AuthenticateWithQuickConnect", func() {
 		redeem := func(body string) *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateWithQuickConnect", strings.NewReader(body))
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateWithQuickConnect", strings.NewReader(body))
 			r.Header.Set("Authorization", finamp)
 			api.authenticateWithQuickConnect(w, r)
 			return w
@@ -291,7 +297,9 @@ var _ = Describe("QuickConnect", func() {
 		It("returns 500 when the user lookup fails", func() {
 			req := initiate()
 			_, _ = qc.Authorize(req.Code, alice.ID)
-			ds.User().(*tests.MockedUserRepo).Error = errors.New("db down")
+			api.ds = persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+				return failingUserRepo{UserRepository: r, err: errors.New("db down")}
+			}})
 			Expect(redeemSecret(req.Secret).Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

@@ -2,6 +2,8 @@ package jellyfin
 
 import (
 	"cmp"
+	"context"
+	"errors"
 	"fmt"
 	"math"
 	"mime"
@@ -24,29 +26,64 @@ import (
 // library, writing 404 (never 403, to avoid an existence oracle) and returning ok=false otherwise.
 // Shared by getPlaybackInfo and streamAudio so a guessed id can't probe or stream another library.
 func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (*model.MediaFile, bool) {
-	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "itemId")
 	if !ok {
 		return nil, false
 	}
+	if mf, err := api.accessibleMediaFile(r.Context(), id); err == nil {
+		return mf, true
+	}
+	http.Error(w, "Not Found", http.StatusNotFound)
+	return nil, false
+}
+
+// playableForRequest is mediaFileForRequest that also accepts an internet radio station, probed
+// only when no media file matches so song requests pay nothing extra.
+func (api *Router) playableForRequest(w http.ResponseWriter, r *http.Request) (*model.MediaFile, *model.Radio, bool) {
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return nil, nil, false
+	}
+	mf, err := api.accessibleMediaFile(r.Context(), id)
+	if err == nil {
+		return mf, nil, true
+	}
+	if errors.Is(err, model.ErrNotFound) {
+		var rd *model.Radio
+		if rd, err = api.ds.Radio().Get(r.Context(), id); err == nil {
+			return nil, rd, true
+		}
+	}
+	if errors.Is(err, model.ErrNotFound) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	} else {
+		api.internalError(w, r, err)
+	}
+	return nil, nil, false
+}
+
+// accessibleMediaFile reports a file in a library the user can't access as model.ErrNotFound.
+func (api *Router) accessibleMediaFile(ctx context.Context, id string) (*model.MediaFile, error) {
 	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return nil, false
+		return nil, err
 	}
-	u, _ := request.UserFrom(ctx)
-	if !u.HasLibraryAccess(mf.LibraryID) {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return nil, false
+	if u, _ := request.UserFrom(ctx); !u.HasLibraryAccess(mf.LibraryID) {
+		return nil, model.ErrNotFound
 	}
-	return mf, true
+	return mf, nil
 }
 
 // getPlaybackInfo answers /Items/{itemId}/PlaybackInfo with a single MediaSource for direct
 // playback. Format negotiation happens later in streamAudio (like Subsonic defers it to /stream).
 func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
-	mf, ok := api.mediaFileForRequest(w, r)
+	mf, rd, ok := api.playableForRequest(w, r)
 	if !ok {
+		return
+	}
+	if rd != nil {
+		src := dto.MediaSourceFromRadio(*rd)
+		api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: src.Id})
 		return
 	}
 	src := dto.MediaSourceFromMediaFile(*mf)

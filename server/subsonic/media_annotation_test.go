@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -24,9 +26,26 @@ var _ = Describe("MediaAnnotationController", func() {
 	var eventBroker *fakeEventBroker
 	var ctx context.Context
 
+	var userCtx context.Context
+
+	// putOwnedPlaylist stores u1's playlist pl-1, which the specs annotate as u1.
+	putOwnedPlaylist := func() {
+		GinkgoHelper()
+		owner := model.User{ID: "u1", UserName: "u1"}
+		putUsers(ctx, ds, owner)
+		userCtx = request.WithUser(ctx, owner)
+		Expect(ds.Playlist().Put(userCtx, &model.Playlist{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"})).To(Succeed())
+	}
+	storedPlaylist := func() *model.Playlist {
+		GinkgoHelper()
+		pls, err := ds.Playlist().Get(userCtx, "pl-1")
+		Expect(err).ToNot(HaveOccurred())
+		return pls
+	}
+
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil, nil, nil, nil)
@@ -78,7 +97,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		Context("submission=false", func() {
 			var req *http.Request
 			BeforeEach(func() {
-				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "12"})
+				persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "12"})
 				ctx = request.WithPlayer(ctx, model.Player{ID: "player-1"})
 				req = newGetRequest("id=12", "submission=false")
 				req = req.WithContext(ctx)
@@ -188,67 +207,56 @@ var _ = Describe("MediaAnnotationController", func() {
 	})
 
 	Describe("Star/Unstar playlists", func() {
-		var plRepo *tests.MockPlaylistRepo
-
 		BeforeEach(func() {
-			plRepo = tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
-			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+			putOwnedPlaylist()
 		})
 
 		It("stars a playlist by dispatching to the Playlist repo", func() {
-			r := newGetRequest("id=pl-1")
+			r := newGetRequest("id=pl-1").WithContext(userCtx)
 
 			_, err := router.Star(r)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(plRepo.Starred).To(HaveKeyWithValue("pl-1", true))
+			Expect(storedPlaylist().Starred).To(BeTrue())
 		})
 
 		It("unstars a playlist by dispatching to the Playlist repo", func() {
-			r := newGetRequest("id=pl-1")
+			Expect(ds.Playlist().SetStar(userCtx, true, "pl-1")).To(Succeed())
+			r := newGetRequest("id=pl-1").WithContext(userCtx)
 
 			_, err := router.Unstar(r)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(plRepo.Starred).To(HaveKeyWithValue("pl-1", false))
+			Expect(storedPlaylist().Starred).To(BeFalse())
 		})
 	})
 
 	Describe("SetRating playlists", func() {
-		var plRepo *tests.MockPlaylistRepo
-
 		BeforeEach(func() {
-			plRepo = tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
-			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+			putOwnedPlaylist()
 		})
 
 		It("rates a playlist by dispatching to the Playlist repo", func() {
-			r := newGetRequest("id=pl-1", "rating=4")
+			r := newGetRequest("id=pl-1", "rating=4").WithContext(userCtx)
 
 			_, err := router.SetRating(r)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
+			Expect(storedPlaylist().Rating).To(Equal(4))
 		})
 	})
 
 	Describe("SetRating range validation", func() {
-		var plRepo *tests.MockPlaylistRepo
-
 		BeforeEach(func() {
-			plRepo = tests.CreateMockPlaylistRepo()
-			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
-			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+			putOwnedPlaylist()
 		})
 
 		DescribeTable("rejects ratings outside the 0-5 range allowed by the Subsonic spec",
 			func(rating string) {
-				_, err := router.SetRating(newGetRequest("id=pl-1", "rating=4"))
+				_, err := router.SetRating(newGetRequest("id=pl-1", "rating=4").WithContext(userCtx))
 				Expect(err).ToNot(HaveOccurred())
 
-				r := newGetRequest("id=pl-1", "rating="+rating)
+				r := newGetRequest("id=pl-1", "rating="+rating).WithContext(userCtx)
 
 				_, err = router.SetRating(r)
 
@@ -256,7 +264,7 @@ var _ = Describe("MediaAnnotationController", func() {
 				var subErr subError
 				Expect(errors.As(err, &subErr)).To(BeTrue())
 				Expect(subErr.code).To(Equal(responses.ErrorGeneric))
-				Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
+				Expect(storedPlaylist().Rating).To(Equal(4))
 			},
 			Entry("above maximum", "6"),
 			Entry("well above maximum", "1000"),
@@ -268,12 +276,15 @@ var _ = Describe("MediaAnnotationController", func() {
 
 		DescribeTable("accepts ratings inside the 0-5 range",
 			func(rating int) {
-				r := newGetRequest("id=pl-1", fmt.Sprintf("rating=%d", rating))
+				if rating == 0 {
+					Expect(ds.Playlist().SetRating(userCtx, 4, "pl-1")).To(Succeed())
+				}
+				r := newGetRequest("id=pl-1", fmt.Sprintf("rating=%d", rating)).WithContext(userCtx)
 
 				_, err := router.SetRating(r)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", rating))
+				Expect(storedPlaylist().Rating).To(Equal(rating))
 			},
 			Entry("zero clears the rating", 0),
 			Entry("middle of the range", 3),

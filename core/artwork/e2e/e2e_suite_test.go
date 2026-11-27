@@ -16,6 +16,7 @@ import (
 	_ "github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,11 +25,13 @@ import (
 func TestArtworkE2E(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
+	persistencetest.Init(t)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Artwork Pipeline E2E Suite")
 }
 
 var _ = configtest.RestoreAfterEachSpec()
+var _ = persistencetest.ResetBeforeEachSpec()
 
 // Fixtures relative to the project root (tests.Init chdirs there).
 const (
@@ -63,23 +66,6 @@ func runWorkerUntil(ctx context.Context, worker *artwork.Worker, until func() bo
 	Eventually(until, 15*time.Second, 10*time.Millisecond).Should(BeTrue())
 	cancel()
 	Eventually(done, 2*time.Second).Should(Receive(BeNil()))
-}
-
-type fakeFolderRepo struct {
-	model.FolderRepository
-	result []model.Folder
-}
-
-func (f *fakeFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
-	return f.result, nil
-}
-
-func (f *fakeFolderRepo) HasAudioOutsideFolders(context.Context, model.Folder, []string) (bool, error) {
-	return false, nil
-}
-
-func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
-	return nil, model.ErrNotFound
 }
 
 func writeUpload(entityType, name, srcFixture string) string {

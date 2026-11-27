@@ -1,19 +1,25 @@
 package e2e
 
 import (
+	"context"
+	"net/http/httptest"
 	"strconv"
+	"sync"
 	"testing/fstest"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/server/subsonic"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -312,6 +318,119 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 	})
 
+	Describe("jukeboxControl - library filtering", Ordered, func() {
+		var jukebox *subsonic.Router
+		var lib1SongIDs []string
+		var lib2SongID string
+
+		songIDsIn := func(libID int) []string {
+			GinkgoHelper()
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
+				Filters: squirrel.Eq{"media_file.library_id": libID},
+				Sort:    "id",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).ToNot(BeEmpty())
+			return slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
+		}
+
+		jukeboxReq := func(user model.User, params ...string) *responses.Subsonic {
+			GinkgoHelper()
+			w := httptest.NewRecorder()
+			jukebox.ServeHTTP(w, buildReq(user, "jukeboxControl", params...))
+			return parseJSONResponse(w)
+		}
+
+		queuedIDs := func() []string {
+			GinkgoHelper()
+			resp := jukeboxReq(adminWithLibs, "action", "get")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			return slice.Map(resp.JukeboxPlaylist.Entry, func(e responses.Child) string { return e.Id })
+		}
+
+		BeforeAll(func() {
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) {
+				c.Jukebox.Enabled = true
+				c.Jukebox.AdminOnly = false
+				c.Jukebox.Devices = nil
+				c.Jukebox.Default = ""
+			})
+
+			// The service ctx carries no user, like the one the server starts the playback service with.
+			base, cancel := context.WithCancel(GinkgoT().Context())
+			svcCtx := &readyCtx{Context: base, ready: make(chan struct{})}
+			pb := playback.GetInstance(ds)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				_ = pb.Run(svcCtx)
+			}()
+			DeferCleanup(func() {
+				cancel()
+				Eventually(done).Should(BeClosed())
+			})
+			Eventually(svcCtx.ready).Should(BeClosed())
+
+			jukebox = newRouter(pb)
+			lib1SongIDs = songIDsIn(lib.ID)
+			lib2SongID = songIDsIn(lib2.ID)[0]
+		})
+
+		BeforeEach(func() {
+			Expect(jukeboxReq(adminWithLibs, "action", "clear").Status).To(Equal(responses.StatusOK))
+		})
+
+		It("adds a song from a library the user can access", func() {
+			resp := jukeboxReq(userLib1Only, "action", "add", "id", lib1SongIDs[0])
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(queuedIDs()).To(Equal([]string{lib1SongIDs[0]}))
+		})
+
+		It("refuses to add a song from a library the user cannot access", func() {
+			resp := jukeboxReq(userLib1Only, "action", "add", "id", lib2SongID)
+
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error.Code).To(Equal(responses.ErrorDataNotFound))
+			Expect(queuedIDs()).To(BeEmpty())
+		})
+
+		It("refuses a set with a song from a library the user cannot access, and keeps the queue", func() {
+			Expect(jukeboxReq(userLib1Only, "action", "add", "id", lib1SongIDs[0]).Status).To(Equal(responses.StatusOK))
+
+			resp := jukeboxReq(userLib1Only, "action", "set", "id", lib1SongIDs[1], "id", lib2SongID)
+
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.Error.Code).To(Equal(responses.ErrorDataNotFound))
+			Expect(queuedIDs()).To(Equal([]string{lib1SongIDs[0]}))
+		})
+
+		It("does not show the queuing user's play data to other jukebox users", func() {
+			songID := lib1SongIDs[0]
+			Expect(doReqWithUser(adminWithLibs, "star", "id", songID).Status).To(Equal(responses.StatusOK))
+			Expect(doReqWithUser(adminWithLibs, "setRating", "id", songID, "rating", "5").Status).To(Equal(responses.StatusOK))
+			Expect(doReqWithUser(adminWithLibs, "scrobble", "id", songID, "submission", "true").Status).To(Equal(responses.StatusOK))
+			Expect(jukeboxReq(adminWithLibs, "action", "set", "id", songID).Status).To(Equal(responses.StatusOK))
+
+			resp := jukeboxReq(userLib1Only, "action", "get")
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.JukeboxPlaylist.Entry).To(HaveLen(1))
+			entry := resp.JukeboxPlaylist.Entry[0]
+			Expect(entry.Starred).To(BeNil())
+			Expect(entry.UserRating).To(BeZero())
+			Expect(entry.PlayCount).To(BeZero())
+		})
+
+		It("adds a song from the second library for a user with access to it", func() {
+			resp := jukeboxReq(adminWithLibs, "action", "set", "id", lib2SongID)
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(queuedIDs()).To(Equal([]string{lib2SongID}))
+		})
+	})
+
 	Describe("Library access control", func() {
 		It("returns error when non-admin user requests inaccessible library", func() {
 			resp := doReqWithUser(userLib1Only, "getArtists", "musicFolderId", strconv.Itoa(lib2.ID))
@@ -352,3 +471,15 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		})
 	})
 })
+
+// readyCtx closes ready when Run first waits on Done, which happens after Run has set up its devices.
+type readyCtx struct {
+	context.Context
+	ready chan struct{}
+	once  sync.Once
+}
+
+func (c *readyCtx) Done() <-chan struct{} {
+	c.once.Do(func() { close(c.ready) })
+	return c.Context.Done()
+}

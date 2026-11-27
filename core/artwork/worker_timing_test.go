@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/gomega"
 )
@@ -83,8 +84,9 @@ func TestArtworkBreakerDoesNotCloseOnAnIsolatedAnswer(t *testing.T) {
 func TestArtworkGatePerAgentBreakerIsolation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		g := NewWithT(t)
-		w := NewWorker(&tests.MockDataStore{}, NewImageStore(t.TempDir()),
-			agents.GetAgents(&tests.MockDataStore{}, nil), tests.NewMockFFmpeg(""), &fakeEventBroker{}, nil)
+		noDS := struct{ model.DataStore }{}
+		w := NewWorker(noDS, NewImageStore(t.TempDir()),
+			agents.GetAgents(noDS, nil), tests.NewMockFFmpeg(""), &fakeEventBroker{}, nil)
 
 		fail := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
 		for range breakerThreshold {

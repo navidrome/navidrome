@@ -30,7 +30,7 @@ func upAddAlbumPaths(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("update album set paths = ? where id = ?")
+	stmt, err := tx.PrepareContext(ctx, "update album set paths = ? where id = ?")
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func upAddAlbumPaths(ctx context.Context, tx *sql.Tx) error {
 		}
 
 		paths := upAddAlbumPathsDirs(filePaths)
-		_, err = stmt.Exec(paths, id)
+		_, err = stmt.ExecContext(ctx, paths, id)
 		if err != nil {
 			log.Error("Error updating album's paths", "paths", paths, "id", id, err)
 		}

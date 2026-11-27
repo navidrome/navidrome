@@ -1,7 +1,9 @@
 package persistence
 
 import (
+	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -298,6 +300,18 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 	}
 })
+
+// captureTraceLogs sends trace logs, SQL included, to a buffer for the rest of the spec.
+func captureTraceLogs() *bytes.Buffer {
+	buf := &bytes.Buffer{}
+	log.SetOutput(buf)
+	log.SetLevel(log.LevelTrace)
+	DeferCleanup(func() {
+		log.SetOutput(os.Stderr)
+		log.SetLevel(log.LevelFatal)
+	})
+	return buf
+}
 
 func GetDBXBuilder() *dbx.DB {
 	return dbx.NewFromDB(db.Db(), db.Dialect)

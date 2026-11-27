@@ -22,7 +22,7 @@ func upEncodeAllPasswords(ctx context.Context, tx *sql.Tx) error {
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("UPDATE user SET password = ? WHERE id = ?")
+	stmt, err := tx.PrepareContext(ctx, "UPDATE user SET password = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func upEncodeAllPasswords(ctx context.Context, tx *sql.Tx) error {
 			log.Error("Error encrypting user's password", "id", id, "username", username, err)
 		}
 
-		_, err = stmt.Exec(password, id)
+		_, err = stmt.ExecContext(ctx, password, id)
 		if err != nil {
 			log.Error("Error saving user's encrypted password", "id", id, "username", username, err)
 		}

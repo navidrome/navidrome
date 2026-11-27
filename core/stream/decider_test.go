@@ -8,8 +8,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
@@ -32,9 +34,18 @@ func withProbe(mf *model.MediaFile) *model.MediaFile {
 	return mf
 }
 
+// setDefaultBitRate stores a custom default bitrate for format, so a spec can tell it from the built-in default.
+func setDefaultBitRate(ctx context.Context, ds model.DataStore, format string, bitRate int) {
+	GinkgoHelper()
+	t, err := ds.Transcoding().FindByFormat(ctx, format)
+	Expect(err).ToNot(HaveOccurred())
+	t.DefaultBitRate = bitRate
+	Expect(ds.Transcoding().Put(request.WithUser(ctx, model.User{IsAdmin: true}), t)).To(Succeed())
+}
+
 var _ = Describe("Decider", func() {
 	var (
-		ds  *tests.MockDataStore
+		ds  model.DataStore
 		ff  *tests.MockFFmpeg
 		svc TranscodeDecider
 		ctx context.Context
@@ -42,10 +53,7 @@ var _ = Describe("Decider", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{
-			MockedProperty:    &tests.MockedPropertyRepo{},
-			MockedTranscoding: &tests.MockTranscodingRepo{},
-		}
+		ds = persistence.New(db.Db())
 		ff = tests.NewMockFFmpeg("")
 		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, ff)
@@ -288,7 +296,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				Expect(decision.TargetBitrate).To(Equal(160)) // mp3 default from mock transcoding repo
+				Expect(decision.TargetBitrate).To(Equal(192)) // mp3 default stored in the DB
 			})
 
 			It("preserves lossy bitrate when under max", func() {
@@ -1206,6 +1214,7 @@ var _ = Describe("Decider", func() {
 
 		Context("Format-aware default bitrate", func() {
 			It("uses opus default bitrate from DB", func() {
+				setDefaultBitRate(ctx, ds, "opus", 96)
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 48000, BitDepth: new(16)})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
@@ -1215,7 +1224,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				Expect(decision.TargetBitrate).To(Equal(96)) // opus default from mock
+				Expect(decision.TargetBitrate).To(Equal(96))
 			})
 
 			It("uses aac default bitrate from DB", func() {
@@ -1228,7 +1237,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				Expect(decision.TargetBitrate).To(Equal(256)) // aac default from mock
+				Expect(decision.TargetBitrate).To(Equal(256))
 			})
 
 			It("falls back to 256 for unknown format", func() {
@@ -1316,16 +1325,9 @@ var _ = Describe("Decider", func() {
 	})
 
 	Describe("ensureProbed", func() {
-		var mockMFRepo *tests.MockMediaFileRepo
-
-		BeforeEach(func() {
-			mockMFRepo = tests.CreateMockMediaFileRepo()
-			ds.MockedMediaFile = mockMFRepo
-		})
-
 		It("calls ffprobe and populates ProbeData when empty", func() {
-			mf := &model.MediaFile{ID: "probe-1", Suffix: "mp3", BitRate: 320, Channels: 2}
-			mockMFRepo.SetData(model.MediaFiles{*mf})
+			mf := &model.MediaFile{ID: "probe-1", LibraryID: model.DefaultLibraryID, Path: "probe-1.mp3", Suffix: "mp3", BitRate: 320, Channels: 2}
+			Expect(ds.MediaFile().Put(ctx, mf)).To(Succeed())
 
 			ff.ProbeAudioResult = &ffmpeg.AudioProbeResult{
 				Codec: "mp3", BitRate: 320, SampleRate: 44100, Channels: 2,
@@ -1341,8 +1343,8 @@ var _ = Describe("Decider", func() {
 			Expect(probe.SampleRate).To(Equal(44100))
 			Expect(probe.Channels).To(Equal(2))
 
-			// Verify persisted to DB
-			stored := mockMFRepo.Data["probe-1"]
+			stored, err := ds.MediaFile().Get(ctx, "probe-1")
+			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.ProbeData).To(Equal(mf.ProbeData))
 		})
 

@@ -1,23 +1,29 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
+
 	"github.com/gorilla/websocket"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("handleSocket", func() {
+	var ctx context.Context
+
 	var api *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		api = &Router{}
 	})
 
@@ -28,7 +34,7 @@ var _ = Describe("handleSocket", func() {
 		defer srv.Close()
 
 		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 		Expect(err).ToNot(HaveOccurred())
 		defer conn.Close()
 
@@ -44,7 +50,7 @@ var _ = Describe("handleSocket", func() {
 		defer srv.Close()
 
 		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 		Expect(err).ToNot(HaveOccurred())
 		defer conn.Close()
 
@@ -66,7 +72,7 @@ var _ = Describe("handleSocket", func() {
 		defer srv.Close()
 
 		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(conn.SetReadDeadline(time.Now().Add(2 * time.Second))).To(Succeed())
@@ -80,14 +86,13 @@ var _ = Describe("handleSocket", func() {
 	// wrapper + chi mux + auth middleware) with a real network listener, exactly as Finamp
 	// hits it in production with ?api_key=<jwt>.
 	Context("mounted behind the full router and auth middleware", func() {
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 		var token string
 
 		BeforeEach(func() {
-			ds = &tests.MockDataStore{}
-			auth.Init(GinkgoT().Context(), ds)
-			ur := ds.User().(*tests.MockedUserRepo)
-			Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+			ds = persistence.New(db.Db())
+			auth.Init(ctx, ds)
+			Expect(ds.User().Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 
 			t, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 			Expect(err).ToNot(HaveOccurred())
@@ -101,7 +106,7 @@ var _ = Describe("handleSocket", func() {
 			defer srv.Close()
 
 			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/socket?api_key=" + token
-			conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 			Expect(err).ToNot(HaveOccurred())
 			defer conn.Close()
 
@@ -116,7 +121,7 @@ var _ = Describe("handleSocket", func() {
 			defer srv.Close()
 
 			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/socket"
-			_, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			_, resp, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
 		})

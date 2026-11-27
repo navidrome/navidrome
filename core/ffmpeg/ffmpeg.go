@@ -53,7 +53,7 @@ type FFmpeg interface {
 	CmdPath() (string, error)
 	IsAvailable() bool
 	IsProbeAvailable() bool
-	Version() string
+	Version(ctx context.Context) string
 }
 
 func New() FFmpeg {
@@ -320,12 +320,12 @@ func (e *ffmpeg) IsProbeAvailable() bool {
 
 // Version executes ffmpeg -version and extracts the version from the output.
 // Sample output: ffmpeg version 6.0 Copyright (c) 2000-2023 the FFmpeg developers
-func (e *ffmpeg) Version() string {
+func (e *ffmpeg) Version(ctx context.Context) string {
 	cmd, err := ffmpegCmd()
 	if err != nil {
 		return "N/A"
 	}
-	out, err := exec.Command(cmd, "-version").CombinedOutput() // #nosec
+	out, err := exec.CommandContext(ctx, cmd, "-version").CombinedOutput() // #nosec
 	if err != nil {
 		return "N/A"
 	}

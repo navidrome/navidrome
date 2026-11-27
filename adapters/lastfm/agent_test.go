@@ -14,7 +14,9 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,7 +32,7 @@ var _ = Describe("lastfmAgent", func() {
 	var ctx context.Context
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		conf.Update(func(c *conf.Options) {
 			c.LastFM.Enabled = true
 			c.LastFM.ApiKey = "123"
@@ -354,7 +356,8 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		var track *model.MediaFile
 		BeforeEach(func() {
-			_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
+			Expect(ds.User().Put(ctx, &model.User{ID: "user-1", UserName: "user-1"})).To(Succeed())
+			Expect(ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")).To(Succeed())
 			httpClient = &tests.FakeHttpClient{}
 			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)

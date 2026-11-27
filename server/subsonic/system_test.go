@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 
@@ -11,9 +12,14 @@ import (
 )
 
 var _ = Describe("TokenInfo", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("returns the authenticated username", func() {
 		api := &Router{}
-		r := httptest.NewRequest(http.MethodGet, "/tokenInfo", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/tokenInfo", nil)
 		r = r.WithContext(request.WithUser(r.Context(), model.User{UserName: "deluan"}))
 
 		resp, err := api.TokenInfo(r)

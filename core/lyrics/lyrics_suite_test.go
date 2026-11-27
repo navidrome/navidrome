@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,11 +18,13 @@ import (
 func TestLyrics(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
+	persistencetest.Init(t)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Lyrics Suite")
 }
 
 var _ = configtest.RestoreAfterEachSpec()
+var _ = persistencetest.ResetBeforeEachSpec()
 
 // core/storage/local calls log.Fatal if the default scanner extractor is unregistered
 // when constructing any localStorage. Register a no-op so storage.For("file://...") works

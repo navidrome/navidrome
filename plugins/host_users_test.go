@@ -12,13 +12,13 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("UsersService", Ordered, func() {
+var _ = Describe("UsersService", func() {
 	var (
 		ctx     context.Context
 		ds      model.DataStore
@@ -27,33 +27,13 @@ var _ = Describe("UsersService", Ordered, func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = newTestDataStore()
 	})
 
 	Describe("GetUsers", func() {
-		var mockUserRepo *tests.MockedUserRepo
-
 		BeforeEach(func() {
-			mockUserRepo = ds.User().(*tests.MockedUserRepo)
 			// Add test users
-			_ = mockUserRepo.Put(ctx, &model.User{
-				ID:       "user1",
-				UserName: "alice",
-				Name:     "Alice Admin",
-				IsAdmin:  true,
-			})
-			_ = mockUserRepo.Put(ctx, &model.User{
-				ID:       "user2",
-				UserName: "bob",
-				Name:     "Bob User",
-				IsAdmin:  false,
-			})
-			_ = mockUserRepo.Put(ctx, &model.User{
-				ID:       "user3",
-				UserName: "charlie",
-				Name:     "Charlie User",
-				IsAdmin:  false,
-			})
+			createTestUsers(ds)
 		})
 
 		Context("with allUsers=true", func() {
@@ -128,8 +108,8 @@ var _ = Describe("UsersService", Ordered, func() {
 
 		Context("when datastore returns error", func() {
 			BeforeEach(func() {
-				mockUserRepo.Error = model.ErrNotFound
-				service = newUsersService(ds, newUserAccess(nil, true))
+				failing := failingUsers(ds, errors.New("db is locked"))
+				service = newUsersService(failing, newUserAccess(nil, true))
 			})
 
 			It("should propagate the error", func() {
@@ -140,29 +120,9 @@ var _ = Describe("UsersService", Ordered, func() {
 	})
 
 	Describe("GetAdmins", func() {
-		var mockUserRepo *tests.MockedUserRepo
-
 		BeforeEach(func() {
-			mockUserRepo = ds.User().(*tests.MockedUserRepo)
 			// Add test users - alice is admin, bob and charlie are not
-			_ = mockUserRepo.Put(ctx, &model.User{
-				ID:       "user1",
-				UserName: "alice",
-				Name:     "Alice Admin",
-				IsAdmin:  true,
-			})
-			_ = mockUserRepo.Put(ctx, &model.User{
-				ID:       "user2",
-				UserName: "bob",
-				Name:     "Bob User",
-				IsAdmin:  false,
-			})
-			_ = mockUserRepo.Put(ctx, &model.User{
-				ID:       "user3",
-				UserName: "charlie",
-				Name:     "Charlie User",
-				IsAdmin:  false,
-			})
+			createTestUsers(ds)
 		})
 
 		Context("with allUsers=true", func() {
@@ -208,8 +168,8 @@ var _ = Describe("UsersService", Ordered, func() {
 
 		Context("when datastore returns error", func() {
 			BeforeEach(func() {
-				mockUserRepo.Error = model.ErrNotFound
-				service = newUsersService(ds, newUserAccess(nil, true))
+				failing := failingUsers(ds, errors.New("db is locked"))
+				service = newUsersService(failing, newUserAccess(nil, true))
 			})
 
 			It("should propagate the error", func() {
@@ -456,26 +416,14 @@ func setupTestUsersPlugin() (*testUsersSetup, error) {
 	}, nil
 }
 
-// createTestUsers creates standard test users in the mock repo
-func createTestUsers(ctx context.Context, mockUserRepo *tests.MockedUserRepo) {
-	_ = mockUserRepo.Put(ctx, &model.User{
-		ID:       "user1",
-		UserName: "alice",
-		Name:     "Alice Admin",
-		IsAdmin:  true,
-	})
-	_ = mockUserRepo.Put(ctx, &model.User{
-		ID:       "user2",
-		UserName: "bob",
-		Name:     "Bob User",
-		IsAdmin:  false,
-	})
-	_ = mockUserRepo.Put(ctx, &model.User{
-		ID:       "user3",
-		UserName: "charlie",
-		Name:     "Charlie User",
-		IsAdmin:  false,
-	})
+// createTestUsers stores the standard test users
+func createTestUsers(ds model.DataStore) {
+	GinkgoHelper()
+	putUsers(ds,
+		model.User{ID: "user1", UserName: "alice", Name: "Alice Admin", IsAdmin: true},
+		model.User{ID: "user2", UserName: "bob", Name: "Bob User", IsAdmin: false},
+		model.User{ID: "user3", UserName: "charlie", Name: "Charlie User", IsAdmin: false},
+	)
 }
 
 // setupTestUsersConfig sets up common plugin configuration
@@ -521,7 +469,7 @@ func callTestUsersPlugin(ctx context.Context, manager *Manager, input testUsersI
 	if err != nil {
 		return nil, err
 	}
-	_, outputBytes, err := instance.Call("nd_test_users", inputBytes)
+	_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_users", inputBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -551,25 +499,16 @@ func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUser
 	cleanupConfig := conf.SnapshotConfig()
 	setupTestUsersConfig(setup.tmpDir)
 
-	// Setup mock DataStore with plugin and users
-	mockPluginRepo := tests.CreateMockPluginRepo()
-	mockPluginRepo.Permitted = true
-	mockPluginRepo.SetData(model.Plugins{{
+	persistencetest.Reset()
+	dataStore := newTestDataStore(model.Plugin{
 		ID:       "test-users",
 		Path:     setup.destPath,
 		SHA256:   setup.hashHex,
 		Enabled:  enabled,
 		AllUsers: allUsers,
 		Users:    allowedUsers,
-	}})
-
-	mockUserRepo := tests.CreateMockUserRepo()
-	createTestUsers(GinkgoT().Context(), mockUserRepo)
-
-	dataStore := &tests.MockDataStore{
-		MockedPlugin: mockPluginRepo,
-		MockedUser:   mockUserRepo,
-	}
+	})
+	createTestUsers(dataStore)
 
 	// Create and start manager
 	manager := &Manager{

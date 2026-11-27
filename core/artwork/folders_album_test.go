@@ -6,27 +6,59 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// spyFolderRepo counts parent lookups and can fail them or the album-root check.
+type spyFolderRepo struct {
+	model.FolderRepository
+	getCalls      int
+	getErr        error
+	otherAudioErr error
+}
+
+func (f *spyFolderRepo) Get(ctx context.Context, id string) (*model.Folder, error) {
+	f.getCalls++
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	return f.FolderRepository.Get(ctx, id)
+}
+
+func (f *spyFolderRepo) HasAudioOutsideFolders(ctx context.Context, parent model.Folder, excludeIDs []string) (bool, error) {
+	if f.otherAudioErr != nil {
+		return false, f.otherAudioErr
+	}
+	return f.FolderRepository.HasAudioOutsideFolders(ctx, parent, excludeIDs)
+}
 
 // The e2e specs cover which image wins for a layout; these pin what a layout cannot reach: that
 // the album-root parent is only fetched when it could qualify, and what happens when that fails.
 var _ = Describe("loadAlbumFoldersPaths", func() {
 	var (
 		ctx   context.Context
-		ds    *tests.MockDataStore
-		repo  *fakeFolderRepo
+		ds    model.DataStore
+		repo  *spyFolderRepo
 		album model.Album
 		now   time.Time
 	)
 
+	putFolders := func(folders ...model.Folder) {
+		GinkgoHelper()
+		for _, f := range folders {
+			f.LibraryID = model.DefaultLibraryID
+			Expect(ds.Folder().Put(ctx, &f)).To(Succeed())
+		}
+	}
+
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		now = time.Now().Truncate(time.Second)
-		repo = &fakeFolderRepo{}
-		ds = &tests.MockDataStore{MockedFolder: repo}
+		real := newTestDS(ctx)
+		repo = &spyFolderRepo{FolderRepository: real.Folder()}
+		ds = persistencetest.Stub(real, persistencetest.Repos{Folder: func(model.FolderRepository) model.FolderRepository { return repo }})
 		album = model.Album{
 			ID:        "album1",
 			Name:      "Album",
@@ -35,73 +67,72 @@ var _ = Describe("loadAlbumFoldersPaths", func() {
 	})
 
 	It("does not query the parent when it is already one of the album's folders", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist", Name: "Album", ParentID: "folder2",
+		putFolders(
+			model.Folder{ID: "folder1", Path: "Artist", Name: "Album", ParentID: "folder2",
 				ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}},
-			{ID: "folder2", Path: "", Name: "Artist", ImagesUpdatedAt: now},
-		}
+			model.Folder{ID: "folder2", Path: "", Name: "Artist", ImagesUpdatedAt: now},
+		)
 
 		_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(imgFiles).To(ConsistOf("Artist/Album/cover.jpg"))
-		Expect(repo.getCallCount).To(BeZero())
+		Expect(repo.getCalls).To(BeZero())
 	})
 
 	It("does not query the parent when the album's folders have different parents", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist1/Album", Name: "part1", ParentID: "parentA",
+		putFolders(
+			model.Folder{ID: "folder1", Path: "Artist1/Album", Name: "part1", ParentID: "parentA",
 				ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}},
-			{ID: "folder2", Path: "Artist2/Album", Name: "part2", ParentID: "parentB",
+			model.Folder{ID: "folder2", Path: "Artist2/Album", Name: "part2", ParentID: "parentB",
 				ImagesUpdatedAt: now},
-		}
+		)
 
 		_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(imgFiles).To(ConsistOf("Artist1/Album/part1/cover.jpg"))
-		Expect(repo.getCallCount).To(BeZero())
+		Expect(repo.getCalls).To(BeZero())
 	})
 
 	It("does not query the parent for a single-folder album that has images of its own", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist", Name: "Album", ParentID: "artistFolder",
-				ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}},
-		}
+		putFolders(model.Folder{ID: "folder1", Path: "Artist", Name: "Album", ParentID: "artistFolder",
+			ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}})
 
 		_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(imgFiles).To(ConsistOf("Artist/Album/cover.jpg"))
-		Expect(repo.getCallCount).To(BeZero())
+		Expect(repo.getCalls).To(BeZero())
 	})
 
 	It("does not promote the library root, so its images never become album art", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: ".", Name: "AlbumPart1", ParentID: "rootFolder",
+		putFolders(
+			model.Folder{ID: "folder1", Path: ".", Name: "AlbumPart1", ParentID: "rootFolder",
 				ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}},
-			{ID: "folder2", Path: ".", Name: "AlbumPart2", ParentID: "rootFolder",
+			model.Folder{ID: "folder2", Path: ".", Name: "AlbumPart2", ParentID: "rootFolder",
 				ImagesUpdatedAt: now},
-		}
-		repo.parentResult = &model.Folder{ID: "rootFolder", Name: ".", ImageFiles: []string{"unrelated.jpg"}}
+			model.Folder{ID: "rootFolder", Name: ".", ImageFiles: []string{"unrelated.jpg"}},
+		)
 
 		_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(imgFiles).To(ConsistOf("AlbumPart1/cover.jpg"))
-		Expect(repo.getCallCount).To(Equal(1))
+		Expect(repo.getCalls).To(Equal(1))
 	})
 
 	It("does not promote a parent that holds another album's audio", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "albumFolder",
+		putFolders(
+			model.Folder{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "albumFolder",
 				ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}},
-			{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "albumFolder",
+			model.Folder{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "albumFolder",
 				ImagesUpdatedAt: now},
-		}
-		repo.parentResult = &model.Folder{ID: "albumFolder", Path: "Artist", Name: "Album",
-			ParentID: "artistFolder", ImageFiles: []string{"artist.jpg"}}
-		repo.hasOtherAudio = true
+			model.Folder{ID: "albumFolder", Path: "Artist", Name: "Album",
+				ParentID: "artistFolder", ImageFiles: []string{"artist.jpg"}},
+			model.Folder{ID: "otherAlbum", Path: "Artist/Album", Name: "Bonus", ParentID: "albumFolder",
+				NumAudioFiles: 3},
+		)
 
 		_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
@@ -110,14 +141,14 @@ var _ = Describe("loadAlbumFoldersPaths", func() {
 	})
 
 	It("promotes the album root parent into the returned paths", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "albumFolder",
-				ImagesUpdatedAt: now},
-			{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "albumFolder",
-				ImagesUpdatedAt: now},
-		}
-		repo.parentResult = &model.Folder{ID: "albumFolder", Path: "Artist", Name: "Album",
-			ParentID: "artistFolder", ImageFiles: []string{"cover.jpg"}}
+		putFolders(
+			model.Folder{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "albumFolder",
+				ImagesUpdatedAt: now, NumAudioFiles: 5},
+			model.Folder{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "albumFolder",
+				ImagesUpdatedAt: now, NumAudioFiles: 5},
+			model.Folder{ID: "albumFolder", Path: "Artist", Name: "Album",
+				ParentID: "artistFolder", ImageFiles: []string{"cover.jpg"}},
+		)
 
 		paths, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
@@ -127,12 +158,12 @@ var _ = Describe("loadAlbumFoldersPaths", func() {
 	})
 
 	It("propagates errors from the album-root check", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist/Album", Name: "disc1", ParentID: "albumFolder",
+		putFolders(
+			model.Folder{ID: "folder1", Path: "Artist/Album", Name: "disc1", ParentID: "albumFolder",
 				ImagesUpdatedAt: now},
-		}
-		repo.parentResult = &model.Folder{ID: "albumFolder", Path: "Artist", Name: "Album",
-			ParentID: "artistFolder", ImageFiles: []string{"cover.jpg"}}
+			model.Folder{ID: "albumFolder", Path: "Artist", Name: "Album",
+				ParentID: "artistFolder", ImageFiles: []string{"cover.jpg"}},
+		)
 		repo.otherAudioErr = errors.New("db connection failed")
 
 		_, _, _, err := loadAlbumFoldersPaths(ctx, ds, album)
@@ -141,33 +172,33 @@ var _ = Describe("loadAlbumFoldersPaths", func() {
 	})
 
 	It("propagates non-ErrNotFound errors from the parent folder lookup", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "parentFolder",
+		putFolders(
+			model.Folder{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "parentFolder",
 				ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}},
-			{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "parentFolder",
+			model.Folder{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "parentFolder",
 				ImagesUpdatedAt: now},
-		}
+		)
 		repo.getErr = errors.New("db connection failed")
 
 		_, _, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
 		Expect(err).To(MatchError("db connection failed"))
-		Expect(repo.getCallCount).To(Equal(1))
+		Expect(repo.getCalls).To(Equal(1))
 	})
 
 	It("continues when the parent folder has been deleted", func() {
-		repo.result = []model.Folder{
-			{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "missingParent",
+		putFolders(
+			model.Folder{ID: "folder1", Path: "Artist/Album", Name: "CD1", ParentID: "missingParent",
 				ImagesUpdatedAt: now, ImageFiles: []string{"cover.jpg"}},
-			{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "missingParent",
+			model.Folder{ID: "folder2", Path: "Artist/Album", Name: "CD2", ParentID: "missingParent",
 				ImagesUpdatedAt: now},
-		}
+		)
 
 		_, imgFiles, _, err := loadAlbumFoldersPaths(ctx, ds, album)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(imgFiles).To(ConsistOf("Artist/Album/CD1/cover.jpg"))
-		Expect(repo.getCallCount).To(Equal(1))
+		Expect(repo.getCalls).To(Equal(1))
 	})
 })
 

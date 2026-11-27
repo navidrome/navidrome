@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -30,10 +31,7 @@ var _ = Describe("helpers", func() {
 	Describe("fakePath", func() {
 		var mf model.MediaFile
 		BeforeEach(func() {
-			mf.AlbumArtist = "Brock Berrigan"
-			mf.Album = "Point Pleasant"
-			mf.Title = "Split Decision"
-			mf.Suffix = "flac"
+			mf = model.MediaFile{AlbumArtist: "Brock Berrigan", Album: "Point Pleasant", Title: "Split Decision", Suffix: "flac"}
 		})
 		When("TrackNumber is not available", func() {
 			It("does not add any number to the filename", func() {
@@ -369,7 +367,10 @@ var _ = Describe("helpers", func() {
 		})
 
 		Describe("toArtist / toArtistID3", func() {
-			r := httptest.NewRequest(http.MethodGet, "/test", nil)
+			var r *http.Request
+			BeforeEach(func() {
+				r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
+			})
 			It("emits both coverArt and imageUrl when resolved", func() {
 				a := model.Artist{ID: "ar-1", ImageHash: hash}
 				artist := toArtist(r, a)
@@ -516,7 +517,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when musicFolderId parameter is provided", func() {
 			It("should return the specified musicFolderId values", func() {
-				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=1&musicFolderId=3", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test?musicFolderId=1&musicFolderId=3", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -525,7 +526,7 @@ var _ = Describe("helpers", func() {
 			})
 
 			It("should ignore invalid musicFolderId parameter values", func() {
-				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=invalid&musicFolderId=2", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test?musicFolderId=invalid&musicFolderId=2", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -534,7 +535,7 @@ var _ = Describe("helpers", func() {
 			})
 
 			It("should return error when any library ID is not accessible", func() {
-				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=1&musicFolderId=5&musicFolderId=2&musicFolderId=99", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test?musicFolderId=1&musicFolderId=5&musicFolderId=2&musicFolderId=99", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -547,7 +548,7 @@ var _ = Describe("helpers", func() {
 		Context("when musicFolderId parameter is not provided", func() {
 			Context("and required is false", func() {
 				It("should return all user's library IDs", func() {
-					r := httptest.NewRequest(http.MethodGet, "/test", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 					r = r.WithContext(ctx)
 
 					ids, err := selectedMusicFolderIds(r, false)
@@ -558,7 +559,7 @@ var _ = Describe("helpers", func() {
 				It("should return empty slice when user has no libraries", func() {
 					userWithoutLibs := model.User{ID: "no-libs-user", Libraries: []model.Library{}}
 					ctxWithoutLibs := request.WithUser(ctx, userWithoutLibs)
-					r := httptest.NewRequest(http.MethodGet, "/test", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 					r = r.WithContext(ctxWithoutLibs)
 
 					ids, err := selectedMusicFolderIds(r, false)
@@ -569,7 +570,7 @@ var _ = Describe("helpers", func() {
 
 			Context("and required is true", func() {
 				It("should return ErrMissingParam error", func() {
-					r := httptest.NewRequest(http.MethodGet, "/test", nil)
+					r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 					r = r.WithContext(ctx)
 
 					ids, err := selectedMusicFolderIds(r, true)
@@ -581,7 +582,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when musicFolderId parameter is empty", func() {
 			It("should return all user's library IDs even when empty parameter is provided", func() {
-				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test?musicFolderId=", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -592,7 +593,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when all musicFolderId parameters are invalid", func() {
 			It("should return all user libraries when all musicFolderId parameters are invalid", func() {
-				r := httptest.NewRequest(http.MethodGet, "/test?musicFolderId=invalid&musicFolderId=notanumber", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test?musicFolderId=invalid&musicFolderId=notanumber", nil)
 				r = r.WithContext(ctx)
 
 				ids, err := selectedMusicFolderIds(r, false)
@@ -652,7 +653,7 @@ var _ = Describe("helpers", func() {
 		Describe("toArtist", func() {
 			It("includes averageRating when set", func() {
 				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
-				r := httptest.NewRequest(http.MethodGet, "/test", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 				a := model.Artist{
 					ID:            "ar-avg-1",
 					Name:          "Test Artist",
@@ -666,7 +667,7 @@ var _ = Describe("helpers", func() {
 		Describe("toArtistID3", func() {
 			It("includes averageRating when set", func() {
 				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
-				r := httptest.NewRequest(http.MethodGet, "/test", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 				a := model.Artist{
 					ID:            "ar-avg-2",
 					Name:          "Test Artist ID3",
@@ -677,123 +678,23 @@ var _ = Describe("helpers", func() {
 			})
 		})
 
-		Describe("buildAlbumID3 Created field", func() {
-			When("RecentlyAddedByModTime is false", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
-				})
+		Describe("Created field", func() {
+			birth := time.Date(2018, 1, 2, 3, 4, 5, 0, time.UTC)
+			created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
 
-				It("uses CreatedAt when set", func() {
-					t := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					al := model.Album{ID: "a1", Name: "A", CreatedAt: t}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(t))
-				})
-
-				It("falls back to UpdatedAt when CreatedAt is zero", func() {
-					updated := time.Date(2019, 5, 6, 7, 8, 9, 0, time.UTC)
-					al := model.Album{ID: "a2", Name: "A", UpdatedAt: updated}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(updated))
-				})
-
-				It("falls back to ImportedAt when CreatedAt and UpdatedAt are zero", func() {
-					imported := time.Date(2021, 8, 9, 10, 11, 12, 0, time.UTC)
-					al := model.Album{ID: "a3", Name: "A", ImportedAt: imported}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(imported))
-				})
-
-				It("leaves Created as zero time when all timestamps are zero", func() {
-					al := model.Album{ID: "a4", Name: "A"}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created.IsZero()).To(BeTrue())
-				})
+			BeforeEach(func() {
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
 			})
 
-			When("RecentlyAddedByModTime is true", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
-				})
-
-				It("uses UpdatedAt even when CreatedAt is also set", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					updated := time.Date(2022, 6, 7, 8, 9, 10, 0, time.UTC)
-					al := model.Album{ID: "a5", Name: "A", CreatedAt: created, UpdatedAt: updated}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(updated))
-				})
-
-				It("falls back to CreatedAt when UpdatedAt is zero", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					al := model.Album{ID: "a6", Name: "A", CreatedAt: created}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(created))
-				})
-
-				It("falls back to ImportedAt when UpdatedAt and CreatedAt are zero", func() {
-					imported := time.Date(2021, 8, 9, 10, 11, 12, 0, time.UTC)
-					al := model.Album{ID: "a7", Name: "A", ImportedAt: imported}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created).To(Equal(imported))
-				})
-
-				It("leaves Created as zero time when all timestamps are zero", func() {
-					al := model.Album{ID: "a8", Name: "A"}
-					dir := buildAlbumID3(ctx, al)
-					Expect(dir.Created.IsZero()).To(BeTrue())
-				})
-			})
-		})
-
-		Describe("childFromMediaFile Created field", func() {
-			birth := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
-
-			When("RecentlyAddedByModTime is false", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
-				})
-
-				It("uses CreatedAt, not BirthTime", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					mf := model.MediaFile{ID: "s1", BirthTime: birth, CreatedAt: created}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(created))
-				})
-
-				It("falls back to UpdatedAt when CreatedAt is zero", func() {
-					updated := time.Date(2019, 5, 6, 7, 8, 9, 0, time.UTC)
-					mf := model.MediaFile{ID: "s2", BirthTime: birth, UpdatedAt: updated}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(updated))
-				})
-
-				It("falls back to BirthTime when CreatedAt and UpdatedAt are zero", func() {
-					mf := model.MediaFile{ID: "s3", BirthTime: birth}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(birth))
-				})
+			It("uses the album's recently-added timestamp", func() {
+				al := model.Album{ID: "a1", Name: "A", BirthTime: birth, CreatedAt: created}
+				Expect(buildAlbumID3(ctx, al).Created).To(Equal(birth))
+				Expect(*childFromAlbum(ctx, al).Created).To(Equal(birth))
 			})
 
-			When("RecentlyAddedByModTime is true", func() {
-				BeforeEach(func() {
-					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
-				})
-
-				It("uses UpdatedAt even when CreatedAt is also set", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					updated := time.Date(2022, 6, 7, 8, 9, 10, 0, time.UTC)
-					mf := model.MediaFile{ID: "s4", BirthTime: birth, CreatedAt: created, UpdatedAt: updated}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(updated))
-				})
-
-				It("falls back to CreatedAt when UpdatedAt is zero", func() {
-					created := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
-					mf := model.MediaFile{ID: "s5", BirthTime: birth, CreatedAt: created}
-					child := childFromMediaFile(ctx, mf)
-					Expect(*child.Created).To(Equal(created))
-				})
+			It("uses the song's recently-added timestamp", func() {
+				mf := model.MediaFile{ID: "s1", BirthTime: birth, CreatedAt: created}
+				Expect(*childFromMediaFile(ctx, mf).Created).To(Equal(birth))
 			})
 		})
 
@@ -817,7 +718,7 @@ var _ = Describe("helpers", func() {
 				albumChild := childFromAlbum(ctx, al)
 				Expect(albumChild.AverageRating).To(Equal(0.0))
 
-				r := httptest.NewRequest(http.MethodGet, "/test", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 				a := model.Artist{
 					ID:            "ar-cfg-1",
 					Name:          "Test Artist",

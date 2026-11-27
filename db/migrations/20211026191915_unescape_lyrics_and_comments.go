@@ -20,7 +20,7 @@ func upUnescapeLyricsAndComments(ctx context.Context, tx *sql.Tx) error {
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update media_file set comment = ?, lyrics = ? where id = ?")
+	stmt, err := tx.PrepareContext(ctx, "update media_file set comment = ?, lyrics = ? where id = ?")
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func upUnescapeLyricsAndComments(ctx context.Context, tx *sql.Tx) error {
 
 		newComment := str.SanitizeText(comment.String)
 		newLyrics := str.SanitizeText(lyrics.String)
-		_, err = stmt.Exec(newComment, newLyrics, id)
+		_, err = stmt.ExecContext(ctx, newComment, newLyrics, id)
 		if err != nil {
 			log.Error("Error unescaping media_file's lyrics and comments", "title", title, "id", id, err)
 		}

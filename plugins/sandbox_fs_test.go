@@ -8,7 +8,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -39,16 +39,13 @@ func startSandboxManager(tmpDir, libraryDir string, grant func(*model.Plugin)) *
 		c.Plugins.AutoReload = false
 	})
 
-	mockPluginRepo := tests.CreateMockPluginRepo()
-	mockPluginRepo.Permitted = true
-	mockPluginRepo.SetData(installed)
-
-	mockLibraryRepo := &tests.MockLibraryRepo{}
-	mockLibraryRepo.SetData(model.Libraries{{ID: 1, Name: "Test Library", Path: libraryDir}})
+	persistencetest.Reset()
+	ds := newTestDataStore(installed...)
+	putLibraries(ds, model.Library{ID: 1, Name: "Test Library", Path: libraryDir})
 
 	manager := &Manager{
 		plugins:        make(map[string]*plugin),
-		ds:             &tests.MockDataStore{MockedPlugin: mockPluginRepo, MockedLibrary: mockLibraryRepo},
+		ds:             ds,
 		subsonicRouter: http.NotFoundHandler(),
 	}
 	Expect(manager.Start(GinkgoT().Context())).To(Succeed())
@@ -71,7 +68,7 @@ func callSandbox(manager *Manager, input sandboxInput) sandboxOutput {
 
 	inputBytes, err := json.Marshal(input)
 	Expect(err).ToNot(HaveOccurred())
-	_, outputBytes, err := instance.Call("nd_test_library", inputBytes)
+	_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_library", inputBytes)
 	Expect(err).ToNot(HaveOccurred())
 
 	var output sandboxOutput

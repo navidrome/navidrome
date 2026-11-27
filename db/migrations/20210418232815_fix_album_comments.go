@@ -24,7 +24,7 @@ func upFixAlbumComments(ctx context.Context, tx *sql.Tx) error {
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("UPDATE album SET comment = ? WHERE id = ?")
+	stmt, err := tx.PrepareContext(ctx, "UPDATE album SET comment = ? WHERE id = ?")
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func upFixAlbumComments(ctx context.Context, tx *sql.Tx) error {
 			continue
 		}
 		comment := getComment(comments.String, consts.Zwsp)
-		_, err = stmt.Exec(comment, id)
+		_, err = stmt.ExecContext(ctx, comment, id)
 
 		if err != nil {
 			log.Error("Error setting album's comments", "albumId", id, err)

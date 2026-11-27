@@ -1,6 +1,7 @@
 package nativeapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,11 +11,16 @@ import (
 )
 
 var _ = Describe("writeDeleteManyResponse", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	var w *httptest.ResponseRecorder
 
 	write := func(ids ...string) map[string]any {
 		w = httptest.NewRecorder()
-		writeDeleteManyResponse(w, httptest.NewRequest(http.MethodDelete, "/missing", nil), ids)
+		writeDeleteManyResponse(w, httptest.NewRequestWithContext(ctx, http.MethodDelete, "/missing", nil), ids)
 
 		var body map[string]any
 		Expect(json.Unmarshal(w.Body.Bytes(), &body)).To(Succeed(), "response body must be valid JSON: %s", w.Body.String())

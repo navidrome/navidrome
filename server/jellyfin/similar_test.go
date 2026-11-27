@@ -10,11 +10,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -129,16 +132,14 @@ var _ = Describe("getInstantMix", func() {
 		similarWait = 20 * time.Millisecond
 		DeferCleanup(func() { similarWait = old })
 
-		ds := &tests.MockDataStore{}
-		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: testID("s1"), Title: "Seed Song", LibraryID: 1},
-		})
+		ds := persistence.New(db.Db())
+		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Seed Song", LibraryID: 1})
 		release := make(chan struct{})
 		DeferCleanup(func() { close(release) })
 		api := &Router{ds: ds, provider: &blockingProvider{release: release}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 		api.getInstantMix(w, r)
@@ -157,12 +158,12 @@ var _ = Describe("getInstantMix", func() {
 		for i := range want + 50 { // more than requested, so only the limit bounds the result
 			songs = append(songs, model.MediaFile{ID: testID(fmt.Sprintf("t%d", i)), Title: fmt.Sprintf("Track %d", i), LibraryID: 1})
 		}
-		ds := &tests.MockDataStore{}
-		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
+		ds := persistence.New(db.Db())
+		persistencetest.PutMediaFiles(ctx, ds, songs[0])
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs[1:]}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix?limit="+strconv.Itoa(want), nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix?limit="+strconv.Itoa(want), nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 		api.getInstantMix(w, r)
@@ -174,7 +175,7 @@ var _ = Describe("getInstantMix", func() {
 	})
 
 	It("returns a mix for a genre id, which GetEntityByID can't resolve", func() {
-		ds := &tests.MockDataStore{}
+		ds := persistence.New(db.Db())
 		songs := model.MediaFiles{
 			{ID: testID("m1"), Title: "Track 1", LibraryID: 1},
 			{ID: testID("m2"), Title: "Track 2", LibraryID: 1},
@@ -182,7 +183,7 @@ var _ = Describe("getInstantMix", func() {
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("g1"))+"/InstantMix", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("g1"))+"/InstantMix", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("g1")))
 		api.getInstantMix(w, r)
@@ -203,16 +204,14 @@ var _ = Describe("getSimilarAlbums", func() {
 	It("does not return the seed album as its own similar album", func() {
 		// With no external agent the provider falls back to the album's own tracks, which map
 		// straight back to the requested album.
-		ds := &tests.MockDataStore{}
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{
-			{ID: testID("al-1"), Name: "Seed Album", LibraryID: 1},
-		})
+		ds := persistence.New(db.Db())
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("al-1"), Name: "Seed Album", LibraryID: 1})
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{
 			songs: model.MediaFiles{{ID: testID("m1"), AlbumID: testID("al-1"), LibraryID: 1}},
 		}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
 		api.getSimilarAlbums(w, r)
@@ -224,16 +223,14 @@ var _ = Describe("getSimilarAlbums", func() {
 	})
 
 	It("returns albums derived from the provider's similar songs", func() {
-		ds := &tests.MockDataStore{}
-		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{
-			{ID: testID("al-2"), Name: "Other", LibraryID: 1},
-		})
+		ds := persistence.New(db.Db())
+		persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("al-2"), Name: "Other", LibraryID: 1})
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{
 			songs: model.MediaFiles{{ID: testID("m1"), AlbumID: testID("al-2"), LibraryID: 1}},
 		}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
 		api.getSimilarAlbums(w, r)

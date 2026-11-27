@@ -71,7 +71,7 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist, "position", position)
 		err := s.NowPlaying(ctx, userId, t, position)
 		if err != nil {
-			log.Error(ctx, "Error sending PlaybackSession", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
+			log.Warn(ctx, "Error sending PlaybackSession", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
 			continue
 		}
 	}

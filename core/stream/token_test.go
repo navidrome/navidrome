@@ -6,7 +6,9 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,7 +16,7 @@ import (
 
 var _ = Describe("Token", func() {
 	var (
-		ds  *tests.MockDataStore
+		ds  model.DataStore
 		ff  *tests.MockFFmpeg
 		svc TranscodeDecider
 		ctx context.Context
@@ -22,10 +24,7 @@ var _ = Describe("Token", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{
-			MockedProperty:    &tests.MockedPropertyRepo{},
-			MockedTranscoding: &tests.MockTranscodingRepo{},
-		}
+		ds = persistence.New(db.Db())
 		ff = tests.NewMockFFmpeg("")
 		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, ff)

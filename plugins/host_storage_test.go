@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -59,6 +59,8 @@ var _ = Describe("utility functions", Ordered, func() {
 })
 
 var _ = Describe("Storage Host Function", Ordered, func() {
+	var ctx context.Context
+
 	const ID = "test-storage-plugin"
 
 	var (
@@ -70,21 +72,6 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		var err error
 		tmpDir, err = os.MkdirTemp("", "storage-test-*")
 		Expect(err).ToNot(HaveOccurred())
-
-		// Setup mock router and data store
-		router := &fakeSubsonicRouter{}
-		userRepo := tests.CreateMockUserRepo()
-		dataStore := &tests.MockDataStore{MockedUser: userRepo}
-
-		// Create and configure manager
-		manager = &Manager{
-			plugins: make(map[string]*plugin),
-			ds:      dataStore,
-		}
-		manager.SetSubsonicRouter(router)
-
-		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
-		mockPluginRepo.Permitted = true
 
 		// Setup config
 		DeferCleanup(conf.SnapshotConfig())
@@ -108,7 +95,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			err = os.WriteFile(destPath, data, 0600)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Pre-enable the plugin in the mock repo so it loads on startup
+			// Pre-enable the plugin in the DB so it loads on startup
 			// Compute SHA256 of the plugin file to match what syncPlugins will compute
 			pluginPath := filepath.Join(tmpDir, path)
 			wasmData, err := os.ReadFile(pluginPath)
@@ -125,7 +112,12 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			})
 		}
 
-		mockPluginRepo.SetData(plugins)
+		// Create and configure manager
+		manager = &Manager{
+			plugins: make(map[string]*plugin),
+			ds:      newTestDataStore(plugins...),
+		}
+		manager.SetSubsonicRouter(&fakeSubsonicRouter{})
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())
@@ -139,6 +131,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 
 	var instance *extism.Plugin
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		var err error
 		manager.mu.RLock()
 		plugin := manager.plugins[ID]
@@ -166,13 +159,13 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		})
 
 		It("should fail to read missing file", func() {
-			exit, _, err := instance.Call("call_read", []byte("missing"))
+			exit, _, err := instance.CallWithContext(ctx, "call_read", []byte("missing"))
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should read an existing file", func() {
-			exit, output, err := instance.Call("call_read", []byte("real"))
+			exit, output, err := instance.CallWithContext(ctx, "call_read", []byte("real"))
 			Expect(exit).To(Equal(uint32(0)))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal([]byte("1234")))
@@ -183,7 +176,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			err := os.WriteFile(path, []byte("outside"), 0600)
 			Expect(err).ToNot(HaveOccurred())
 
-			exit, _, err := instance.Call("call_read", []byte("../outside"))
+			exit, _, err := instance.CallWithContext(ctx, "call_read", []byte("../outside"))
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err).To(HaveOccurred())
 		})
@@ -201,13 +194,13 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		})
 
 		It("should fail to write to nested file", func() {
-			exit, _, err := instance.Call("call_write", []byte(`{"path":"nested/file","contents":"1234"}`))
+			exit, _, err := instance.CallWithContext(ctx, "call_write", []byte(`{"path":"nested/file","contents":"1234"}`))
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should write to a file", func() {
-			exit, _, err := instance.Call("call_write", []byte(`{"path":"new","contents":"contents"}`))
+			exit, _, err := instance.CallWithContext(ctx, "call_write", []byte(`{"path":"new","contents":"contents"}`))
 			Expect(exit).To(Equal(uint32(0)))
 			Expect(err).ToNot(HaveOccurred())
 
@@ -215,7 +208,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(data).To(Equal([]byte("contents")))
 
-			exit, output, err := instance.Call("call_read", []byte("new"))
+			exit, output, err := instance.CallWithContext(ctx, "call_read", []byte("new"))
 			Expect(exit).To(Equal(uint32(0)))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal([]byte("contents")))
@@ -226,7 +219,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			err := os.WriteFile(path, []byte("outside"), 0600)
 			Expect(err).ToNot(HaveOccurred())
 
-			exit, _, err := instance.Call("call_write", []byte(`{"path":"../new","contents":"contents"}`))
+			exit, _, err := instance.CallWithContext(ctx, "call_write", []byte(`{"path":"../new","contents":"contents"}`))
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err).To(HaveOccurred())
 		})
@@ -246,7 +239,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			names := []string{ID, ID + "-2"}
 
 			for idx := range instances {
-				exit, _, err := instances[idx].Call("call_write", fmt.Appendf(nil, `{"path":"new","contents":"%s"}`, names[idx]))
+				exit, _, err := instances[idx].CallWithContext(ctx, "call_write", fmt.Appendf(nil, `{"path":"new","contents":"%s"}`, names[idx]))
 				Expect(exit).To(Equal(uint32(0)))
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -258,7 +251,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 			}
 
 			for idx := range instances {
-				exit, output, err := instances[idx].Call("call_read", []byte("new"))
+				exit, output, err := instances[idx].CallWithContext(ctx, "call_read", []byte("new"))
 				Expect(exit).To(Equal(uint32(0)))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(output).To(Equal([]byte(names[idx])))

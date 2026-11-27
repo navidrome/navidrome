@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -28,7 +27,7 @@ var _ = Describe("buildPlaylist", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		ds = &tests.MockDataStore{}
+		ds = struct{ model.DataStore }{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
@@ -332,7 +331,7 @@ var _ = Describe("UpdatePlaylist", func() {
 	var playlists *fakePlaylists
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
+		ds = struct{ model.DataStore }{}
 		playlists = &fakePlaylists{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, playlists, nil, nil, nil, nil, nil, nil, nil)
 	})
@@ -387,7 +386,7 @@ var _ = Describe("playlist track limit", func() {
 
 	BeforeEach(func() {
 		fp = &fakePlaylists{}
-		router = New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil)
+		router = New(struct{ model.DataStore }{}, nil, nil, nil, nil, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil)
 		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 3 })
 	})
 

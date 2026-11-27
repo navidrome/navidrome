@@ -41,6 +41,16 @@ func (api *Router) decodeReport(r *http.Request) playbackReport {
 	return body
 }
 
+// isStation reports whether id names an internet radio station. Stations have no media file, so
+// their reports would only fail in the scrobbler.
+func (api *Router) isStation(ctx context.Context, id string) bool {
+	if id == "" {
+		return false
+	}
+	ok, err := api.ds.Radio().Exists(ctx, id)
+	return err == nil && ok
+}
+
 // clientIdentity returns the scrobbler cache key/display name for the caller's
 // player. Both are zero values if withPlayer could not resolve a player.
 func clientIdentity(ctx context.Context) (id, name string) {
@@ -55,6 +65,10 @@ func clientIdentity(ctx context.Context) (id, name string) {
 func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := api.decodeReport(r)
+	if api.isStation(ctx, body.ItemId) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	clientId, clientName := clientIdentity(ctx)
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{
 		MediaId:      body.ItemId,
@@ -75,6 +89,10 @@ func (api *Router) reportPlaybackStart(w http.ResponseWriter, r *http.Request) {
 func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := api.decodeReport(r)
+	if api.isStation(ctx, body.ItemId) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	state := scrobbler.StatePlaying
 	if body.IsPaused {
 		state = scrobbler.StatePaused
@@ -102,6 +120,10 @@ func (api *Router) reportPlaybackProgress(w http.ResponseWriter, r *http.Request
 func (api *Router) reportPlaybackStopped(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	body := api.decodeReport(r)
+	if api.isStation(ctx, body.ItemId) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	clientId, clientName := clientIdentity(ctx)
 
 	err := api.scrobbler.ReportPlayback(ctx, scrobbler.ReportPlaybackParams{

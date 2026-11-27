@@ -7,7 +7,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -16,7 +15,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 	var (
 		ctx    context.Context
 		mgr    *Manager
-		repo   *tests.MockPluginRepo
+		repo   model.PluginRepository
 		tmpDir string
 	)
 
@@ -45,12 +44,11 @@ var _ = Describe("Manager.LoadPlugins", func() {
 				rows[i].AllUsers = true
 			}
 		}
-		repo = tests.CreateMockPluginRepo()
-		repo.Permitted = true
-		repo.SetData(rows)
+		ds := newTestDataStore(rows...)
+		repo = ds.Plugin()
 		m := &Manager{
 			plugins: make(map[string]*plugin),
-			ds:      &tests.MockDataStore{MockedPlugin: repo},
+			ds:      ds,
 			metrics: noopMetricsRecorder{},
 		}
 		DeferCleanup(func() { _ = m.Stop(ctx) })
@@ -78,7 +76,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 
 			Expect(mgr.LoadPlugins(ctx, []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
-			stored, err := repo.Get(ctx, "broken")
+			stored, err := repo.Get(adminContext(ctx), "broken")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.Enabled).To(BeTrue(), "inspecting a plugin must never disable it")
 			Expect(stored.LastError).To(BeEmpty())
@@ -91,7 +89,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 
 			Expect(mgr.loadEnabledPlugins(ctx)).To(Succeed())
 
-			stored, err := repo.Get(ctx, "broken")
+			stored, err := repo.Get(adminContext(ctx), "broken")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.Enabled).To(BeFalse())
 			Expect(stored.LastError).ToNot(BeEmpty())

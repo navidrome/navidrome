@@ -1,30 +1,72 @@
 package apiv1
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
-	"github.com/navidrome/navidrome/tests"
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/api"
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Router", func() {
+	var ctx context.Context
 	var router *Router
 
 	BeforeEach(func() {
-		router = New(&tests.MockDataStore{})
+		ctx = GinkgoT().Context()
+		router = New(persistence.New(db.Db()))
+	})
+
+	It("routes every operation in the embedded spec", func() {
+		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
+		Expect(err).ToNot(HaveOccurred())
+		mux := router.Handler.(chi.Routes)
+		for path, item := range doc.Paths.Map() {
+			for method := range item.Operations() {
+				Expect(mux.Find(chi.NewRouteContext(), method, path)).To(Equal(path), method+" "+path)
+			}
+		}
+	})
+
+	It("declares Cache-Control no-store on the success responses of every no-store operation", func() {
+		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
+		Expect(err).ToNot(HaveOccurred())
+		checked := map[string]bool{}
+		for _, item := range doc.Paths.Map() {
+			for _, op := range item.Operations() {
+				if !gateRulesV1.noStore[op.OperationID] {
+					continue
+				}
+				for code, resp := range op.Responses.Map() {
+					if !strings.HasPrefix(code, "2") {
+						continue
+					}
+					h := resp.Value.Headers["Cache-Control"]
+					Expect(h).ToNot(BeNil(), op.OperationID+" "+code)
+					Expect(h.Value.Schema.Value.Enum).To(ConsistOf("no-store"), op.OperationID+" "+code)
+					checked[op.OperationID] = true
+				}
+			}
+		}
+		Expect(checked).To(HaveLen(len(gateRulesV1.noStore)))
 	})
 
 	It("returns a 404 problem for unknown paths", func() {
-		w := serve(router, httptest.NewRequest(http.MethodGet, "/api/v1/nope", nil))
+		w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/nope", nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Header().Get("Content-Type")).To(Equal(problemContentType))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeNotFound))
 	})
 
 	It("returns a 405 problem listing the allowed methods for a wrong method on a known path", func() {
-		w := serve(router, httptest.NewRequest(http.MethodPost, "/api/v1/server", nil))
+		w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/server", nil))
 		Expect(w.Code).To(Equal(http.StatusMethodNotAllowed))
 		Expect(w.Header().Get("Allow")).To(Equal("GET, HEAD"))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeMethodNotAllowed))
@@ -32,7 +74,7 @@ var _ = Describe("Router", func() {
 
 	DescribeTable("answers HEAD wherever GET is routed",
 		func(path, contentType string) {
-			w := serve(router, httptest.NewRequest(http.MethodHead, path, nil))
+			w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodHead, path, nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Header().Get("Content-Type")).To(Equal(contentType))
 		},
@@ -42,14 +84,14 @@ var _ = Describe("Router", func() {
 	)
 
 	It("revalidates HEAD requests with If-None-Match", func() {
-		etag := serve(router, httptest.NewRequest(http.MethodHead, "/api/v1/openapi.json", nil)).Header().Get("ETag")
-		req := httptest.NewRequest(http.MethodHead, "/api/v1/openapi.json", nil)
+		etag := serve(router, httptest.NewRequestWithContext(ctx, http.MethodHead, "/api/v1/openapi.json", nil)).Header().Get("ETag")
+		req := httptest.NewRequestWithContext(ctx, http.MethodHead, "/api/v1/openapi.json", nil)
 		req.Header.Set("If-None-Match", etag)
 		Expect(serve(router, req).Code).To(Equal(http.StatusNotModified))
 	})
 
 	It("returns a 404 problem for HEAD on unknown paths", func() {
-		w := serve(router, httptest.NewRequest(http.MethodHead, "/api/v1/nope", nil))
+		w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodHead, "/api/v1/nope", nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Header().Get("Allow")).To(BeEmpty())
 	})
@@ -60,16 +102,27 @@ var _ = Describe("Router", func() {
 
 	It("turns a handler panic into a 500 problem", func() {
 		w := httptest.NewRecorder()
-		panicking("kaboom").ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/boom", nil))
+		panicking("kaboom").ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/boom", nil))
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		p := decodeProblem(w)
 		Expect(p.Code).To(Equal(ProblemCodeInternal))
 		Expect(p.Detail).To(BeNil())
 	})
 
+	It("tags internal errors with a referenceId that is also on the request's log lines", func() {
+		logs := captureLogs()
+		w := httptest.NewRecorder()
+		h := referenceIDMiddleware(panicking("kaboom"))
+		h.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/boom", nil))
+		p := decodeProblem(w)
+		Expect(p.ReferenceId).ToNot(BeNil())
+		Expect(*p.ReferenceId).To(MatchRegexp(`^[0-9A-Za-z]{22}$`))
+		Expect(logs.String()).To(ContainSubstring(*p.ReferenceId))
+	})
+
 	It("re-panics http.ErrAbortHandler so the server can drop the connection", func() {
 		Expect(func() {
-			panicking(http.ErrAbortHandler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/abort", nil))
+			panicking(http.ErrAbortHandler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(ctx, http.MethodGet, "/abort", nil))
 		}).To(PanicWith(http.ErrAbortHandler))
 	})
 })

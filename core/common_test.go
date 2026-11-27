@@ -7,9 +7,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 )
 
 var _ = Describe("common.go", func() {
@@ -31,18 +33,15 @@ var _ = Describe("common.go", func() {
 
 	Describe("AbsolutePath", func() {
 		var (
-			ds    *tests.MockDataStore
+			ds    model.DataStore
 			libId int
 			path  string
 		)
 
 		BeforeEach(func() {
-			ds = &tests.MockDataStore{}
-			libId = 1
+			ds = persistence.New(db.Db())
 			path = "music/file.mp3"
-			mockLib := &tests.MockLibraryRepo{}
-			mockLib.SetData(model.Libraries{{ID: libId, Path: "/library/root"}})
-			ds.MockedLibrary = mockLib
+			libId = persistencetest.SetLibraries(ctx, ds, "/other", "/library/root")[1]
 		})
 
 		It("returns the absolute path when library exists", func() {

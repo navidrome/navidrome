@@ -5,7 +5,10 @@ import {
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
   clearQueue,
+  playNext,
+  playTracks,
   setPlayMode,
+  setTrack,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -235,6 +238,80 @@ describe('playerReducer', () => {
       const action = { type: PLAYER_REFRESH_QUEUE, data: {} }
       const result = playerReducer(state, action)
       expect(result.playIndex).toBe(0)
+    })
+
+    // The music player keeps the loaded source of the current track when the
+    // new list still holds that track (same __PLAYER_KEY__ or uuid). After a
+    // reload the persisted current track has no source, so without a new
+    // identity the refreshed URL is never loaded and play does nothing.
+    it('gives every track a new identity, so the player loads the refreshed URLs', () => {
+      const state = {
+        queue: [
+          { trackId: 'song-1', uuid: 'a', __PLAYER_KEY__: 'key-a' },
+          { trackId: 'song-2', uuid: 'b', __PLAYER_KEY__: 'key-b' },
+        ],
+        savedPlayIndex: 0,
+        current: {},
+        clear: false,
+        volume: 1,
+      }
+      const action = {
+        type: PLAYER_REFRESH_QUEUE,
+        data: { 'song-1': 'new-url-1', 'song-2': 'new-url-2' },
+      }
+      const result = playerReducer(state, action)
+      expect(result.queue.map((i) => i.musicSrc)).toEqual([
+        'new-url-1',
+        'new-url-2',
+      ])
+      result.queue.forEach((item, idx) => {
+        expect(item).not.toHaveProperty('__PLAYER_KEY__')
+        expect(item.uuid).toBeTruthy()
+        expect(item.uuid).not.toBe(state.queue[idx].uuid)
+      })
+    })
+
+    // The refresh can arrive late, after the user started a new queue. A new
+    // identity then makes the player restart the playing track from 0.
+    it('keeps track identities when a track has already started', () => {
+      const state = {
+        queue: [
+          { trackId: 'song-1', uuid: 'a', __PLAYER_KEY__: 'key-a' },
+          { trackId: 'song-2', uuid: 'b', __PLAYER_KEY__: 'key-b' },
+        ],
+        savedPlayIndex: 0,
+        current: { uuid: 'a', trackId: 'song-1' },
+        clear: false,
+        volume: 1,
+      }
+      const action = { type: PLAYER_REFRESH_QUEUE, data: {} }
+      const result = playerReducer(state, action)
+      expect(result.queue.map((i) => [i.uuid, i.__PLAYER_KEY__])).toEqual([
+        ['a', 'key-a'],
+        ['b', 'key-b'],
+      ])
+    })
+
+    // The refresh turns autoplay off, so the restored queue does not start by
+    // itself. An explicit play must turn it back on.
+    const song = { id: 'song-9', title: 'Song 9' }
+    it.each([
+      ['playTracks', () => playTracks({ [song.id]: song }, [song.id])],
+      ['setTrack', () => setTrack(song)],
+      ['playNext', () => playNext({ [song.id]: song }, [song.id])],
+    ])('%s turns autoplay back on after a refresh', (_, action) => {
+      const refreshed = playerReducer(
+        {
+          queue: [{ trackId: 'song-1', uuid: 'a' }],
+          savedPlayIndex: 0,
+          current: {},
+          clear: false,
+          volume: 1,
+        },
+        { type: PLAYER_REFRESH_QUEUE, data: {} },
+      )
+      expect(refreshed.autoPlay).toBe(false)
+      expect(playerReducer(refreshed, action()).autoPlay).toBe(true)
     })
   })
 })

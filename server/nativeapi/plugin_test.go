@@ -12,9 +12,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,7 +24,7 @@ import (
 
 var _ = Describe("Plugin API", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var mockManager *tests.MockPluginManager
 	var router http.Handler
 	var adminUser, regularUser model.User
@@ -35,10 +36,10 @@ var _ = Describe("Plugin API", func() {
 			c.EnableSharing = false
 			c.Plugins.Enabled = true
 		})
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		mockManager = &tests.MockPluginManager{}
 		auth.Init(ctx, ds)
-		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, mockManager, nil, nil, nil)
+		nativeRouter := newTestRouter(ds, nil, mockManager, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -74,9 +75,7 @@ var _ = Describe("Plugin API", func() {
 			Enabled:  true,
 		}
 
-		// Store users in mock datastore
-		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
-		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
+		putUsers(ctx, ds, &adminUser, &regularUser)
 	})
 
 	Context("when plugins are disabled", func() {
@@ -88,7 +87,7 @@ var _ = Describe("Plugin API", func() {
 			adminToken, err := auth.CreateToken(&adminUser)
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest(http.MethodGet, "/plugin", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/plugin", nil)
 			req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 			w := httptest.NewRecorder()
 
@@ -115,7 +114,7 @@ var _ = Describe("Plugin API", func() {
 
 			Describe("GET /api/plugin", func() {
 				It("returns all plugins", func() {
-					req := httptest.NewRequest(http.MethodGet, "/plugin", nil)
+					req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/plugin", nil)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					w := httptest.NewRecorder()
 
@@ -132,7 +131,7 @@ var _ = Describe("Plugin API", func() {
 
 			Describe("GET /api/plugin/{id}", func() {
 				It("returns a specific plugin", func() {
-					req := httptest.NewRequest(http.MethodGet, "/plugin/test-plugin-1", nil)
+					req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/plugin/test-plugin-1", nil)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					w := httptest.NewRecorder()
 
@@ -148,7 +147,7 @@ var _ = Describe("Plugin API", func() {
 				})
 
 				It("returns 404 for non-existent plugin", func() {
-					req := httptest.NewRequest(http.MethodGet, "/plugin/non-existent", nil)
+					req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/plugin/non-existent", nil)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					w := httptest.NewRecorder()
 
@@ -161,7 +160,7 @@ var _ = Describe("Plugin API", func() {
 			Describe("PUT /api/plugin/{id}", func() {
 				It("rejects a body over the size limit with 413 without updating", func() {
 					body := strings.NewReader(`{"enabled":true,"pad":"` + strings.Repeat("x", maxPluginUpdateBody) + `"}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -182,7 +181,7 @@ var _ = Describe("Plugin API", func() {
 					}
 
 					body := bytes.NewBufferString(`{"enabled":true}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -208,7 +207,7 @@ var _ = Describe("Plugin API", func() {
 					}
 
 					body := bytes.NewBufferString(`{"config":"{\"key\":\"value\"}"}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -227,7 +226,7 @@ var _ = Describe("Plugin API", func() {
 
 				It("rejects invalid JSON in config field", func() {
 					body := bytes.NewBufferString(`{"config":"not valid json"}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -248,7 +247,7 @@ var _ = Describe("Plugin API", func() {
 					}
 
 					body := bytes.NewBufferString(`{"config":""}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -274,7 +273,7 @@ var _ = Describe("Plugin API", func() {
 					}
 
 					body := bytes.NewBufferString(`{"users":"[\"user1\",\"user2\"]"}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -302,7 +301,7 @@ var _ = Describe("Plugin API", func() {
 					}
 
 					body := bytes.NewBufferString(`{"allUsers":true}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -330,7 +329,7 @@ var _ = Describe("Plugin API", func() {
 					}
 
 					body := bytes.NewBufferString(`{"users":"[\"user1\"]","allUsers":false}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -349,7 +348,7 @@ var _ = Describe("Plugin API", func() {
 
 				It("rejects invalid JSON in users field", func() {
 					body := bytes.NewBufferString(`{"users":"not valid json"}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -371,7 +370,7 @@ var _ = Describe("Plugin API", func() {
 					}
 
 					body := bytes.NewBufferString(`{"users":""}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -388,7 +387,7 @@ var _ = Describe("Plugin API", func() {
 
 				It("returns 404 for non-existent plugin", func() {
 					body := bytes.NewBufferString(`{"enabled":true}`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/non-existent", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/non-existent", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -400,7 +399,7 @@ var _ = Describe("Plugin API", func() {
 
 				It("returns 400 for invalid request body", func() {
 					body := bytes.NewBufferString(`not json`)
-					req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					req.Header.Set("Content-Type", "application/json")
 					w := httptest.NewRecorder()
@@ -413,7 +412,7 @@ var _ = Describe("Plugin API", func() {
 
 			Describe("POST /api/plugin/rescan", func() {
 				It("triggers plugin rescan", func() {
-					req := httptest.NewRequest(http.MethodPost, "/plugin/rescan", nil)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/plugin/rescan", nil)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					w := httptest.NewRecorder()
 
@@ -426,7 +425,7 @@ var _ = Describe("Plugin API", func() {
 				It("returns error when rescan fails", func() {
 					mockManager.RescanError = errors.New("folder not configured")
 
-					req := httptest.NewRequest(http.MethodPost, "/plugin/rescan", nil)
+					req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/plugin/rescan", nil)
 					req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+adminToken)
 					w := httptest.NewRecorder()
 
@@ -448,7 +447,7 @@ var _ = Describe("Plugin API", func() {
 			})
 
 			It("denies access to GET /api/plugin", func() {
-				req := httptest.NewRequest(http.MethodGet, "/plugin", nil)
+				req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/plugin", nil)
 				req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+userToken)
 				w := httptest.NewRecorder()
 
@@ -458,7 +457,7 @@ var _ = Describe("Plugin API", func() {
 			})
 
 			It("denies access to GET /api/plugin/{id}", func() {
-				req := httptest.NewRequest(http.MethodGet, "/plugin/test-plugin-1", nil)
+				req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/plugin/test-plugin-1", nil)
 				req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+userToken)
 				w := httptest.NewRecorder()
 
@@ -469,7 +468,7 @@ var _ = Describe("Plugin API", func() {
 
 			It("denies access to PUT /api/plugin/{id}", func() {
 				body := bytes.NewBufferString(`{"enabled":true}`)
-				req := httptest.NewRequest(http.MethodPut, "/plugin/test-plugin-1", body)
+				req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/plugin/test-plugin-1", body)
 				req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+userToken)
 				req.Header.Set("Content-Type", "application/json")
 				w := httptest.NewRecorder()
@@ -480,7 +479,7 @@ var _ = Describe("Plugin API", func() {
 			})
 
 			It("denies access to POST /api/plugin/rescan", func() {
-				req := httptest.NewRequest(http.MethodPost, "/plugin/rescan", nil)
+				req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/plugin/rescan", nil)
 				req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+userToken)
 				w := httptest.NewRecorder()
 
@@ -492,7 +491,7 @@ var _ = Describe("Plugin API", func() {
 
 		Describe("without authentication", func() {
 			It("denies access to plugin endpoints", func() {
-				req := httptest.NewRequest(http.MethodGet, "/plugin", nil)
+				req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/plugin", nil)
 				w := httptest.NewRecorder()
 
 				router.ServeHTTP(w, req)

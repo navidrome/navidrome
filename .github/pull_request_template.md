@@ -32,7 +32,7 @@ Please review and check all that apply. Leave unverified items unchecked and exp
 ### How to Test
 <!-- Describe the steps to test your changes. Include setup, commands actually run, and results actually observed before and after the change. State how you personally checked the affected functionality. List failed or unrun checks, untested cases, and limitations. -->
 
-### Screenshots / Demos (if applicable)
+### Screenshots / Demos
 <!-- Add screenshots, GIFs, or links to demos if your change includes UI updates or visual changes. -->
 
 ### Additional Notes

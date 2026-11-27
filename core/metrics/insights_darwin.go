@@ -1,13 +1,14 @@
 package metrics
 
 import (
+	"context"
 	"os/exec"
 	"strings"
 	"syscall"
 )
 
-func getOSVersion() (string, string) {
-	cmd := exec.Command("sw_vers", "-productVersion")
+func getOSVersion(ctx context.Context) (string, string) {
+	cmd := exec.CommandContext(ctx, "sw_vers", "-productVersion")
 
 	output, err := cmd.Output()
 	if err != nil {

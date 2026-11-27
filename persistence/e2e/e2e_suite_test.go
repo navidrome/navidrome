@@ -3,8 +3,6 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"sort"
 	"testing"
 	"testing/fstest"
@@ -13,9 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/metrics"
-	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -23,9 +18,8 @@ import (
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
-	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/tests/harness"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -46,13 +40,9 @@ var template = storagetest.Template
 var track = storagetest.Track
 
 var (
-	ctx context.Context
-	ds  *tests.MockDataStore
-	lib model.Library
-
-	dbFilePath     string
-	snapshotPath   string
-	snapshotTables []string
+	ctx      context.Context
+	ds       model.DataStore
+	goldenDB *harness.DB
 
 	adminUser = model.User{
 		ID:       "sp-test-user-1",
@@ -116,8 +106,7 @@ func buildTestFS() {
 		"compilation": "1",
 	})
 
-	fs := storagetest.FakeFS{}
-	fs.SetFiles(fstest.MapFS{
+	harness.CreateFS(fstest.MapFS{
 		"Rock/The Beatles/Abbey Road/01 - Come Together.mp3": abbeyRoad(track(1, "Come Together",
 			_t{"genre": "Rock;Blues", "composer": "Lennon/McCartney", "bpm": 120, "grouping": "Beatles Tracks",
 				"replaygain_track_gain": "-7.1 dB", "replaygain_track_peak": "0.95"})),
@@ -141,7 +130,6 @@ func buildTestFS() {
 		"Rock/Queen/News of the World/01 - We Are the Champions.mp3": newsOfWorld(track(1, "We Are the Champions",
 			_t{"composer": "Freddie Mercury", "bpm": 64})),
 	})
-	storagetest.Register("fake", &fs)
 }
 
 func findMediaFileByTitle(title string) string {
@@ -238,52 +226,17 @@ func createSmartPlaylist(owner model.User, public bool, jsonRule string) string 
 
 var _ = BeforeSuite(func() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-	tmpDir := GinkgoT().TempDir()
-	dbFilePath = filepath.Join(tmpDir, "smartplaylist-e2e.db")
-	snapshotPath = filepath.Join(tmpDir, "smartplaylist-e2e.db.snapshot")
-	conf.Update(func(c *conf.Options) { c.DbPath = dbFilePath + "?_journal_mode=WAL" })
-	db.Db().SetMaxOpenConns(1)
-
 	conf.Update(func(c *conf.Options) {
 		c.MusicFolder = "fake:///music"
 		c.DevExternalScanner = false
 		c.SmartPlaylistRefreshDelay = 0
 	})
 
-	db.Init(ctx)
-
-	initDS := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
-
-	userWithPass := adminUser
-	userWithPass.NewPassword = "password"
-	Expect(initDS.User().Put(ctx, &userWithPass)).To(Succeed())
-
-	regularUserWithPass := regularUser
-	regularUserWithPass.NewPassword = "password"
-	Expect(initDS.User().Put(ctx, &regularUserWithPass)).To(Succeed())
-
-	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(initDS.Library().Put(ctx, &lib)).To(Succeed())
-	Expect(initDS.User().SetUserLibraries(ctx, adminUser.ID, []int{lib.ID})).To(Succeed())
-	Expect(initDS.User().SetUserLibraries(ctx, regularUser.ID, []int{lib.ID})).To(Succeed())
-
-	loadedUser, err := initDS.User().FindByUsername(ctx, adminUser.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	adminUser.Libraries = loadedUser.Libraries
-
-	loadedOther, err := initDS.User().FindByUsername(ctx, regularUser.UserName)
-	Expect(err).ToNot(HaveOccurred())
-	regularUser.Libraries = loadedOther.Libraries
-
-	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-
 	buildTestFS()
-	s := scanner.New(ctx, initDS, events.NoopBroker(),
-		playlists.NewPlaylists(initDS, artwork.NewUploader(initDS)), metrics.NewNoopInstance())
-	_, err = s.ScanAll(ctx, true)
-	Expect(err).ToNot(HaveOccurred())
-
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	goldenDB = harness.SetupDB(ctx, &adminUser, &regularUser)
+	// SetupDB filled in adminUser.Libraries.
+	ctx = request.WithUser(GinkgoT().Context(), adminUser)
+	ds = persistence.New(db.Db())
 
 	comeTogetherID := findMediaFileByTitle("Come Together")
 	Expect(ds.MediaFile().SetStar(ctx, true, comeTogetherID)).To(Succeed())
@@ -295,52 +248,12 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(ds.MediaFile().IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
-	rows, err := db.Db().Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		Expect(rows.Scan(&name)).To(Succeed())
-		snapshotTables = append(snapshotTables, name)
-	}
-	Expect(rows.Err()).To(Succeed())
-
-	_, err = db.Db().Exec("PRAGMA wal_checkpoint(TRUNCATE)")
-	Expect(err).ToNot(HaveOccurred())
-	data, err := os.ReadFile(dbFilePath)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(snapshotPath, data, 0600)).To(Succeed())
+	goldenDB.Resnapshot(ctx)
 })
 
 var _ = AfterSuite(func() {
 	db.Close(ctx)
 })
-
-func restoreDB() {
-	sqlDB := db.Db()
-
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
-
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", snapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("DETACH DATABASE snapshot") }()
-
-	_, err = sqlDB.Exec("BEGIN TRANSACTION")
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("ROLLBACK") }()
-
-	for _, table := range snapshotTables {
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.Exec(`INSERT INTO main."` + table + `" SELECT * FROM snapshot."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	_, err = sqlDB.Exec("COMMIT")
-	Expect(err).ToNot(HaveOccurred())
-}
 
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
@@ -351,6 +264,6 @@ func setupTestDB() {
 		c.SmartPlaylistRefreshDelay = 0
 	})
 
-	restoreDB()
-	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	goldenDB.Restore(ctx)
+	ds = persistence.New(db.Db())
 }

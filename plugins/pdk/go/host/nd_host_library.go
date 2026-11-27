@@ -78,6 +78,7 @@ func LibraryGetLibrary(id int32) (*Library, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response libraryGetLibraryResponse
@@ -108,6 +109,7 @@ func LibraryGetAllLibraries() ([]Library, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response libraryGetAllLibrariesResponse

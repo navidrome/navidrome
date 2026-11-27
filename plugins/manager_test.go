@@ -17,6 +17,7 @@ var _ = Describe("Manager", Ordered, func() {
 
 	BeforeAll(func() {
 		ctx = GinkgoT().Context()
+		newTestDataStore(testManagerPlugins...)
 	})
 
 	Describe("Plugin Loading", func() {

@@ -16,9 +16,12 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,10 +40,13 @@ var _ = Describe("MediaStreamer", func() {
 			c.CacheFolder = conf.NewDir(cacheDir)
 			c.TranscodingCacheSize = "100MB"
 		})
-		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
-		})
+		ds = persistence.New(db.Db())
+		cwd, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		persistencetest.SetLibraries(ctx, ds, cwd)
+		Expect(ds.MediaFile().Put(ctx, &model.MediaFile{
+			ID: "123", LibraryID: model.DefaultLibraryID, Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0,
+		})).To(Succeed())
 		testCache := stream.NewTranscodingCache()
 		Eventually(func() bool { return testCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
@@ -166,7 +172,7 @@ var _ = Describe("MediaStreamer", func() {
 		It("keeps empty output a non-error, so callers still reply 200 with an empty body", func() {
 			s := stream.NewStream(mf, "mp3", 128, io.NopCloser(bytes.NewReader(nil)))
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 
 			n, err := s.Serve(ctx, w, r)
 
@@ -183,7 +189,9 @@ var _ = Describe("MediaStreamer", func() {
 			server := httptest.NewServer(serveHandler(stream.NewStream(mf, "mp3", 128, src)))
 			DeferCleanup(server.Close)
 
-			resp, err := http.Get(server.URL)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := http.DefaultClient.Do(req)
 			Expect(err).ToNot(HaveOccurred())
 			defer resp.Body.Close()
 
@@ -205,7 +213,7 @@ var _ = Describe("MediaStreamer", func() {
 			}
 			serve := func(s *stream.Stream) *httptest.ResponseRecorder {
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest(http.MethodGet, "/?estimateContentLength=true", nil)
+				r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/?estimateContentLength=true", nil)
 				_, err := s.Serve(ctx, w, r)
 				Expect(err).ToNot(HaveOccurred())
 				return w

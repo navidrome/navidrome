@@ -8,10 +8,10 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -26,22 +26,19 @@ var _ = Describe("Missing Files Endpoint", func() {
 			c.EnableSharing = false
 		})
 
-		mfRepo := tests.CreateMockMediaFileRepo()
-		mfRepo.SetData(model.MediaFiles{
-			{ID: "missing-1", Title: "Gone", Missing: true},
-			{ID: "present-1", Title: "Here"},
-		})
-		userRepo := tests.CreateMockUserRepo()
-		ds := &tests.MockDataStore{MockedMediaFile: mfRepo, MockedUser: userRepo, MockedProperty: &tests.MockedPropertyRepo{}}
-		auth.Init(GinkgoT().Context(), ds)
+		ctx := GinkgoT().Context()
+		ds := persistence.New(db.Db())
+		auth.Init(ctx, ds)
 
 		user := model.User{ID: "user-1", UserName: "user", NewPassword: "pass"}
-		Expect(userRepo.Put(GinkgoT().Context(), &user)).To(Succeed())
+		putUsers(ctx, ds, &user)
+		Expect(ds.MediaFile().Put(ctx, &model.MediaFile{ID: "missing-1", LibraryID: 1, Path: "gone.mp3", Title: "Gone", Missing: true})).To(Succeed())
+		Expect(ds.MediaFile().Put(ctx, &model.MediaFile{ID: "present-1", LibraryID: 1, Path: "here.mp3", Title: "Here"})).To(Succeed())
 		var err error
 		token, err = auth.CreateToken(&user)
 		Expect(err).ToNot(HaveOccurred())
 
-		router = server.JWTVerifier(New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil))
+		router = server.JWTVerifier(newTestRouter(ds, nil, nil, nil))
 	})
 
 	DescribeTable("GET /missing/{id}",

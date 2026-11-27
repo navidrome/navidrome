@@ -11,15 +11,19 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("createUnixSocketFile", func() {
+	var ctx context.Context
 	var socketPath string
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		tempDir, _ := os.MkdirTemp("", "create_unix_socket_file_test")
 		socketPath = filepath.Join(tempDir, "test.sock")
 		DeferCleanup(func() {
@@ -30,7 +34,7 @@ var _ = Describe("createUnixSocketFile", func() {
 	When("unixSocketPerm is valid", func() {
 		It("updates the permission of the unix socket file and returns nil", func() {
 			tests.SkipOnWindows("uses Unix file permission bits")
-			_, err := createUnixSocketFile(socketPath, "0777")
+			_, err := createUnixSocketFile(ctx, socketPath, "0777")
 			fileInfo, _ := os.Stat(socketPath)
 			actualPermission := fileInfo.Mode().Perm()
 
@@ -42,7 +46,7 @@ var _ = Describe("createUnixSocketFile", func() {
 
 	When("unixSocketPerm is invalid", func() {
 		It("returns an error", func() {
-			_, err := createUnixSocketFile(socketPath, "invalid")
+			_, err := createUnixSocketFile(ctx, socketPath, "invalid")
 			Expect(err).To(HaveOccurred())
 
 		})
@@ -55,7 +59,7 @@ var _ = Describe("createUnixSocketFile", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(os.Chmod(socketPath, os.FileMode(0777))).To(Succeed())
 
-			_, err = createUnixSocketFile(socketPath, "0600")
+			_, err = createUnixSocketFile(ctx, socketPath, "0600")
 			Expect(err).ToNot(HaveOccurred())
 			fileInfo, _ := os.Stat(socketPath)
 			Expect(fileInfo.Mode().Perm()).To(Equal(os.FileMode(0600)))
@@ -145,9 +149,7 @@ var _ = Describe("TLS support", func() {
 		When("server is started with valid TLS certificates", func() {
 			It("accepts HTTPS connections", func() {
 
-				// Create server with mock dependencies
-				ds := &tests.MockDataStore{}
-				server := New(ds, nil, nil)
+				server := New(persistence.New(db.Db()), nil, nil)
 
 				// Load the test certificate to create a trusted CA pool
 				certFile := filepath.Join(testDataDir, "test_cert.pem")
@@ -180,7 +182,11 @@ var _ = Describe("TLS support", func() {
 
 				Eventually(func() error {
 					// Make an HTTPS request to the server
-					resp, err := httpClient.Get("https://127.0.0.1:14534/ping")
+					req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://127.0.0.1:14534/ping", nil)
+					if err != nil {
+						return err
+					}
+					resp, err := httpClient.Do(req)
 					if err != nil {
 						return err
 					}

@@ -11,32 +11,34 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/quickconnect"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Router", func() {
 	var ctx context.Context
+	var ds model.DataStore
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
+		ds = persistence.New(db.Db())
 	})
 
 	It("serves the public handshake through the mounted handler", func() {
-		ds := &tests.MockDataStore{}
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/System/Info/Public", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/System/Info/Public", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 
 	It("returns 404 JSON for unknown routes", func() {
-		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Nonexistent/Route", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Nonexistent/Route", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Header().Get("Content-Type")).To(ContainSubstring("application/json"))
@@ -44,19 +46,17 @@ var _ = Describe("Router", func() {
 	})
 
 	It("returns 404 JSON for a known path with an unsupported method", func() {
-		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodPatch, "/System/Info/Public", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodPatch, "/System/Info/Public", nil)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Body.String()).To(Equal("{}"))
 	})
 
 	It("registers a player on a general authenticated request, not just playback reports", func() {
-		ds := &tests.MockDataStore{}
 		auth.Init(ctx, ds)
-		ur := ds.User().(*tests.MockedUserRepo)
-		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		Expect(ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		token, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 		Expect(err).ToNot(HaveOccurred())
 
@@ -64,7 +64,7 @@ var _ = Describe("Router", func() {
 		api := New(ds, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil)
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Users/Me", nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Users/Me", nil)
 		r.Header.Set("X-Emby-Authorization", `MediaBrowser Client="Jellify", Device="Phone", DeviceId="dev-1", Version="1.0"`)
 		r.Header.Set("X-Emby-Token", token)
 		api.ServeHTTP(w, r)
@@ -79,11 +79,11 @@ var _ = Describe("Router", func() {
 			c.AuthRequestLimit = 2
 			c.AuthWindowLength = time.Minute
 		})
-		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		login := func() int {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
 			r.RemoteAddr = "10.0.0.1:1234"
 			api.ServeHTTP(w, r)
 			return w.Code
@@ -100,7 +100,6 @@ var _ = Describe("Router", func() {
 			c.AuthWindowLength = time.Minute
 			c.Jellyfin.QuickConnect = true
 		})
-		ds := &tests.MockDataStore{}
 		auth.Init(ctx, ds)
 		usr := model.User{ID: testID("alice"), UserName: "alice"}
 		Expect(ds.User().Put(ctx, &usr)).To(Succeed())
@@ -110,7 +109,7 @@ var _ = Describe("Router", func() {
 
 		authorize := func() int {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/QuickConnect/Authorize?code=000000", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/QuickConnect/Authorize?code=000000", nil)
 			r.RemoteAddr = "10.0.0.1:1234"
 			r.Header.Set("X-Emby-Token", token)
 			api.ServeHTTP(w, r)
@@ -127,14 +126,14 @@ var _ = Describe("Router", func() {
 			c.AuthRequestLimit = 1
 			c.AuthWindowLength = time.Minute
 		})
-		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		// Every request arrives on the same proxy connection, so only the resolved client IP
 		// can separate the buckets.
 		handler := middleware.ClientIPFromHeader("X-Real-IP")(api)
 
 		login := func(clientIP string) int {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
 			r.RemoteAddr = "10.0.0.1:1234"
 			r.Header.Set("X-Real-IP", clientIP)
 			handler.ServeHTTP(w, r)

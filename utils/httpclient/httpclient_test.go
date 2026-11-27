@@ -1,6 +1,7 @@
 package httpclient_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -14,10 +15,13 @@ import (
 )
 
 var _ = Describe("httpclient", func() {
+	var ctx context.Context
+
 	var server *httptest.Server
 	var receivedUA string
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		receivedUA = ""
 		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			receivedUA = r.Header.Get("User-Agent")
@@ -28,7 +32,9 @@ var _ = Describe("httpclient", func() {
 	Describe("New", func() {
 		It("sets the Navidrome User-Agent when the request has none", func() {
 			c := httpclient.New(time.Second)
-			resp, err := c.Get(server.URL)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := c.Do(req)
 			Expect(err).ToNot(HaveOccurred())
 			resp.Body.Close()
 			Expect(receivedUA).To(Equal(consts.HTTPUserAgent))
@@ -36,7 +42,7 @@ var _ = Describe("httpclient", func() {
 
 		It("keeps a User-Agent already set by the caller", func() {
 			c := httpclient.New(time.Second)
-			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
 			Expect(err).ToNot(HaveOccurred())
 			req.Header.Set("User-Agent", "CustomAgent/1.0")
 			resp, err := c.Do(req)
@@ -54,7 +60,9 @@ var _ = Describe("httpclient", func() {
 	Describe("NewExternal", func() {
 		It("refuses to connect to a loopback server", func() {
 			c := httpclient.NewExternal(time.Second)
-			_, err := c.Get(server.URL)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = c.Do(req)
 			Expect(err).To(MatchError(netguard.ErrPrivateAddress))
 			Expect(receivedUA).To(BeEmpty())
 		})
@@ -66,13 +74,17 @@ var _ = Describe("httpclient", func() {
 			DeferCleanup(redirector.Close)
 
 			c := httpclient.NewExternal(time.Second, netip.MustParsePrefix("127.0.0.1/32"))
-			_, err := c.Get(redirector.URL)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, redirector.URL, nil)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = c.Do(req)
 			Expect(err).To(MatchError(netguard.ErrPrivateAddress))
 		})
 
 		It("connects to addresses covered by an allowed prefix and sets the User-Agent", func() {
 			c := httpclient.NewExternal(time.Second, netip.MustParsePrefix("127.0.0.0/8"))
-			resp, err := c.Get(server.URL)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := c.Do(req)
 			Expect(err).ToNot(HaveOccurred())
 			resp.Body.Close()
 			Expect(receivedUA).To(Equal(consts.HTTPUserAgent))
@@ -82,7 +94,9 @@ var _ = Describe("httpclient", func() {
 	Describe("NewTransport", func() {
 		It("uses the default transport when base is nil", func() {
 			c := &http.Client{Transport: httpclient.NewTransport(nil)}
-			resp, err := c.Get(server.URL)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			Expect(err).ToNot(HaveOccurred())
+			resp, err := c.Do(req)
 			Expect(err).ToNot(HaveOccurred())
 			resp.Body.Close()
 			Expect(receivedUA).To(Equal(consts.HTTPUserAgent))
@@ -90,7 +104,7 @@ var _ = Describe("httpclient", func() {
 
 		It("does not modify the original request", func() {
 			c := &http.Client{Transport: httpclient.NewTransport(nil)}
-			req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
 			Expect(err).ToNot(HaveOccurred())
 			resp, err := c.Do(req)
 			Expect(err).ToNot(HaveOccurred())

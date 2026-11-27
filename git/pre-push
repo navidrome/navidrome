@@ -1,4 +1,22 @@
 #!/bin/sh
 set -e
 
-make pre-push
+# Run the JS checks only when a pushed commit changes ui/, so Go-only pushes work without ui/node_modules.
+target=pre-push-go
+while read -r local_ref local_sha remote_ref remote_sha; do
+	case $local_sha in *[!0]*) ;; *) continue ;; esac
+	base=
+	case $remote_sha in *[!0]*) git cat-file -e "$remote_sha^{commit}" 2>/dev/null && base=$remote_sha ;; esac
+	[ -n "$base" ] || base=$(git merge-base origin/master "$local_sha" 2>/dev/null) || { target=pre-push; break; }
+	if ! git diff --quiet "$base" "$local_sha" -- ui 2>/dev/null; then
+		target=pre-push
+		break
+	fi
+done
+
+if [ "$target" = pre-push ] && [ ! -d ui/node_modules ]; then
+	echo "This push needs the JS checks, but ui/node_modules is missing. Run: (cd ui && npm ci)" >&2
+	exit 1
+fi
+
+make "$target"

@@ -12,18 +12,15 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	var (
-		manager   *Manager
-		tmpDir    string
-		router    *fakeSubsonicRouter
-		userRepo  *tests.MockedUserRepo
-		dataStore *tests.MockDataStore
+		manager *Manager
+		tmpDir  string
+		router  *fakeSubsonicRouter
 	)
 
 	BeforeAll(func() {
@@ -47,31 +44,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 			c.Plugins.AutoReload = false
 		})
 
-		// Setup mock router and data store
-		router = &fakeSubsonicRouter{}
-		userRepo = tests.CreateMockUserRepo()
-		dataStore = &tests.MockDataStore{MockedUser: userRepo}
-
-		// Add test users
-		_ = userRepo.Put(GinkgoT().Context(), &model.User{
-			ID:       "user1",
-			UserName: "testuser",
-			IsAdmin:  false,
-		})
-		_ = userRepo.Put(GinkgoT().Context(), &model.User{
-			ID:       "admin1",
-			UserName: "adminuser",
-			IsAdmin:  true,
-		})
-
-		// Create and configure manager
-		manager = &Manager{
-			plugins: make(map[string]*plugin),
-			ds:      dataStore,
-		}
-		manager.SetSubsonicRouter(router)
-
-		// Pre-enable the plugin in the mock repo so it loads on startup
+		// Pre-enable the plugin in the DB so it loads on startup
 		// Compute SHA256 of the plugin file to match what syncPlugins will compute
 		pluginPath := filepath.Join(tmpDir, "test-subsonicapi-plugin"+PackageExtension)
 		wasmData, err := os.ReadFile(pluginPath)
@@ -79,16 +52,25 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		hash := sha256.Sum256(wasmData)
 		hashHex := hex.EncodeToString(hash[:])
 
-		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
-		mockPluginRepo.Permitted = true
-		enabledPlugin := model.Plugin{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:       "test-subsonicapi-plugin",
 			Path:     pluginPath,
 			SHA256:   hashHex,
 			Enabled:  true,
 			AllUsers: true, // Allow all users for test plugin
+		})
+		putUsers(dataStore,
+			model.User{ID: "user1", UserName: "testuser", IsAdmin: false},
+			model.User{ID: "admin1", UserName: "adminuser", IsAdmin: true},
+		)
+
+		// Create and configure manager
+		router = &fakeSubsonicRouter{}
+		manager = &Manager{
+			plugins: make(map[string]*plugin),
+			ds:      dataStore,
 		}
-		mockPluginRepo.SetData(model.Plugins{enabledPlugin})
+		manager.SetSubsonicRouter(router)
 
 		// Start the manager
 		err = manager.Start(GinkgoT().Context())
@@ -121,9 +103,13 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	})
 
 	Describe("SubsonicAPI Call", func() {
-		var plugin *plugin
+		var (
+			plugin *plugin
+			ctx    context.Context
+		)
 
 		BeforeEach(func() {
+			ctx = GinkgoT().Context()
 			manager.mu.RLock()
 			plugin = manager.plugins["test-subsonicapi-plugin"]
 			manager.mu.RUnlock()
@@ -131,11 +117,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("successfully calls the ping endpoint", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, output, err := instance.Call("call_subsonic_api", []byte("/ping?u=testuser"))
+			exit, output, err := instance.CallWithContext(ctx, "call_subsonic_api", []byte("/ping?u=testuser"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -150,11 +136,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("adds required parameters (c, f, v) to the request", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			_, _, err = instance.Call("call_subsonic_api", []byte("/getAlbumList?u=testuser&type=newest"))
+			_, _, err = instance.CallWithContext(ctx, "call_subsonic_api", []byte("/getAlbumList?u=testuser&type=newest"))
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify the parameters were added
@@ -167,11 +153,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("returns error when username is missing", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, _, err := instance.Call("call_subsonic_api", []byte("/ping"))
+			exit, _, err := instance.CallWithContext(ctx, "call_subsonic_api", []byte("/ping"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
@@ -179,9 +165,13 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	})
 
 	Describe("SubsonicAPI CallRaw", func() {
-		var plugin *plugin
+		var (
+			plugin *plugin
+			ctx    context.Context
+		)
 
 		BeforeEach(func() {
+			ctx = GinkgoT().Context()
 			manager.mu.RLock()
 			plugin = manager.plugins["test-subsonicapi-plugin"]
 			manager.mu.RUnlock()
@@ -189,11 +179,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("successfully calls getCoverArt and returns binary data", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, output, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			exit, output, err := instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -207,11 +197,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("does NOT set f=json parameter for raw calls", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			_, _, err = instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			_, _, err = instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(router.lastRequest).ToNot(BeNil())
@@ -222,11 +212,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("returns error when username is missing", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, _, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt"))
+			exit, _, err := instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
@@ -238,31 +228,18 @@ var _ = Describe("SubsonicAPIService", func() {
 	var (
 		ctx       context.Context
 		router    *fakeSubsonicRouter
-		userRepo  *tests.MockedUserRepo
-		dataStore *tests.MockDataStore
+		dataStore model.DataStore
 	)
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		router = &fakeSubsonicRouter{}
-		userRepo = tests.CreateMockUserRepo()
-		dataStore = &tests.MockDataStore{MockedUser: userRepo}
-
-		_ = userRepo.Put(ctx, &model.User{
-			ID:       "user1",
-			UserName: "testuser",
-			IsAdmin:  false,
-		})
-		_ = userRepo.Put(ctx, &model.User{
-			ID:       "admin1",
-			UserName: "adminuser",
-			IsAdmin:  true,
-		})
-		_ = userRepo.Put(ctx, &model.User{
-			ID:       "user2",
-			UserName: "alloweduser",
-			IsAdmin:  false,
-		})
+		dataStore = newTestDataStore()
+		putUsers(dataStore,
+			model.User{ID: "user1", UserName: "testuser", IsAdmin: false},
+			model.User{ID: "admin1", UserName: "adminuser", IsAdmin: true},
+			model.User{ID: "user2", UserName: "alloweduser", IsAdmin: false},
+		)
 	})
 
 	Describe("Permission Enforcement", func() {

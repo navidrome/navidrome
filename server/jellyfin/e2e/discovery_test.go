@@ -15,9 +15,9 @@ var _ = Describe("Auto discovery", func() {
 	BeforeEach(func() { setupTestDB() })
 
 	It("advertises the same Id and Name as /System/Info/Public", func() {
-		server, err := net.ListenPacket("udp4", "127.0.0.1:0")
+		server, err := (&net.ListenConfig{}).ListenPacket(ctx, "udp4", "127.0.0.1:0")
 		Expect(err).ToNot(HaveOccurred())
-		client, err := net.ListenPacket("udp4", "127.0.0.1:0")
+		client, err := (&net.ListenConfig{}).ListenPacket(ctx, "udp4", "127.0.0.1:0")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(client.Close)
 

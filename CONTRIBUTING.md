@@ -38,7 +38,7 @@ AI-assisted work must meet the personal full-diff review and functional testing 
 
 Declare whether AI was used to generate or modify submitted code or tests, draft substantive PR text, or create the PR. A simple Yes or No in the PR description is enough. Tool names, prompts, and transcripts are not required.
 
-An AI agent must never check the personal review or development knowledge boxes in the PR template for you. A PR from an outside contributor gets the `review-attestation-missing` label and a reminder comment when the personal review box is unchecked, the PR template is missing, or a coding agent account opened the PR.
+An AI agent must never check the personal review or development knowledge boxes in the PR template for you. A non-draft PR from an outside contributor gets the `review-attestation-missing` label and a reminder comment when the personal review box is unchecked, the PR template is missing, or a coding agent account opened the PR.
 
 AI tools may help you draft, edit, or translate PR explanations and review replies. Review the final text before you send it, make sure you agree with it, and take responsibility for it. Do not send AI-generated text that you have not reviewed to maintainers or other contributors. Please be mindful of the maintainer's time.
 
@@ -47,6 +47,10 @@ AI tools may help you draft, edit, or translate PR explanations and review repli
 Prefer existing patterns and the smallest clear solution. Justify new abstractions, dependencies, configuration, and compatibility obligations. Include the documentation and tests needed to understand the behavior and change it safely later.
 
 The maintainer must be able to understand and maintain the result without depending on your future availability. An offer to provide ongoing support does not replace this requirement. A working implementation may still be declined if its benefit does not justify its complexity or maintenance cost.
+
+## UI strings and translations
+
+Add new or changed UI strings in English to `ui/src/i18n/en.json`. You may also add the translation for a language you speak in its file under `resources/i18n/`. Leave the other languages alone, and do not add machine translations for them. Translators update those languages through the [localization process](https://www.navidrome.org/docs/developers/translations/) on POEditor.
 
 <a id="pull-requests"></a>
 
