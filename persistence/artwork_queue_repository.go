@@ -45,18 +45,31 @@ func (r *artworkQueueRepository) Get(ctx context.Context, kind model.Kind, id, i
 // Enqueue starts a fresh lifecycle: it resets enqueued_at (so a fresh request does not inherit an old
 // row's spent retry budget) and clears trace (so explain does not show a prior failure at attempts 0).
 func (r *artworkQueueRepository) Enqueue(ctx context.Context, items ...model.ArtworkQueueItem) error {
-	return r.enqueue(ctx, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
-		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, items)
+	return r.enqueueAt(ctx, time.Now(), items)
 }
+
+func (r *artworkQueueRepository) enqueueAt(ctx context.Context, now time.Time, items []model.ArtworkQueueItem) error {
+	return r.enqueue(ctx, now, items, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
+		priority = MAX(priority, excluded.priority),
+		retry_at = CASE WHEN retry_at = excluded.retry_at THEN ? ELSE excluded.retry_at END,
+		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, stepPast(now))
+}
+
+// stepPast is the retry_at to write when the row already holds now, as it can on a coarse clock: a
+// worker that dequeued that value must still fail its CAS.
+func stepPast(now time.Time) time.Time { return now.Add(time.Microsecond) }
 
 // RestartIfQueued's new retry_at fails an in-flight worker's DeleteIfUnchanged, so the row outlives a
 // stale result. Keep the reset in step with Enqueue's conflict clause.
 func (r *artworkQueueRepository) RestartIfQueued(ctx context.Context, kind model.Kind, ids ...string) error {
-	now := time.Now()
+	return r.restartIfQueuedAt(ctx, time.Now(), kind, ids...)
+}
+
+func (r *artworkQueueRepository) restartIfQueuedAt(ctx context.Context, now time.Time, kind model.Kind, ids ...string) error {
+	retryAt := Expr("CASE WHEN retry_at = ? THEN ? ELSE ? END", now, stepPast(now), now)
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
 		upd := Update(r.tableName).
-			Set("retry_at", now).Set("attempts", 0).Set("enqueued_at", now).Set("trace", "[]").
+			Set("retry_at", retryAt).Set("attempts", 0).Set("enqueued_at", now).Set("trace", "[]").
 			Where(Eq{"item_kind": kind.Prefix(), "item_id": chunk})
 		if _, err := r.executeSQL(ctx, upd); err != nil {
 			return err
@@ -66,8 +79,8 @@ func (r *artworkQueueRepository) RestartIfQueued(ctx context.Context, kind model
 }
 
 func (r *artworkQueueRepository) EnqueuePreservingBackoff(ctx context.Context, items ...model.ArtworkQueueItem) error {
-	return r.enqueue(ctx, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		priority = MAX(priority, excluded.priority)`, items)
+	return r.enqueue(ctx, time.Now(), items, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
+		priority = MAX(priority, excluded.priority)`)
 }
 
 func (r *artworkQueueRepository) EnqueueAllMissing(ctx context.Context, kind model.Kind, priority int) (int64, error) {
@@ -163,14 +176,13 @@ func (r *artworkQueueRepository) EnqueueBySource(ctx context.Context, kind model
 	return r.executeSQL(ctx, Insert(r.tableName).Columns(enqueueColumns...).Select(sel).Suffix(skipIfQueued))
 }
 
-func (r *artworkQueueRepository) enqueue(ctx context.Context, conflict string, items []model.ArtworkQueueItem) error {
-	now := time.Now()
+func (r *artworkQueueRepository) enqueue(ctx context.Context, now time.Time, items []model.ArtworkQueueItem, conflict string, args ...any) error {
 	for chunk := range slices.Chunk(items, enqueueChunkSize) {
 		ins := Insert(r.tableName).Columns(enqueueColumns...)
 		for _, it := range chunk {
 			ins = ins.Values(it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority, 0, now, now)
 		}
-		ins = ins.Suffix(conflict)
+		ins = ins.Suffix(conflict, args...)
 		if _, err := r.executeSQL(ctx, ins); err != nil {
 			return err
 		}

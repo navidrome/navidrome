@@ -184,15 +184,15 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	})
 
 	Describe("RestartIfQueued", func() {
-		It("makes a stale settle of the in-flight attempt keep the row", func() {
-			Expect(repo.Enqueue(ctx, item("mf", "t1", model.ArtworkPriorityBump))).To(Succeed())
-			// Anchor retry_at in the past so a coarse clock cannot give the restart the same value.
-			backOff("mf", "t1", time.Now().Add(-time.Hour))
+		It("makes a stale settle of the in-flight attempt keep the row, even within one clock tick", func() {
+			r := repo.(*artworkQueueRepository)
+			tick := time.Now().Add(-time.Minute)
+			Expect(r.enqueueAt(ctx, tick, []model.ArtworkQueueItem{item("mf", "t1", model.ArtworkPriorityBump)})).To(Succeed())
 			seen, err := repo.DequeueBatch(ctx, 10)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(seen).To(HaveLen(1))
 
-			Expect(repo.RestartIfQueued(ctx, model.KindMediaFileArtwork, "t1")).To(Succeed())
+			Expect(r.restartIfQueuedAt(ctx, tick, model.KindMediaFileArtwork, "t1")).To(Succeed())
 
 			Expect(repo.DeleteIfUnchanged(ctx, "mf", "t1", model.ImageTypePrimary, seen[0].RetryAt)).To(Succeed())
 			Expect(repo.Get(ctx, model.KindMediaFileArtwork, "t1", model.ImageTypePrimary)).ToNot(BeNil())
@@ -265,6 +265,21 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(repo.DeleteIfUnchanged(ctx, "al", "d1", model.ImageTypePrimary, got[0].RetryAt)).To(Succeed())
 		n, _ = repo.Count(ctx)
 		Expect(n).To(BeZero())
+	})
+
+	It("a re-enqueue within the same clock tick still fails the in-flight DeleteIfUnchanged", func() {
+		r := repo.(*artworkQueueRepository)
+		tick := time.Now().Add(-time.Minute)
+		items := []model.ArtworkQueueItem{item("al", "d2", model.ArtworkPriorityScan)}
+		Expect(r.enqueueAt(ctx, tick, items)).To(Succeed())
+		got, err := repo.DequeueBatch(ctx, 10)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(HaveLen(1))
+
+		Expect(r.enqueueAt(ctx, tick, items)).To(Succeed())
+
+		Expect(repo.DeleteIfUnchanged(ctx, "al", "d2", model.ImageTypePrimary, got[0].RetryAt)).To(Succeed())
+		Expect(repo.Count(ctx)).To(Equal(int64(1)))
 	})
 
 	It("purges queue rows whose entity no longer exists, per kind", func() {
