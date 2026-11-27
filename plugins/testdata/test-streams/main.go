@@ -129,6 +129,27 @@ func leak() int32 {
 	})
 }
 
+// write_when_out_of_memory fills Extism's block memory before it writes, so the stream buffer cannot be allocated.
+//
+//go:wasmexport write_when_out_of_memory
+func writeWhenOutOfMemory() int32 {
+	return run(func(in input) output {
+		var blocks []pdk.Memory
+		for range 1 << 16 {
+			m := pdk.Allocate(64 << 10)
+			if m.Offset() == 0 {
+				break
+			}
+			blocks = append(blocks, m)
+		}
+		_, err := stream.New(in.Handle).Write([]byte("x"))
+		for _, m := range blocks {
+			m.Free()
+		}
+		return output{Error: errString(err)}
+	})
+}
+
 //go:wasmexport spin
 func spin() int32 {
 	for {

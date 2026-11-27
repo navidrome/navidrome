@@ -67,3 +67,24 @@ pub fn write_greeting(Json(input): Json<Input>) -> FnResult<Json<Output>> {
     }
     Ok(Json(out))
 }
+
+/// Fills Extism's block memory before it writes, so the stream buffer cannot be allocated.
+#[plugin_fn]
+pub fn write_when_out_of_memory(Json(input): Json<Input>) -> FnResult<Json<Output>> {
+    let mut blocks = Vec::new();
+    for _ in 0..1 << 16 {
+        let offset = unsafe { extism_pdk::extism::alloc(64 << 10) };
+        if offset == 0 {
+            break;
+        }
+        blocks.push(offset);
+    }
+    let err = Stream::from_handle(input.handle).write(b"x").err();
+    for offset in blocks {
+        unsafe { extism_pdk::extism::free(offset) }
+    }
+    Ok(Json(Output {
+        error: err.map(|e| e.to_string()).unwrap_or_default(),
+        ..Default::default()
+    }))
+}

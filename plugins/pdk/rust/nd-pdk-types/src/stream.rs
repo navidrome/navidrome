@@ -39,10 +39,20 @@ impl Stream {
         Ok(())
     }
 
-    fn buffer(&mut self) -> u64 {
-        *self
-            .buf
-            .get_or_insert_with(|| unsafe { extism_pdk::extism::alloc(BUFFER_SIZE as u64) })
+    /// Extism returns offset 0 when memory runs out, and storing there would corrupt its block memory.
+    fn buffer(&mut self) -> io::Result<u64> {
+        if let Some(offset) = self.buf {
+            return Ok(offset);
+        }
+        let offset = unsafe { extism_pdk::extism::alloc(BUFFER_SIZE as u64) };
+        if offset == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::OutOfMemory,
+                "stream buffer allocation failed",
+            ));
+        }
+        self.buf = Some(offset);
+        Ok(offset)
     }
 
     fn free_buffer(&mut self) {
@@ -67,7 +77,7 @@ impl io::Read for Stream {
             return Ok(0);
         }
         let n = out.len().min(BUFFER_SIZE);
-        let buf = self.buffer();
+        let buf = self.buffer()?;
         let got = unsafe { stream_read(self.handle as i64, buf, n as i64) };
         if got < 0 {
             return Err(last_error());
@@ -84,7 +94,7 @@ impl io::Write for Stream {
             return Ok(0);
         }
         let n = data.len().min(BUFFER_SIZE);
-        let buf = self.buffer();
+        let buf = self.buffer()?;
         store_bytes(buf, &data[..n]);
         let written = unsafe { stream_write(self.handle as i64, buf, n as i64) };
         if written < 0 {

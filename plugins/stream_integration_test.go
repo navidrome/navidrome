@@ -394,6 +394,14 @@ var _ = Describe("Plugin streams under a memory cap", Ordered, func() {
 		Expect(out.Error).To(BeEmpty())
 		Expect(w.sum()).To(Equal(wantSHA))
 	})
+
+	It("fails a write cleanly when the stream buffer cannot be allocated", func() {
+		w := &trackingWriter{}
+		out, err := callStreams(ctx, p, "write_when_out_of_memory", defaultTimeout, writeInput(w, 0, 0))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out.Error).To(Equal("stream buffer allocation failed"))
+		Expect(w.bytes()).To(BeEmpty())
+	})
 })
 
 // buildRustTestPlugin skips when the wasm32-wasip1 Rust target is missing; CI does not install it.
@@ -433,6 +441,8 @@ var _ = Describe("Rust plugin streams", Ordered, func() {
 
 	BeforeAll(func() {
 		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
+		extismMaxMemoryPages = 1024 // 64 MiB, so the out-of-memory spec can fill it
+		DeferCleanup(func() { extismMaxMemoryPages = 0 })
 		manager, _ := createTestManagerWithPlugins(nil, pkg)
 		p = loadedTestPlugin(manager, "test-streams-rs")
 	})
@@ -463,6 +473,14 @@ var _ = Describe("Rust plugin streams", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
 		Expect(string(w.bytes())).To(Equal("unaligned write, 8+ bytes"))
+	})
+
+	It("fails a write cleanly when the stream buffer cannot be allocated", func() {
+		w := &trackingWriter{}
+		out, err := callStreams(ctx, p, "write_when_out_of_memory", defaultTimeout, writeInput(w, 0, 0))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out.Error).To(Equal("stream buffer allocation failed"))
+		Expect(w.bytes()).To(BeEmpty())
 	})
 
 	It("writes a host stream with std::io::Write and closes it", func() {

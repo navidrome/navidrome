@@ -28,7 +28,10 @@ func streamError() int64
 
 const bufferSize = 64 * 1024
 
-var errStreamFailed = errors.New("stream operation failed")
+var (
+	errStreamFailed = errors.New("stream operation failed")
+	errNoBuffer     = errors.New("stream buffer allocation failed")
+)
 
 // Stream is a handle to a byte stream owned by Navidrome. It reuses one memory block for all reads and writes.
 type Stream struct {
@@ -40,19 +43,27 @@ func New(handle uint32) *Stream { return &Stream{handle: handle} }
 
 func (s *Stream) Handle() uint32 { return s.handle }
 
-func (s *Stream) buffer() *pdk.Memory {
+// buffer checks the allocation because Extism returns offset 0 when memory runs out, and storing there
+// would corrupt Extism's block memory.
+func (s *Stream) buffer() (*pdk.Memory, error) {
 	if s.buf == nil {
 		m := pdk.Allocate(bufferSize)
+		if m.Offset() == 0 {
+			return nil, errNoBuffer
+		}
 		s.buf = &m
 	}
-	return s.buf
+	return s.buf, nil
 }
 
 func (s *Stream) Read(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
-	buf := s.buffer()
+	buf, err := s.buffer()
+	if err != nil {
+		return 0, err
+	}
 	r := streamRead(int64(s.handle), buf.Offset(), int64(min(len(p), bufferSize)))
 	switch {
 	case r > 0:
@@ -66,7 +77,10 @@ func (s *Stream) Read(p []byte) (int, error) {
 }
 
 func (s *Stream) Write(p []byte) (int, error) {
-	buf := s.buffer()
+	buf, err := s.buffer()
+	if err != nil {
+		return 0, err
+	}
 	written := 0
 	for written < len(p) {
 		chunk := p[written:min(len(p), written+bufferSize)]
