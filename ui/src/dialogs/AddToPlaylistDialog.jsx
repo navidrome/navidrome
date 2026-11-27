@@ -38,8 +38,14 @@ const useStyles = makeStyles({
 
 export const AddToPlaylistDialog = () => {
   const classes = useStyles()
-  const { open, selectedIds, onSuccess, duplicateSong, duplicateIds } =
-    useSelector((state) => state.addToPlaylistDialog)
+  const {
+    open,
+    selectedIds,
+    albumIds,
+    onSuccess,
+    duplicateSong,
+    duplicateIds,
+  } = useSelector((state) => state.addToPlaylistDialog)
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
@@ -61,10 +67,11 @@ export const AddToPlaylistDialog = () => {
 
   const addToPlaylist = (playlistId, distinctIds) => {
     const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
-    if (trackIds.length) {
+    const data = albumIds?.length ? { albumIds } : { ids: trackIds }
+    if (albumIds?.length || trackIds.length) {
       dataProvider
         .create('playlistTrack', {
-          data: { ids: trackIds },
+          data,
           filter: { playlist_id: playlistId },
         })
         .then(() => {
