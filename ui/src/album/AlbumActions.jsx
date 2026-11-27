@@ -122,7 +122,7 @@ const AlbumActions = ({
 
   const handleAddToPlaylist = React.useCallback(() => {
     dispatch(openAddToPlaylist({ albumIds: [record.id] }))
-  }, [dataProvider, dispatch, record, data, ids, notify])
+  }, [dispatch, record])
 
   const handleShare = React.useCallback(() => {
     dispatch(openShareMenu([record.id], 'album', record.name))
