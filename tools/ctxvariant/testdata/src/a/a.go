@@ -147,3 +147,25 @@ func constraints() {
 	Cmp([]int{1})
 	Loose(1) // want `use a\.LooseContext and pass the caller's ctx`
 }
+
+// Find's sibling returns different results, so it is not a drop-in replacement.
+func Find(id string) string { return id }
+
+func FindContext(ctx context.Context, id string) (string, error) { return id, nil }
+
+type base struct{}
+
+func (base) Save(id string) error { return nil }
+
+func (base) SaveContext(ctx context.Context, id string) error { return nil }
+
+// wrapped overrides Save but not SaveContext, so the promoted SaveContext would skip the override.
+type wrapped struct{ base }
+
+func (wrapped) Save(id string) error { return nil }
+
+func results(w wrapped) {
+	_ = Find("1")
+	_ = w.Save("1")
+	_ = w.base.Save("1") // want `use \(a\.base\)\.SaveContext and pass the caller's ctx`
+}

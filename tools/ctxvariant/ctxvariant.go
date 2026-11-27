@@ -105,7 +105,12 @@ func findVariant(fn *types.Func) variant {
 		if recv == nil {
 			obj = fn.Pkg().Scope().Lookup(name)
 		} else {
-			obj, _, _ = types.LookupFieldOrMethod(recv.Type(), true, fn.Pkg(), name)
+			var index []int
+			obj, index, _ = types.LookupFieldOrMethod(recv.Type(), true, fn.Pkg(), name)
+			// A sibling promoted from an embedded field would skip fn's own override.
+			if len(index) > 1 {
+				continue
+			}
 		}
 		if sib, ok := obj.(*types.Func); ok && isDropIn(fn.Signature(), sib.Signature()) {
 			sib = sib.Origin()
@@ -115,7 +120,7 @@ func findVariant(fn *types.Func) variant {
 	return variant{}
 }
 
-// isDropIn reports whether sib's parameters are ctx followed by exactly f's parameters.
+// isDropIn reports whether sib's parameters are ctx followed by exactly f's parameters, with the same results.
 func isDropIn(f, sib *types.Signature) bool {
 	if f.TypeParams().Len() != sib.TypeParams().Len() || sib.Params().Len() != f.Params().Len()+1 ||
 		sib.Variadic() != f.Variadic() || !isContext(sib.Params().At(0).Type()) {
@@ -138,7 +143,7 @@ func isDropIn(f, sib *types.Signature) bool {
 			return false
 		}
 	}
-	return true
+	return types.Identical(f.Results(), sib.Results())
 }
 
 func isContext(t types.Type) bool {
