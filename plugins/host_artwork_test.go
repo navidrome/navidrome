@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -50,23 +49,14 @@ var _ = Describe("ArtworkService", Ordered, func() {
 			c.Plugins.AutoReload = false
 		})
 
-		// Initialize auth (required for token generation)
-		ds := &tests.MockDataStore{MockedProperty: &tests.MockedPropertyRepo{}}
-		auth.Init(ds)
-
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-artwork",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{
-			MockedProperty: &tests.MockedPropertyRepo{},
-			MockedPlugin:   mockPluginRepo,
-		}
+		})
+		// Initialize auth (required for token generation)
+		auth.Init(dataStore)
 
 		// Create and start manager
 		manager = &Manager{

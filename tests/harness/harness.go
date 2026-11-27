@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing/fstest"
@@ -23,9 +22,9 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega" //nolint:staticcheck
 )
@@ -57,7 +56,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	db.Db().SetMaxOpenConns(1)
 	db.Init(ctx)
 
-	ds := &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+	ds := persistence.New(db.Db())
 	auth.Init(ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
@@ -78,28 +77,8 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	_, err = db.Db().ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
-	Expect(err).ToNot(HaveOccurred())
-	data, err := os.ReadFile(h.FilePath)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(os.WriteFile(h.SnapshotPath, data, 0o600)).To(Succeed()) //nolint:gosec // path derives from TempDir
+	Expect(persistencetest.Snapshot(h.SnapshotPath)).To(Succeed())
 	return h
-}
-
-// ResettableTables lists the tables a per-spec reset may write. FTS shadow tables are excluded:
-// their content tables' triggers keep them in sync, and writing them directly corrupts the index.
-func ResettableTables(ctx context.Context) []string {
-	rows, err := db.Db().QueryContext(ctx, "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
-	defer rows.Close()
-	var tables []string
-	for rows.Next() {
-		var name string
-		Expect(rows.Scan(&name)).To(Succeed())
-		tables = append(tables, name)
-	}
-	Expect(rows.Err()).To(Succeed())
-	return tables
 }
 
 // TruncateDB empties every resettable table, leaving the migrated schema in place — for suites
@@ -117,27 +96,9 @@ func TruncateDB(ctx context.Context, tables []string) {
 	}
 }
 
-// Restore reloads every table from the golden snapshot via ATTACH DATABASE — much faster than a
-// rescan.
-func (h *DB) Restore(ctx context.Context) {
-	sqlDB := db.Db()
-	_, err := sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.ExecContext(ctx, "ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-
-	for _, table := range ResettableTables(ctx) {
-		// Table names come from sqlite_master, not user input.
-		_, err = sqlDB.ExecContext(ctx, `DELETE FROM main."`+table+`"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-		_, err = sqlDB.ExecContext(ctx, `INSERT INTO main."`+table+`" SELECT * FROM snapshot."`+table+`"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	_, err = sqlDB.ExecContext(ctx, "DETACH DATABASE snapshot")
-	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.ExecContext(ctx, "PRAGMA foreign_keys = ON")
-	Expect(err).ToNot(HaveOccurred())
+// Restore reloads every table from the golden snapshot — much faster than a rescan.
+func (h *DB) Restore() {
+	Expect(persistencetest.RestoreFrom(h.SnapshotPath)).To(Succeed())
 }
 
 // SpyStreamer captures the Request passed to NewStream and returns a minimal fake stream.

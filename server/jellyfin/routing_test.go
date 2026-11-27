@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
+
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -18,12 +20,11 @@ import (
 // directly and when mounted under a parent (as it is in production via server.MountRouter).
 var _ = Describe("Case-insensitive routing", func() {
 	var ctx context.Context
-
 	var api *Router
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		api = New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		api = New(persistence.New(db.Db()), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	It("serves a fully lowercase path directly", func() {
@@ -44,7 +45,7 @@ var _ = Describe("Case-insensitive routing", func() {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/authenticatebyname", nil)
 		api.ServeHTTP(w, r)
-		// MockDataStore has no users, so authentication itself may fail downstream, but the
+		// The database has no users, so authentication itself may fail downstream, but the
 		// route must be found (not a 404) to prove case-insensitive matching worked.
 		Expect(w.Code).ToNot(Equal(http.StatusNotFound))
 	})

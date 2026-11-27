@@ -9,10 +9,11 @@ import (
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -67,7 +68,7 @@ var _ = Describe("Sessions", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		pt = &fakePlayTracker{}
-		api = &Router{ds: &tests.MockDataStore{}, scrobbler: pt}
+		api = &Router{ds: persistence.New(db.Db()), scrobbler: pt}
 	})
 
 	Describe("reportPlaybackStart", func() {
@@ -189,7 +190,7 @@ var _ = Describe("withPlayer middleware", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		fp = &fakePlayers{}
-		api = &Router{ds: &tests.MockDataStore{}, players: fp}
+		api = &Router{ds: struct{ model.DataStore }{}, players: fp}
 	})
 
 	It("registers a player from the Emby device info and injects it into the context", func() {

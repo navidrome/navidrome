@@ -15,9 +15,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -370,7 +371,7 @@ var _ = Describe("middlewares", func() {
 			middleware     func(next http.Handler) http.Handler
 			req            *http.Request
 			ctx            context.Context
-			ds             *tests.MockDataStore
+			ds             model.DataStore
 			id             string
 			lastAccessTime time.Time
 		)
@@ -382,8 +383,8 @@ var _ = Describe("middlewares", func() {
 		BeforeEach(func() {
 			ctx = GinkgoT().Context()
 			id = uuid.NewString()
-			ds = &tests.MockDataStore{}
-			lastAccessTime = time.Now()
+			ds = persistence.New(db.Db())
+			lastAccessTime = time.Now().Add(-time.Hour)
 			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
 				To(Succeed())
 
@@ -406,14 +407,14 @@ var _ = Describe("middlewares", func() {
 
 				callMiddleware(req)
 
-				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				user, _ := ds.User().FindByUsername(ctx, "johndoe")
 				Expect(*user.LastAccessAt).To(BeTemporally(">", lastAccessTime, time.Second))
 			})
 
 			It("skip fast successive requests", func() {
 				// First request
 				callMiddleware(req)
-				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
+				user, _ := ds.User().FindByUsername(ctx, "johndoe")
 				lastAccessTime = *user.LastAccessAt // Store the last access time
 
 				// Second request
@@ -421,8 +422,8 @@ var _ = Describe("middlewares", func() {
 				callMiddleware(req)
 
 				// The second request should not have changed the last access time
-				user, _ = ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(user.LastAccessAt).To(Equal(&lastAccessTime))
+				user, _ = ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*user.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 		Context("when the request has no user", func() {
@@ -430,8 +431,8 @@ var _ = Describe("middlewares", func() {
 				req = req.WithContext(ctx)
 				callMiddleware(req)
 
-				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+				usr, _ := ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*usr.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 		Context("when the request is an internal call (e.g. from a plugin)", func() {
@@ -452,8 +453,8 @@ var _ = Describe("middlewares", func() {
 
 				callMiddleware(req)
 
-				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
-				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+				usr, _ := ds.User().FindByUsername(ctx, "johndoe")
+				Expect(*usr.LastAccessAt).To(BeTemporally("==", lastAccessTime))
 			})
 		})
 	})
@@ -513,6 +514,51 @@ var _ = Describe("middlewares", func() {
 				Expect(proxyIP).To(Equal("10.0.0.1:1234"))
 			})
 		})
+
+		Context("with a trusted proxy on a unix socket", func() {
+			DescribeTable("uses the forwarded client IP when the peer is the socket",
+				func(trusted string) {
+					conf.Update(func(c *conf.Options) {
+						c.Address = "unix:/tmp/navidrome-test"
+						c.ExtAuth.TrustedSources = trusted
+					})
+					call("@", map[string]string{"X-Forwarded-For": "203.0.113.5"})
+					Expect(resolved).To(Equal("203.0.113.5"))
+					Expect(remoteAddr).To(Equal("203.0.113.5"))
+				},
+				Entry("socket only", "@"),
+				Entry("socket and a CIDR", "@,10.0.0.0/8"),
+			)
+		})
+	})
+
+	Describe("ClientAddr", func() {
+		var ctx context.Context
+		var addr, ip string
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+			conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "10.0.0.0/8" })
+		})
+		call := func(h http.Handler, peer, xff string) {
+			r := httptest.NewRequestWithContext(ctx, "POST", "/auth/login", nil)
+			r.RemoteAddr = peer
+			r.Header.Set("X-Forwarded-For", xff)
+			h.ServeHTTP(httptest.NewRecorder(), r)
+		}
+		capture := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			addr, ip = ClientAddr(r), ClientIP(r)
+		})
+
+		It("returns the full resolved IPv6 address, while ClientIP keeps the /64 for rate limiting", func() {
+			call(realIPMiddleware(capture), "10.0.0.1:1234", "2001:db8:1:2:3:4:5:6")
+			Expect(addr).To(Equal("2001:db8:1:2:3:4:5:6"))
+			Expect(ip).To(Equal("2001:db8:1:2::"))
+		})
+
+		It("falls back to the peer host without the middleware", func() {
+			call(capture, "[2001:db8:1:2:3:4:5:6]:1234", "")
+			Expect(addr).To(Equal("2001:db8:1:2:3:4:5:6"))
+		})
 	})
 
 	Describe("ClientIPRateLimiter", func() {
@@ -540,6 +586,12 @@ var _ = Describe("middlewares", func() {
 			Entry("X-Real-IP", "X-Real-IP"),
 			Entry("True-Client-IP", "True-Client-IP"),
 		)
+
+		It("sends the X-RateLimit headers by default", func() {
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), "POST", "/auth/login", nil))
+			Expect(w.Header().Get("X-RateLimit-Limit")).To(Equal("2"))
+		})
 
 		Context("behind a trusted proxy", func() {
 			BeforeEach(func() {

@@ -500,6 +500,19 @@ func (s *taskQueueServiceImpl) revertTaskToPending(ctx context.Context, taskID s
 	}
 }
 
+// taskCallTimeout is the time limit for one nd_task_execute call.
+func taskCallTimeout(perm *TaskQueuePermission) time.Duration {
+	limit := conf.Server().Plugins.MaxTaskDuration
+	if perm == nil || perm.MaxTaskDuration <= 0 || limit <= 0 {
+		return defaultTimeout
+	}
+	// Compare in seconds first: a huge manifest value would overflow time.Duration.
+	if int64(perm.MaxTaskDuration) > int64(limit/time.Second) {
+		return limit
+	}
+	return time.Duration(perm.MaxTaskDuration) * time.Second
+}
+
 // defaultInvokeCallback calls the plugin's nd_task_execute function.
 func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueName, taskID string, payload []byte, attempt int32) (string, error) {
 	s.manager.mu.RLock()
@@ -517,7 +530,12 @@ func (s *taskQueueServiceImpl) defaultInvokeCallback(ctx context.Context, queueN
 		Attempt:   attempt,
 	}
 
-	message, err := callPluginFunction[capabilities.TaskExecuteRequest, string](ctx, p, FuncTaskWorkerCallback, input)
+	var perm *TaskQueuePermission
+	if p.manifest.Permissions != nil {
+		perm = p.manifest.Permissions.Taskqueue
+	}
+	message, err := callPluginFunctionWithTimeout[capabilities.TaskExecuteRequest, string](
+		ctx, p, FuncTaskWorkerCallback, taskCallTimeout(perm), input)
 	if err != nil {
 		return "", err
 	}

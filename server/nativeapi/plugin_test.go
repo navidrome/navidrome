@@ -12,9 +12,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,7 +24,7 @@ import (
 
 var _ = Describe("Plugin API", func() {
 	var ctx context.Context
-	var ds *tests.MockDataStore
+	var ds model.DataStore
 	var mockManager *tests.MockPluginManager
 	var router http.Handler
 	var adminUser, regularUser model.User
@@ -35,10 +36,10 @@ var _ = Describe("Plugin API", func() {
 			c.EnableSharing = false
 			c.Plugins.Enabled = true
 		})
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		mockManager = &tests.MockPluginManager{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, mockManager, nil, nil, nil)
+		nativeRouter := newTestRouter(ds, nil, mockManager, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -74,9 +75,7 @@ var _ = Describe("Plugin API", func() {
 			Enabled:  true,
 		}
 
-		// Store users in mock datastore
-		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
-		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
+		putUsers(ctx, ds, &adminUser, &regularUser)
 	})
 
 	Context("when plugins are disabled", func() {

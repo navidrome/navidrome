@@ -368,8 +368,8 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		fsConfig = buildFSConfig(mounts)
 	}
 
-	// Build host functions based on permissions from manifest
-	var hostFunctions []extism.HostFunction
+	// Stream functions are for every plugin; the rest depend on manifest permissions
+	hostFunctions := streamHostFunctions()
 	var closers []io.Closer
 	loaded := false
 	// On success the closers are owned by the registered plugin; on any
@@ -433,18 +433,20 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
+	streams := newStreamTable()
 	loadedPlugin := &plugin{
 		name:         p.ID,
 		path:         p.Path,
 		manifest:     pkg.Manifest,
 		compiled:     compiled,
 		capabilities: capabilities,
-		closers:      closers,
+		closers:      append(closers, streams),
 		metrics:      m.metrics,
 		users:        users,
 		libraries:    libraries,
 		fsConfig:     fsConfig,
 		lyricsSem:    make(chan struct{}, maxConcurrentLyricsCalls),
+		streams:      streams,
 	}
 	m.mu.Lock()
 	m.plugins[p.ID] = loadedPlugin
@@ -496,12 +498,18 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 	return pluginConfig, nil
 }
 
+// extismMaxMemoryPages caps each plugin memory in 64 KiB pages; 0 means no cap. Tests lower it.
+var extismMaxMemoryPages uint32
+
 // buildExtismManifest describes the plugin to extism. It must never set AllowedPaths (extism would replace our
 // jailed FSConfig) nor AllowedHosts (extism's http_request has no SSRF guard; plugins must use host.HTTPSend).
 func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
-	return extism.Manifest{
-		Wasm:    []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
-		Config:  pluginConfig,
-		Timeout: uint64(defaultTimeout.Milliseconds()),
+	m := extism.Manifest{
+		Wasm:   []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
+		Config: pluginConfig,
 	}
+	if extismMaxMemoryPages > 0 {
+		m.Memory = &extism.ManifestMemory{MaxPages: extismMaxMemoryPages}
+	}
+	return m
 }

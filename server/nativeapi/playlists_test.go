@@ -19,26 +19,23 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Playlist Image Endpoints", func() {
-	var ctx context.Context
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
-	})
 
 	DescribeTable("uploadPlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/playlist/pls-1/image", nil)
+			req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPost, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
 			req = req.WithContext(ctx)
 
@@ -57,7 +54,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/playlist/pls-1/image", nil)
+			req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodDelete, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
 			req = req.WithContext(ctx)
 
@@ -75,9 +72,9 @@ var _ = Describe("Playlist Image Endpoints", func() {
 var _ = Describe("Playlist Tracks Endpoint", func() {
 	var (
 		ctx      context.Context
+		ds       model.DataStore
 		router   http.Handler
-		plsSvc   *mockPlaylistsService
-		userRepo *tests.MockedUserRepo
+		testUser model.User
 		w        *httptest.ResponseRecorder
 	)
 
@@ -88,30 +85,36 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			c.SessionTimeout = time.Minute
 		})
 
-		plsSvc = &mockPlaylistsService{repo: &mockPlaylistRestRepo{}}
-		userRepo = tests.CreateMockUserRepo()
-
-		ds := &tests.MockDataStore{
-			MockedUser:     userRepo,
-			MockedProperty: &tests.MockedPropertyRepo{},
-		}
-
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
 
-		testUser := model.User{
+		testUser = model.User{
 			ID:          "user-1",
 			UserName:    "testuser",
 			Name:        "Test User",
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(GinkgoT().Context(), &testUser)
-		Expect(err).ToNot(HaveOccurred())
+		putUsers(ctx, ds, &testUser)
+		for _, id := range []string{"mf-1", "mf-2"} {
+			Expect(ds.MediaFile().Put(ctx, &model.MediaFile{ID: id, LibraryID: model.DefaultLibraryID, Path: id + ".mp3"})).To(Succeed())
+		}
 
-		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
-		router = server.JWTVerifier(nativeRouter)
+		router = server.JWTVerifier(newTestRouter(ds, nil, nil, nil))
 		w = httptest.NewRecorder()
 	})
+
+	userPlaylists := func() model.Playlists {
+		GinkgoHelper()
+		pls, err := ds.Playlist().GetAll(request.WithUser(ctx, testUser))
+		Expect(err).ToNot(HaveOccurred())
+		return pls
+	}
+	putPlaylist := func(pls *model.Playlist) {
+		GinkgoHelper()
+		pls.OwnerID = testUser.ID
+		Expect(ds.Playlist().Put(request.WithUser(ctx, testUser), pls)).To(Succeed())
+	}
 
 	createAuthenticatedRequestWithBody := func(method, path string, body io.Reader) *http.Request {
 		req := httptest.NewRequestWithContext(ctx, method, path, body)
@@ -136,6 +139,13 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	}
 
 	Describe("POST /playlist/{playlistId}/tracks", func() {
+		var plsSvc *mockPlaylistsService
+
+		BeforeEach(func() {
+			plsSvc = &mockPlaylistsService{}
+			router = server.JWTVerifier(newTestRouter(ds, plsSvc, nil, nil))
+		})
+
 		DescribeTable("adds ids up to DevMaxPlaylistTracksPerRequest",
 			func(limit, sent int) {
 				conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = limit })
@@ -184,13 +194,12 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 
 	Describe("POST /playlist", func() {
 		It("treats JSON with a charset as JSON, not as an M3U upload", func() {
-			plsSvc.importM3UFn = func(context.Context, io.Reader) (*model.Playlist, error) { return &model.Playlist{}, nil }
 			req := createAuthenticatedRequestWithBody("POST", "/playlist", jsonBody(map[string]any{"name": "Mix"}))
 			req.Header.Set("Content-Type", "application/json; charset=utf-8")
 			router.ServeHTTP(w, req)
 
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(plsSvc.repo.(*mockPlaylistRestRepo).saved).To(HaveExactElements(HaveField("Name", "Mix")))
+			Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+			Expect(userPlaylists()).To(HaveExactElements(HaveField("Name", "Mix")))
 		})
 
 		It("accepts a JSON body larger than 4 MiB when the track limit is raised", func() {
@@ -200,7 +209,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			router.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(plsSvc.repo.(*mockPlaylistRestRepo).saved).To(HaveLen(1))
+			Expect(userPlaylists()).To(HaveLen(1))
 		})
 
 		It("rejects a JSON body over the size limit with 413", func() {
@@ -209,18 +218,19 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			router.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
-			Expect(plsSvc.repo.(*mockPlaylistRestRepo).saved).To(BeEmpty())
+			Expect(userPlaylists()).To(BeEmpty())
 		})
 	})
 
 	Describe("PUT /playlist/{id}", func() {
 		It("rejects a JSON body over the size limit with 413", func() {
+			putPlaylist(&model.Playlist{ID: "pls-1", Name: "Mine", Comment: "original"})
 			body := jsonBody(map[string]any{"comment": strings.Repeat("x", int(maxPlaylistJSONBody()))})
 			req := createAuthenticatedRequestWithBody("PUT", "/playlist/pls-1", body)
 			router.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
-			Expect(plsSvc.repo.(*mockPlaylistRestRepo).updated).To(BeZero())
+			Expect(userPlaylists()).To(HaveExactElements(HaveField("Comment", "original")))
 		})
 	})
 
@@ -254,12 +264,9 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		It("returns tracks when playlist exists", func() {
-			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
-				tracks: model.PlaylistTracks{
-					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
-					{ID: "2", MediaFileID: "mf-2", PlaylistID: "pls-1"},
-				},
-			}
+			pls := &model.Playlist{ID: "pls-1", Name: "Mine"}
+			pls.AddMediaFilesByID([]string{"mf-1", "mf-2"})
+			putPlaylist(pls)
 
 			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks")
 			router.ServeHTTP(w, req)
@@ -271,7 +278,9 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(response).To(HaveLen(2))
 			Expect(response[0].ID).To(Equal("1"))
+			Expect(response[0].MediaFileID).To(Equal("mf-1"))
 			Expect(response[1].ID).To(Equal("2"))
+			Expect(response[1].MediaFileID).To(Equal("mf-2"))
 		})
 	})
 
@@ -284,11 +293,9 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		It("returns the track when playlist exists", func() {
-			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
-				tracks: model.PlaylistTracks{
-					{ID: "1", MediaFileID: "mf-1", PlaylistID: "pls-1"},
-				},
-			}
+			pls := &model.Playlist{ID: "pls-1", Name: "Mine"}
+			pls.AddMediaFilesByID([]string{"mf-1"})
+			putPlaylist(pls)
 
 			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks/1")
 			router.ServeHTTP(w, req)
@@ -303,9 +310,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		It("returns 404 when track does not exist in playlist", func() {
-			plsSvc.tracksRepo = &mockPlaylistTrackRepo{
-				tracks: model.PlaylistTracks{},
-			}
+			putPlaylist(&model.Playlist{ID: "pls-1", Name: "Mine"})
 
 			req := createAuthenticatedRequest("GET", "/playlist/pls-1/tracks/999")
 			router.ServeHTTP(w, req)
@@ -316,18 +321,13 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 })
 
 var _ = Describe("handleExportPlaylist", func() {
-	var ctx context.Context
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
-	})
-
 	export := func(name string) *httptest.ResponseRecorder {
 		r := chi.NewRouter()
 		r.Get("/playlist/{playlistId}", handleExportPlaylist(&mockPlaylistsService{
 			playlist: &model.Playlist{ID: "pls-1", Name: name},
 		}))
 		w := httptest.NewRecorder()
-		r.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/playlist/pls-1", nil))
+		r.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/playlist/pls-1", nil))
 		return w
 	}
 
@@ -352,11 +352,6 @@ var _ = Describe("handleExportPlaylist", func() {
 })
 
 var _ = Describe("createPlaylistFromM3U", func() {
-	var ctx context.Context
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
-	})
-
 	// Drains the body like the real importer, so the size limit is hit while reading.
 	drainingImport := func(_ context.Context, reader io.Reader) (*model.Playlist, error) {
 		if _, err := io.Copy(io.Discard, reader); err != nil {
@@ -367,7 +362,7 @@ var _ = Describe("createPlaylistFromM3U", func() {
 		return pl, nil
 	}
 	upload := func(svc *mockPlaylistsService, body io.Reader) *httptest.ResponseRecorder {
-		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/playlist", body)
+		req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPost, "/playlist", body)
 		req.Header.Set("Content-Type", "audio/x-mpegurl")
 		w := httptest.NewRecorder()
 		createPlaylistFromM3U(svc).ServeHTTP(w, req)
@@ -398,14 +393,9 @@ var _ = Describe("createPlaylistFromM3U", func() {
 })
 
 var _ = Describe("reorderItem", func() {
-	var ctx context.Context
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
-	})
-
 	It("rejects a body over the size limit with 413", func() {
 		body := `{"insert_before":"` + strings.Repeat("1", maxSmallJSONBody) + `"}`
-		req := httptest.NewRequestWithContext(ctx, http.MethodPut, "/playlist/pls-1/tracks/1?:id=1", strings.NewReader(body))
+		req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPut, "/playlist/pls-1/tracks/1?:id=1", strings.NewReader(body))
 		w := httptest.NewRecorder()
 		reorderItem(&mockPlaylistsService{})(w, req)
 		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
@@ -429,32 +419,8 @@ var _ = Describe("writePlaylistError", func() {
 	)
 })
 
-type mockPlaylistTrackRepo struct {
-	model.PlaylistTrackRepository
-	tracks model.PlaylistTracks
-}
-
-func (m *mockPlaylistTrackRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
-	return int64(len(m.tracks)), nil
-}
-
-func (m *mockPlaylistTrackRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]model.PlaylistTrack, error) {
-	return m.tracks, nil
-}
-
-func (m *mockPlaylistTrackRepo) Read(_ context.Context, id string) (*model.PlaylistTrack, error) {
-	for _, t := range m.tracks {
-		if t.ID == id {
-			return &t, nil
-		}
-	}
-	return nil, rest.ErrNotFound
-}
-
 type mockPlaylistsService struct {
 	playlists.Playlists
-	repo          rest.Repository[model.Playlist]
-	tracksRepo    rest.Repository[model.PlaylistTrack]
 	playlist      *model.Playlist
 	addCalls      int
 	addedIds      []string
@@ -482,7 +448,7 @@ func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader i
 }
 
 func (m *mockPlaylistsService) Repository() rest.Repository[model.Playlist] {
-	return m.repo
+	return nil
 }
 
 func (m *mockPlaylistsService) GetWithTracks(_ context.Context, _ string) (*model.Playlist, error) {
@@ -490,10 +456,6 @@ func (m *mockPlaylistsService) GetWithTracks(_ context.Context, _ string) (*mode
 		return nil, model.ErrNotFound
 	}
 	return m.playlist, nil
-}
-
-func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository[model.PlaylistTrack] {
-	return m.tracksRepo
 }
 
 func (m *mockPlaylistsService) AddTracks(_ context.Context, _ string, ids []string) (int, error) {
@@ -515,36 +477,4 @@ func (m *mockPlaylistsService) AddArtists(_ context.Context, _ string, ids []str
 func (m *mockPlaylistsService) AddDiscs(_ context.Context, _ string, discs []model.DiscID) (int, error) {
 	m.addCalls++
 	return len(discs), nil
-}
-
-// mockPlaylistRestRepo records what rest.Post and rest.Put hand to the playlist repository.
-type mockPlaylistRestRepo struct {
-	saved   []model.Playlist
-	updated int
-}
-
-func (m *mockPlaylistRestRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
-	return 0, nil
-}
-
-func (m *mockPlaylistRestRepo) Read(_ context.Context, id string) (*model.Playlist, error) {
-	return &model.Playlist{ID: id}, nil
-}
-
-func (m *mockPlaylistRestRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]model.Playlist, error) {
-	return nil, nil
-}
-
-func (m *mockPlaylistRestRepo) Save(_ context.Context, entity *model.Playlist) (string, error) {
-	m.saved = append(m.saved, *entity)
-	return "new-id", nil
-}
-
-func (m *mockPlaylistRestRepo) Update(context.Context, string, model.Playlist, ...string) error {
-	m.updated++
-	return nil
-}
-
-func (m *mockPlaylistRestRepo) Delete(context.Context, ...string) error {
-	return nil
 }

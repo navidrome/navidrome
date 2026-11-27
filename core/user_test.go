@@ -6,26 +6,26 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("User Service", func() {
 	var service core.User
-	var ds *tests.MockDataStore
-	var userRepo *tests.MockedUserRepo
+	var ds model.DataStore
 	var pluginManager *mockPluginUnloader
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ds = &tests.MockDataStore{}
-		userRepo = tests.CreateMockUserRepo()
-		ds.MockedUser = userRepo
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", IsAdmin: true})
+		ds = persistence.New(db.Db())
 		pluginManager = &mockPluginUnloader{}
 		service = core.NewUser(ds, pluginManager)
-		ctx = GinkgoT().Context()
 	})
 
 	Describe("NewRepository", func() {
@@ -50,7 +50,7 @@ var _ = Describe("User Service", func() {
 				IsAdmin:  false,
 			}
 			user.NewPassword = "password"
-			Expect(userRepo.Put(ctx, user)).To(Succeed())
+			Expect(ds.User().Put(ctx, user)).To(Succeed())
 		})
 
 		It("deletes the user successfully", func() {
@@ -58,7 +58,7 @@ var _ = Describe("User Service", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify user is deleted
-			_, err = userRepo.Get(ctx, "user-123")
+			_, err = ds.User().Get(ctx, "user-123")
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 
@@ -78,13 +78,16 @@ var _ = Describe("User Service", func() {
 			err := repo.Delete(ctx, "user-123", "non-existent")
 			Expect(err).To(MatchError(model.ErrNotFound))
 
-			_, err = userRepo.Get(ctx, "user-123")
+			_, err = ds.User().Get(ctx, "user-123")
 			Expect(err).To(Equal(model.ErrNotFound))
 			Expect(pluginManager.unloadCalls).To(Equal(1))
 		})
 
 		It("returns error when repository fails", func() {
-			userRepo.Error = errors.New("database error")
+			failing := persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+				return &failingUserDeleteRepo{UserRepository: r}
+			}})
+			repo := core.NewUser(failing, pluginManager).Repository().(rest.Persistable[model.User])
 			err := repo.Delete(ctx, "user-123")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("database error"))
@@ -92,3 +95,9 @@ var _ = Describe("User Service", func() {
 		})
 	})
 })
+
+type failingUserDeleteRepo struct{ model.UserRepository }
+
+func (r *failingUserDeleteRepo) Delete(context.Context, ...string) error {
+	return errors.New("database error")
+}

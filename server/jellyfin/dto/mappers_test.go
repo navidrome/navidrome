@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -113,13 +114,18 @@ var _ = Describe("mappers", func() {
 		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
-	It("sets DateCreated from the media file's CreatedAt", func() {
-		mf := model.MediaFile{ID: testID("s1"), Title: "Song", CreatedAt: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)}
-		Expect(SongToBaseItem(mf, nil).DateCreated).To(Equal("2024-01-15T10:30:00.0000000Z"))
-	})
-
 	It("omits DateCreated when CreatedAt is the zero time", func() {
 		Expect(SongToBaseItem(model.MediaFile{ID: testID("s1"), Title: "Song"}, nil).DateCreated).To(BeEmpty())
+	})
+
+	It("sets DateCreated from the timestamp the DateCreated sort uses", func() {
+		conf.Update(func(c *conf.Options) { c.RecentlyAddedBy = consts.RecentlyAddedByBirth })
+		birth := time.Date(2018, 3, 4, 5, 6, 7, 0, time.UTC)
+		created := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		mf := model.MediaFile{ID: testID("s1"), Title: "Song", BirthTime: birth, CreatedAt: created}
+		al := model.Album{ID: testID("a1"), Name: "Album", BirthTime: birth, CreatedAt: created}
+		Expect(SongToBaseItem(mf, nil).DateCreated).To(Equal("2018-03-04T05:06:07.0000000Z"))
+		Expect(AlbumToBaseItem(al, nil).DateCreated).To(Equal("2018-03-04T05:06:07.0000000Z"))
 	})
 
 	It("sets ArtistItems and AlbumArtists (encoded ids) from the track and album artist", func() {

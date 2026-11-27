@@ -7,10 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
+
 	"github.com/gorilla/websocket"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -84,14 +86,13 @@ var _ = Describe("handleSocket", func() {
 	// wrapper + chi mux + auth middleware) with a real network listener, exactly as Finamp
 	// hits it in production with ?api_key=<jwt>.
 	Context("mounted behind the full router and auth middleware", func() {
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 		var token string
 
 		BeforeEach(func() {
-			ds = &tests.MockDataStore{}
+			ds = persistence.New(db.Db())
 			auth.Init(ds)
-			ur := ds.User().(*tests.MockedUserRepo)
-			Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+			Expect(ds.User().Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 
 			t, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 			Expect(err).ToNot(HaveOccurred())

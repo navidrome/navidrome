@@ -2,13 +2,17 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
@@ -24,6 +28,16 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlaylistRepository(GetDBXBuilder())
 	})
+
+	trackIDsOf := func(rules *criteria.Criteria) []string {
+		newPls := model.Playlist{Name: "Track IDs", OwnerID: "userid", Rules: rules}
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
+
+		pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
+		Expect(err).ToNot(HaveOccurred())
+		return slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })
+	}
 
 	Context("Smart Playlists", func() {
 		var rules *criteria.Criteria
@@ -526,16 +540,6 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 		})
 
-		trackIDsOf := func(rules *criteria.Criteria) []string {
-			newPls := model.Playlist{Name: "Album Aggregates", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(ctx, &newPls)).To(Succeed())
-			DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
-
-			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
-			Expect(err).ToNot(HaveOccurred())
-			return slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })
-		}
-
 		It("filters on albumSongCount", func() {
 			// albumMultiDisc (ID "104") is the only fixture album with SongCount > 3
 			rules := &criteria.Criteria{Expression: criteria.All{criteria.Gt{"albumSongCount": 3}}}
@@ -552,6 +556,59 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 			Expect(trackIDsOf(rules)).To(HaveExactElements("2002", "2004", "2003", "2001"))
 		})
+	})
+
+	Describe("Smart Playlists with AlbumPlayCountMode", func() {
+		var albumRepo *albumRepository
+		var mfRepo model.MediaFileRepository
+		var albumID string
+		var songIDs []string
+
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
+			albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
+			mfRepo = NewMediaFileRepository(GetDBXBuilder())
+
+			// Four plays over four songs normalize to 1 while the stored album play count is 4, so
+			// a filter on the normalized value can only match through the normalization.
+			albumID = id.NewRandom()
+			Expect(albumRepo.Put(ctx, &model.Album{ID: albumID, LibraryID: 1, Name: "Normalized Album", SongCount: 4})).To(Succeed())
+			songIDs = nil
+			for i := range 4 {
+				path := fmt.Sprintf("test/normalized/track%d.mp3", i)
+				song := mf(model.MediaFile{ID: id.NewRandom(), Title: fmt.Sprintf("Normalized %d", i), AlbumID: albumID, Album: "Normalized Album", ArtistID: "1", Artist: "Test Artist", Path: path})
+				Expect(mfRepo.Put(ctx, &song)).To(Succeed())
+				songIDs = append(songIDs, song.ID)
+			}
+			DeferCleanup(func() {
+				for _, songID := range songIDs {
+					_ = mfRepo.Delete(ctx, songID)
+				}
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": albumID}))
+			})
+			for range 4 {
+				Expect(albumRepo.IncPlayCount(ctx, albumID, time.Now())).To(Succeed())
+			}
+		})
+
+		// Rules loaded from JSON keep numbers that were quoted as strings, so the quoted entries
+		// check that the threshold still compares as a number.
+		DescribeTable("filters on albumPlayCount",
+			func(mode string, cond criteria.Expression, matches bool) {
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = mode })
+				rules := &criteria.Criteria{Expression: criteria.All{criteria.Is{"album": "Normalized Album"}, cond}}
+				if matches {
+					Expect(trackIDsOf(rules)).To(ConsistOf(songIDs))
+				} else {
+					Expect(trackIDsOf(rules)).To(BeEmpty())
+				}
+			},
+			Entry("normalized: matches the normalized count", consts.AlbumPlayCountModeNormalized, criteria.Is{"albumPlayCount": 1}, true),
+			Entry("normalized: quoted > threshold", consts.AlbumPlayCountModeNormalized, criteria.Gt{"albumPlayCount": "0"}, true),
+			Entry("normalized: quoted = threshold", consts.AlbumPlayCountModeNormalized, criteria.Is{"albumPlayCount": "1"}, true),
+			Entry("absolute: matches the stored count", consts.AlbumPlayCountModeAbsolute, criteria.Is{"albumPlayCount": 4}, true),
+			Entry("absolute: ignores the normalized count", consts.AlbumPlayCountModeAbsolute, criteria.Is{"albumPlayCount": 1}, false),
+		)
 	})
 
 	Describe("Smart Playlists with Tag Criteria", func() {

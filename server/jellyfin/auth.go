@@ -89,7 +89,7 @@ func userPolicy(u *model.User) *dto.UserPolicy {
 		EnableSharedDeviceControl:        false,
 		EnableRemoteAccess:               true,
 		EnableLiveTvManagement:           false,
-		EnableLiveTvAccess:               false,
+		EnableLiveTvAccess:               true,
 		EnableMediaPlayback:              true,
 		EnableAudioPlaybackTranscoding:   true,
 		EnableVideoPlaybackTranscoding:   true,

@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -147,9 +149,7 @@ var _ = Describe("TLS support", func() {
 		When("server is started with valid TLS certificates", func() {
 			It("accepts HTTPS connections", func() {
 
-				// Create server with mock dependencies
-				ds := &tests.MockDataStore{}
-				server := New(ds, nil, nil)
+				server := New(persistence.New(db.Db()), nil, nil)
 
 				// Load the test certificate to create a trusted CA pool
 				certFile := filepath.Join(testDataDir, "test_cert.pem")

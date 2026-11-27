@@ -185,7 +185,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		AlbumId:           albumID,
 		AlbumArtist:       mf.AlbumArtist,
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
-		DateCreated:       JellyfinDate(&mf.CreatedAt),
+		DateCreated:       JellyfinDate(new(mf.RecentlyAddedAt())),
 		Container:         mf.Suffix,
 		CanDownload:       true,
 		BackdropImageTags: []string{},
@@ -291,7 +291,7 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		ChildCount:              new(al.SongCount),
 		SongCount:               new(al.SongCount),
 		RunTimeTicks:            TicksFromSeconds(al.Duration),
-		DateCreated:             JellyfinDate(&al.CreatedAt),
+		DateCreated:             JellyfinDate(new(al.RecentlyAddedAt())),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -493,5 +493,45 @@ func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, server
 		AdditionalUsers:    []any{},
 		NowPlayingQueue:    []any{},
 		PlayState:          PlayerStateInfo{RepeatMode: "RepeatNone", PlaybackOrder: "Default"},
+	}
+}
+
+// RadioToBaseItem maps an internet radio station to a Live TV radio channel, the shape Jellyfin
+// clients list stations in (GET /LiveTv/Channels).
+func RadioToBaseItem(rd model.Radio) BaseItemDto {
+	item := BaseItemDto{
+		Name:              rd.Name,
+		Id:                EncodeID(rd.ID),
+		Type:              "TvChannel",
+		ChannelType:       "Radio",
+		MediaType:         "Audio",
+		LocationType:      "Remote",
+		BackdropImageTags: []string{},
+	}
+	// An uploaded image is a station's only art source, as in Subsonic's getInternetRadioStations.
+	if rd.UploadedImage != "" && !rd.ImageAbsent {
+		tag, blurs, _ := primaryImage(rd.ItemImage, rd.ID, nil)
+		item.ImageTags = map[string]string{"Primary": tag}
+		item.ImageBlurHashes = blurs
+	}
+	return item
+}
+
+// MediaSourceFromRadio points clients straight at the station URL. RequiresOpening stays false so
+// they skip Jellyfin's LiveStreams/Open step, which Navidrome doesn't implement.
+func MediaSourceFromRadio(rd model.Radio) MediaSourceInfo {
+	return MediaSourceInfo{
+		Id:                 EncodeID(rd.ID),
+		Path:               rd.StreamUrl,
+		Protocol:           "Http",
+		Name:               rd.Name,
+		Type:               "Default",
+		IsRemote:           true,
+		IsInfiniteStream:   true,
+		SupportsDirectPlay: true,
+		// Index -1 is real Jellyfin's "unknown position" for a live stream's audio track.
+		MediaStreams:     []MediaStream{{Type: "Audio", Index: -1}},
+		MediaAttachments: []any{},
+		Formats:          []string{},
 	}
 }

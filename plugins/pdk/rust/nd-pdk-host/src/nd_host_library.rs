@@ -48,10 +48,10 @@ struct LibraryGetAllLibrariesResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn library_getlibrary(input: Json<LibraryGetLibraryRequest>) -> Json<LibraryGetLibraryResponse>;
-    fn library_getalllibraries(input: Json<serde_json::Value>) -> Json<LibraryGetAllLibrariesResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn library_getlibrary(input: u64) -> u64;
+    fn library_getalllibraries(input: u64) -> u64;
 }
 
 /// GetLibrary retrieves metadata for a specific library by ID.
@@ -70,17 +70,15 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_library(id: i32) -> Result<Option<Library>, Error> {
-    let response = unsafe {
-        library_getlibrary(Json(LibraryGetLibraryRequest {
-            id: id,
-        }))?
-    };
+    let response: LibraryGetLibraryResponse = unsafe { nd_pdk_types::hostcall::call(library_getlibrary, &LibraryGetLibraryRequest {
+        id: id,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// GetAllLibraries retrieves metadata for all configured libraries.
@@ -93,13 +91,11 @@ pub fn get_library(id: i32) -> Result<Option<Library>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_all_libraries() -> Result<Vec<Library>, Error> {
-    let response = unsafe {
-        library_getalllibraries(Json(serde_json::json!({})))?
-    };
+    let response: LibraryGetAllLibrariesResponse = unsafe { nd_pdk_types::hostcall::call(library_getalllibraries, &serde_json::json!({})) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

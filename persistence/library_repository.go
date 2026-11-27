@@ -25,6 +25,14 @@ var (
 	libLock  sync.RWMutex
 )
 
+// ClearLibraryPathCache drops the cached library paths. Call it after rewriting the library table
+// without the repository, as test suites do when they restore a database snapshot.
+func ClearLibraryPathCache() {
+	libLock.Lock()
+	defer libLock.Unlock()
+	clear(libCache)
+}
+
 func NewLibraryRepository(db dbx.Builder) model.LibraryRepository {
 	r := &libraryRepository{}
 	r.db = db

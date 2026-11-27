@@ -61,6 +61,7 @@ func MatcherMatchSongs(songs []types.SongRef, opts MatchOptions) ([]*types.Track
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response matcherMatchSongsResponse

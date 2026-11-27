@@ -15,11 +15,12 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -39,7 +40,7 @@ var _ = Describe("Auth", func() {
 		var resp *httptest.ResponseRecorder
 
 		BeforeEach(func() {
-			ds = &tests.MockDataStore{}
+			ds = persistence.New(db.Db())
 			auth.Init(ds)
 		})
 
@@ -73,17 +74,30 @@ var _ = Describe("Auth", func() {
 			})
 		})
 
-		Describe("createAdminUser", func() {
+		Describe("CreateFirstAdmin", func() {
 			It("returns the error when the user cannot be saved", func() {
-				ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: errors.New("db is down")}}
-				err := createAdminUser(ctx, ds, "johndoe", "secret")
+				failing := withUserErrors(ds, userErrors{put: errors.New("db is down")})
+				_, err := auth.CreateFirstAdmin(ctx, failing, "johndoe", "secret", nil)
 				Expect(err).To(MatchError(ContainSubstring("db is down")))
+			})
+		})
+
+		Describe("createAdmin when a user already exists", func() {
+			It("responds 403", func() {
+				req = httptest.NewRequestWithContext(ctx, http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"another", "password":"secret"}`))
+				resp = httptest.NewRecorder()
+				Expect(ds.User().Put(ctx, &model.User{UserName: "johndoe", NewPassword: "secret"})).To(Succeed())
+
+				createAdmin(ds)(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusForbidden))
+				Expect(resp.Body.String()).To(ContainSubstring("Cannot create another first admin"))
 			})
 		})
 
 		Describe("createAdmin when the user cannot be stored", func() {
 			It("responds 500 rather than falling through to login", func() {
-				failing := dsWithFailingPut(errors.New("db is down"))
+				failing := withUserErrors(ds, userErrors{put: errors.New("db is down")})
 				req = httptest.NewRequestWithContext(ctx, http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 
@@ -105,7 +119,7 @@ var _ = Describe("Auth", func() {
 
 			BeforeEach(func() {
 				usr := ds.User()
-				_ = usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				Expect(usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})).To(Succeed())
 				req = httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
@@ -244,7 +258,7 @@ var _ = Describe("Auth", func() {
 
 			It("logs in successfully if user exists", func() {
 				usr := ds.User()
-				_ = usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				Expect(usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})).To(Succeed())
 
 				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusOK))
@@ -392,7 +406,7 @@ var _ = Describe("Auth", func() {
 		const trustedIP = "192.168.0.42"
 
 		BeforeEach(func() {
-			ds = &tests.MockDataStore{}
+			ds = persistence.New(db.Db())
 			req = httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIP))
 			conf.Update(func(c *conf.Options) {
@@ -417,12 +431,12 @@ var _ = Describe("Auth", func() {
 
 		It("does not make subsequent users admins", func() {
 			// Create the first user
-			_ = ds.User().Put(ctx, &model.User{
+			Expect(ds.User().Put(ctx, &model.User{
 				ID:       "existing-user-id",
 				UserName: "existinguser",
 				Name:     "Existing User",
 				IsAdmin:  true,
-			})
+			})).To(Succeed())
 
 			// Try to create a second user via proxy header
 			req.Header.Set("Remote-User", "seconduser")
@@ -439,16 +453,22 @@ var _ = Describe("Auth", func() {
 	})
 
 	Describe("Authenticator token gating", func() {
-		var ds *tests.MockDataStore
+		var ds model.DataStore
 		var usr *model.User
+
+		setTokenEpoch := func(epoch int) {
+			GinkgoHelper()
+			_, err := db.Db().ExecContext(ctx, "UPDATE user SET token_epoch = ? WHERE id = ?", epoch, usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+		}
 
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
-			ds = &tests.MockDataStore{}
+			ds = persistence.New(db.Db())
 			auth.Init(ds)
-			ur := ds.User().(*tests.MockedUserRepo)
 			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
-			Expect(ur.Put(ctx, usr)).To(Succeed())
+			Expect(ds.User().Put(ctx, usr)).To(Succeed())
+			setTokenEpoch(usr.TokenEpoch)
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {
@@ -477,7 +497,7 @@ var _ = Describe("Auth", func() {
 		It("rejects a token with a stale epoch", func() {
 			tokenStr, err := auth.CreateToken(usr)
 			Expect(err).ToNot(HaveOccurred())
-			usr.TokenEpoch = 3
+			setTokenEpoch(3)
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
 		})
 
@@ -491,7 +511,7 @@ var _ = Describe("Auth", func() {
 		It("rejects a stale-epoch token whose subject differs only in case from the resolved user", func() {
 			tokenStr, err := auth.CreateToken(&model.User{UserName: strings.ToUpper(usr.UserName), TokenEpoch: usr.TokenEpoch})
 			Expect(err).ToNot(HaveOccurred())
-			usr.TokenEpoch = 5
+			setTokenEpoch(5)
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
 		})
 	})
@@ -500,7 +520,7 @@ var _ = Describe("Auth", func() {
 		BeforeEach(func() {
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
-			auth.Init(&tests.MockDataStore{})
+			auth.Init(persistence.New(db.Db()))
 		})
 
 		serveWith := func(handler http.HandlerFunc) *httptest.ResponseRecorder {

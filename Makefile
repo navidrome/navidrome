@@ -22,7 +22,7 @@ DOCKER_TAG ?= navidrome/navidrome:develop
 
 GOLANGCI_LINT_VERSION ?= v2.14.0
 VACUUM_VERSION ?= v0.30.6
-OAPI_CODEGEN_VERSION ?= v2.8.0
+OAPI_CODEGEN_VERSION ?= v2.9.0
 OASDIFF_VERSION ?= v1.32.1
 API_DIFF_BASE ?= origin/master
 
@@ -350,6 +350,9 @@ check_node_env:
 
 pre-push: lintall testall
 .PHONY: pre-push
+
+pre-push-go: lint test test-ndpgen test-i18n
+.PHONY: pre-push-go
 
 deprecated:
 	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."

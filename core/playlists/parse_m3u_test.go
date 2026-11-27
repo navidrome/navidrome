@@ -3,32 +3,25 @@ package playlists
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("pathResolver", func() {
-	var ds *tests.MockDataStore
-	var mockLibRepo *tests.MockLibraryRepo
 	var resolver *pathResolver
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-		mockLibRepo = &tests.MockLibraryRepo{}
-		ds = &tests.MockDataStore{
-			MockedLibrary: mockLibRepo,
-		}
+		ds := persistence.New(db.Db())
 
-		// Setup test libraries
-		mockLibRepo.SetData([]model.Library{
-			{ID: 1, Path: "/music"},
-			{ID: 2, Path: "/music-classical"},
-			{ID: 3, Path: "/podcasts"},
-		})
+		persistencetest.SetLibraries(ctx, ds, "/music", "/music-classical", "/podcasts")
 
 		var err error
 		resolver, err = newPathResolver(ctx, ds)

@@ -14,14 +14,14 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/plugins/types"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("MatcherService", Ordered, func() {
+var _ = Describe("MatcherService", func() {
 	BeforeEach(func() {
 		DeferCleanup(conf.SnapshotConfig())
 	})
@@ -142,10 +142,13 @@ var _ = Describe("MatcherService", Ordered, func() {
 	})
 
 	Describe("MatchSongs", func() {
-		// The mock MediaFileRepo returns stored files (with annotations) verbatim,
-		// ignoring QueryOptions and the context user. These tests therefore cover the
-		// adapter's gating/access logic, not the SQL per-user join (a persistence-layer
-		// concern).
+		var ctx context.Context
+		var ds model.DataStore
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+			ds = newTestDataStore()
+		})
 
 		// allowAll returns a service permitted to match as any user across all
 		// libraries.
@@ -154,14 +157,9 @@ var _ = Describe("MatcherService", Ordered, func() {
 		}
 
 		It("returns one entry per input song in order, with nil for no-match", func() {
-			mediaFileRepo := tests.CreateMockMediaFileRepo()
-			// First (ID) phase returns the match for input song 0 only.
-			mediaFileRepo.SetData(model.MediaFiles{
-				{ID: "mf-100", Title: "Hit", Artist: "Band"},
-			})
-			ds := &tests.MockDataStore{MockedMediaFile: mediaFileRepo}
+			putMatcherTracks(ctx, ds, model.MediaFile{ID: "mf-100", Title: "Hit", Artist: "Band"})
 
-			results, err := allowAll(ds).MatchSongs(GinkgoT().Context(), []types.SongRef{
+			results, err := allowAll(ds).MatchSongs(ctx, []types.SongRef{
 				{ID: "mf-100", Name: "Hit", Artist: "Band"},
 				{ID: "missing-id", Name: "Ghost", Artist: "Nobody"},
 			}, host.MatchOptions{})
@@ -174,34 +172,27 @@ var _ = Describe("MatcherService", Ordered, func() {
 		})
 
 		It("returns an empty slice for empty input", func() {
-			ds := &tests.MockDataStore{MockedMediaFile: tests.CreateMockMediaFileRepo()}
-			results, err := allowAll(ds).MatchSongs(GinkgoT().Context(), nil, host.MatchOptions{})
+			results, err := allowAll(ds).MatchSongs(ctx, nil, host.MatchOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(BeEmpty())
 		})
 
 		Context("with a scoped user", func() {
-			var ds *tests.MockDataStore
-			var userRepo *tests.MockedUserRepo
+			alice := model.User{ID: "u-alice", UserName: "alice"}
+			// caller has library access but no annotations, so a match run as caller is observable
+			caller := model.User{ID: "u-caller", UserName: "caller"}
 
 			BeforeEach(func() {
-				mediaFileRepo := tests.CreateMockMediaFileRepo()
-				mf := model.MediaFile{ID: "mf-1", Title: "Hit", Artist: "Band", LibraryID: 1,
-					Starred: true,
-					Rating:  5}
-				mediaFileRepo.SetData(model.MediaFiles{mf})
-
-				userRepo = tests.CreateMockUserRepo()
-				Expect(userRepo.Put(GinkgoT().Context(), &model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
-
-				ds = &tests.MockDataStore{MockedMediaFile: mediaFileRepo, MockedUser: userRepo}
+				putUsers(ds, alice, caller)
+				putMatcherTracks(request.WithUser(ctx, alice), ds, model.MediaFile{ID: "mf-1", Title: "Hit", Artist: "Band",
+					LibraryID: 1, Starred: true, Rating: 5})
 			})
 
 			input := []types.SongRef{{ID: "mf-1", Name: "Hit", Artist: "Band"}}
 
 			It("does not expose annotations when no username is given", func() {
 				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
-				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				results, err := svc.MatchSongs(ctx, input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
 				Expect(results[0].Starred).To(BeFalse())
@@ -210,7 +201,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 			It("exposes the user's annotations when an allowed username is given", func() {
 				svc := newMatcherService(ds, false, newUserAccess([]string{"u-alice"}, false), newLibraryAccess(nil, true))
-				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				results, err := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "alice"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
 				Expect(results[0].Starred).To(BeTrue())
@@ -219,28 +210,28 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 			It("allows any username when allUsers is set", func() {
 				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
-				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				results, err := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "alice"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0].Starred).To(BeTrue())
 			})
 
 			It("returns an error for an unknown username", func() {
 				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
-				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "ghost"})
+				_, err := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "ghost"})
 				Expect(err).To(MatchError(ContainSubstring("not found")))
 			})
 
 			It("surfaces a backend error rather than masking it as not-found", func() {
-				userRepo.Error = errors.New("db is locked")
-				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
-				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				failing := failingUsers(ds, errors.New("db is locked"))
+				svc := newMatcherService(failing, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
+				_, err := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "alice"})
 				Expect(err).To(MatchError(ContainSubstring("db is locked")))
 				Expect(err.Error()).ToNot(ContainSubstring("not found"))
 			})
 
 			It("returns an error for a username the plugin is not allowed to use", func() {
 				svc := newMatcherService(ds, false, newUserAccess([]string{"u-bob"}, false), newLibraryAccess(nil, true))
-				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
+				_, err := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "alice"})
 				Expect(err).To(MatchError(ContainSubstring("not allowed")))
 			})
 
@@ -249,8 +240,8 @@ var _ = Describe("MatcherService", Ordered, func() {
 				// be in) must not leak whether a username exists via the error text.
 				svc := newMatcherService(ds, false, newUserAccess(nil, false), newLibraryAccess(nil, true))
 
-				_, errExisting := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "alice"})
-				_, errMissing := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{Username: "ghost"})
+				_, errExisting := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "alice"})
+				_, errMissing := svc.MatchSongs(ctx, input, host.MatchOptions{Username: "ghost"})
 
 				Expect(errExisting).To(HaveOccurred())
 				Expect(errExisting.Error()).To(Equal(errMissing.Error()))
@@ -261,43 +252,31 @@ var _ = Describe("MatcherService", Ordered, func() {
 			It("does not inherit the caller's request user for an unscoped match", func() {
 				// The plugin may be invoked while handling another user's request; an
 				// unscoped match must run as admin, not as that inherited user.
-				capturing := &ctxCapturingDataStore{MockDataStore: ds}
-				svc := newMatcherService(capturing, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
+				Expect(ds.User().SetUserLibraries(ctx, caller.ID, []int{})).To(Succeed())
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 
-				callerCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "u-caller", UserName: "caller"})
-				_, err := svc.MatchSongs(callerCtx, input, host.MatchOptions{})
+				results, err := svc.MatchSongs(request.WithUser(ctx, caller), input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
-
-				usr, ok := request.UserFrom(capturing.lastMediaFileCtx())
-				Expect(ok).To(BeTrue())
-				Expect(usr.IsAdmin).To(BeTrue())
-				Expect(usr.ID).ToNot(Equal("u-caller"))
+				Expect(results[0]).ToNot(BeNil(), "the match ran with the caller's library access")
 			})
 
 			It("uses the requested user, overriding an inherited caller user", func() {
-				capturing := &ctxCapturingDataStore{MockDataStore: ds}
-				svc := newMatcherService(capturing, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
+				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
 
-				callerCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "u-caller", UserName: "caller"})
-				_, err := svc.MatchSongs(callerCtx, input, host.MatchOptions{Username: "alice"})
+				results, err := svc.MatchSongs(request.WithUser(ctx, caller), input, host.MatchOptions{Username: "alice"})
 				Expect(err).ToNot(HaveOccurred())
-
-				usr, ok := request.UserFrom(capturing.lastMediaFileCtx())
-				Expect(ok).To(BeTrue())
-				Expect(usr.ID).To(Equal("u-alice"))
+				Expect(results[0]).ToNot(BeNil())
+				Expect(results[0].Starred).To(BeTrue(), "the match ran with the caller's annotations")
 			})
 		})
 
 		Context("with plugin library access", func() {
-			var ds *tests.MockDataStore
-
 			BeforeEach(func() {
-				mediaFileRepo := tests.CreateMockMediaFileRepo()
-				mediaFileRepo.SetData(model.MediaFiles{
-					{ID: "mf-lib1", Title: "A", Artist: "Band", LibraryID: 1},
-					{ID: "mf-lib2", Title: "B", Artist: "Band", LibraryID: 2},
-				})
-				ds = &tests.MockDataStore{MockedMediaFile: mediaFileRepo}
+				putLibraries(ds, model.Library{ID: 2, Name: "Library 2", Path: "/music/lib2"})
+				putMatcherTracks(ctx, ds,
+					model.MediaFile{ID: "mf-lib1", Title: "A", Artist: "Band", LibraryID: 1},
+					model.MediaFile{ID: "mf-lib2", Title: "B", Artist: "Band", LibraryID: 2},
+				)
 			})
 
 			input := []types.SongRef{
@@ -307,7 +286,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 			It("drops matches from libraries the plugin cannot access", func() {
 				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess([]int{1}, false))
-				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				results, err := svc.MatchSongs(ctx, input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
 				Expect(results[0].ID).To(Equal("mf-lib1"))
@@ -316,7 +295,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 			It("keeps all matches when allLibraries is set", func() {
 				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, true))
-				results, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				results, err := svc.MatchSongs(ctx, input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results[0]).ToNot(BeNil())
 				Expect(results[1]).ToNot(BeNil())
@@ -324,7 +303,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 
 			It("errors when the plugin has no library scope configured", func() {
 				svc := newMatcherService(ds, false, newUserAccess(nil, true), newLibraryAccess(nil, false))
-				_, err := svc.MatchSongs(GinkgoT().Context(), input, host.MatchOptions{})
+				_, err := svc.MatchSongs(ctx, input, host.MatchOptions{})
 				Expect(err).To(MatchError(ContainSubstring("no libraries configured")))
 			})
 		})
@@ -378,31 +357,20 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 			c.Plugins.AutoReload = false
 		})
 
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
 		// AllLibraries: the matcher requires a library scope.
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:           "test-matcher",
 			Path:         destPath,
 			SHA256:       hashHex,
 			Enabled:      true,
 			AllUsers:     true,
 			AllLibraries: true,
-		}})
+		})
 
-		mediaFileRepo := tests.CreateMockMediaFileRepo()
-		hit := model.MediaFile{ID: "mf-hit", Title: "Hit", Artist: "Band",
-			Starred: true}
-		mediaFileRepo.SetData(model.MediaFiles{hit})
-
-		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(GinkgoT().Context(), &model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
-
-		dataStore := &tests.MockDataStore{
-			MockedPlugin:    mockPluginRepo,
-			MockedMediaFile: mediaFileRepo,
-			MockedUser:      userRepo,
-		}
+		alice := model.User{ID: "u-alice", UserName: "alice"}
+		putUsers(dataStore, alice)
+		putMatcherTracks(request.WithUser(GinkgoT().Context(), alice), dataStore,
+			model.MediaFile{ID: "mf-hit", Title: "Hit", Artist: "Band", Starred: true})
 
 		manager = &Manager{
 			plugins:        make(map[string]*plugin),
@@ -476,38 +444,16 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 	})
 })
 
-// ctxCapturingDataStore records the context the media file queries run with, so tests
-// can assert which user the matcher resolved before querying the library.
-type ctxCapturingDataStore struct {
-	*tests.MockDataStore
-	repo *ctxCapturingMediaFileRepo
-}
-
-func (d *ctxCapturingDataStore) MediaFile() model.MediaFileRepository {
-	if d.repo == nil {
-		d.repo = &ctxCapturingMediaFileRepo{MediaFileRepository: d.MockDataStore.MediaFile()}
+// putMatcherTracks stores tracks at distinct paths, saving Starred and Rating as the context user's annotations.
+func putMatcherTracks(ctx context.Context, ds model.DataStore, tracks ...model.MediaFile) {
+	GinkgoHelper()
+	persistencetest.PutMediaFiles(ctx, ds, tracks...)
+	for _, mf := range tracks {
+		if mf.Starred {
+			Expect(ds.MediaFile().SetStar(ctx, true, mf.ID)).To(Succeed())
+		}
+		if mf.Rating > 0 {
+			Expect(ds.MediaFile().SetRating(ctx, mf.Rating, mf.ID)).To(Succeed())
+		}
 	}
-	return d.repo
-}
-
-func (d *ctxCapturingDataStore) lastMediaFileCtx() context.Context {
-	if d.repo == nil {
-		return nil
-	}
-	return d.repo.lastCtx
-}
-
-type ctxCapturingMediaFileRepo struct {
-	model.MediaFileRepository
-	lastCtx context.Context
-}
-
-func (r *ctxCapturingMediaFileRepo) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
-	r.lastCtx = ctx
-	return r.MediaFileRepository.GetAll(ctx, options...)
-}
-
-func (r *ctxCapturingMediaFileRepo) GetAllByTags(ctx context.Context, tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
-	r.lastCtx = ctx
-	return r.MediaFileRepository.GetAllByTags(ctx, tag, values, options...)
 }

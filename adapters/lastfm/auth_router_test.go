@@ -11,18 +11,19 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("auth_router", func() {
+	var ctx context.Context
 	var (
-		ctx        context.Context
-		ds         *tests.MockDataStore
-		userProps  *tests.MockedUserPropsRepo
+		ds         model.DataStore
 		httpClient *tests.FakeHttpClient
 		router     *Router
 	)
@@ -34,10 +35,10 @@ var _ = Describe("auth_router", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		userProps = &tests.MockedUserPropsRepo{}
-		ds = &tests.MockDataStore{
-			MockedProperty:  &tests.MockedPropertyRepo{},
-			MockedUserProps: userProps,
+		ctx := GinkgoT().Context()
+		ds = persistence.New(db.Db())
+		for _, id := range []string{victimID, attackerID} {
+			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: id})).To(Succeed())
 		}
 		auth.Init(ds)
 
@@ -53,7 +54,7 @@ var _ = Describe("auth_router", func() {
 	})
 
 	storedSessionKey := func(userID string) string {
-		key, _ := userProps.Get(GinkgoT().Context(), userID, sessionKeyProperty)
+		key, _ := ds.UserProps().Get(GinkgoT().Context(), userID, sessionKeyProperty)
 		return key
 	}
 

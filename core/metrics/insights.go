@@ -232,7 +232,8 @@ func buildStaticData(ctx context.Context) insights.Data {
 	data.Config.SessionTimeout = uint64(math.Trunc(conf.Server().SessionTimeout.Seconds()))
 	data.Config.SearchFullString = conf.Server().Search.FullString
 	data.Config.SearchBackend = conf.Server().Search.Backend
-	data.Config.RecentlyAddedByModTime = conf.Server().RecentlyAddedByModTime
+	data.Config.RecentlyAddedBy = conf.Server().RecentlyAddedBy
+	data.Config.RecentlyAddedByModTime = conf.Server().RecentlyAddedBy == consts.RecentlyAddedByModTime
 	data.Config.PreferSortTags = conf.Server().PreferSortTags
 	data.Config.BackupSchedule = conf.Server().Backup.Schedule
 	data.Config.BackupCount = conf.Server().Backup.Count

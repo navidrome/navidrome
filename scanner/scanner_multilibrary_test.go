@@ -3,8 +3,6 @@ package scanner_test
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"testing/fstest"
 	"time"
 
@@ -16,22 +14,22 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Scanner - Multi-Library", Ordered, func() {
+var _ = Describe("Scanner - Multi-Library", func() {
 	var ctx context.Context
 	var lib1, lib2 model.Library
-	var ds *tests.MockDataStore
+	var ds model.DataStore
+	var spy *scannerSpy
 	var s model.Scanner
 
 	createFS := func(path string, files fstest.MapFS) storagetest.FakeFS {
@@ -41,39 +39,19 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 		return fs
 	}
 
-	BeforeAll(func() {
-		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		// db.Db() is a process-wide singleton, so this dir may hold the open DB until
-		// the suite ends, and Windows can't delete an open file
-		tmpDir, err := os.MkdirTemp("", "scanner-test")
-		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
-		DeferCleanup(conf.SnapshotConfig())
-		conf.Update(func(c *conf.Options) {
-			c.DbPath = filepath.Join(tmpDir, "test-scanner-multilibrary.db?_journal_mode=WAL")
-		})
-		log.Warn("Using DB at " + conf.Server().DbPath)
-		db.Db().SetMaxOpenConns(1)
-	})
-
 	BeforeEach(func() {
-		DeferCleanup(conf.SnapshotConfig())
-		conf.Update(func(c *conf.Options) {
-			c.MusicFolder = "default:///music" // Use a distinct schema for the default library
-			c.DevExternalScanner = false
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
+		conf.Update(func(c *conf.Options) { c.DevExternalScanner = false })
+
+		// Storage registrations are global, so start every library empty, whatever earlier specs registered.
+		for _, scheme := range []string{"default", "rock", "jazz"} {
+			_ = createFS(scheme, fstest.MapFS{})
+		}
+
+		spy = &scannerSpy{}
+		ds = persistencetest.Overlay(persistence.New(db.Db()), func(ds model.DataStore) model.DataStore {
+			return &scannerSpyDS{DataStore: ds, spy: spy}
 		})
-
-		// Register an empty fake storage for the default library
-		emptyFS := storagetest.FakeFS{}
-		emptyFS.SetFiles(fstest.MapFS{})
-		storagetest.Register("default", &emptyFS)
-
-		db.Init(ctx)
-		DeferCleanup(func() {
-			Expect(tests.ClearDB(ctx)).To(Succeed())
-		})
-
-		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
 		// Create the admin user in the database to match the context
 		adminUser := model.User{
@@ -84,6 +62,8 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			NewPassword: "password",
 		}
 		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		// Use a distinct schema for the default library
+		persistencetest.SetLibraries(ctx, ds, "default:///music")
 
 		s = scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
@@ -629,12 +609,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			})
 
 			It("should propagate database errors and stop scanning", func() {
-				// Install mock repo that injects DB error
-				mfRepo := &mockMediaFileRepo{
-					MediaFileRepository:        ds.RealDS.MediaFile(),
-					GetMissingAndMatchingError: errors.New("database connection failed"),
-				}
-				ds.MockedMediaFile = mfRepo
+				spy.getMissingAndMatchingErr = errors.New("database connection failed")
 
 				// Scan should return the database error
 				Expect(runScanner(ctx, false)).To(MatchError(ContainSubstring("database connection failed")))
@@ -646,12 +621,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			})
 
 			It("should preserve error information in scanner properties", func() {
-				// Install mock repo that injects DB error
-				mfRepo := &mockMediaFileRepo{
-					MediaFileRepository:        ds.RealDS.MediaFile(),
-					GetMissingAndMatchingError: errors.New("critical database error"),
-				}
-				ds.MockedMediaFile = mfRepo
+				spy.getMissingAndMatchingErr = errors.New("critical database error")
 
 				// Attempt scan (should fail)
 				Expect(runScanner(ctx, false)).ToNot(Succeed())
@@ -846,9 +816,6 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 
 	Context("Per-library PID config", func() {
 		albumsOf := func(libID int) model.Albums {
-			// The mock datastore's GC is a no-op, so run the real one to purge the albums left
-			// empty by a regroup, as the scanner does in production
-			Expect(ds.RealDS.GC(ctx)).To(Succeed())
 			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"library_id": libID, "missing": false},
 				Sort:    "name",

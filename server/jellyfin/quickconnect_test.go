@@ -8,13 +8,16 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -31,7 +34,7 @@ var _ = Describe("QuickConnect", func() {
 	const finamp = `MediaBrowser Client="Finamp", Device="Pixel 7", DeviceId="dev-1", Version="1.0.0"`
 	var (
 		api   *Router
-		ds    *tests.MockDataStore
+		ds    model.DataStore
 		qc    quickconnect.QuickConnect
 		alice = model.User{ID: testID("alice"), UserName: "alice"}
 		bob   = model.User{ID: testID("bob"), UserName: "bob"}
@@ -41,11 +44,10 @@ var _ = Describe("QuickConnect", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
-		ds = &tests.MockDataStore{}
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		ur := ds.User().(*tests.MockedUserRepo)
 		for _, u := range []model.User{alice, bob, admin} {
-			Expect(ur.Put(GinkgoT().Context(), &u)).To(Succeed())
+			Expect(ds.User().Put(GinkgoT().Context(), &u)).To(Succeed())
 		}
 		qc = quickconnect.New()
 		api = &Router{ds: ds, quickConnect: qc}
@@ -295,7 +297,9 @@ var _ = Describe("QuickConnect", func() {
 		It("returns 500 when the user lookup fails", func() {
 			req := initiate()
 			_, _ = qc.Authorize(req.Code, alice.ID)
-			ds.User().(*tests.MockedUserRepo).Error = errors.New("db down")
+			api.ds = persistencetest.Stub(ds, persistencetest.Repos{User: func(r model.UserRepository) model.UserRepository {
+				return failingUserRepo{UserRepository: r, err: errors.New("db down")}
+			}})
 			Expect(redeemSecret(req.Secret).Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -847,16 +847,12 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			c.DataFolder = conf.NewDir(tmpDir)
 		})
 
-		// Setup mock DataStore with pre-enabled plugin
-		mockPluginRepo := tests.CreateMockPluginRepo()
-		mockPluginRepo.Permitted = true
-		mockPluginRepo.SetData(model.Plugins{{
+		dataStore := newTestDataStore(model.Plugin{
 			ID:      "test-taskqueue",
 			Path:    destPath,
 			SHA256:  hashHex,
 			Enabled: true,
-		}})
-		dataStore := &tests.MockDataStore{MockedPlugin: mockPluginRepo}
+		})
 
 		// Create and start manager
 		manager = &Manager{
@@ -1206,5 +1202,43 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
+	})
+})
+
+var _ = Describe("taskCallTimeout", func() {
+	BeforeEach(func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = time.Hour })
+	})
+
+	It("uses the default limit without a taskqueue permission", func() {
+		Expect(taskCallTimeout(nil)).To(Equal(defaultTimeout))
+	})
+
+	It("uses the default limit when the plugin asks for none", func() {
+		Expect(taskCallTimeout(&TaskQueuePermission{})).To(Equal(defaultTimeout))
+	})
+
+	It("uses the requested limit under the server cap", func() {
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 600})).To(Equal(10 * time.Minute))
+	})
+
+	It("caps the requested limit at the server option", func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = 5 * time.Minute })
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 3600})).To(Equal(5 * time.Minute))
+	})
+
+	It("keeps a request that is under a server cap with a fraction of a second", func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = 1500 * time.Millisecond })
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 1})).To(Equal(time.Second))
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 2})).To(Equal(1500 * time.Millisecond))
+	})
+
+	It("caps a huge request without overflowing", func() {
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: math.MaxInt})).To(Equal(time.Hour))
+	})
+
+	It("falls back to the default limit when the server option is not positive", func() {
+		conf.Update(func(c *conf.Options) { c.Plugins.MaxTaskDuration = 0 })
+		Expect(taskCallTimeout(&TaskQueuePermission{MaxTaskDuration: 3600})).To(Equal(defaultTimeout))
 	})
 })
