@@ -32,7 +32,7 @@
         "participants": "Ytterligare medverkande",
         "tags": "Ytterligare taggar",
         "mappedTags": "Mappade taggar",
-        "rawTags": "Omodifierade taggar",
+        "rawTags": "Taggar i filen",
         "bitDepth": "Bitdjup",
         "sampleRate": "Samplingsfrekvens",
         "missing": "Saknas",
@@ -66,7 +66,7 @@
         "genre": "Genre",
         "compilation": "Samlingsalbum",
         "year": "År",
-        "updatedAt": "Uppdaterad",
+        "updatedAt": "Uppdaterat",
         "comment": "Kommentar",
         "rating": "Betyg",
         "createdAt": "Tillagt",
@@ -74,16 +74,17 @@
         "originalDate": "Originaldatum",
         "releaseDate": "Utgivningsdatum",
         "releases": "Utgåva |||| Utgåvor",
-        "released": "Utgiven",
+        "released": "Utgivet",
         "recordLabel": "Skivbolag",
         "catalogNum": "Katalognummer",
-        "releaseType": "Typ",
+        "releaseType": "Typ av utgåva",
         "grouping": "Gruppering",
-        "media": "Media",
+        "media": "Medietyp",
         "mood": "Stämning",
         "date": "Inspelningsdatum",
         "missing": "Saknas",
-        "libraryName": "Bibliotek"
+        "libraryName": "Bibliotek",
+        "played": "Har spelats"
       },
       "actions": {
         "playAll": "Spela",
@@ -162,6 +163,7 @@
       "helperTexts": {
         "name": "Ändringar av ditt namn syns först vid nästa inloggning",
         "libraries": "Välj vilka bibliotek användaren ska ha tillgång till, eller lämna tomt för att använda standardbiblioteken",
+        "librariesEdit": "Välj vilka bibliotek användaren ska ha tillgång till",
         "scrobbleFilter": "Låtar som matchar dessa regler för smarta spellistor skickas inte till Last.fm, ListenBrainz eller scrobblingtillägg. Samma JSON-syntax och beteende som för smarta spellistor används. Exempel: {\"all\":[{\"lt\":{\"rating\":4}}]}. Lämna tomt för att scrobbla allt. Antalet spelningar som lagras lokalt påverkas inte."
       },
       "notifications": {
@@ -182,15 +184,38 @@
     },
     "player": {
       "name": "Spelare |||| Spelare",
+      "menuName": "Spelare och API-nycklar",
       "fields": {
         "name": "Namn",
         "transcodingId": "Omkodning",
         "maxBitRate": "Högsta bithastighet",
         "client": "Klient",
         "userName": "Användarnamn",
-        "lastSeen": "Senast sedd",
-        "reportRealPath": "Rapportera den faktiska sökvägen",
-        "scrobbleEnabled": "Scrobbla till externa tjänster"
+        "lastSeen": "Senast aktiv",
+        "reportRealPath": "Skicka filens faktiska sökväg till spelaren",
+        "scrobbleEnabled": "Scrobbla till externa tjänster",
+        "hasApiKey": "API-nyckel"
+      },
+      "actions": {
+        "generateApiKey": "Skapa API-nyckel",
+        "regenerateApiKey": "Skapa ny nyckel",
+        "revokeApiKey": "Återkalla",
+        "copyApiKey": "Kopiera"
+      },
+      "message": {
+        "apiKeyActive": "Spelaren har en API-nyckel. Ange nyckeln i appens fält för API-nyckel eller, om appen inte använder tokenbaserad autentisering, i lösenordsfältet.",
+        "apiKeyNone": "Spelaren saknar API-nyckel. Skapa en nyckel för att ansluta en app till spelaren.",
+        "apiKeyNoneOther": "Ingen API-nyckel.",
+        "apiKeyPending": "Kopiera nyckeln nu. Den sparas när du klickar på Spara och visas sedan inte igen.",
+        "apiKeyRevokePending": "API-nyckeln tas bort när du sparar.",
+        "deleteWithKeyTitle": "Ta bort spelaren",
+        "deleteWithKeyContent": "Spelaren har en API-nyckel. Om du tar bort spelaren kan appar som använder nyckeln inte längre ansluta med den."
+      },
+      "notifications": {
+        "apiKeyCopied": "API-nyckeln har kopierats till urklipp"
+      },
+      "validation": {
+        "apiKeyFormat": "API-nyckeln har ogiltigt format"
       }
     },
     "transcoding": {
@@ -217,17 +242,17 @@
         "songCount": "Låtar",
         "comment": "Kommentar",
         "sync": "Automatisk import",
-        "path": "Importera från",
+        "path": "Importkälla",
         "starred": "Favorit"
       },
       "actions": {
         "selectPlaylist": "Välj en spellista:",
-        "addNewPlaylist": "Skapa \"%{name}\"",
+        "addNewPlaylist": "Skapa ”%{name}”",
         "export": "Exportera",
         "makePublic": "Gör offentlig",
         "makePrivate": "Gör privat",
         "saveQueue": "Spara kön i en spellista",
-        "searchOrCreate": "Sök spellistor eller skriv för att skapa en ny...",
+        "searchOrCreate": "Sök spellistor eller skriv för att skapa en ny…",
         "pressEnterToCreate": "Tryck på Enter för att skapa en ny spellista",
         "removeFromSelection": "Ta bort från urvalet"
       },
@@ -306,12 +331,23 @@
         "totalSize": "Sammanlagd storlek",
         "totalDuration": "Längd",
         "defaultNewUsers": "Standard för nya användare",
-        "createdAt": "Skapad",
-        "updatedAt": "Uppdaterad"
+        "createdAt": "Skapat",
+        "updatedAt": "Uppdaterat",
+        "pidAlbum": "Gruppering av album",
+        "pidTrack": "Identifiering av spår"
       },
       "sections": {
         "basic": "Grundinformation",
-        "statistics": "Statistik"
+        "statistics": "Statistik",
+        "pid": "Beständiga identifierare"
+      },
+      "pid": {
+        "global": "Använd den globala inställningen (%{value})",
+        "folder": "Mapp (ett album per mapp)",
+        "custom": "Anpassad",
+        "spec": "Regel för beständigt ID",
+        "help": "Ange vilka taggar och attribut som identifierar ett album eller ett spår. Läs mer om syntaxen i",
+        "docs": "Beständiga identifierare"
       },
       "actions": {
         "scan": "Skanna biblioteket",
@@ -341,7 +377,9 @@
       "messages": {
         "deleteConfirm": "Är du säker på att du vill ta bort det här biblioteket? Alla tillhörande data och användarnas åtkomst till biblioteket tas bort.",
         "scanInProgress": "Skanning pågår...",
-        "noLibrariesAssigned": "Inga bibliotek har tilldelats den här användaren"
+        "noLibrariesAssigned": "Inga bibliotek har tilldelats den här användaren",
+        "pidChangeTitle": "Ändra beständiga identifierare?",
+        "pidChangeConfirm": "Album och spår i biblioteket grupperas om och en fullständig omskanning startar direkt. Spårens favoritmarkeringar, betyg och antal spelningar bevaras. Om ett tidigare album motsvarar ett nytt album förs dess favoritmarkeringar och betyg över till det nya albumet."
       }
     },
     "plugin": {
@@ -363,9 +401,9 @@
         "createdAt": "Installerat",
         "configKey": "Nyckel",
         "configValue": "Värde",
-        "allUsers": "Tillåt alla användare",
+        "allUsers": "Ge tillägget åtkomst till alla användares uppgifter",
         "selectedUsers": "Valda användare",
-        "allLibraries": "Tillåt alla bibliotek",
+        "allLibraries": "Ge tillägget åtkomst till alla bibliotek",
         "selectedLibraries": "Valda bibliotek",
         "allowWriteAccess": "Tillåt skrivåtkomst"
       },
@@ -403,13 +441,13 @@
         "configHelp": "Konfigurera tillägget med nyckel–värde-par. Lämna tomt om tillägget inte kräver någon konfiguration.",
         "clickPermissions": "Klicka på en behörighet för mer information",
         "noConfig": "Ingen konfiguration angiven",
-        "allUsersHelp": "När alternativet är aktiverat får tillägget åtkomst till alla användare, även de som skapas i framtiden.",
+        "allUsersHelp": "Tillägget får då även åtkomst till uppgifter om användare som skapas senare.",
         "noUsers": "Inga användare valda",
         "permissionReason": "Orsak",
-        "usersRequired": "Det här tillägget behöver åtkomst till användarinformation. Välj vilka användare tillägget får åtkomst till eller aktivera 'Tillåt alla användare'.",
+        "usersRequired": "Tillägget behöver läsa användaruppgifter. Välj vilka användare det får läsa uppgifter om eller aktivera ”Ge tillägget åtkomst till alla användares uppgifter”.",
         "allLibrariesHelp": "När alternativet är aktiverat får tillägget åtkomst till alla bibliotek, även de som skapas i framtiden.",
         "noLibraries": "Inga bibliotek valda",
-        "librariesRequired": "Det här tillägget behöver åtkomst till biblioteksinformation. Välj vilka bibliotek tillägget får åtkomst till eller aktivera 'Tillåt alla bibliotek'.",
+        "librariesRequired": "Tillägget behöver åtkomst till biblioteksinformation. Välj vilka bibliotek det får åtkomst till eller aktivera ”Ge tillägget åtkomst till alla bibliotek”.",
         "requiredHosts": "Värdar som krävs",
         "configValidationError": "Validering av konfigurationen misslyckades:",
         "schemaRenderError": "Kunde inte visa konfigurationsformuläret. Tilläggets schema kan vara ogiltigt.",
@@ -447,7 +485,7 @@
       "maxValue": "Får vara högst %{max}",
       "number": "Måste vara ett tal",
       "email": "Måste vara en giltig e-postadress",
-      "oneOf": "Måste vara något av: %{options}",
+      "oneOf": "Måste vara ett av följande värden: %{options}",
       "regex": "Måste matcha det reguljära uttrycket: %{pattern}",
       "unique": "Måste vara unikt",
       "url": "Måste vara en giltig URL"
@@ -498,7 +536,7 @@
       "not_found": "Hittades inte",
       "show": "%{name} #%{id}",
       "empty": "%{name}: inga poster ännu.",
-      "invite": "Vill du lägga till något?"
+      "invite": "Vill du lägga till en post?"
     },
     "input": {
       "file": {
@@ -533,7 +571,7 @@
       "no": "Nej",
       "not_found": "Antingen skrev du fel URL eller så följde du en ogiltig länk.",
       "yes": "Ja",
-      "unsaved_changes": "Vissa ändringar har inte sparats. Vill du verkligen ignorera dem?"
+      "unsaved_changes": "Vissa ändringar har inte sparats. Vill du fortsätta utan att spara dem?"
     },
     "navigation": {
       "no_results": "Inga resultat hittades",
@@ -586,18 +624,18 @@
       "musicbrainz": "Öppna i MusicBrainz"
     },
     "lastfmLink": "Läs mer...",
-    "listenBrainzLinkSuccess": "ListenBrainz har kopplats och scrobbling har aktiverats för användaren: %{user}",
+    "listenBrainzLinkSuccess": "ListenBrainz har kopplats och scrobbling har aktiverats för användaren %{user}",
     "listenBrainzLinkFailure": "Det gick inte att koppla ListenBrainz: %{error}",
     "listenBrainzUnlinkSuccess": "Kopplingen till ListenBrainz har tagits bort och scrobbling har inaktiverats",
     "listenBrainzUnlinkFailure": "Det gick inte att ta bort kopplingen till ListenBrainz",
     "downloadOriginalFormat": "Ladda ner i originalformat",
     "shareOriginalFormat": "Dela i originalformat",
-    "shareDialogTitle": "Dela %{resource} '%{name}'",
+    "shareDialogTitle": "Dela ”%{name}” (%{resource})",
     "shareBatchDialogTitle": "Dela 1 %{resource} |||| Dela %{smart_count} %{resource}",
-    "shareSuccess": "URL:en har kopierats till urklipp: %{url}",
-    "shareFailure": "Kunde inte kopiera URL:en %{url} till urklipp",
-    "downloadDialogTitle": "Ladda ner %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Kopiera till urklipp: Ctrl+C, Enter",
+    "shareSuccess": "Länken har kopierats till urklipp: %{url}",
+    "shareFailure": "Kunde inte kopiera länken %{url} till urklipp",
+    "downloadDialogTitle": "Ladda ner ”%{name}” (%{resource}, %{size})",
+    "shareCopyToClipboard": "Tryck på Ctrl+C för att kopiera och sedan på Retur.",
     "remove_missing_title": "Ta bort saknade filer",
     "remove_missing_content": "Är du säker på att du vill ta bort de valda saknade filerna från databasen? Alla referenser till dem, inklusive antal spelningar och betyg, tas bort permanent.",
     "remove_all_missing_title": "Ta bort alla saknade filer",
@@ -626,6 +664,11 @@
       "options": {
         "theme": "Tema",
         "language": "Språk",
+        "dateFormat": "Datumformat",
+        "dateFormats": {
+          "language": "Följ det valda språket",
+          "browser": "Följ webbläsarens inställningar"
+        },
         "defaultView": "Standardvy",
         "desktop_notifications": "Skrivbordsaviseringar",
         "lastfmScrobbling": "Scrobbla till Last.fm",
@@ -633,7 +676,7 @@
         "replaygain": "ReplayGain-läge",
         "preAmp": "Förförstärkning för ReplayGain (dB)",
         "gain": {
-          "none": "Inaktiverad",
+          "none": "Av",
           "album": "Använd albumets volymjustering",
           "track": "Använd låtens volymjustering"
         },
@@ -665,7 +708,7 @@
     "openText": "Öppna",
     "closeText": "Stäng",
     "notContentText": "Ingen musik",
-    "clickToPlayText": "Klicka för att spela",
+    "clickToPlayText": "Klicka för att spela upp",
     "clickToPauseText": "Klicka för att pausa",
     "nextTrackText": "Nästa låt",
     "previousTrackText": "Föregående låt",
@@ -681,7 +724,7 @@
     "playModeText": {
       "order": "I ordningsföljd",
       "orderLoop": "Upprepa alla",
-      "singleLoop": "Upprepa en låt",
+      "singleLoop": "Upprepa aktuell låt",
       "shufflePlay": "Blanda"
     }
   },
@@ -719,7 +762,7 @@
     "quickScan": "Snabb",
     "fullScan": "Fullständig",
     "serverUptime": "Serverns drifttid",
-    "serverDown": "OFFLINE",
+    "serverDown": "Kan inte nås",
     "scanType": "Senaste skanning",
     "status": "Skanningsfel",
     "elapsedTime": "Förfluten tid",
@@ -742,6 +785,6 @@
   "nowPlaying": {
     "title": "Spelas nu",
     "empty": "Inget spelas",
-    "minutesAgo": "%{smart_count} minut sedan |||| %{smart_count} minuter sedan"
+    "minutesAgo": "För %{smart_count} minut sedan |||| För %{smart_count} minuter sedan"
   }
 }
