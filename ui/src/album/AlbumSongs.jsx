@@ -211,8 +211,7 @@ const AlbumSongs = (props) => {
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
-      {props.pagination &&
-        React.cloneElement(props.pagination, listContext)}
+      {props.pagination && React.cloneElement(props.pagination, listContext)}
     </>
   )
 }
