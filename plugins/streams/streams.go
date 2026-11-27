@@ -58,15 +58,19 @@ func (c *Conv) WriterHandle(wc io.WriteCloser) uint32 { return register(c, wc, S
 // take and register get method expressions, not method values: c.s is nil when there is no call.
 func take[T io.Closer](c *Conv, h uint32, f func(Streams, uint32) (T, error)) T {
 	var zero T
-	if h == 0 || c.err != nil {
+	if h == 0 || c.s == nil {
 		return zero
 	}
 	v, err := f(c.s, h)
 	if err != nil {
-		c.err = err
+		c.Fail(err)
 		return zero
 	}
+	// Taken even after an error: the plugin handed it over, so Err must close it.
 	c.taken = append(c.taken, v)
+	if c.err != nil {
+		return zero
+	}
 	return v
 }
 
@@ -94,17 +98,23 @@ func (c *Conv) Fail(err error) {
 	}
 }
 
-// Err reports the first error. On success, taken streams now belong to the service and registered ones to the
-// plugin. On an error, both are closed: the service did not run, or the plugin will not get the handles.
+// Err reports the first error. On success, taken streams now belong to the service. On an error, taken and
+// registered streams are closed: the service did not run, or the plugin will not get the handles.
 func (c *Conv) Err() error {
 	if c.err != nil {
 		for _, t := range c.taken {
 			_ = t.Close()
 		}
-		for _, h := range c.registered {
-			c.s.Release(h)
-		}
+		c.Release()
 	}
-	c.taken, c.registered = nil, nil
+	c.taken = nil
 	return c.err
+}
+
+// Release closes the streams registered so far, for a response that never reaches the plugin.
+func (c *Conv) Release() {
+	for _, h := range c.registered {
+		c.s.Release(h)
+	}
+	c.registered = nil
 }

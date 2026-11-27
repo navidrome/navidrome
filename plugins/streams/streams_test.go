@@ -123,6 +123,27 @@ var _ = Describe("Conv", func() {
 		Expect(in.closes.Load()).To(Equal(int32(1)))
 	})
 
+	It("still takes and closes a valid handle passed after a failed one", func() {
+		in := &closeCounter{Reader: strings.NewReader("x")}
+		fs.readers[2] = in
+		conv := NewConv(ctx)
+		Expect(conv.Reader(9)).To(BeNil())
+		Expect(conv.Reader(2)).To(BeNil())
+		Expect(conv.Err()).To(MatchError("unknown stream handle"))
+		Expect(in.closes.Load()).To(Equal(int32(1)))
+		Expect(fs.readers).To(BeEmpty())
+	})
+
+	It("keeps registered outputs for Release after Err returns nil", func() {
+		out := &closeCounter{Reader: strings.NewReader("out")}
+		conv := NewConv(ctx)
+		Expect(conv.ReaderHandle(out)).ToNot(BeZero())
+		Expect(conv.Err()).To(Succeed())
+		conv.Release()
+		Expect(out.closes.Load()).To(Equal(int32(1)))
+		Expect(fs.registered).To(BeEmpty())
+	})
+
 	It("hands taken streams to the service once Err returns nil", func() {
 		in := &closeCounter{Reader: strings.NewReader("x")}
 		fs.readers[1] = in

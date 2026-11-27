@@ -188,7 +188,7 @@ func newStreamTestOpenHostFunction(service StreamTestService) extism.HostFunctio
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			streamtestWriteResponse(p, stack, resp)
+			streamtestWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -227,7 +227,7 @@ func newStreamTestCreateHostFunction(service StreamTestService) extism.HostFunct
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			streamtestWriteResponse(p, stack, resp)
+			streamtestWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -271,7 +271,7 @@ func newStreamTestDrainHostFunction(service StreamTestService) extism.HostFuncti
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			streamtestWriteResponse(p, stack, resp)
+			streamtestWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -315,7 +315,7 @@ func newStreamTestWrapHostFunction(service StreamTestService) extism.HostFunctio
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			streamtestWriteResponse(p, stack, resp)
+			streamtestWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -342,7 +342,7 @@ func newStreamTestBlockHostFunction(service StreamTestService) extism.HostFuncti
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			streamtestWriteResponse(p, stack, resp)
+			streamtestWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -396,6 +396,19 @@ func streamtestWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) 
 		return
 	}
 	stack[0] = respPtr
+}
+
+// streamtestWriteStreamResponse writes a response with stream handles, and releases the streams
+// when it cannot: the plugin would never get the handles.
+func streamtestWriteStreamResponse(p *extism.CurrentPlugin, stack []uint64, resp any, conv *streams.Conv) {
+	respBytes, err := json.Marshal(resp)
+	if err == nil {
+		stack[0], err = p.WriteBytes(respBytes)
+	}
+	if err != nil {
+		conv.Release()
+		streamtestWriteError(p, stack, err)
+	}
 }
 
 // streamtestWriteError writes an error response to plugin memory.

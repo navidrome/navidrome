@@ -170,7 +170,7 @@ func newBlobOpenHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			blobWriteResponse(p, stack, resp)
+			blobWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -209,7 +209,7 @@ func newBlobCreateHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			blobWriteResponse(p, stack, resp)
+			blobWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -253,7 +253,7 @@ func newBlobPutHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			blobWriteResponse(p, stack, resp)
+			blobWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -298,7 +298,7 @@ func newBlobCopyHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			blobWriteResponse(p, stack, resp)
+			blobWriteStreamResponse(p, stack, resp, conv)
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -318,6 +318,19 @@ func blobWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
 		return
 	}
 	stack[0] = respPtr
+}
+
+// blobWriteStreamResponse writes a response with stream handles, and releases the streams
+// when it cannot: the plugin would never get the handles.
+func blobWriteStreamResponse(p *extism.CurrentPlugin, stack []uint64, resp any, conv *streams.Conv) {
+	respBytes, err := json.Marshal(resp)
+	if err == nil {
+		stack[0], err = p.WriteBytes(respBytes)
+	}
+	if err != nil {
+		conv.Release()
+		blobWriteError(p, stack, err)
+	}
 }
 
 // blobWriteError writes an error response to plugin memory.

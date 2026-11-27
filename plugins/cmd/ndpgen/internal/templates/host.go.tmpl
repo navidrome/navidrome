@@ -154,8 +154,10 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
 				return
 			}
-{{- end}}
+			{{$.Service.Name | lower}}WriteStreamResponse(p, stack, resp, conv)
+{{- else}}
 			{{$.Service.Name | lower}}WriteResponse(p, stack, resp)
+{{- end}}
 {{- else if .HasError}}
 			if svcErr := service.{{.Name}}(ctx{{range .Params}}, {{hostArg .}}{{end}}); svcErr != nil {
 				{{$.Service.Name | lower}}WriteError(p, stack, svcErr)
@@ -193,6 +195,22 @@ func {{.Service.Name | lower}}WriteResponse(p *extism.CurrentPlugin, stack []uin
 	}
 	stack[0] = respPtr
 }
+
+{{- if .Service.HasStreams}}
+
+// {{.Service.Name | lower}}WriteStreamResponse writes a response with stream handles, and releases the streams
+// when it cannot: the plugin would never get the handles.
+func {{.Service.Name | lower}}WriteStreamResponse(p *extism.CurrentPlugin, stack []uint64, resp any, conv *streams.Conv) {
+	respBytes, err := json.Marshal(resp)
+	if err == nil {
+		stack[0], err = p.WriteBytes(respBytes)
+	}
+	if err != nil {
+		conv.Release()
+		{{.Service.Name | lower}}WriteError(p, stack, err)
+	}
+}
+{{- end}}
 
 // {{.Service.Name | lower}}WriteError writes an error response to plugin memory.
 func {{.Service.Name | lower}}WriteError(p *extism.CurrentPlugin, stack []uint64, err error) {
