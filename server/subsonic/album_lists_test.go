@@ -71,7 +71,7 @@ var _ = Describe("Album Lists", func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})
 
@@ -79,7 +79,7 @@ var _ = Describe("Album Lists", func() {
 		return New(persistencetest.Stub(ds, persistencetest.Repos{Album: func(r model.AlbumRepository) model.AlbumRepository {
 			return failingAlbumGetAllRepo{r}
 		}}),
-			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	}
 
 	Describe("GetAlbumList", func() {

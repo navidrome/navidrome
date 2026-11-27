@@ -1063,6 +1063,18 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("Waveform", func() {
+		BeforeEach(func() {
+			response.Waveform = &Waveform{ID: "1", Duration: 12.5, Interval: 2500, Samples: 5, Levels: []float64{-120, -48.2, -31.42, -9.87, -6.02}}
+		})
+		It("should match .XML", func() {
+			Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+		It("should match .JSON", func() {
+			Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+	})
+
 	Describe("LyricsList", func() {
 		BeforeEach(func() {
 			response.LyricsList = &LyricsList{}

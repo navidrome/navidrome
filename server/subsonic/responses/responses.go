@@ -64,6 +64,7 @@ type Subsonic struct {
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
 	TokenInfo              *TokenInfo              `xml:"tokenInfo,omitempty"               json:"tokenInfo,omitempty"`
+	Waveform               *Waveform               `xml:"waveform,omitempty"                json:"waveform,omitempty"`
 }
 
 const (
@@ -588,6 +589,16 @@ type StructuredLyric struct {
 type StructuredLyrics []StructuredLyric
 type LyricsList struct {
 	StructuredLyrics []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
+}
+
+// Waveform holds a song's loudness envelope: each level is the RMS level, in dBFS (-120 to 0),
+// of a slice of Interval milliseconds.
+type Waveform struct {
+	ID       string    `xml:"id,attr"       json:"id"`
+	Duration float32   `xml:"duration,attr" json:"duration"`
+	Interval float64   `xml:"interval,attr" json:"interval"`
+	Samples  int32     `xml:"samples,attr"  json:"samples"`
+	Levels   []float64 `xml:"levels"        json:"levels"`
 }
 
 type OpenSubsonicExtension struct {

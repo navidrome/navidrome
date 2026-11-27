@@ -48,7 +48,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		ds = persistence.New(db.Db())
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	Describe("Scrobble", func() {

@@ -458,5 +458,6 @@ func newRouter(pb playback.PlaybackServer) *subsonic.Router {
 		lyrics.NewLyrics(ds, nil),
 		decider,
 		nil,
+		nil,
 	)
 }

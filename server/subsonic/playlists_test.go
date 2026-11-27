@@ -28,7 +28,7 @@ var _ = Describe("buildPlaylist", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = struct{ model.DataStore }{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	Describe("normal playlist", func() {
@@ -333,7 +333,7 @@ var _ = Describe("UpdatePlaylist", func() {
 	BeforeEach(func() {
 		ds = struct{ model.DataStore }{}
 		playlists = &fakePlaylists{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, playlists, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, playlists, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	It("clears the comment when parameter is empty", func() {
@@ -386,7 +386,7 @@ var _ = Describe("playlist track limit", func() {
 
 	BeforeEach(func() {
 		fp = &fakePlaylists{}
-		router = New(struct{ model.DataStore }{}, nil, nil, nil, nil, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil)
+		router = New(struct{ model.DataStore }{}, nil, nil, nil, nil, nil, nil, nil, fp, nil, nil, nil, nil, nil, nil, nil, nil)
 		conf.Update(func(c *conf.Options) { c.DevMaxPlaylistTracksPerRequest = 3 })
 	})
 

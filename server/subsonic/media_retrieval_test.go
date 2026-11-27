@@ -34,7 +34,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		ds = persistence.New(db.Db())
 		useRepoRootAsLibrary(ctx, ds)
 		artwork = &fakeArtwork{data: "image data"}
-		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
+		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil, nil)
 		w = httptest.NewRecorder()
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.lrc" })
 	})

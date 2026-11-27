@@ -1,0 +1,20 @@
+{
+  "status": "ok",
+  "version": "1.16.1",
+  "type": "navidrome",
+  "serverVersion": "v0.55.0",
+  "openSubsonic": true,
+  "waveform": {
+    "id": "1",
+    "duration": 12.5,
+    "interval": 2500,
+    "samples": 5,
+    "levels": [
+      -120,
+      -48.2,
+      -31.42,
+      -9.87,
+      -6.02
+    ]
+  }
+}
