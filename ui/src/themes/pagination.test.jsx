@@ -6,65 +6,50 @@ import { describe, it, expect } from 'vitest'
 import themes from './index'
 
 const VISUAL_PROPS =
-  /^(color|background(-color)?|border(-(top|right|bottom|left))?(-(color|style|width))?|font-weight|text-decoration.*|box-shadow|outline.*|opacity)$/
+  /^(color|background|border(?!-radius)|font-weight|text-decoration|box-shadow|outline|opacity)/
 
-const specificity = (selector) => [
-  (selector.match(/#[\w-]+/g) || []).length,
-  (selector.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) || []).length,
-  (selector.match(/(^|[\s>+~])[a-z][\w-]*/gi) || []).length,
-]
+const specificity = (selector) =>
+  [
+    /#[\w-]+/g,
+    /\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g,
+    /(^|[\s>+~])[a-z][\w-]*/gi,
+  ].map((re) => (selector.match(re) || []).length)
 
-const compare = (a, b) => {
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i]
-  return 0
-}
-
-const matchingSpecificity = (el, selectorText) => {
-  const matches = selectorText
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => {
-      try {
-        return el.matches(s)
-      } catch {
-        return false
-      }
-    })
-    .map(specificity)
-    .sort(compare)
-  return matches.pop()
+const outranksOrTies = (a, b) => {
+  const i = a.findIndex((v, k) => v !== b[k])
+  return i === -1 || a[i] > b[i]
 }
 
 // jsdom's getComputedStyle ignores most JSS rules, and document.styleSheets is in creation
 // order, not DOM order, so resolve the cascade by hand from the <style> tags
 const visualStyle = (el) => {
-  const winners = {}
-  let order = 0
-  for (const style of Array.from(document.querySelectorAll('style'))) {
-    for (const rule of Array.from(style.sheet?.cssRules ?? [])) {
-      order++
-      if (!rule.selectorText) continue
-      const spec = matchingSpecificity(el, rule.selectorText)
-      if (!spec) continue
+  const style = {}
+  const rank = {}
+  for (const tag of Array.from(document.querySelectorAll('style'))) {
+    for (const rule of Array.from(tag.sheet?.cssRules ?? [])) {
+      let matches = false
+      try {
+        matches = !!rule.selectorText && el.matches(rule.selectorText)
+      } catch {
+        // jsdom rejects vendor pseudo-elements such as ::-moz-focus-inner
+      }
+      if (!matches) continue
+      const spec = specificity(rule.selectorText)
       for (const prop of Array.from(rule.style)) {
         if (!VISUAL_PROPS.test(prop)) continue
-        const important = rule.style.getPropertyPriority(prop) === 'important'
-        const rank = [important ? 1 : 0, ...spec, order]
-        if (!winners[prop] || compare(rank, winners[prop].rank) >= 0) {
-          winners[prop] = { rank, value: rule.style.getPropertyValue(prop) }
-        }
+        if (rank[prop] && !outranksOrTies(spec, rank[prop])) continue
+        style[prop] = rule.style.getPropertyValue(prop)
+        rank[prop] = spec
       }
     }
   }
-  return Object.fromEntries(
-    Object.entries(winners).map(([prop, { value }]) => [prop, value]),
-  )
+  return style
 }
 
 describe('Pagination current page', () => {
-  it.each(Object.keys(themes))('stands out in %s', (themeName) => {
+  it.each(Object.entries(themes))('stands out in %s', (themeName, theme) => {
     render(
-      <ThemeProvider theme={createMuiTheme(themes[themeName])}>
+      <ThemeProvider theme={createMuiTheme(theme)}>
         <Pagination
           page={3}
           perPage={10}
@@ -74,10 +59,8 @@ describe('Pagination current page', () => {
         />
       </ThemeProvider>,
     )
-    const look = (name) => {
-      const button = screen.getByRole('button', { name })
-      return [visualStyle(button), visualStyle(button.firstChild)]
-    }
-    expect(look('3')).not.toEqual(look('4'))
+    const current = visualStyle(screen.getByRole('button', { name: '3' }))
+    const other = visualStyle(screen.getByRole('button', { name: '4' }))
+    expect(current).not.toEqual(other)
   })
 })
