@@ -55,8 +55,7 @@ func (t *streamTable) newScope(ctx context.Context) (*callScope, error) {
 	if t.closed {
 		return nil, errPluginUnloaded
 	}
-	s := &callScope{table: t, ctxErr: ctx.Err, done: make(chan struct{}), entries: map[uint32]*streamBackend{},
-		held: map[*streamBackend]struct{}{}}
+	s := &callScope{table: t, ctxErr: ctx.Err, done: make(chan struct{}), entries: map[uint32]*streamBackend{}}
 	t.scopes[s] = struct{}{}
 	return s, nil
 }
@@ -166,8 +165,11 @@ func (s *callScope) take(h uint32, need streamRights) (*streamBackend, error) {
 		return nil, err
 	}
 	delete(s.entries, h)
+	if s.held == nil {
+		s.held = map[*streamBackend]struct{}{}
+	}
 	s.held[b] = struct{}{}
-	b.release = func() { s.releaseHeld(b) }
+	b.heldBy = s
 	return b, nil
 }
 
@@ -186,9 +188,9 @@ func (s *callScope) detach(h uint32) (*streamBackend, error) {
 	if err := s.checkOpenLocked(); err != nil {
 		return nil, err
 	}
-	b, ok := s.entries[h]
-	if !ok {
-		return nil, errUnknownStream
+	b, err := s.entryLocked(h, 0)
+	if err != nil {
+		return nil, err
 	}
 	delete(s.entries, h)
 	s.table.open--
@@ -252,8 +254,7 @@ func withCallScope(ctx context.Context, s *callScope) context.Context {
 }
 
 func callScopeFrom(ctx context.Context) *callScope {
-	s, _ := streams.From(ctx)
-	cs, _ := s.(*callScope)
+	cs, _ := streams.From(ctx).(*callScope)
 	return cs
 }
 
@@ -316,7 +317,7 @@ type streamBackend struct {
 
 	closeOnce sync.Once
 	closeErr  error
-	release   func() // set by the scope when host code takes the stream
+	heldBy    *callScope // set when host code takes the stream, cleared once it is closed
 }
 
 func newReadStream(rc io.ReadCloser) *streamBackend {
@@ -385,8 +386,9 @@ func (b *streamBackend) Close() error {
 		if b.closeErr == nil && b.w != nil {
 			b.closeErr = b.retainedErr()
 		}
-		if b.release != nil {
-			b.release()
+		if b.heldBy != nil {
+			b.heldBy.releaseHeld(b)
+			b.heldBy = nil
 		}
 	})
 	return b.closeErr

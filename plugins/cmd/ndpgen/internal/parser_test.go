@@ -405,10 +405,8 @@ type BlobService interface {
 			Expect(open.Params[0].IsStream(svc)).To(BeFalse())
 
 			Expect(put.HasStreamParams(svc)).To(BeTrue())
-			Expect(put.HasStreamReturns(svc)).To(BeTrue())
 			Expect(put.HasStreams(svc)).To(BeTrue())
 			Expect(open.HasStreamParams(svc)).To(BeFalse())
-			Expect(open.HasStreamReturns(svc)).To(BeTrue())
 			Expect(open.HasStreams(svc)).To(BeTrue())
 		})
 

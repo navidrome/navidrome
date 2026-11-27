@@ -54,7 +54,7 @@ func downloadToWire(v Download) (wireDownload, error) {
 	var err error
 	w.Size = v.Size
 	if w.Body, err = stream.HandleOf(v.Body); err != nil {
-		return wireDownload{}, err
+		return w, err
 	}
 	return w, nil
 }
@@ -96,7 +96,7 @@ func uploadToWire(v Upload) (wireUpload, error) {
 	var err error
 	w.Name = v.Name
 	if w.Body, err = stream.HandleOf(v.Body); err != nil {
-		return wireUpload{}, err
+		return w, err
 	}
 	return w, nil
 }

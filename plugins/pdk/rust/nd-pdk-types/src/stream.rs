@@ -143,8 +143,9 @@ pub mod optional {
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Stream>, D::Error> {
-        let h = Option::<u32>::deserialize(d)?.unwrap_or(0);
-        Ok((h != 0).then(|| Stream::from_handle(h)))
+        Ok(Option::<u32>::deserialize(d)?
+            .filter(|&h| h != 0)
+            .map(Stream::from_handle))
     }
 }
 

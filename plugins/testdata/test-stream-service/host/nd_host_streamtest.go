@@ -55,7 +55,7 @@ func wrapRequestToWire(v WrapRequest) (wireWrapRequest, error) {
 	var err error
 	w.Prefix = v.Prefix
 	if w.Body, err = stream.HandleOf(v.Body); err != nil {
-		return wireWrapRequest{}, err
+		return w, err
 	}
 	return w, nil
 }
@@ -97,7 +97,7 @@ func wrapResponseToWire(v WrapResponse) (wireWrapResponse, error) {
 	var err error
 	w.Size = v.Size
 	if w.Body, err = stream.HandleOf(v.Body); err != nil {
-		return wireWrapResponse{}, err
+		return w, err
 	}
 	return w, nil
 }

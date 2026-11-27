@@ -25,9 +25,9 @@ func WithStreams(ctx context.Context, s Streams) context.Context {
 	return context.WithValue(ctx, streamsKey{}, s)
 }
 
-func From(ctx context.Context) (Streams, bool) {
-	s, ok := ctx.Value(streamsKey{}).(Streams)
-	return s, ok
+func From(ctx context.Context) Streams {
+	s, _ := ctx.Value(streamsKey{}).(Streams)
+	return s
 }
 
 // Conv converts the handles of one host function call. After the first error it converts nothing more and
@@ -40,8 +40,8 @@ type Conv struct {
 }
 
 func NewConv(ctx context.Context) *Conv {
-	s, ok := From(ctx)
-	if !ok {
+	s := From(ctx)
+	if s == nil {
 		return &Conv{err: errNoCall}
 	}
 	return &Conv{s: s}

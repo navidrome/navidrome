@@ -411,9 +411,7 @@ var _ = Describe("streamTable", func() {
 		It("is found through the call ctx", func() {
 			s := newScope()
 			Expect(callScopeFrom(withCallScope(ctx, s))).To(BeIdenticalTo(s))
-			got, ok := streams.From(withCallScope(ctx, s))
-			Expect(ok).To(BeTrue())
-			Expect(got).To(BeIdenticalTo(s))
+			Expect(streams.From(withCallScope(ctx, s))).To(BeIdenticalTo(s))
 		})
 	})
 })

@@ -337,17 +337,12 @@ type Method struct {
 
 // HasStreams reports whether the method takes or returns streams, directly or via a stream struct.
 func (m Method) HasStreams(svc Service) bool {
-	return m.HasStreamParams(svc) || m.HasStreamReturns(svc)
+	return m.HasStreamParams(svc) || slices.ContainsFunc(m.Returns, func(p Param) bool { return p.IsStream(svc) })
 }
 
 // HasStreamParams reports whether any parameter is a stream or a stream struct.
 func (m Method) HasStreamParams(svc Service) bool {
 	return slices.ContainsFunc(m.Params, func(p Param) bool { return p.IsStream(svc) })
-}
-
-// HasStreamReturns reports whether any result is a stream or a stream struct.
-func (m Method) HasStreamReturns(svc Service) bool {
-	return slices.ContainsFunc(m.Returns, func(p Param) bool { return p.IsStream(svc) })
 }
 
 // FunctionName returns the Extism host function export name.
@@ -476,17 +471,7 @@ func zeroValue(typ string) string {
 		typ == "uint", typ == "uint8", typ == "uint16", typ == "uint32", typ == "uint64",
 		typ == "float32", typ == "float64":
 		return "0"
-	case typ == "[]byte":
-		return "nil"
-	case strings.HasPrefix(typ, "[]"):
-		return "nil"
-	case strings.HasPrefix(typ, "map["):
-		return "nil"
-	case strings.HasPrefix(typ, "*"):
-		return "nil"
-	case typ == "any", typ == "interface{}":
-		return "nil"
-	case streamKind(typ) != "":
+	case isNilableType(typ):
 		return "nil"
 	default:
 		// For custom struct types, return empty struct
@@ -803,23 +788,7 @@ func toRustType(goType string, knownStructs map[string]bool, shared map[string]s
 	}
 	// Handle map types
 	if strings.HasPrefix(goType, "map[") {
-		// Extract key and value types from map[K]V
-		rest := goType[4:] // Remove "map["
-		depth := 1
-		keyEnd := 0
-		for i, r := range rest {
-			if r == '[' {
-				depth++
-			} else if r == ']' {
-				depth--
-				if depth == 0 {
-					keyEnd = i
-					break
-				}
-			}
-		}
-		keyType := rest[:keyEnd]
-		valueType := rest[keyEnd+1:]
+		keyType, valueType := splitMapType(goType)
 		return "std::collections::HashMap<" + toRustType(keyType, knownStructs, shared) + ", " + toRustType(valueType, knownStructs, shared) + ">"
 	}
 

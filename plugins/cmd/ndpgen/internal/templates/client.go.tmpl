@@ -49,7 +49,6 @@ type {{.Name}} struct {
 }
 {{- end}}
 {{- range .Service.StreamStructs}}
-{{- $st := .}}
 
 // wire{{.Name}} is the wire form of {{.Name}}: streams travel as handles.
 type wire{{.Name}} struct {
@@ -80,7 +79,7 @@ func {{lowerFirst .Name}}ToWire(v {{.Name}}) (wire{{.Name}}, error) {
 {{- range .Fields}}
 {{- if .StreamKind}}
 	if w.{{.Name}}, err = stream.HandleOf(v.{{.Name}}); err != nil {
-		return wire{{$st.Name}}{}, err
+		return w, err
 	}
 {{- else}}
 	w.{{.Name}} = v.{{.Name}}

@@ -25,12 +25,8 @@ func hostFuncMap(svc Service) template.FuncMap {
 		"hasStreamParams": func(m Method) bool { return m.HasStreamParams(svc) },
 		"isStreamParam":   func(p Param) bool { return p.IsStream(svc) },
 		"wireType":        func(goType string) string { return wireType(goType, svc) },
-		"fieldFromWire": func(f FieldDef) string {
-			return wireConv(f.Type, svc, "w."+f.Name, "FromWire", "conv", "conv."+f.StreamKind())
-		},
-		"fieldToWire": func(f FieldDef) string {
-			return wireConv(f.Type, svc, "v."+f.Name, "ToWire", "conv", "conv."+f.StreamKind()+"Handle")
-		},
+		"fieldFromWire":   func(f FieldDef) string { return wireConv(f.Type, svc, "w."+f.Name, false, true) },
+		"fieldToWire":     func(f FieldDef) string { return wireConv(f.Type, svc, "v."+f.Name, true, true) },
 		"hostArg": func(p Param) string {
 			if p.IsStream(svc) {
 				return "arg" + strings.Title(p.Name)
@@ -38,11 +34,9 @@ func hostFuncMap(svc Service) template.FuncMap {
 			return "req." + strings.Title(p.Name)
 		},
 		"hostParamExpr": func(p Param) string {
-			return wireConv(p.Type, svc, "req."+strings.Title(p.Name), "FromWire", "conv", "conv."+p.StreamKind())
+			return wireConv(p.Type, svc, "req."+strings.Title(p.Name), false, true)
 		},
-		"hostReturnExpr": func(p Param) string {
-			return wireConv(p.Type, svc, strings.ToLower(p.Name), "ToWire", "conv", "conv."+p.StreamKind()+"Handle")
-		},
+		"hostReturnExpr": func(p Param) string { return wireConv(p.Type, svc, strings.ToLower(p.Name), true, true) },
 	}
 }
 
@@ -61,49 +55,58 @@ func wireType(goType string, svc Service) string {
 	return goType
 }
 
-// wireConv converts expr to or from its wire form (dir is "ToWire" or "FromWire"): stream structs go through
-// their generated converters, called with convArg when set, and streams through the scalar function.
-func wireConv(goType string, svc Service, expr, dir, convArg, scalar string) string {
+// wireConv converts expr to or from its wire form. Stream structs go through their generated converters, and
+// streams through the call's Conv on the host side or the stream package in the client.
+func wireConv(goType string, svc Service, expr string, toWire, host bool) string {
+	dir := "FromWire"
+	if toWire {
+		dir = "ToWire"
+	}
 	if isStreamStruct(goType, svc) {
 		name, isPtr := strings.CutPrefix(goType, "*")
 		fn := lowerFirst(name)
 		if isPtr {
 			fn += "Ptr"
 		}
-		if convArg != "" {
-			expr += ", " + convArg
+		if host {
+			expr += ", conv"
 		}
 		return fn + dir + "(" + expr + ")"
 	}
-	if streamKind(goType) == "" {
+	kind := streamKind(goType)
+	switch {
+	case kind == "":
 		return expr
+	case host && toWire:
+		return "conv." + kind + "Handle(" + expr + ")"
+	case host:
+		return "conv." + kind + "(" + expr + ")"
+	case toWire:
+		return "stream.HandleOf(" + expr + ")"
+	default:
+		return "stream." + kind + "(" + expr + ")"
 	}
-	return scalar + "(" + expr + ")"
 }
 
 // clientFuncMap returns the template functions for client code generation.
 // Uses private (lowercase) type names for request/response structs.
 func clientFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
-		"lower":           strings.ToLower,
-		"title":           strings.Title,
-		"exportName":      func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":     func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
-		"responseType":    func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
-		"formatDoc":       formatDoc,
-		"mockReturnBody":  mockReturnBody,
-		"lowerFirst":      lowerFirst,
-		"hasStreamParams": func(m Method) bool { return m.HasStreamParams(svc) },
-		"isStreamParam":   func(p Param) bool { return p.IsStream(svc) },
-		"wireType":        func(goType string) string { return wireType(goType, svc) },
-		"fieldFromWire": func(f FieldDef) string {
-			return wireConv(f.Type, svc, "w."+f.Name, "FromWire", "", "stream."+f.StreamKind())
-		},
-		"clientParamToWire": func(p Param) string {
-			return wireConv(p.Type, svc, p.Name, "ToWire", "", "stream.HandleOf")
-		},
+		"lower":             strings.ToLower,
+		"title":             strings.Title,
+		"exportName":        func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":       func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
+		"responseType":      func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
+		"formatDoc":         formatDoc,
+		"mockReturnBody":    mockReturnBody,
+		"lowerFirst":        lowerFirst,
+		"hasStreamParams":   func(m Method) bool { return m.HasStreamParams(svc) },
+		"isStreamParam":     func(p Param) bool { return p.IsStream(svc) },
+		"wireType":          func(goType string) string { return wireType(goType, svc) },
+		"fieldFromWire":     func(f FieldDef) string { return wireConv(f.Type, svc, "w."+f.Name, false, false) },
+		"clientParamToWire": func(p Param) string { return wireConv(p.Type, svc, p.Name, true, false) },
 		"clientReturnExpr": func(p Param) string {
-			return wireConv(p.Type, svc, "response."+strings.Title(p.Name), "FromWire", "", "stream."+p.StreamKind())
+			return wireConv(p.Type, svc, "response."+strings.Title(p.Name), false, false)
 		},
 	}
 }

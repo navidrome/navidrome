@@ -85,11 +85,8 @@ var _ = Describe("Conv", func() {
 	})
 
 	It("carries the call's streams in ctx", func() {
-		got, ok := From(ctx)
-		Expect(ok).To(BeTrue())
-		Expect(got).To(BeIdenticalTo(fs))
-		_, ok = From(GinkgoT().Context())
-		Expect(ok).To(BeFalse())
+		Expect(From(ctx)).To(BeIdenticalTo(fs))
+		Expect(From(GinkgoT().Context())).To(BeNil())
 	})
 
 	It("maps handle 0 to nil and nil to handle 0", func() {
