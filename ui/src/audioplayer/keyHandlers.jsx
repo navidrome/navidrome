@@ -1,3 +1,5 @@
+import history from '../history'
+
 const keyHandlers = (audioInstance, playerState) => {
   const nextSong = () => {
     const idx = playerState.queue.findIndex(
@@ -26,7 +28,7 @@ const keyHandlers = (audioInstance, playerState) => {
       if (!e.metaKey && prevSong()) audioInstance && audioInstance.playPrev()
     },
     CURRENT_SONG: () => {
-      window.location.href = `#/album/${playerState.current?.song.albumId}/show`
+      history.push(`/album/${playerState.current?.song.albumId}/show`)
     },
     NEXT_SONG: (e) => {
       if (!e.metaKey && nextSong()) audioInstance && audioInstance.playNext()
