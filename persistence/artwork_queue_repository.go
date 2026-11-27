@@ -50,6 +50,21 @@ func (r *artworkQueueRepository) Enqueue(ctx context.Context, items ...model.Art
 		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, items)
 }
 
+// RestartIfQueued's new retry_at fails an in-flight worker's DeleteIfUnchanged, so the row outlives a
+// stale result. Keep the reset in step with Enqueue's conflict clause.
+func (r *artworkQueueRepository) RestartIfQueued(ctx context.Context, kind model.Kind, ids ...string) error {
+	now := time.Now()
+	for chunk := range slices.Chunk(ids, artworkBatchSize) {
+		upd := Update(r.tableName).
+			Set("retry_at", now).Set("attempts", 0).Set("enqueued_at", now).Set("trace", "[]").
+			Where(Eq{"item_kind": kind.Prefix(), "item_id": chunk})
+		if _, err := r.executeSQL(ctx, upd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *artworkQueueRepository) EnqueuePreservingBackoff(ctx context.Context, items ...model.ArtworkQueueItem) error {
 	return r.enqueue(ctx, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority)`, items)

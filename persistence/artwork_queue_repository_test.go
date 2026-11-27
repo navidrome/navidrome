@@ -183,6 +183,44 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Attempts).To(BeZero())
 	})
 
+	Describe("RestartIfQueued", func() {
+		It("makes a stale settle of the in-flight attempt keep the row", func() {
+			Expect(repo.Enqueue(ctx, item("mf", "t1", model.ArtworkPriorityBump))).To(Succeed())
+			seen, err := repo.DequeueBatch(ctx, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(seen).To(HaveLen(1))
+
+			Expect(repo.RestartIfQueued(ctx, model.KindMediaFileArtwork, "t1")).To(Succeed())
+
+			Expect(repo.DeleteIfUnchanged(ctx, "mf", "t1", model.ImageTypePrimary, seen[0].RetryAt)).To(Succeed())
+			Expect(repo.Get(ctx, model.KindMediaFileArtwork, "t1", model.ImageTypePrimary)).ToNot(BeNil())
+		})
+
+		It("makes a backing-off row eligible now, with a fresh retry budget", func() {
+			Expect(repo.Enqueue(ctx, item("mf", "t2", model.ArtworkPriorityBump))).To(Succeed())
+			backOff("mf", "t2", time.Now().Add(time.Hour))
+			Expect(repo.DequeueBatch(ctx, 10)).To(BeEmpty())
+
+			Expect(repo.RestartIfQueued(ctx, model.KindMediaFileArtwork, "t2")).To(Succeed())
+
+			got, err := repo.DequeueBatch(ctx, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got).To(HaveLen(1))
+			Expect(got[0].Attempts).To(BeZero())
+			Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump))
+		})
+
+		It("queues nothing for an item that is not queued, or of another kind", func() {
+			Expect(repo.Enqueue(ctx, item("al", "t3", model.ArtworkPriorityScan))).To(Succeed())
+			backOff("al", "t3", time.Now().Add(time.Hour))
+
+			Expect(repo.RestartIfQueued(ctx, model.KindMediaFileArtwork, "t3", "t4")).To(Succeed())
+
+			Expect(repo.DequeueBatch(ctx, 10)).To(BeEmpty())
+			Expect(repo.Count(ctx)).To(Equal(int64(1)))
+		})
+	})
+
 	It("deletes on completion and counts", func() {
 		Expect(repo.Enqueue(ctx, item("al", "c1", 0))).To(Succeed())
 		n, _ := repo.Count(ctx)
