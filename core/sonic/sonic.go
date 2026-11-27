@@ -46,6 +46,15 @@ func New(ds model.DataStore, pluginLoader PluginLoader, matcher *matcher.Matcher
 	}
 }
 
+// Engine is the sonic-similarity surface the API layers depend on; *Sonic satisfies it.
+type Engine interface {
+	HasProvider() bool
+	GetSonicSimilarTracks(ctx context.Context, id string, count int) ([]SimilarMatch, error)
+	FindSonicPath(ctx context.Context, startID, endID string, count int) ([]SimilarMatch, error)
+}
+
+var _ Engine = (*Sonic)(nil)
+
 func (s *Sonic) HasProvider() bool {
 	return len(s.pluginLoader.PluginNames(capabilitySonicSimilarity)) > 0
 }
@@ -91,7 +100,7 @@ func (s *Sonic) GetSonicSimilarTracks(ctx context.Context, id string, count int)
 		return nil, err
 	}
 
-	mf, err := s.ds.MediaFile(ctx).Get(id)
+	mf, err := s.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("getting media file %s: %w", id, err)
 	}
@@ -111,11 +120,11 @@ func (s *Sonic) FindSonicPath(ctx context.Context, startID, endID string, count 
 		return nil, err
 	}
 
-	startMF, err := s.ds.MediaFile(ctx).Get(startID)
+	startMF, err := s.ds.MediaFile().Get(ctx, startID)
 	if err != nil {
 		return nil, fmt.Errorf("getting start media file %s: %w", startID, err)
 	}
-	endMF, err := s.ds.MediaFile(ctx).Get(endID)
+	endMF, err := s.ds.MediaFile().Get(ctx, endID)
 	if err != nil {
 		return nil, fmt.Errorf("getting end media file %s: %w", endID, err)
 	}

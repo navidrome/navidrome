@@ -60,12 +60,10 @@ func (r *Values) StringOr(param, def string) string {
 	return v
 }
 
-func (r *Values) Strings(param string) ([]string, error) {
-	values := r.URL.Query()[param]
-	if len(values) == 0 {
-		return nil, newError(ErrMissingParam, param)
-	}
-	return values, nil
+// Strings returns all occurrences of the param, or a nil (empty) slice when absent. Callers that
+// require the param should check for emptiness themselves.
+func (r *Values) Strings(param string) []string {
+	return r.URL.Query()[param]
 }
 
 func (r *Values) TimeOr(param string, def time.Time) time.Time {
@@ -85,9 +83,9 @@ func (r *Values) TimeOr(param string, def time.Time) time.Time {
 }
 
 func (r *Values) Times(param string) ([]time.Time, error) {
-	pStr, err := r.Strings(param)
-	if err != nil {
-		return nil, err
+	pStr := r.Strings(param)
+	if len(pStr) == 0 {
+		return nil, newError(ErrMissingParam, param)
 	}
 	times := make([]time.Time, len(pStr))
 	for i, t := range pStr {
@@ -139,9 +137,9 @@ func (r *Values) Int64Or(param string, def int64) int64 {
 }
 
 func (r *Values) Ints(param string) ([]int, error) {
-	pStr, err := r.Strings(param)
-	if err != nil {
-		return nil, err
+	pStr := r.Strings(param)
+	if len(pStr) == 0 {
+		return nil, newError(ErrMissingParam, param)
 	}
 	ints := make([]int, 0, len(pStr))
 	for _, s := range pStr {
@@ -179,4 +177,22 @@ func (r *Values) Float64Or(param string, def float64) float64 {
 		return def
 	}
 	return f
+}
+
+// IfNoneMatch reports whether the request's If-None-Match asserts etag (unquoted), using RFC 9110 weak comparison.
+func IfNoneMatch(r *http.Request, etag string) bool {
+	header := strings.TrimSpace(r.Header.Get("If-None-Match"))
+	if header == "" {
+		return false
+	}
+	if header == "*" {
+		return true
+	}
+	for tag := range strings.SplitSeq(header, ",") {
+		tag = strings.TrimPrefix(strings.TrimSpace(tag), "W/")
+		if strings.Trim(tag, `"`) == etag {
+			return true
+		}
+	}
+	return false
 }

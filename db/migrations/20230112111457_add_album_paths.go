@@ -16,15 +16,15 @@ func init() {
 	goose.AddMigrationContext(upAddAlbumPaths, downAddAlbumPaths)
 }
 
-func upAddAlbumPaths(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`alter table album add paths varchar;`)
+func upAddAlbumPaths(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `alter table album add paths varchar;`)
 	if err != nil {
 		return err
 	}
 
 	//nolint:gosec
-	rows, err := tx.Query(`
-	select album_id, group_concat(path, '` + consts.Zwsp + `') from media_file group by album_id
+	rows, err := tx.QueryContext(ctx, `
+	select album_id, group_concat(path, '`+consts.Zwsp+`') from media_file group by album_id
 	`)
 	if err != nil {
 		return err
@@ -63,6 +63,6 @@ func upAddAlbumPathsDirs(filePaths string) string {
 	return strings.Join(dirs, string(filepath.ListSeparator))
 }
 
-func downAddAlbumPaths(_ context.Context, tx *sql.Tx) error {
+func downAddAlbumPaths(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

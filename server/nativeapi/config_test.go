@@ -8,27 +8,31 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Config API", func() {
+	var ctx context.Context
 	var ds model.DataStore
 	var router http.Handler
 	var adminUser, regularUser model.User
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DevUIShowConfig = true // Enable config endpoint for tests
-		ds = &tests.MockDataStore{}
+		ctx = GinkgoT().Context()
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.DevUIShowConfig = true
+		}) // Enable config endpoint for tests
+		ds = persistence.New(db.Db())
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil)
+		nativeRouter := newTestRouter(ds, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -47,9 +51,7 @@ var _ = Describe("Config API", func() {
 			NewPassword: "userpass",
 		}
 
-		// Store in mock datastore
-		Expect(ds.User(context.TODO()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(context.TODO()).Put(&regularUser)).To(Succeed())
+		putUsers(ctx, ds, &adminUser, &regularUser)
 	})
 
 	Describe("GET /api/config", func() {
@@ -72,15 +74,17 @@ var _ = Describe("Config API", func() {
 				var resp configResponse
 				Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 				Expect(resp.ID).To(Equal("config"))
-				Expect(resp.ConfigFile).To(Equal(conf.Server.ConfigFile))
+				Expect(resp.ConfigFile).To(Equal(conf.Server().ConfigFile))
 				Expect(resp.Config).ToNot(BeEmpty())
 			})
 
 			It("redacts sensitive fields", func() {
-				conf.Server.LastFM.ApiKey = "secretapikey123"
-				conf.Server.PasswordEncryptionKey = "encryptionkey789"
-				conf.Server.DevAutoCreateAdminPassword = "adminpassword123"
-				conf.Server.Prometheus.Password = "prometheuspass"
+				conf.Update(func(c *conf.Options) {
+					c.LastFM.ApiKey = "secretapikey123"
+					c.PasswordEncryptionKey = "encryptionkey789"
+					c.DevAutoCreateAdminPassword = "adminpassword123"
+					c.Prometheus.Password = "prometheuspass"
+				})
 
 				req := createAuthenticatedConfigRequest(adminToken)
 				w := httptest.NewRecorder()
@@ -109,8 +113,10 @@ var _ = Describe("Config API", func() {
 			})
 
 			It("handles empty sensitive values", func() {
-				conf.Server.LastFM.ApiKey = ""
-				conf.Server.PasswordEncryptionKey = ""
+				conf.Update(func(c *conf.Options) {
+					c.LastFM.ApiKey = ""
+					c.PasswordEncryptionKey = ""
+				})
 
 				req := createAuthenticatedConfigRequest(adminToken)
 				w := httptest.NewRecorder()

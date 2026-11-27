@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddPlaylistPath, downAddPlaylistPath)
 }
 
-func upAddPlaylistPath(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddPlaylistPath(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table playlist
 	add path string default '' not null;
 
@@ -23,6 +23,6 @@ alter table playlist
 	return err
 }
 
-func downAddPlaylistPath(_ context.Context, tx *sql.Tx) error {
+func downAddPlaylistPath(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

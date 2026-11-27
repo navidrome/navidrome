@@ -1,0 +1,5 @@
+type: object
+description: The grants module (listing and revoking the user's own grants). Logout stays in core and needs no scope.
+required: [version]
+properties:
+  version: {type: integer, description: Module version. Bumped only on semantic change.}

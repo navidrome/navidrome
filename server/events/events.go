@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/navidrome/navidrome/log"
 )
 
 type eventCtxKey string
@@ -31,7 +33,10 @@ func (e *baseEvent) Name(evt Event) string {
 }
 
 func (e *baseEvent) Data(evt Event) string {
-	data, _ := json.Marshal(evt)
+	data, err := json.Marshal(evt)
+	if err != nil {
+		log.Error("Error encoding event", "event", e.Name(evt), err)
+	}
 	return string(data)
 }
 
@@ -84,6 +89,9 @@ func (rr *RefreshResource) Data(evt Event) string {
 		return `{"*":"*"}`
 	}
 	r := evt.(*RefreshResource)
-	data, _ := json.Marshal(r.resources)
+	data, err := json.Marshal(r.resources)
+	if err != nil {
+		log.Error("Error encoding refresh event", err)
+	}
 	return string(data)
 }

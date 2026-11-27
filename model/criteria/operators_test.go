@@ -126,4 +126,25 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(obj[0]).To(gomega.Equal(IsPresent{"genre": true}))
 		})
 	})
+
+	DescribeTable("ToBool",
+		func(in any, wantVal, wantOk bool) {
+			got, ok := ToBool(in)
+			gomega.Expect(ok).To(gomega.Equal(wantOk))
+			gomega.Expect(got).To(gomega.Equal(wantVal))
+		},
+		Entry("real bool true", true, true, true),
+		Entry("real bool false", false, false, true),
+		Entry("string true", "true", true, true),
+		Entry("string false", "false", false, true),
+		Entry("string 1", "1", true, true),
+		Entry("string t", "t", true, true),
+		Entry("string 0", "0", false, true),
+		Entry("string unparseable", "yes", false, false),
+		Entry("float64 1", float64(1), true, true),
+		Entry("float64 0", float64(0), false, true),
+		Entry("float64 other", float64(2), false, false),
+		Entry("slice", []any{true}, false, false),
+		Entry("nil", nil, false, false),
+	)
 })

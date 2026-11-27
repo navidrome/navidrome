@@ -30,7 +30,7 @@ mod base64_bytes {
 }
 
 /// QueueConfig holds configuration for a task queue.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QueueConfig {
     pub concurrency: i32,
@@ -41,7 +41,7 @@ pub struct QueueConfig {
 }
 
 /// TaskInfo holds the current state of a task.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskInfo {
     pub status: String,
@@ -123,13 +123,13 @@ struct TaskClearQueueResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn task_createqueue(input: Json<TaskCreateQueueRequest>) -> Json<TaskCreateQueueResponse>;
-    fn task_enqueue(input: Json<TaskEnqueueRequest>) -> Json<TaskEnqueueResponse>;
-    fn task_get(input: Json<TaskGetRequest>) -> Json<TaskGetResponse>;
-    fn task_cancel(input: Json<TaskCancelRequest>) -> Json<TaskCancelResponse>;
-    fn task_clearqueue(input: Json<TaskClearQueueRequest>) -> Json<TaskClearQueueResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn task_createqueue(input: u64) -> u64;
+    fn task_enqueue(input: u64) -> u64;
+    fn task_get(input: u64) -> u64;
+    fn task_cancel(input: u64) -> u64;
+    fn task_clearqueue(input: u64) -> u64;
 }
 
 /// CreateQueue creates a named task queue with the given configuration.
@@ -144,14 +144,12 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn create_queue(name: &str, config: QueueConfig) -> Result<(), Error> {
-    let response = unsafe {
-        task_createqueue(Json(TaskCreateQueueRequest {
-            name: name.to_owned(),
-            config: config,
-        }))?
-    };
+    let response: TaskCreateQueueResponse = unsafe { nd_pdk_types::hostcall::call(task_createqueue, &TaskCreateQueueRequest {
+        name: name.to_owned(),
+        config: config,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -171,18 +169,16 @@ pub fn create_queue(name: &str, config: QueueConfig) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn enqueue(queue_name: &str, payload: Vec<u8>) -> Result<String, Error> {
-    let response = unsafe {
-        task_enqueue(Json(TaskEnqueueRequest {
-            queue_name: queue_name.to_owned(),
-            payload: payload,
-        }))?
-    };
+    let response: TaskEnqueueResponse = unsafe { nd_pdk_types::hostcall::call(task_enqueue, &TaskEnqueueRequest {
+        queue_name: queue_name.to_owned(),
+        payload: payload,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// Get returns the current state of a task including its status,
@@ -197,17 +193,15 @@ pub fn enqueue(queue_name: &str, payload: Vec<u8>) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(task_id: &str) -> Result<Option<TaskInfo>, Error> {
-    let response = unsafe {
-        task_get(Json(TaskGetRequest {
-            task_id: task_id.to_owned(),
-        }))?
-    };
+    let response: TaskGetResponse = unsafe { nd_pdk_types::hostcall::call(task_get, &TaskGetRequest {
+        task_id: task_id.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }
 
 /// Cancel cancels a pending task. Returns error if already
@@ -219,13 +213,11 @@ pub fn get(task_id: &str) -> Result<Option<TaskInfo>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn cancel(task_id: &str) -> Result<(), Error> {
-    let response = unsafe {
-        task_cancel(Json(TaskCancelRequest {
-            task_id: task_id.to_owned(),
-        }))?
-    };
+    let response: TaskCancelResponse = unsafe { nd_pdk_types::hostcall::call(task_cancel, &TaskCancelRequest {
+        task_id: task_id.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
@@ -244,15 +236,13 @@ pub fn cancel(task_id: &str) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn clear_queue(queue_name: &str) -> Result<i64, Error> {
-    let response = unsafe {
-        task_clearqueue(Json(TaskClearQueueRequest {
-            queue_name: queue_name.to_owned(),
-        }))?
-    };
+    let response: TaskClearQueueResponse = unsafe { nd_pdk_types::hostcall::call(task_clearqueue, &TaskClearQueueRequest {
+        queue_name: queue_name.to_owned(),
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

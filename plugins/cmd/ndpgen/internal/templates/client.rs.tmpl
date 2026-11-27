@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 {{if .Doc}}
 {{rustDocComment .Doc}}
 {{else}}
-{{end}}#[derive(Debug, Clone, Serialize, Deserialize)]
+{{end}}#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct {{.Name}} {
 {{- range .Fields}}
@@ -58,10 +58,10 @@ struct {{responseType .}} {
 }
 {{- end}}
 
-#[host_fn]
-extern "ExtismHost" {
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
 {{- range .Service.Methods}}
-    fn {{exportName .}}(input: Json<{{if .HasParams}}{{requestType .}}{{else}}serde_json::Value{{end}}>) -> Json<{{responseType .}}>;
+    fn {{exportName .}}(input: u64) -> u64;
 {{- end}}
 }
 
@@ -92,52 +92,48 @@ extern "ExtismHost" {
 /// Returns an error if the host function call fails.
 {{- if .IsOptionPattern}}
 pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<Option<{{rustType (index .Returns 0)}}>, Error> {
-    let response = unsafe {
 {{- if .HasParams}}
-        {{exportName .}}(Json({{requestType .}} {
+    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &{{requestType .}} {
 {{- range .Params}}
-            {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
+        {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
 {{- end}}
-        }))?
+    }) }?;
 {{- else}}
-        {{exportName .}}(Json(serde_json::json!({})))?
+    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &serde_json::json!({})) }?;
 {{- end}}
-    };
 {{if .HasError}}
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 {{end}}
-    if response.0.{{(index .Returns 1).RustName}} {
-        Ok(Some(response.0.{{(index .Returns 0).RustName}}))
+    if response.{{(index .Returns 1).RustName}} {
+        Ok(Some(response.{{(index .Returns 0).RustName}}))
     } else {
         Ok(None)
     }
 }
 {{- else}}
 pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<{{if eq (len .Returns) 0}}(){{else if eq (len .Returns) 1}}{{rustType (index .Returns 0)}}{{else}}({{range $i, $r := .Returns}}{{if $i}}, {{end}}{{rustType $r}}{{end}}){{end}}, Error> {
-    let response = unsafe {
 {{- if .HasParams}}
-        {{exportName .}}(Json({{requestType .}} {
+    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &{{requestType .}} {
 {{- range .Params}}
-            {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
+        {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
 {{- end}}
-        }))?
+    }) }?;
 {{- else}}
-        {{exportName .}}(Json(serde_json::json!({})))?
+    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &serde_json::json!({})) }?;
 {{- end}}
-    };
 {{if .HasError}}
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 {{end}}
 {{- if eq (len .Returns) 0}}
     Ok(())
 {{- else if eq (len .Returns) 1}}
-    Ok(response.0.{{(index .Returns 0).RustName}})
+    Ok(response.{{(index .Returns 0).RustName}})
 {{- else}}
-    Ok(({{range $i, $r := .Returns}}{{if $i}}, {{end}}response.0.{{$r.RustName}}{{end}}))
+    Ok(({{range $i, $r := .Returns}}{{if $i}}, {{end}}response.{{$r.RustName}}{{end}}))
 {{- end}}
 }
 {{- end}}

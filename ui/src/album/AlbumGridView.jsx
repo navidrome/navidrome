@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import {
   GridList,
   GridListTile,
@@ -11,19 +11,18 @@ import withWidth from '@material-ui/core/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
+import { useRollChanged } from './useRollChanged'
 import { useDrag } from 'react-dnd'
-import subsonic from '../subsonic'
 import {
   AlbumContextMenu,
   PlayButton,
   ArtistLinkField,
   OverflowTooltip,
-  useImageUrl,
 } from '../common'
-import config from '../config'
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -105,11 +104,11 @@ const useCoverStyles = makeStyles({
     display: 'inline-block',
     width: '100%',
     objectFit: 'contain',
+    // The image fills this box absolutely, so it lends no height: a remount that has not been
+    // re-measured yet would collapse the tile and blank the cover for a frame.
+    aspectRatio: '1',
     height: (props) => props.height,
     transition: 'opacity 0.3s ease-in-out',
-  },
-  coverLoading: {
-    opacity: 0,
   },
 })
 
@@ -138,16 +137,14 @@ const Cover = withContentRect('bounds')(({
     [record],
   )
 
-  const url = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
-  const { imgUrl, loading: imageLoading } = useImageUrl(url)
-
   return (
     <div ref={measureRef} className={classes.coverContainer}>
       <div ref={dragAlbumRef}>
-        <img
-          src={imgUrl || undefined}
-          alt={record.name}
-          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+        <Artwork
+          record={record}
+          square
+          className={classes.cover}
+          title={record.name}
         />
       </div>
     </div>
@@ -237,9 +234,21 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   )
 }
 
-const AlbumGridView = ({ albumListType, loaded, loading, ...props }) => {
-  const hide =
-    (loading && albumListType === 'random') || !props.data || !props.ids
+const AlbumGridView = ({
+  albumListType,
+  loaded,
+  loading,
+  seed,
+  shownSeed,
+  ...props
+}) => {
+  // ArtistShow renders this grid too, with no roll to track, so own a ref when none is passed.
+  const ownSeed = useRef(null)
+  // A re-roll replaces every album, so the previous roll must not linger while it loads.
+  const rerolling =
+    useRollChanged(shownSeed ?? ownSeed, seed, loading) &&
+    albumListType === 'random'
+  const hide = rerolling || !props.data || !props.ids
   return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
 }
 

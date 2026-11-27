@@ -118,6 +118,7 @@ func TaskCreateQueue(name string, config QueueConfig) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -154,6 +155,7 @@ func TaskEnqueue(queueName string, payload []byte) (string, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response taskEnqueueResponse
@@ -190,6 +192,7 @@ func TaskGet(taskID string) (*TaskInfo, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response taskGetResponse
@@ -226,6 +229,7 @@ func TaskCancel(taskID string) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -261,6 +265,7 @@ func TaskClearQueue(queueName string) (int64, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response taskClearQueueResponse

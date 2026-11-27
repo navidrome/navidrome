@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddTimestampIndexesGo, downAddTimestampIndexesGo)
 }
 
-func upAddTimestampIndexesGo(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddTimestampIndexesGo(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create index if not exists album_updated_at
 	on album (updated_at);
 create index if not exists album_created_at
@@ -29,6 +29,6 @@ create index if not exists media_file_updated_at
 	return err
 }
 
-func downAddTimestampIndexesGo(_ context.Context, tx *sql.Tx) error {
+func downAddTimestampIndexesGo(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

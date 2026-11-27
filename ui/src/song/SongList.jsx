@@ -26,6 +26,8 @@ import {
   useResourceRefresh,
   ArtistLinkField,
   PathField,
+  defaultRowsPerPageOptions,
+  getStoredPerPage,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles'
@@ -143,9 +145,11 @@ const SongList = (props) => {
     return {
       album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,
-      composer: <ArtistLinkField source="composer" />,
+      composer: <ArtistLinkField source="composer" sortable={false} />,
       albumArtist: <ArtistLinkField source="albumArtist" />,
-      trackNumber: isDesktop && <NumberField source="trackNumber" />,
+      trackNumber: isDesktop && (
+        <NumberField source="trackNumber" sortable={false} />
+      ),
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
@@ -182,7 +186,12 @@ const SongList = (props) => {
       comment: <TextField source="comment" />,
       path: <PathField source="path" />,
       createdAt: (
-        <DateField source="createdAt" sortBy="recently_added" showTime />
+        <DateField
+          source="addedAt"
+          sortBy="recently_added"
+          label="resources.song.fields.createdAt"
+          showTime
+        />
       ),
     }
   }, [isDesktop, classes.ratingField])
@@ -213,7 +222,11 @@ const SongList = (props) => {
         bulkActionButtons={<SongBulkActions />}
         actions={<SongListActions />}
         filters={<SongFilter />}
-        perPage={isXsmall ? 50 : 15}
+        perPage={getStoredPerPage(
+          'song',
+          defaultRowsPerPageOptions,
+          isXsmall ? 50 : 15,
+        )}
       >
         {isXsmall ? (
           <SongSimpleList />

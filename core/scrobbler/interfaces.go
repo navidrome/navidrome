@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -15,7 +16,8 @@ type Scrobble struct {
 
 var (
 	ErrNotAuthorized = errors.New("not authorized")
-	ErrRetryLater    = errors.New("retry later")
+	// ErrRetryLater is an alias of agents.ErrRetryLater so adapters and plugins share one identity.
+	ErrRetryLater    = agents.ErrRetryLater
 	ErrUnrecoverable = errors.New("unrecoverable")
 )
 

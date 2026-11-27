@@ -15,62 +15,40 @@ type PluginUnloader interface {
 
 // User provides business logic for user management with plugin coordination.
 type User interface {
-	NewRepository(ctx context.Context) rest.Repository
+	Repository() rest.Repository[model.User]
 }
 
 type userService struct {
-	ds            model.DataStore
-	pluginManager PluginUnloader
+	repo *userRepositoryWrapper
 }
 
 // NewUser creates a new User service
 func NewUser(ds model.DataStore, pluginManager PluginUnloader) User {
 	return &userService{
-		ds:            ds,
-		pluginManager: pluginManager,
+		repo: &userRepositoryWrapper{
+			UserRepository: ds.User(),
+			pluginManager:  pluginManager,
+		},
 	}
 }
 
-// NewRepository returns a REST repository wrapper for user operations.
+// Repository returns a REST repository wrapper for user operations.
 // The wrapper intercepts Delete operations to coordinate plugin unloading.
-func (s *userService) NewRepository(ctx context.Context) rest.Repository {
-	repo := s.ds.User(ctx)
-	wrapper := &userRepositoryWrapper{
-		ctx:            ctx,
-		UserRepository: repo,
-		pluginManager:  s.pluginManager,
-	}
-	return wrapper
+func (s *userService) Repository() rest.Repository[model.User] {
+	return s.repo
 }
 
 type userRepositoryWrapper struct {
 	model.UserRepository
-	ctx           context.Context
 	pluginManager PluginUnloader
 }
 
-// Save implements rest.Persistable by delegating to the underlying repository.
-func (r *userRepositoryWrapper) Save(entity any) (string, error) {
-	return r.UserRepository.(rest.Persistable).Save(entity)
-}
+var _ rest.Persistable[model.User] = (*userRepositoryWrapper)(nil)
 
-// Update implements rest.Persistable by delegating to the underlying repository.
-func (r *userRepositoryWrapper) Update(id string, entity any, cols ...string) error {
-	return r.UserRepository.(rest.Persistable).Update(id, entity, cols...)
-}
-
-// Delete implements rest.Persistable and coordinates plugin unloading.
-func (r *userRepositoryWrapper) Delete(id string) error {
-	// The underlying repository Delete handles the database cleanup
-	// including calling cleanupPluginUserReferences
-	err := r.UserRepository.(rest.Persistable).Delete(id)
-	if err != nil {
-		return err
-	}
-
-	// After successful deletion, check if any plugins were auto-disabled
-	// and need to be unloaded from memory
-	r.pluginManager.UnloadDisabledPlugins(r.ctx)
-
-	return nil
+// Delete unloads plugins even on error: a bulk delete can fail after earlier users were removed
+// and their plugins auto-disabled.
+func (r *userRepositoryWrapper) Delete(ctx context.Context, ids ...string) error {
+	err := r.UserRepository.Delete(ctx, ids...)
+	r.pluginManager.UnloadDisabledPlugins(ctx)
+	return err
 }

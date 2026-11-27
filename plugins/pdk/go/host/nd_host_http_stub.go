@@ -8,7 +8,9 @@
 
 package host
 
-import "github.com/stretchr/testify/mock"
+import (
+	"github.com/stretchr/testify/mock"
+)
 
 // HTTPRequest represents the HTTPRequest data structure.
 // HTTPRequest represents an outbound HTTP request from a plugin.
@@ -41,7 +43,11 @@ var HTTPMock = &mockHTTPService{}
 // Send is the mock method for HTTPSend.
 func (m *mockHTTPService) Send(request HTTPRequest) (*HTTPResponse, error) {
 	args := m.Called(request)
-	return args.Get(0).(*HTTPResponse), args.Error(1)
+	var r0 *HTTPResponse
+	if v := args.Get(0); v != nil {
+		r0 = v.(*HTTPResponse)
+	}
+	return r0, args.Error(1)
 }
 
 // HTTPSend delegates to the mock instance.

@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20201110205344, Down20201110205344)
 }
 
-func Up20201110205344(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20201110205344(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table media_file
 	add comment varchar;
 alter table media_file
@@ -24,10 +24,10 @@ alter table album
 	if err != nil {
 		return err
 	}
-	notice(tx, "A full rescan will be performed to import comments and lyrics")
-	return forceFullRescan(tx)
+	notice(ctx, tx, "A full rescan will be performed to import comments and lyrics")
+	return forceFullRescan(ctx, tx)
 }
 
-func Down20201110205344(_ context.Context, tx *sql.Tx) error {
+func Down20201110205344(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

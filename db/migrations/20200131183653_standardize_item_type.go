@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200131183653, Down20200131183653)
 }
 
-func Up20200131183653(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200131183653(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table search_dg_tmp
 (
 	id varchar(255) not null
@@ -37,8 +37,8 @@ update annotation set item_type = 'media_file' where item_type = 'mediaFile';
 	return err
 }
 
-func Down20200131183653(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Down20200131183653(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table search_dg_tmp
 (
 	id varchar(255) not null

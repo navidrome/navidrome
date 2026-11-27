@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200208222418, Down20200208222418)
 }
 
-func Up20200208222418(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200208222418(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 update annotation set play_count = 0 where play_count is null;
 update annotation set rating = 0 where rating is null;
 create table annotation_dg_tmp
@@ -51,6 +51,6 @@ create index annotation_starred
 	return err
 }
 
-func Down20200208222418(_ context.Context, tx *sql.Tx) error {
+func Down20200208222418(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

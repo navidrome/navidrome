@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(upAddArtistImageUrl, downAddArtistImageUrl)
 }
 
-func upAddArtistImageUrl(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func upAddArtistImageUrl(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table artist
 	add biography varchar(255) default '' not null;
 alter table artist
@@ -31,6 +31,6 @@ alter table artist
 	return err
 }
 
-func downAddArtistImageUrl(_ context.Context, tx *sql.Tx) error {
+func downAddArtistImageUrl(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

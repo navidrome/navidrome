@@ -79,6 +79,16 @@ export default {
         color: '#eee',
         backgroundColor: '#ff4e6b',
       },
+      containedPrimary: {
+        color: '#fff',
+        backgroundColor: '#D60017',
+        '&:hover': {
+          backgroundColor: '#a30011',
+          '@media (hover: none)': {
+            backgroundColor: '#D60017',
+          },
+        },
+      },
       textSizeSmall: {
         fontSize: '0.8rem',
         paddingRight: '0.5rem',
@@ -190,6 +200,11 @@ export default {
       artistDetail: {
         padding: 'unset',
         paddingBottom: '1rem',
+      },
+    },
+    NDNotification: {
+      undo: {
+        color: '#fff',
       },
     },
     RaConfirm: {

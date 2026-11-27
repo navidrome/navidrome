@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -49,7 +50,7 @@ type PluginMetricsRecorder interface {
 type Manager struct {
 	mu      sync.RWMutex
 	plugins map[string]*plugin
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // manager lifecycle ctx, cancelled by Stop
 	cancel  context.CancelFunc
 	cache   wazero.CompilationCache
 	stopped atomic.Bool    // Set to true when Stop() is called
@@ -60,6 +61,9 @@ type Manager struct {
 	watcherDone    chan struct{}
 	debounceTimers map[string]*time.Timer
 	debounceMu     sync.Mutex
+
+	// transient is set by LoadPlugins, and nil for a server Start.
+	transient *transientLoad
 
 	// SubsonicAPI host function dependencies (set once before Start, not modified after)
 	subsonicRouter SubsonicRouter
@@ -104,47 +108,34 @@ func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
 // 1. Sync plugins folder with DB (discover new, update changed, remove deleted)
 // 2. Load only enabled plugins from DB
 func (m *Manager) Start(ctx context.Context) error {
-	if !conf.Server.Plugins.Enabled {
+	if !conf.Server().Plugins.Enabled {
 		log.Debug(ctx, "Plugin system is disabled")
 		return nil
 	}
 
 	if m.subsonicRouter == nil {
-		log.Fatal(ctx, "Plugin manager requires DataStore to be configured")
+		log.Fatal(ctx, "Plugin manager requires the SubsonicAPI router to be configured")
 	}
 
-	// Set extism log level based on plugin-specific config or global log level
-	pluginLogLevel := conf.Server.Plugins.LogLevel
-	if pluginLogLevel == "" {
-		pluginLogLevel = conf.Server.LogLevel
-	}
-	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
+	cacheDir := filepath.Join(conf.Server().CacheFolder.MustPath(), "plugins")
+	purgeCacheBySize(ctx, cacheDir, conf.Server().Plugins.CacheSize)
 
-	m.ctx, m.cancel = context.WithCancel(ctx)
-
-	// Initialize wazero compilation cache for better performance
-	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
-	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
-
-	var err error
-	m.cache, err = wazero.NewCompilationCacheWithDir(cacheDir)
-	if err != nil {
-		log.Error(ctx, "Failed to create wazero compilation cache", err)
-		return fmt.Errorf("creating wazero compilation cache: %w", err)
+	if err := m.initRuntime(ctx, cacheDir); err != nil {
+		return err
 	}
 
-	if conf.Server.Plugins.Folder.String() == "" {
+	if conf.Server().Plugins.Folder.String() == "" {
 		log.Debug(ctx, "No plugins folder configured")
 		return nil
 	}
 
-	folder := conf.Server.Plugins.Folder.MustPath()
+	folder := conf.Server().Plugins.Folder.MustPath()
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
 
 	// Clear previous error states so plugins can be retried on restart
 	adminCtx := adminContext(ctx)
-	if err := m.ds.Plugin(adminCtx).ClearErrors(); err != nil {
+	if err := m.ds.Plugin().ClearErrors(adminCtx); err != nil {
 		log.Error(ctx, "Error clearing plugin errors", err)
 	}
 
@@ -161,13 +152,56 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// Start file watcher if auto-reload is enabled
-	if conf.Server.Plugins.AutoReload {
+	if conf.Server().Plugins.AutoReload {
 		if err := m.startWatcher(); err != nil {
 			log.Error(ctx, "Failed to start plugin file watcher", err)
 			// Non-fatal - plugins are still loaded, just no auto-reload
 		}
 	}
 
+	return nil
+}
+
+// initRuntime prepares the extism/wazero runtime that instantiating a plugin needs.
+func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
+	pluginLogLevel := conf.Server().Plugins.LogLevel
+	if pluginLogLevel == "" {
+		pluginLogLevel = conf.Server().LogLevel
+	}
+	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
+
+	m.ctx, m.cancel = context.WithCancel(ctx)
+
+	var err error
+	m.cache, err = wazero.NewCompilationCacheWithDir(cacheDir)
+	if err != nil {
+		log.Error(ctx, "Failed to create wazero compilation cache", err)
+		return fmt.Errorf("creating wazero compilation cache: %w", err)
+	}
+	return nil
+}
+
+// transientLoad scopes a load that will not outlive the command asking for it; see LoadPlugins.
+type transientLoad struct {
+	only    []string
+	runInit bool
+}
+
+// LoadPlugins loads the plugins named in only, so a CLI sees the agents a server would. Each is
+// instantiated, creating any KVStore, TaskQueue or Storage it declares; call Stop when done.
+func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) error {
+	if !conf.Server().Plugins.Enabled || conf.Server().Plugins.Folder.String() == "" || len(only) == 0 {
+		return nil
+	}
+	m.transient = &transientLoad{only: only, runInit: runInit}
+
+	cacheDir := filepath.Join(conf.Server().CacheFolder.MustPath(), "plugins")
+	if err := m.initRuntime(ctx, cacheDir); err != nil {
+		return err
+	}
+	if err := m.loadEnabledPlugins(ctx); err != nil {
+		return fmt.Errorf("loading enabled plugins: %w", err)
+	}
 	return nil
 }
 
@@ -241,7 +275,7 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	return loadPlugin(m, name, CapabilityScrobbler, newScrobblerPlugin)
 }
 
-func (m *Manager) LoadLyricsProvider(name string) (lyrics.Lyrics, bool) {
+func (m *Manager) LoadLyricsProvider(name string) (lyrics.Provider, bool) {
 	return loadPlugin(m, name, CapabilityLyrics, newLyricsPlugin)
 }
 
@@ -286,13 +320,13 @@ func (m *Manager) GetPluginInfo() map[string]PluginInfo {
 // Returns an error if the plugin is not found in DB or fails to load.
 func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
@@ -311,7 +345,7 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 		// Store error and return
 		plugin.LastError = err.Error()
 		plugin.UpdatedAt = time.Now()
-		_ = repo.Put(plugin)
+		_ = repo.Put(adminCtx, plugin)
 		return fmt.Errorf("loading plugin: %w", err)
 	}
 
@@ -319,7 +353,7 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 	plugin.Enabled = true
 	plugin.LastError = ""
 	plugin.UpdatedAt = time.Now()
-	if err := repo.Put(plugin); err != nil {
+	if err := repo.Put(adminCtx, plugin); err != nil {
 		// Unload since we couldn't update DB
 		_ = m.unloadPlugin(id)
 		return fmt.Errorf("updating plugin in DB: %w", err)
@@ -334,13 +368,13 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 // Returns an error if the plugin is not found in DB.
 func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
@@ -357,7 +391,7 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	// Update DB
 	plugin.Enabled = false
 	plugin.UpdatedAt = time.Now()
-	if err := repo.Put(plugin); err != nil {
+	if err := repo.Put(adminCtx, plugin); err != nil {
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 
@@ -371,18 +405,18 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 // Returns nil if validation passes, or an error describing the validation failure.
 func (m *Manager) ValidatePluginConfig(ctx context.Context, id, configJSON string) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
 
-	manifest, err := readManifest(plugin.Path)
+	manifest, err := ReadManifest(plugin.Path)
 	if err != nil {
 		return fmt.Errorf("reading manifest: %w", err)
 	}
@@ -425,9 +459,9 @@ func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON s
 // This synchronizes the database with the filesystem, discovering new plugins,
 // updating changed ones, and removing deleted ones.
 func (m *Manager) RescanPlugins(ctx context.Context) error {
-	folder := conf.Server.Plugins.Folder.String()
+	folder := conf.Server().Plugins.Folder.String()
 	if folder == "" {
-		return fmt.Errorf("plugins folder not configured")
+		return errors.New("plugins folder not configured")
 	}
 	log.Info(ctx, "Manual plugin rescan requested", "folder", folder)
 	return m.syncPlugins(ctx, folder)
@@ -439,13 +473,13 @@ func (m *Manager) RescanPlugins(ctx context.Context) error {
 // but no longer satisfied, the plugin will be disabled.
 func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn func(*model.Plugin)) error {
 	if m.ds == nil {
-		return fmt.Errorf("datastore not configured")
+		return errors.New("datastore not configured")
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
@@ -460,7 +494,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 	shouldDisable := false
 	disableReason := ""
 	if wasEnabled {
-		manifest, err := readManifest(plugin.Path)
+		manifest, err := ReadManifest(plugin.Path)
 		if err == nil && manifest.Permissions != nil {
 			if manifest.Permissions.Users != nil && !hasValidUsersConfig(plugin.Users, plugin.AllUsers) {
 				shouldDisable = true
@@ -479,7 +513,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
 		}
 		plugin.Enabled = false
-		if err := repo.Put(plugin); err != nil {
+		if err := repo.Put(adminCtx, plugin); err != nil {
 			return fmt.Errorf("updating plugin in DB: %w", err)
 		}
 		log.Info(ctx, "Disabled plugin due to "+disableReason, "plugin", id)
@@ -487,7 +521,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 		return nil
 	}
 
-	if err := repo.Put(plugin); err != nil {
+	if err := repo.Put(adminCtx, plugin); err != nil {
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 
@@ -499,7 +533,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 		if err := m.loadPluginWithConfig(plugin); err != nil {
 			plugin.LastError = err.Error()
 			plugin.Enabled = false
-			_ = repo.Put(plugin)
+			_ = repo.Put(adminCtx, plugin)
 			return fmt.Errorf("reloading plugin: %w", err)
 		}
 	}
@@ -553,10 +587,10 @@ func (m *Manager) UnloadDisabledPlugins(ctx context.Context) {
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
 	// Get all disabled plugins from the database
-	plugins, err := repo.GetAll(model.QueryOptions{
+	plugins, err := repo.GetAll(adminCtx, model.QueryOptions{
 		Filters: squirrel.Eq{"enabled": false},
 	})
 	if err != nil {
@@ -591,7 +625,7 @@ func (m *Manager) UnloadDisabledPlugins(ctx context.Context) {
 // before a plugin can be enabled. Returns an error if any gate condition fails.
 func (m *Manager) checkPermissionGates(p *model.Plugin) error {
 	// Parse manifest to check permissions
-	manifest, err := readManifest(p.Path)
+	manifest, err := ReadManifest(p.Path)
 	if err != nil {
 		return fmt.Errorf("reading manifest: %w", err)
 	}
@@ -599,14 +633,14 @@ func (m *Manager) checkPermissionGates(p *model.Plugin) error {
 	// Check users permission gate
 	if manifest.Permissions != nil && manifest.Permissions.Users != nil {
 		if !hasValidUsersConfig(p.Users, p.AllUsers) {
-			return fmt.Errorf("users permission requires configuration: select users or enable 'all users' access")
+			return errors.New("users permission requires configuration: select users or enable 'all users' access")
 		}
 	}
 
 	// Check library permission gate
 	if manifest.Permissions != nil && manifest.Permissions.Library != nil {
 		if !hasValidLibrariesConfig(p.Libraries, p.AllLibraries) {
-			return fmt.Errorf("library permission requires configuration: select libraries or enable 'all libraries' access")
+			return errors.New("library permission requires configuration: select libraries or enable 'all libraries' access")
 		}
 	}
 

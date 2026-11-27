@@ -97,8 +97,8 @@ insert into property (id, value) values ('PIDTrack', 'track_legacy') on conflict
 insert into property (id, value) values ('PIDAlbum', 'album_legacy') on conflict do nothing;
 `),
 		func() error {
-			notice(tx, "A full scan will be triggered to populate the new tables. This may take a while.")
-			return forceFullRescan(tx)
+			notice(ctx, tx, "A full scan will be triggered to populate the new tables. This may take a while.")
+			return forceFullRescan(ctx, tx)
 		},
 	)
 }
@@ -126,9 +126,10 @@ create index folder_parent_id on folder(parent_id);
 `)
 }
 
-// Use paths from `media_file` table to populate `folder` table. The `folder` table must contain all paths, including
-// the ones that do not contain any media_file. We can get all paths from the media_file table to populate a
-// fstest.MapFS{}, and then walk the filesystem to insert all folders into the DB, including empty parent ones.
+// upSupportNewScanner_PopulateTableFolder uses paths from `media_file` table to populate `folder` table.
+// The `folder` table must contain all paths, including the ones that do not contain any media_file. We can
+// get all paths from the media_file table to populate a fstest.MapFS{}, and then walk the filesystem to
+// insert all folders into the DB, including empty parent ones.
 func upSupportNewScanner_PopulateTableFolder(ctx context.Context, tx *sql.Tx) execFunc {
 	return func() error {
 		// First, get all folder paths from media_file table
@@ -314,6 +315,6 @@ alter table artist
 	}
 }
 
-func downSupportNewScanner(context.Context, *sql.Tx) error {
+func downSupportNewScanner(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

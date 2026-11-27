@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200310181627, Down20200310181627)
 }
 
-func Up20200310181627(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200310181627(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create table transcoding
 (
 	id varchar(255) not null primary key,
@@ -45,8 +45,8 @@ create table player
 	return err
 }
 
-func Down20200310181627(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Down20200310181627(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 drop table transcoding;
 drop table player;
 `)

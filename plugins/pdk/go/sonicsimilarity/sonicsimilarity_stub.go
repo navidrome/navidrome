@@ -8,45 +8,31 @@
 
 package sonicsimilarity
 
+import "github.com/navidrome/navidrome/plugins/pdk/go/types"
+
+// Deprecated: use types.ArtistRef.
+type ArtistRef = types.ArtistRef
+
+// Deprecated: use types.SongRef.
+type SongRef = types.SongRef
+
 // FindSonicPathRequest represents the FindSonicPathRequest data structure.
 type FindSonicPathRequest struct {
-	StartSong SongRef `json:"startSong"`
-	EndSong   SongRef `json:"endSong"`
-	Count     int32   `json:"count"`
+	StartSong types.SongRef `json:"startSong"`
+	EndSong   types.SongRef `json:"endSong"`
+	Count     int32         `json:"count"`
 }
 
 // GetSonicSimilarTracksRequest represents the GetSonicSimilarTracksRequest data structure.
 type GetSonicSimilarTracksRequest struct {
-	Song  SongRef `json:"song"`
-	Count int32   `json:"count"`
-}
-
-// SongRef is a reference to a song with metadata for matching.
-type SongRef struct {
-	// ID is the internal Navidrome mediafile ID (if known).
-	ID string `json:"id,omitempty"`
-	// Name is the song name.
-	Name string `json:"name"`
-	// MBID is the MusicBrainz ID for the song.
-	MBID string `json:"mbid,omitempty"`
-	// ISRC is the International Standard Recording Code for the song.
-	ISRC string `json:"isrc,omitempty"`
-	// Artist is the artist name.
-	Artist string `json:"artist,omitempty"`
-	// ArtistMBID is the MusicBrainz artist ID.
-	ArtistMBID string `json:"artistMbid,omitempty"`
-	// Album is the album name.
-	Album string `json:"album,omitempty"`
-	// AlbumMBID is the MusicBrainz release ID.
-	AlbumMBID string `json:"albumMbid,omitempty"`
-	// Duration is the song duration in seconds.
-	Duration float32 `json:"duration,omitempty"`
+	Song  types.SongRef `json:"song"`
+	Count int32         `json:"count"`
 }
 
 // SonicMatch represents the SonicMatch data structure.
 type SonicMatch struct {
-	Song       SongRef `json:"song"`
-	Similarity float64 `json:"similarity"`
+	Song       types.SongRef `json:"song"`
+	Similarity float64       `json:"similarity"`
 }
 
 // SonicSimilarityResponse represents the SonicSimilarityResponse data structure.

@@ -1,0 +1,31 @@
+name: New nolint gate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  check-new-nolint:
+    name: Check for new //nolint directives
+    runs-on: ubuntu-latest
+    steps:
+      - name: Allowed by label
+        if: contains(github.event.pull_request.labels.*.name, 'allow-nolint')
+        run: echo "::notice::The allow-nolint label is set, so new //nolint directives and lint config changes are allowed."
+
+      - uses: actions/checkout@v7
+        if: "!contains(github.event.pull_request.labels.*.name, 'allow-nolint')"
+        with:
+          fetch-depth: 0
+
+      - name: Fetch latest base branch
+        if: "!contains(github.event.pull_request.labels.*.name, 'allow-nolint')"
+        run: git fetch --no-tags origin "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}"
+
+      - name: Fail on new //nolint directives
+        if: "!contains(github.event.pull_request.labels.*.name, 'allow-nolint')"
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: ./.github/workflows/check-new-nolint.sh

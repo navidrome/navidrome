@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20201012210022, Down20201012210022)
 }
 
-func Up20201012210022(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20201012210022(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table artist
 	add size integer default 0 not null;
 create index if not exists artist_size
@@ -40,6 +40,6 @@ update playlist set size = ifnull((
 	return err
 }
 
-func Down20201012210022(_ context.Context, tx *sql.Tx) error {
+func Down20201012210022(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

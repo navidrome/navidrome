@@ -1,8 +1,10 @@
 import jsonServerProvider from 'ra-data-json-server'
 import httpClient from './httpClient'
-import { REST_URL } from '../consts'
+import { M3U_MIME_TYPE, REST_URL } from '../consts'
 
 const dataProvider = jsonServerProvider(REST_URL, httpClient)
+
+const REFRESH_KIND = { album: 'al', artist: 'ar' }
 
 const isAdmin = () => {
   const role = localStorage.getItem('role')
@@ -83,6 +85,9 @@ const mapResource = (resource, params) => {
   }
 }
 
+const fetchData = (...args) =>
+  httpClient(...args).then(({ json }) => ({ data: json }))
+
 const callDeleteMany = (resource, params) => {
   const ids = (params.ids || []).map((id) => `id=${id}`)
   const query = ids.length > 0 ? `?${ids.join('&')}` : ''
@@ -137,12 +142,19 @@ const updateUser = async (params) => {
     data: userData,
   })
 
-  // Then handle library associations for non-admin users
-  if (!userData.isAdmin && libraryIds !== undefined) {
+  // Then handle library associations for non-admin users. Only admins can call
+  // this endpoint; for self-edits the server manages library assignments
+  if (isAdmin() && !userData.isAdmin && libraryIds !== undefined) {
     await handleUserLibraryAssociation(userId, libraryIds)
   }
 
   return userResponse
+}
+
+// ra-data-json-server merges the request body into the result; re-read so the plaintext key is never cached
+const createPlayer = async (resource, params) => {
+  const { data } = await dataProvider.create(resource, params)
+  return dataProvider.getOne(resource, { id: data.id })
 }
 
 const wrapperDataProvider = {
@@ -191,6 +203,9 @@ const wrapperDataProvider = {
       return createUser(params)
     }
     const [r, p] = mapResource(resource, params)
+    if (resource === 'player') {
+      return createPlayer(r, p)
+    }
     return dataProvider.create(r, p)
   },
   delete: (resource, params) => {
@@ -204,22 +219,56 @@ const wrapperDataProvider = {
     }
     return dataProvider.deleteMany(r, p)
   },
-  addToPlaylist: (playlistId, data) => {
-    return httpClient(`${REST_URL}/playlist/${playlistId}/tracks`, {
+  addToPlaylist: (playlistId, data) =>
+    fetchData(`${REST_URL}/playlist/${playlistId}/tracks`, {
       method: 'POST',
       body: JSON.stringify(data),
-    }).then(({ json }) => ({ data: json }))
+    }),
+  getPlaylists: (songId) => fetchData(`${REST_URL}/song/${songId}/playlists`),
+  lookupQuickConnect: (code) =>
+    fetchData(`${REST_URL}/quickconnect?code=${encodeURIComponent(code)}`),
+  authorizeQuickConnect: (code) =>
+    fetchData(`${REST_URL}/quickconnect/authorize`, {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+  inspect: (songId) => fetchData(`${REST_URL}/inspect?id=${songId}`),
+  // The endpoint answers 204 with no body, but react-admin rejects any response without a
+  // `data` key, so the id stands in for one.
+  refreshMetadata: (resource, id) =>
+    httpClient(`${REST_URL}/metadata/${REFRESH_KIND[resource]}/${id}/refresh`, {
+      method: 'POST',
+    }).then(() => ({ data: { id } })),
+  uploadImage: (resource, id, file) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    return fetchData(`${REST_URL}/${resource}/${id}/image`, {
+      method: 'POST',
+      headers: new Headers({}),
+      body: formData,
+    })
   },
-  getPlaylists: (songId) => {
-    return httpClient(`${REST_URL}/song/${songId}/playlists`).then(
-      ({ json }) => ({ data: json }),
-    )
-  },
-  inspect: (songId) => {
-    return httpClient(`${REST_URL}/inspect?id=${songId}`).then(({ json }) => ({
-      data: json,
-    }))
-  },
+  deleteImage: (resource, id) =>
+    fetchData(`${REST_URL}/${resource}/${id}/image`, { method: 'DELETE' }),
+  getPlaylistTracks: (playlistId) =>
+    fetchData(`${REST_URL}/playlist/${playlistId}/tracks`),
+  exportPlaylist: (playlistId) =>
+    httpClient(`${REST_URL}/playlist/${playlistId}/tracks`, {
+      headers: new Headers({ Accept: M3U_MIME_TYPE }),
+    }).then(({ body }) => ({ data: body })),
+  getLastfmLink: () => fetchData(`${REST_URL}/lastfm/link`),
+  unlinkLastfm: () =>
+    fetchData(`${REST_URL}/lastfm/link`, { method: 'DELETE' }),
+  getListenBrainzLink: () => fetchData(`${REST_URL}/listenbrainz/link`),
+  linkListenBrainz: (token) =>
+    fetchData(`${REST_URL}/listenbrainz/link`, {
+      method: 'PUT',
+      body: JSON.stringify({ token }),
+    }),
+  unlinkListenBrainz: () =>
+    fetchData(`${REST_URL}/listenbrainz/link`, { method: 'DELETE' }),
+  rescanPlugins: () =>
+    fetchData(`${REST_URL}/plugin/rescan`, { method: 'POST' }),
 }
 
 export default wrapperDataProvider

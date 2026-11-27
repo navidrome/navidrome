@@ -1,29 +1,75 @@
 package persistence
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/fatih/structs"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 const annotationTable = "annotation"
 
-func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
-	userID := loggedUser(r.ctx).ID
+// annotationColumns are the columns withAnnotation's LEFT JOIN contributes, derived from
+// model.Annotations so the set tracks schema changes. average_rating is excluded: it lives on the
+// base table, not the annotation join.
+var annotationColumns = sync.OnceValue(func() map[string]struct{} {
+	cols := map[string]struct{}{}
+	for name := range structs.Map(model.Annotations{}) {
+		if name == "average_rating" {
+			continue
+		}
+		cols[name] = struct{}{}
+	}
+	return cols
+})
+
+// annotationColumnRE matches any annotation column as a whole word. The word boundaries keep the
+// base-table column average_rating from matching the annotation column rating (Go's \b treats '_'
+// as a word char). It is case-insensitive because SQLite column names are, so a raw filter using
+// e.g. "RATING" must still be detected.
+var annotationColumnRE = sync.OnceValue(func() *regexp.Regexp {
+	cols := make([]string, 0, len(annotationColumns()))
+	for col := range annotationColumns() {
+		cols = append(cols, regexp.QuoteMeta(col))
+	}
+	sort.Strings(cols) // map iteration is random; sort for a stable pattern
+	return regexp.MustCompile(`(?i)\b(?:` + strings.Join(cols, "|") + `)\b`)
+})
+
+// filtersNeedAnnotation reports whether the rendered query references an annotation column, i.e.
+// whether the annotation LEFT JOIN must be kept. Scanning the rendered SQL catches every filter
+// path. The placeholder column is needed because squirrel won't render a column-less SELECT; on a
+// render error, keep the join to be safe.
+func filtersNeedAnnotation(query SelectBuilder) bool {
+	sql, _, err := query.Columns("1").ToSql()
+	if err != nil {
+		return true
+	}
+	return annotationColumnRE().MatchString(sql)
+}
+
+func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, idField string) SelectBuilder {
+	userID := loggedUser(ctx).ID
 	if userID == invalidUserId {
-		return query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
+		return query.Columns(r.tableName + ".average_rating")
 	}
 	query = query.
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
-			" AND annotation.user_id = '"+userID+"')").
+			" AND annotation.item_type = ?"+
+			" AND annotation.user_id = ?)", r.tableName, userID).
 		Columns(
 			"coalesce(starred, 0) as starred",
 			"coalesce(rating, 0) as rating",
@@ -31,17 +77,21 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 			"play_date",
 			"rated_at",
 		)
-	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
-		query = query.Columns(
-			fmt.Sprintf("round(coalesce(round(cast(play_count as float) / coalesce(%[1]s.song_count, 1), 1), 0)) as play_count", r.tableName),
-		)
+	if conf.Server().AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
+		query = query.Columns(normalizedAlbumPlayCountExpr("play_count", r.tableName) + " as play_count")
 	} else {
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
 
-	query = query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
+	query = query.Columns(r.tableName + ".average_rating")
 
 	return query
+}
+
+// normalizedAlbumPlayCountExpr divides an album's play count by its song count, for
+// AlbumPlayCountMode=normalized. The album list and smart playlist criteria share it.
+func normalizedAlbumPlayCountExpr(playCountCol, albumTable string) string {
+	return fmt.Sprintf("round(coalesce(round(cast(%s as float) / coalesce(%s.song_count, 1), 1), 0))", playCountCol, albumTable)
 }
 
 func notDislikedFilter(_ string, value any) Sqlizer {
@@ -68,8 +118,8 @@ func annotationBoolFilter(field string) func(string, any) Sqlizer {
 	}
 }
 
-func (r sqlRepository) annId(itemID ...string) And {
-	userID := loggedUser(r.ctx).ID
+func (r sqlRepository) annId(ctx context.Context, itemID ...string) And {
+	userID := loggedUser(ctx).ID
 	return And{
 		Eq{annotationTable + ".user_id": userID},
 		Eq{annotationTable + ".item_type": r.tableName},
@@ -77,20 +127,20 @@ func (r sqlRepository) annId(itemID ...string) And {
 	}
 }
 
-func (r sqlRepository) annUpsert(values map[string]any, itemIDs ...string) error {
-	upd := Update(annotationTable).Where(r.annId(itemIDs...))
+func (r sqlRepository) annUpsert(ctx context.Context, values map[string]any, itemIDs ...string) error {
+	upd := Update(annotationTable).Where(r.annId(ctx, itemIDs...))
 	for f, v := range values {
 		upd = upd.Set(f, v)
 	}
-	c, err := r.executeSQL(upd)
+	c, err := r.executeSQL(ctx, upd)
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
-		userID := loggedUser(r.ctx).ID
+		userID := loggedUser(ctx).ID
 		for _, itemID := range itemIDs {
 			values["user_id"] = userID
 			values["item_type"] = r.tableName
 			values["item_id"] = itemID
 			ins := Insert(annotationTable).SetMap(values)
-			_, err = r.executeSQL(ins)
+			_, err = r.executeSQL(ctx, ins)
 			if err != nil {
 				return err
 			}
@@ -99,39 +149,39 @@ func (r sqlRepository) annUpsert(values map[string]any, itemIDs ...string) error
 	return err
 }
 
-func (r sqlRepository) SetStar(starred bool, ids ...string) error {
+func (r sqlRepository) SetStar(ctx context.Context, starred bool, ids ...string) error {
 	starredAt := time.Now()
-	return r.annUpsert(map[string]any{"starred": starred, "starred_at": starredAt}, ids...)
+	return r.annUpsert(ctx, map[string]any{"starred": starred, "starred_at": starredAt}, ids...)
 }
 
-func (r sqlRepository) SetRating(rating int, itemID string) error {
+func (r sqlRepository) SetRating(ctx context.Context, rating int, itemID string) error {
 	ratedAt := time.Now()
-	err := r.annUpsert(map[string]any{"rating": rating, "rated_at": ratedAt}, itemID)
+	err := r.annUpsert(ctx, map[string]any{"rating": rating, "rated_at": ratedAt}, itemID)
 	if err != nil {
 		return err
 	}
-	return r.updateAvgRating(itemID)
+	return r.updateAvgRating(ctx, itemID)
 }
 
-func (r sqlRepository) updateAvgRating(itemID string) error {
+func (r sqlRepository) updateAvgRating(ctx context.Context, itemID string) error {
 	upd := Update(r.tableName).
 		Where(Eq{"id": itemID}).
 		Set("average_rating", Expr(
 			"coalesce((select round(avg(rating), 2) from annotation where item_id = ? and item_type = ? and rating > 0), 0)",
 			itemID, r.tableName,
 		))
-	_, err := r.executeSQL(upd)
+	_, err := r.executeSQL(ctx, upd)
 	return err
 }
 
-func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
-	upd := Update(annotationTable).Where(r.annId(itemID)).
+func (r sqlRepository) IncPlayCount(ctx context.Context, itemID string, ts time.Time) error {
+	upd := Update(annotationTable).Where(r.annId(ctx, itemID)).
 		Set("play_count", Expr("play_count+1")).
 		Set("play_date", Expr("max(ifnull(play_date,''),?)", ts))
-	c, err := r.executeSQL(upd)
+	c, err := r.executeSQL(ctx, upd)
 
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
-		userID := loggedUser(r.ctx).ID
+		userID := loggedUser(ctx).ID
 		values := map[string]any{}
 		values["user_id"] = userID
 		values["item_type"] = r.tableName
@@ -139,7 +189,7 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 		values["play_count"] = 1
 		values["play_date"] = ts
 		ins := Insert(annotationTable).SetMap(values)
-		_, err = r.executeSQL(ins)
+		_, err = r.executeSQL(ctx, ins)
 		if err != nil {
 			return err
 		}
@@ -147,26 +197,28 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	return err
 }
 
-func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
+func (r sqlRepository) ReassignAnnotation(ctx context.Context, prevID string, newID string) error {
 	if prevID == newID || prevID == "" || newID == "" {
 		return nil
 	}
-	upd := Update(annotationTable).Where(And{
-		Eq{annotationTable + ".item_type": r.tableName},
-		Eq{annotationTable + ".item_id": prevID},
-	}).Set("item_id", newID)
-	_, err := r.executeSQL(upd)
-	return err
+	// OR IGNORE keeps newID's own row where a user annotated both, instead of aborting the whole statement
+	upd := Expr("update or ignore "+annotationTable+" set item_id = ? where item_type = ? and item_id = ?",
+		newID, r.tableName, prevID)
+	if _, err := r.executeSQL(ctx, upd); err != nil {
+		return err
+	}
+	// The moved rows change newID's rating population, so its cached average no longer matches
+	return r.updateAvgRating(ctx, newID)
 }
 
-func (r sqlRepository) cleanAnnotations() error {
+func (r sqlRepository) cleanAnnotations(ctx context.Context) error {
 	del := Delete(annotationTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
-	c, err := r.executeSQL(del)
+	c, err := r.executeSQL(ctx, del)
 	if err != nil {
 		return fmt.Errorf("error cleaning up %s annotations: %w", r.tableName, err)
 	}
 	if c > 0 {
-		log.Debug(r.ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)
+		log.Debug(ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)
 	}
 	return nil
 }

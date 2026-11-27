@@ -1,0 +1,79 @@
+package jellyfin
+
+import (
+	"context"
+	"net/http"
+	"strings"
+
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
+)
+
+// getUserViews returns one CollectionFolder view per accessible library, so clients browse each
+// library as its own top-level view rather than one aggregate.
+func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
+	views, err := api.userViews(r.Context())
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})
+}
+
+func (api *Router) userViews(ctx context.Context) ([]dto.BaseItemDto, error) {
+	u, _ := request.UserFrom(ctx)
+	// u.Libraries comes from a projection without counts or stats, and clients hide a library that
+	// looks empty, so the rows are re-read in full here.
+	libs, err := api.ds.Library().GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]dto.BaseItemDto, 0, len(libs))
+	for _, lib := range libs {
+		if u.HasLibraryAccess(lib.ID) {
+			views = append(views, dto.LibraryToBaseItem(lib))
+		}
+	}
+	return views, nil
+}
+
+func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	u, _ := request.UserFrom(ctx)
+	api.ok(w, r, userToDto(&u, serverName(), api.serverID(ctx)))
+}
+
+// getPublicUsers advertises the users named in Jellyfin.ExposedPublicUsers for a client login
+// picker. The route is unauthenticated, so it lists only the configured allowlist (never the full
+// user table) and returns a minimal DTO — no Policy/Configuration, which would leak admin status.
+func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	serverID := api.serverID(ctx)
+	seen := make(map[string]bool)
+	users := []dto.UserDto{}
+	for name := range strings.SplitSeq(conf.Server().Jellyfin.ExposedPublicUsers, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		key := strings.ToLower(name)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		usr, err := api.ds.User().FindByUsername(ctx, name)
+		if err != nil {
+			log.Warn(ctx, "Jellyfin API: configured public user not found", "username", name, err)
+			continue
+		}
+		users = append(users, dto.UserDto{
+			Name:        usr.UserName,
+			Id:          dto.EncodeID(usr.ID),
+			ServerId:    serverID,
+			HasPassword: true,
+		})
+	}
+	api.ok(w, r, users)
+}

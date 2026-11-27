@@ -2,9 +2,11 @@ package model
 
 import (
 	"cmp"
+	"context"
 	"strings"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/utils/random"
 )
 
@@ -32,9 +34,6 @@ type Share struct {
 
 func (s Share) CoverArtID() ArtworkID {
 	ids := strings.SplitN(s.ResourceIDs, ",", 2)
-	if len(ids) == 0 {
-		return ArtworkID{}
-	}
 	switch s.ResourceType {
 	case "album":
 		return Album{ID: ids[0]}.CoverArtID()
@@ -42,6 +41,10 @@ func (s Share) CoverArtID() ArtworkID {
 		return Playlist{ID: ids[0]}.CoverArtID()
 	case "artist":
 		return Artist{ID: ids[0]}.CoverArtID()
+	}
+	// Tracks can be empty when they went missing or the owner lost access to their library.
+	if len(s.Tracks) == 0 {
+		return ArtworkID{}
 	}
 	rnd := random.Int64N(len(s.Tracks))
 	return s.Tracks[rnd].CoverArtID()
@@ -55,8 +58,10 @@ func (s Share) ToM3U8() string {
 }
 
 type ShareRepository interface {
-	Exists(id string) (bool, error)
-	Get(id string) (*Share, error)
-	GetAll(options ...QueryOptions) (Shares, error)
-	CountAll(options ...QueryOptions) (int64, error)
+	rest.Repository[Share]
+	rest.Persistable[Share]
+	Exists(ctx context.Context, id string) (bool, error)
+	Get(ctx context.Context, id string) (*Share, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Shares, error)
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
 }

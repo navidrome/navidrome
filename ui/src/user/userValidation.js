@@ -15,5 +15,15 @@ export const validateUserForm = (values, translate) => {
     }
   }
 
+  if (values.scrobbleFilter && values.scrobbleFilter.trim() !== '') {
+    try {
+      JSON.parse(values.scrobbleFilter)
+    } catch {
+      errors.scrobbleFilter = translate(
+        'resources.user.validation.invalidScrobbleFilter',
+      )
+    }
+  }
+
   return errors
 }

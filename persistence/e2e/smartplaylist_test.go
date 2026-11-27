@@ -204,6 +204,43 @@ var _ = Describe("Smart Playlists", func() {
 		})
 	})
 
+	Describe("Album aggregate fields", func() {
+		// Abbey Road and IV have two tracks each; the other four albums have one.
+		It("matches albums with more than one track", func() {
+			results := evaluateRule(`{"all":[{"gt":{"albumsongcount":1}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog"))
+		})
+
+		It("matches single-track albums", func() {
+			results := evaluateRule(`{"all":[{"is":{"albumsongcount":1}}]}`)
+			Expect(results).To(ConsistOf("So What", "Bohemian Rhapsody", "All Along the Watchtower",
+				"We Are the Champions"))
+		})
+
+		It("matches albumDateAdded inTheLast 1 day", func() {
+			results := evaluateRule(`{"all":[{"inTheLast":{"albumdateadded":1}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("matches albumDateModified before a far-future date", func() {
+			results := evaluateRule(`{"all":[{"before":{"albumdatemodified":"2099-01-01"}}]}`)
+			Expect(results).To(HaveLen(8))
+		})
+
+		// Fixture durations are randomized, so only the aggregate being populated can be asserted.
+		It("resolves albumDuration and albumSize to non-zero aggregates", func() {
+			Expect(evaluateRule(`{"all":[{"gt":{"albumduration":0}}]}`)).To(HaveLen(8))
+			Expect(evaluateRule(`{"all":[{"gt":{"albumsize":0}}]}`)).To(HaveLen(8))
+		})
+
+		It("groups by album date and orders within the album (issue #5347)", func() {
+			results := evaluateRuleOrdered(
+				`{"all":[{"is":{"album":"Abbey Road"}}],"sort":"-albumdateadded,tracknumber"}`)
+			Expect(results).To(Equal([]string{"Come Together", "Something"}))
+		})
+	})
+
 	Describe("Logic operators", func() {
 		It("matches with ALL (AND)", func() {
 			results := evaluateRule(`{"all":[{"is":{"genre":"Blues"}},{"gt":{"bpm":130}}]}`)
@@ -280,12 +317,12 @@ var _ = Describe("Smart Playlists", func() {
 			smartBID := createPrivateSmartPlaylist(adminUser, `{"all":[{"is":{"genre":"Jazz"}}]}`)
 			smartAID := createPublicSmartPlaylist(regularUser, `{"all":[{"inPlaylist":{"id":"`+smartBID+`"}}]}`)
 
-			loadedA, err := ds.Playlist(ctx).GetWithTracks(smartAID, true, false)
+			loadedA, err := ds.Playlist().GetWithTracks(ctx, smartAID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(loadedA.Tracks).To(BeEmpty())
 			Expect(loadedA.EvaluatedAt).To(BeNil())
 
-			loadedB, err := ds.Playlist(ctx).Get(smartBID)
+			loadedB, err := ds.Playlist().Get(ctx, smartBID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(loadedB.EvaluatedAt).To(BeNil())
 		})
@@ -368,6 +405,63 @@ var _ = Describe("Smart Playlists", func() {
 
 		It("combines isMissing with other operators", func() {
 			results := evaluateRule(`{"all":[{"isMissing":{"grouping":true}},{"is":{"genre":"Blues"}}]}`)
+			Expect(results).To(ConsistOf("Black Dog", "All Along the Watchtower"))
+		})
+	})
+
+	// ReplayGain values are stored in nullable media_file columns (not in the tags JSON), so
+	// isMissing/isPresent translate to IS [NOT] NULL checks on those columns (issue #5584).
+	Describe("isMissing/isPresent on ReplayGain fields", func() {
+		It("isMissing finds tracks without album gain", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgalbumgain":true}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "So What",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("isMissing false finds tracks with album gain", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgalbumgain":false}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isPresent finds tracks with album gain", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"rgalbumgain":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isPresent finds tracks with album peak", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"rgalbumpeak":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("isMissing distinguishes track gain from album gain", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgtrackgain":true}}]}`)
+			Expect(results).To(ConsistOf("Black Dog", "So What", "Bohemian Rhapsody",
+				"All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("isPresent finds tracks with track gain", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"rgtrackgain":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven"))
+		})
+
+		It("resolves the replaygain_album_gain alias to the rgalbumgain column", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"replaygain_album_gain":true}}]}`)
+			Expect(results).To(ConsistOf("Stairway To Heaven", "Black Dog", "So What",
+				"Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("resolves the replaygain_track_gain alias to the rgtrackgain column", func() {
+			results := evaluateRule(`{"all":[{"isPresent":{"replaygain_track_gain":true}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven"))
+		})
+
+		It("supports numeric comparisons through the replaygain_* alias", func() {
+			results := evaluateRule(`{"all":[{"gt":{"replaygain_track_gain":-7.5}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something"))
+		})
+
+		It("combines isMissing on ReplayGain with other operators", func() {
+			results := evaluateRule(`{"all":[{"isMissing":{"rgalbumgain":true}},{"is":{"genre":"Blues"}}]}`)
 			Expect(results).To(ConsistOf("Black Dog", "All Along the Watchtower"))
 		})
 	})

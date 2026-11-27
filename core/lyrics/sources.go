@@ -3,12 +3,19 @@ package lyrics
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
+	"io"
+	"io/fs"
 	"path"
+	"slices"
+	"strings"
+	"time"
 
+	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/ioutils"
+	"golang.org/x/text/unicode/norm"
 )
 
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
@@ -22,35 +29,83 @@ func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, er
 	return nil, nil
 }
 
-func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (model.LyricList, error) {
-	basePath := mf.AbsolutePath()
-	ext := path.Ext(basePath)
+// fromExternalFile does not open a sidecar missing from folderFiles (nil means not scanned: always probe).
+// The list is matched loosely, as the filesystem may be, but openSidecar still decides which file opens.
+func fromExternalFile(ctx context.Context, mf *model.MediaFile, folderFiles []string, suffix string) (model.LyricList, error) {
+	ext := path.Ext(mf.Path)
+	sidecarRelPath := mf.Path[0:len(mf.Path)-len(ext)] + suffix
+	name := norm.NFC.String(path.Base(sidecarRelPath))
+	if folderFiles != nil && !slices.ContainsFunc(folderFiles, func(f string) bool { return strings.EqualFold(norm.NFC.String(f), name) }) {
+		return nil, nil
+	}
+	ctx = log.NewContext(ctx, "file", sidecarRelPath)
 
-	externalLyric := basePath[0:len(basePath)-len(ext)] + suffix
+	store, err := storage.For(mf.LibraryPath)
+	if err != nil {
+		return nil, fmt.Errorf("getting storage for library: %w", err)
+	}
+	fsys, err := store.FS()
+	if err != nil {
+		return nil, fmt.Errorf("opening library filesystem: %w", err)
+	}
 
-	contents, err := ioutils.UTF8ReadFile(externalLyric)
-	if errors.Is(err, os.ErrNotExist) {
-		log.Trace(ctx, "no lyrics found at path", "path", externalLyric)
+	f, openedPath, err := openSidecar(fsys, sidecarRelPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		log.Trace(ctx, "no lyrics found at path")
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+	// Log the name that is really on disk, so a parse error points at the right file.
+	ctx = log.NewContext(ctx, "file", openedPath)
 
-	lyrics, err := model.ToLyrics("xxx", string(contents))
+	contents, err := io.ReadAll(ioutils.UTF8Reader(f))
 	if err != nil {
-		log.Error(ctx, "error parsing lyric external file", "path", externalLyric, err)
 		return nil, err
-	} else if lyrics == nil {
-		log.Trace(ctx, "empty lyrics from external file", "path", externalLyric)
+	}
+
+	list, err := model.ParseLyrics(ctx, suffix, "xxx", contents)
+	if err != nil {
+		log.Error(ctx, "error parsing external lyric file", err)
+		return nil, err
+	}
+
+	if len(list) == 0 {
+		log.Trace(ctx, "empty lyrics from external file")
 		return nil, nil
 	}
 
-	log.Trace(ctx, "retrieved lyrics from external file", "path", externalLyric)
-
-	return model.LyricList{*lyrics}, nil
+	log.Trace(ctx, "retrieved lyrics from external file")
+	return list, nil
 }
 
-// fromPlugin attempts to load lyrics from a plugin with the given name.
+// openSidecar opens the sidecar lyrics file and returns the path it opened. When the
+// exact path is missing, it retries with the NFD and NFC forms of the file name: the
+// sidecar can be in another Unicode form than the stored track path (macOS often
+// writes NFD, Linux and Windows keep NFC). The folders are kept as stored, because
+// the scanner read them from disk.
+func openSidecar(fsys fs.FS, relPath string) (fs.File, string, error) {
+	f, err := fsys.Open(relPath)
+	if !errors.Is(err, fs.ErrNotExist) {
+		return f, relPath, err
+	}
+
+	dir, base := path.Split(relPath)
+	for _, form := range []norm.Form{norm.NFD, norm.NFC} {
+		altPath := dir + form.String(base)
+		if altPath == relPath {
+			continue
+		}
+		if altFile, altErr := fsys.Open(altPath); !errors.Is(altErr, fs.ErrNotExist) {
+			return altFile, altPath, altErr
+		}
+	}
+	return f, relPath, err
+}
+
+// fromPlugin attempts to load lyrics from a plugin with the given name. Results are cached,
+// misses included: clients ask for every track in a queue, and plugin lookups are slow.
 func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, pluginName string) (model.LyricList, error) {
 	if l.pluginLoader == nil {
 		log.Debug(ctx, "Invalid lyric source", "source", pluginName)
@@ -63,13 +118,20 @@ func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, plu
 		return nil, nil
 	}
 
-	lyricsList, err := provider.GetLyrics(ctx, mf)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(lyricsList) > 0 {
-		log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
-	}
-	return lyricsList, nil
+	key := pluginKey{plugin: pluginName, mediaFileID: mf.ID}
+	return l.pluginCache.GetWithLoader(key, func(pluginKey) (model.LyricList, time.Duration, error) {
+		// Concurrent callers share one load, so one cancelled request must not abort it for the others.
+		loadCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lyricsLoadTimeout)
+		defer cancel()
+		lyricsList, err := provider.GetLyrics(loadCtx, mf)
+		if err != nil {
+			// Cached as a miss: some plugins report "no lyrics" as an error.
+			log.Error(ctx, "Error getting lyrics from plugin", "plugin", pluginName, err)
+			return nil, 0, nil
+		}
+		if len(lyricsList) > 0 {
+			log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
+		}
+		return lyricsList, 0, nil
+	})
 }

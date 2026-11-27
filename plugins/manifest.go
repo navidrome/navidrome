@@ -2,10 +2,38 @@ package plugins
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"reflect"
+	"sort"
+	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
+
+// DeclaredNames returns the sorted names of the non-nil permission fields. It
+// reflects over the generated json tags so new permission types are picked up
+// automatically rather than via a hand-maintained list.
+func (p *Permissions) DeclaredNames() []string {
+	if p == nil {
+		return nil
+	}
+	var names []string
+	v := reflect.ValueOf(*p)
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := v.Field(i)
+		if f.Kind() != reflect.Pointer || f.IsNil() {
+			continue
+		}
+		tag := t.Field(i).Tag.Get("json")
+		if name, _, _ := strings.Cut(tag, ","); name != "" && name != "-" {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
 
 //go:generate go tool go-jsonschema -p plugins --struct-name-from-title -o manifest_gen.go manifest-schema.json
 
@@ -26,9 +54,21 @@ func ParseManifest(data []byte) (*Manifest, error) {
 // This validates rules like "SubsonicAPI permission requires users permission".
 func (m *Manifest) Validate() error {
 	// SubsonicAPI permission requires users permission
-	if m.Permissions != nil && m.Permissions.Subsonicapi != nil {
-		if m.Permissions.Users == nil {
-			return fmt.Errorf("'subsonicapi' permission requires 'users' permission to be declared")
+	if m.Permissions != nil && m.Permissions.Users == nil {
+		if m.Permissions.Subsonicapi != nil {
+			return errors.New("'subsonicapi' permission requires 'users' permission to be declared")
+		}
+
+		if m.Permissions.ScrobbleRetriever != nil {
+			return errors.New("'scrobbleRetriever' permission requires 'users' permission to be declared")
+		}
+	}
+
+	// Matcher returns library content, so it requires the library permission (which
+	// is what exposes a library scope for configuration).
+	if m.Permissions != nil && m.Permissions.Matcher != nil {
+		if m.Permissions.Library == nil {
+			return errors.New("'matcher' permission requires 'library' permission to be declared")
 		}
 	}
 
@@ -61,7 +101,7 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 	// Scrobbler capability requires users permission
 	if hasCapability(capabilities, CapabilityScrobbler) {
 		if m.Permissions == nil || m.Permissions.Users == nil {
-			return fmt.Errorf("scrobbler capability requires 'users' permission to be declared in manifest")
+			return errors.New("scrobbler capability requires 'users' permission to be declared in manifest")
 		}
 	}
 
@@ -82,14 +122,17 @@ func ValidateWithCapabilities(m *Manifest, capabilities []Capability) error {
 	return nil
 }
 
-// HasExperimentalThreads returns true if the manifest requests experimental threads support.
-func (m *Manifest) HasExperimentalThreads() bool {
-	return m.Experimental != nil && m.Experimental.Threads != nil
-}
-
 // HasLibraryFilesystemPermission checks if the manifest grants filesystem permission for libraries.
 func (m *Manifest) HasLibraryFilesystemPermission() bool {
 	return m.Permissions != nil &&
 		m.Permissions.Library != nil &&
 		m.Permissions.Library.Filesystem
+}
+
+func (m *Manifest) HasUsersPermission() bool {
+	return m.Permissions != nil && m.Permissions.Users != nil
+}
+
+func (m *Manifest) HasStoragePermission() bool {
+	return m.Permissions != nil && m.Permissions.Storage != nil
 }

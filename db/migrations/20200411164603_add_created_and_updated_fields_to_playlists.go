@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200411164603, Down20200411164603)
 }
 
-func Up20200411164603(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200411164603(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 alter table playlist
 	add created_at datetime;
 alter table playlist
@@ -23,6 +23,6 @@ update playlist
 	return err
 }
 
-func Down20200411164603(_ context.Context, tx *sql.Tx) error {
+func Down20200411164603(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

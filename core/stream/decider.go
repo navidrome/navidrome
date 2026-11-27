@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 const fallbackBitrate = 256 // kbps
@@ -22,6 +23,7 @@ type TranscodeDecider interface {
 	CreateTranscodeParams(decision *TranscodeDecision) (string, error)
 	ResolveRequestFromToken(ctx context.Context, token string, mf *model.MediaFile, offset int) (Request, error)
 	ResolveRequest(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, offset int) Request
+	ResolveClientRequest(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, offset int) Request
 }
 
 func NewTranscodeDecider(ds model.DataStore, ff ffmpeg.FFmpeg) TranscodeDecider {
@@ -141,8 +143,8 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Deta
 	} else {
 		sd.Codec = mf.AudioCodec()
 		sd.Bitrate = mf.BitRate
-		sd.SampleRate = mf.SampleRate
-		sd.BitDepth = mf.BitDepth
+		sd.SampleRate = normalizeSourceSampleRate(mf.SampleRate, sd.Codec)
+		sd.BitDepth = gg.V(mf.BitDepth)
 		sd.Channels = mf.Channels
 	}
 	sd.IsLossless = isLosslessFormat(sd.Codec)
@@ -222,11 +224,9 @@ func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPla
 	}
 
 	// Check codec-specific limitations
-	for _, codecProfile := range clientInfo.CodecProfiles {
-		if strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) && matchesCodec(src.Codec, []string{codecProfile.Name}) {
-			if reason := checkLimitations(src, codecProfile.Limitations); reason != "" {
-				return reason
-			}
+	for codecProfile := range audioCodecProfiles(clientInfo, src.Codec) {
+		if reason := checkLimitations(src, codecProfile.Limitations); reason != "" {
+			return reason
 		}
 	}
 
@@ -257,31 +257,35 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 
 	targetIsLossless := isLosslessFormat(targetFormat)
 
-	// Reject lossy to lossless conversion
-	if !src.IsLossless && targetIsLossless {
-		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
+	lossyToLossless := !src.IsLossless && targetIsLossless
+	// Lossless output from a lossy source is far larger than the source, so no bitrate cap can be honored
+	lossyToLosslessAllowed := clientInfo.AllowLossyToLossless && clientInfo.MaxAudioBitrate == 0
+	if lossyToLossless && !lossyToLosslessAllowed {
+		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "sourceCodec", src.Codec,
+			"targetFormat", targetFormat, "maxAudioBitrate", clientInfo.MaxAudioBitrate)
 		return nil, ""
 	}
 
+	targetCodec := strings.ToLower(profile.AudioCodec)
+	if targetCodec == "" {
+		targetCodec = targetFormat
+	}
+	capDSD := targetIsLossless && !hasUpperBoundLimitation(clientInfo, targetCodec, LimitationAudioSamplerate)
+
 	ts := &Details{
 		Container:  responseContainer,
-		Codec:      strings.ToLower(profile.AudioCodec),
-		SampleRate: normalizeSourceSampleRate(src.SampleRate, src.Codec),
+		Codec:      targetCodec,
+		SampleRate: targetSampleRate(src.SampleRate, src.Codec, capDSD),
 		Channels:   src.Channels,
-		BitDepth:   normalizeSourceBitDepth(src.BitDepth, src.Codec),
+		BitDepth:   targetBitDepth(src, targetIsLossless),
 		IsLossless: targetIsLossless,
-	}
-	if ts.Codec == "" {
-		ts.Codec = targetFormat
 	}
 
 	// Apply codec-intrinsic sample rate adjustments before codec profile limitations
 	if fixedRate := codecFixedOutputSampleRate(ts.Codec); fixedRate > 0 {
 		ts.SampleRate = fixedRate
 	}
-	if maxRate := codecMaxSampleRate(ts.Codec); maxRate > 0 && ts.SampleRate > maxRate {
-		ts.SampleRate = maxRate
-	}
+	ts.SampleRate = codecSampleRate(ts.Codec, ts.SampleRate)
 	if maxCh := codecMaxChannels(ts.Codec); maxCh > 0 && ts.Channels > maxCh {
 		ts.Channels = maxCh
 	}
@@ -310,7 +314,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 // It checks the DB first (for user-customized values), then falls back to
 // the built-in defaults, and finally to fallbackBitrate.
 func lookupDefaultBitrate(ctx context.Context, ds model.DataStore, format string) int {
-	if t, err := ds.Transcoding(ctx).FindByFormat(format); err == nil && t.DefaultBitRate > 0 {
+	if t, err := ds.Transcoding().FindByFormat(ctx, format); err == nil && t.DefaultBitRate > 0 {
 		return t.DefaultBitRate
 	}
 	for _, dt := range consts.DefaultTranscodings {
@@ -325,7 +329,7 @@ func lookupDefaultBitrate(ctx context.Context, ds model.DataStore, format string
 // It checks the DB first (for user-customized commands), then falls back to
 // the built-in default command. Returns "" if the format is unknown.
 func LookupTranscodeCommand(ctx context.Context, ds model.DataStore, format string) string {
-	t, err := ds.Transcoding(ctx).FindByFormat(format)
+	t, err := ds.Transcoding().FindByFormat(ctx, format)
 	if err == nil && t.Command != "" {
 		return t.Command
 	}
@@ -383,7 +387,7 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *Details, targe
 				return false
 			}
 		}
-	} else {
+	} else if !targetIsLossless {
 		ts.Bitrate = src.Bitrate
 	}
 
@@ -398,13 +402,7 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *Details, targe
 // Returns false if the profile should be rejected.
 func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrate int, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *Details) bool {
 	targetCodec := ts.Codec
-	for _, codecProfile := range clientInfo.CodecProfiles {
-		if !strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) {
-			continue
-		}
-		if !matchesCodec(targetCodec, []string{codecProfile.Name}) {
-			continue
-		}
+	for codecProfile := range audioCodecProfiles(clientInfo, targetCodec) {
 		for _, lim := range codecProfile.Limitations {
 			result := applyLimitation(sourceBitrate, &lim, ts)
 			if strings.EqualFold(lim.Name, LimitationAudioBitrate) && targetIsLossless && result == adjustAdjusted {
@@ -414,6 +412,19 @@ func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrat
 			}
 			if result == adjustCannotFit {
 				log.Trace(ctx, "Skipping transcoding profile: codec limitation cannot be satisfied",
+					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name,
+					"comparison", lim.Comparison, "values", lim.Values)
+				return false
+			}
+		}
+	}
+	// A later limitation can lower a value below a bound an earlier one
+	// accepted, so check the final values against every limitation once more.
+	for codecProfile := range audioCodecProfiles(clientInfo, targetCodec) {
+		for _, lim := range codecProfile.Limitations {
+			check := *ts
+			if applyLimitation(sourceBitrate, &lim, &check) != adjustNone {
+				log.Trace(ctx, "Skipping transcoding profile: codec limitations conflict",
 					"targetFormat", targetFormat, "codec", targetCodec, "limitation", lim.Name,
 					"comparison", lim.Comparison, "values", lim.Values)
 				return false
@@ -430,7 +441,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	if mf.ProbeData != "" {
 		return nil, nil
 	}
-	if !conf.Server.DevEnableMediaFileProbe {
+	if !conf.Server().DevEnableMediaFileProbe {
 		return nil, nil
 	}
 
@@ -445,7 +456,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	}
 	mf.ProbeData = string(data)
 
-	if err := s.ds.MediaFile(ctx).UpdateProbeData(mf.ID, mf.ProbeData); err != nil {
+	if err := s.ds.MediaFile().UpdateProbeData(ctx, mf.ID, mf.ProbeData); err != nil {
 		log.Error(ctx, "Failed to persist probe data", "mediaID", mf.ID, err)
 		// Don't fail the decision — we have the data in memory
 	}

@@ -6,7 +6,7 @@
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: String,
@@ -29,9 +29,9 @@ struct UsersGetResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn users_get(input: Json<UsersGetRequest>) -> Json<UsersGetResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn users_get(input: u64) -> u64;
 }
 
 /// Calls the users_get host function.
@@ -46,16 +46,14 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(id: Option<String>, filter: Option<User>) -> Result<Option<User>, Error> {
-    let response = unsafe {
-        users_get(Json(UsersGetRequest {
-            id: id,
-            filter: filter,
-        }))?
-    };
+    let response: UsersGetResponse = unsafe { nd_pdk_types::hostcall::call(users_get, &UsersGetRequest {
+        id: id,
+        filter: filter,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

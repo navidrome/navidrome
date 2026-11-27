@@ -7,6 +7,10 @@ import (
 	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
+{{- if .Service.ImportsSharedTypes}}
+
+	"github.com/navidrome/navidrome/plugins/types"
+{{- end}}
 )
 
 {{- /* Generate request/response types for all methods */ -}}

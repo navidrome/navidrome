@@ -13,9 +13,9 @@ var _ = Describe("Responses", func() {
 		It("parses the artist search result correctly ", func() {
 			var resp SearchArtistResults
 			body, err := os.ReadFile("tests/fixtures/deezer.search.artist.json")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			err = json.Unmarshal(body, &resp)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resp.Data).To(HaveLen(17))
 			michael := resp.Data[0]
@@ -26,10 +26,10 @@ var _ = Describe("Responses", func() {
 
 	Describe("Error", func() {
 		It("parses the error response correctly", func() {
-			var errorResp Error
+			var errorResp errorResponse
 			body := []byte(`{"error":{"type":"MissingParameterException","message":"Missing parameters: q","code":501}}`)
 			err := json.Unmarshal(body, &errorResp)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(errorResp.Error.Code).To(Equal(501))
 			Expect(errorResp.Error.Message).To(Equal("Missing parameters: q"))
@@ -40,9 +40,9 @@ var _ = Describe("Responses", func() {
 		It("parses the related artists response correctly", func() {
 			var resp RelatedArtists
 			body, err := os.ReadFile("tests/fixtures/deezer.artist.related.json")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			err = json.Unmarshal(body, &resp)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resp.Data).To(HaveLen(20))
 			justice := resp.Data[0]
@@ -55,9 +55,9 @@ var _ = Describe("Responses", func() {
 		It("parses the top tracks response correctly", func() {
 			var resp TopTracks
 			body, err := os.ReadFile("tests/fixtures/deezer.artist.top.json")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			err = json.Unmarshal(body, &resp)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(resp.Data).To(HaveLen(5))
 			track := resp.Data[0]

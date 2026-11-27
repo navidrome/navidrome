@@ -8,7 +8,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -21,19 +21,19 @@ var _ = Describe("FolderRepository", func() {
 	var testLib, otherLib model.Library
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
-		repo = newFolderRepository(ctx, conn)
+		repo = newFolderRepository(conn)
 
 		// Use existing library ID 1 from test fixtures
-		libRepo := NewLibraryRepository(ctx, conn)
-		lib, err := libRepo.Get(1)
+		libRepo := NewLibraryRepository(conn)
+		lib, err := libRepo.Get(ctx, 1)
 		Expect(err).ToNot(HaveOccurred())
 		testLib = *lib
 
 		// Create a second library with its own folder to verify isolation
 		otherLib = model.Library{Name: "Other Library", Path: "/other/path"}
-		Expect(libRepo.Put(&otherLib)).To(Succeed())
+		Expect(libRepo.Put(ctx, &otherLib)).To(Succeed())
 	})
 
 	AfterEach(func() {
@@ -43,6 +43,67 @@ var _ = Describe("FolderRepository", func() {
 		_, _ = conn.NewQuery(fmt.Sprintf("DELETE FROM library WHERE id = %d", otherLib.ID)).Execute()
 	})
 
+	Describe("folderSubtreeFilter", func() {
+		var parent, child, grandchild, other *model.Folder
+
+		matching := func(paths ...string) []string {
+			GinkgoHelper()
+			folders, err := repo.GetAll(ctx, model.QueryOptions{Filters: folderSubtreeFilter(testLib, paths)})
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(folders, func(f model.Folder) string { return f.ID })
+		}
+
+		BeforeEach(func() {
+			parent = model.NewFolder(testLib, "TestSubtree")
+			child = model.NewFolder(testLib, "TestSubtree/Child")
+			grandchild = model.NewFolder(testLib, "TestSubtree/Child/Grandchild")
+			other = model.NewFolder(testLib, "TestSubtreeOther")
+			for _, f := range []*model.Folder{parent, child, grandchild, other} {
+				Expect(repo.Put(ctx, f)).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = conn.NewQuery("DELETE FROM folder WHERE name LIKE 'TestSubtree%' OR path LIKE 'TestSubtree%'").Execute()
+			})
+		})
+
+		It("matches a folder and all its descendants", func() {
+			Expect(matching("TestSubtree")).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
+		})
+
+		It("matches the descendants of a nested slash-form path", func() {
+			Expect(matching("TestSubtree/Child")).To(ConsistOf(child.ID, grandchild.ID))
+		})
+
+		It("matches the whole library for the root path", func() {
+			Expect(matching(".")).To(ContainElements(parent.ID, child.ID, grandchild.ID, other.ID))
+		})
+	})
+
+	Describe("LyricsFiles", func() {
+		get := func(f *model.Folder) []string {
+			GinkgoHelper()
+			Expect(repo.Put(ctx, f)).To(Succeed())
+			res, err := repo.Get(ctx, f.ID)
+			Expect(err).ToNot(HaveOccurred())
+			return res.LyricsFiles
+		}
+
+		It("persists the list of lyrics files", func() {
+			f := model.NewFolder(testLib, "TestLyrics/Album")
+			Expect(get(f)).To(BeEmpty())
+			Expect(get(f)).ToNot(BeNil())
+
+			f.LyricsFiles = []string{"01.lrc", "02.txt"}
+			Expect(get(f)).To(Equal([]string{"01.lrc", "02.txt"}))
+		})
+
+		It("keeps nil for folders not scanned for lyrics files", func() {
+			f := model.NewFolder(testLib, "TestLyrics/Legacy")
+			f.LyricsFiles = nil
+			Expect(get(f)).To(BeNil())
+		})
+	})
+
 	Describe("GetFolderUpdateInfo", func() {
 		Context("with no target paths", func() {
 			It("returns all folders in the library", func() {
@@ -50,17 +111,17 @@ var _ = Describe("FolderRepository", func() {
 				folder1 := model.NewFolder(testLib, "TestGetLastUpdates/Folder1")
 				folder2 := model.NewFolder(testLib, "TestGetLastUpdates/Folder2")
 
-				err := repo.Put(folder1)
+				err := repo.Put(ctx, folder1)
 				Expect(err).ToNot(HaveOccurred())
-				err = repo.Put(folder2)
+				err = repo.Put(ctx, folder2)
 				Expect(err).ToNot(HaveOccurred())
 
 				otherFolder := model.NewFolder(otherLib, "TestOtherLib/Folder")
-				err = repo.Put(otherFolder)
+				err = repo.Put(ctx, otherFolder)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Query all folders (no target paths) - should only return folders from testLib
-				results, err := repo.GetFolderUpdateInfo(testLib)
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib)
 				Expect(err).ToNot(HaveOccurred())
 				// Should include folders from testLib
 				Expect(results).To(HaveKey(folder1.ID))
@@ -77,15 +138,15 @@ var _ = Describe("FolderRepository", func() {
 				folder2 := model.NewFolder(testLib, "TestSpecific/Jazz")
 				folder3 := model.NewFolder(testLib, "TestSpecific/Classical")
 
-				err := repo.Put(folder1)
+				err := repo.Put(ctx, folder1)
 				Expect(err).ToNot(HaveOccurred())
-				err = repo.Put(folder2)
+				err = repo.Put(ctx, folder2)
 				Expect(err).ToNot(HaveOccurred())
-				err = repo.Put(folder3)
+				err = repo.Put(ctx, folder3)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Query specific paths
-				results, err := repo.GetFolderUpdateInfo(testLib, "TestSpecific/Rock", "TestSpecific/Classical")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "TestSpecific/Rock", "TestSpecific/Classical")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(2))
 
@@ -100,19 +161,18 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("includes all child folders when querying parent", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create a parent folder with multiple children
 				parent := model.NewFolder(testLib, "TestParent/Music")
 				child1 := model.NewFolder(testLib, "TestParent/Music/Rock/Queen")
 				child2 := model.NewFolder(testLib, "TestParent/Music/Jazz")
 				otherParent := model.NewFolder(testLib, "TestParent2/Music/Jazz")
 
-				Expect(repo.Put(parent)).To(Succeed())
-				Expect(repo.Put(child1)).To(Succeed())
-				Expect(repo.Put(child2)).To(Succeed())
+				Expect(repo.Put(ctx, parent)).To(Succeed())
+				Expect(repo.Put(ctx, child1)).To(Succeed())
+				Expect(repo.Put(ctx, child2)).To(Succeed())
 
 				// Query the parent folder - should return parent and all children
-				results, err := repo.GetFolderUpdateInfo(testLib, "TestParent/Music")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "TestParent/Music")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(3))
 				Expect(results).To(HaveKey(parent.ID))
@@ -122,23 +182,22 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("excludes children from other libraries", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create parent in testLib
 				parent := model.NewFolder(testLib, "TestIsolation/Parent")
 				child := model.NewFolder(testLib, "TestIsolation/Parent/Child")
 
-				Expect(repo.Put(parent)).To(Succeed())
-				Expect(repo.Put(child)).To(Succeed())
+				Expect(repo.Put(ctx, parent)).To(Succeed())
+				Expect(repo.Put(ctx, child)).To(Succeed())
 
 				// Create similar path in other library
 				otherParent := model.NewFolder(otherLib, "TestIsolation/Parent")
 				otherChild := model.NewFolder(otherLib, "TestIsolation/Parent/Child")
 
-				Expect(repo.Put(otherParent)).To(Succeed())
-				Expect(repo.Put(otherChild)).To(Succeed())
+				Expect(repo.Put(ctx, otherParent)).To(Succeed())
+				Expect(repo.Put(ctx, otherChild)).To(Succeed())
 
 				// Query should only return folders from testLib
-				results, err := repo.GetFolderUpdateInfo(testLib, "TestIsolation/Parent")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "TestIsolation/Parent")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(2))
 				Expect(results).To(HaveKey(parent.ID))
@@ -148,19 +207,18 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("excludes missing children when querying parent", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create parent and children, mark one as missing
 				parent := model.NewFolder(testLib, "TestMissingChild/Parent")
 				child1 := model.NewFolder(testLib, "TestMissingChild/Parent/Child1")
 				child2 := model.NewFolder(testLib, "TestMissingChild/Parent/Child2")
 				child2.Missing = true
 
-				Expect(repo.Put(parent)).To(Succeed())
-				Expect(repo.Put(child1)).To(Succeed())
-				Expect(repo.Put(child2)).To(Succeed())
+				Expect(repo.Put(ctx, parent)).To(Succeed())
+				Expect(repo.Put(ctx, child1)).To(Succeed())
+				Expect(repo.Put(ctx, child2)).To(Succeed())
 
 				// Query parent - should only return parent and non-missing child
-				results, err := repo.GetFolderUpdateInfo(testLib, "TestMissingChild/Parent")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "TestMissingChild/Parent")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(2))
 				Expect(results).To(HaveKey(parent.ID))
@@ -169,16 +227,15 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("handles mix of existing and non-existing target paths", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create folders for one path but not the other
 				existingParent := model.NewFolder(testLib, "TestMixed/Exists")
 				existingChild := model.NewFolder(testLib, "TestMixed/Exists/Child")
 
-				Expect(repo.Put(existingParent)).To(Succeed())
-				Expect(repo.Put(existingChild)).To(Succeed())
+				Expect(repo.Put(ctx, existingParent)).To(Succeed())
+				Expect(repo.Put(ctx, existingChild)).To(Succeed())
 
 				// Query both existing and non-existing paths
-				results, err := repo.GetFolderUpdateInfo(testLib, "TestMixed/Exists", "TestMixed/DoesNotExist")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "TestMixed/Exists", "TestMixed/DoesNotExist")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(2))
 				Expect(results).To(HaveKey(existingParent.ID))
@@ -189,7 +246,7 @@ var _ = Describe("FolderRepository", func() {
 				// Test querying for root folder without creating it (fixtures should have one)
 				rootFolderID := model.FolderID(testLib, ".")
 
-				results, err := repo.GetFolderUpdateInfo(testLib, "")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "")
 				Expect(err).ToNot(HaveOccurred())
 				// Should return the root folder if it exists
 				if len(results) > 0 {
@@ -198,7 +255,7 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("returns empty map for non-existent folders", func() {
-				results, err := repo.GetFolderUpdateInfo(testLib, "NonExistent/Path")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "NonExistent/Path")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -207,13 +264,81 @@ var _ = Describe("FolderRepository", func() {
 				// Create a folder and mark it as missing
 				folder := model.NewFolder(testLib, "TestMissing/Folder")
 				folder.Missing = true
-				err := repo.Put(folder)
+				err := repo.Put(ctx, folder)
 				Expect(err).ToNot(HaveOccurred())
 
-				results, err := repo.GetFolderUpdateInfo(testLib, "TestMissing/Folder")
+				results, err := repo.GetFolderUpdateInfo(ctx, testLib, "TestMissing/Folder")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
+		})
+	})
+
+	Describe("HasAudioOutsideFolders", func() {
+		var albumRoot, disc1, disc2 *model.Folder
+
+		// TestHasAudio/Album/
+		// ├── CD1/   (audio, belongs to the album)
+		// └── CD2/   (audio, belongs to the album)
+		BeforeEach(func() {
+			albumRoot = model.NewFolder(testLib, "TestHasAudio/Album")
+			disc1 = model.NewFolder(testLib, "TestHasAudio/Album/CD1")
+			disc1.NumAudioFiles = 5
+			disc2 = model.NewFolder(testLib, "TestHasAudio/Album/CD2")
+			disc2.NumAudioFiles = 5
+			for _, f := range []*model.Folder{albumRoot, disc1, disc2} {
+				Expect(repo.Put(ctx, f)).To(Succeed())
+			}
+		})
+
+		It("returns false when all audio under the parent belongs to the given folders", func() {
+			Expect(repo.HasAudioOutsideFolders(ctx, *albumRoot, []string{disc1.ID, disc2.ID})).To(BeFalse())
+		})
+
+		It("returns true when another folder under the parent has audio", func() {
+			bonus := model.NewFolder(testLib, "TestHasAudio/Album/Bonus")
+			bonus.NumAudioFiles = 1
+			Expect(repo.Put(ctx, bonus)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(ctx, *albumRoot, []string{disc1.ID, disc2.ID})).To(BeTrue())
+		})
+
+		It("returns true when the parent itself contains audio files", func() {
+			albumRoot.NumAudioFiles = 2
+
+			Expect(repo.HasAudioOutsideFolders(ctx, *albumRoot, []string{disc1.ID, disc2.ID})).To(BeTrue())
+		})
+
+		It("ignores audio outside the parent's subtree", func() {
+			other := model.NewFolder(testLib, "TestHasAudio/Other Album")
+			other.NumAudioFiles = 10
+			Expect(repo.Put(ctx, other)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(ctx, *albumRoot, []string{disc1.ID, disc2.ID})).To(BeFalse())
+		})
+
+		It("ignores missing folders", func() {
+			gone := model.NewFolder(testLib, "TestHasAudio/Album/Gone")
+			gone.NumAudioFiles = 3
+			gone.Missing = true
+			Expect(repo.Put(ctx, gone)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(ctx, *albumRoot, []string{disc1.ID, disc2.ID})).To(BeFalse())
+		})
+
+		It("does not treat LIKE wildcards in the parent path as patterns", func() {
+			// "TestHas_udio" would LIKE-match "TestHasAudio" if "_" were not escaped
+			wildcardRoot := model.NewFolder(testLib, "TestHas_udio/Album")
+			Expect(repo.Put(ctx, wildcardRoot)).To(Succeed())
+
+			Expect(repo.HasAudioOutsideFolders(ctx, *wildcardRoot, []string{"none"})).To(BeFalse())
+		})
+	})
+
+	Describe("dbFolder.String", func() {
+		It("does not dereference a nil Folder", func() {
+			Expect(fmt.Sprint(dbFolder{})).To(Equal("<nil>"))
+			Expect(fmt.Sprint(&dbFolder{})).To(Equal("<nil>"))
 		})
 	})
 
@@ -221,7 +346,7 @@ var _ = Describe("FolderRepository", func() {
 		It("does not panic when the cursor yields a dbFolder with nil Folder", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
 			// it yields a zero-value dbFolder (where Folder is nil) with an error.
-			dbErr := fmt.Errorf("database is locked")
+			dbErr := errors.New("database is locked")
 			cursor := func(yield func(dbFolder, error) bool) {
 				var empty dbFolder // Folder pointer is nil
 				yield(empty, dbErr)
@@ -236,7 +361,7 @@ var _ = Describe("FolderRepository", func() {
 				}
 			}).ToNot(Panic())
 			Expect(gotErr).To(HaveOccurred())
-			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil folder"))
+			Expect(gotErr.Error()).To(ContainSubstring("unexpected nil model.Folder"))
 			Expect(errors.Is(gotErr, dbErr)).To(BeTrue(), "should wrap the original cursor error")
 		})
 
@@ -254,6 +379,38 @@ var _ = Describe("FolderRepository", func() {
 			}
 			Expect(folders).To(HaveLen(1))
 			Expect(folders[0].ID).To(Equal("f1"))
+		})
+	})
+
+	Describe("GetAllWithPlaylists", func() {
+		It("returns all non-missing folders with playlists, ignoring the scan-timestamp gate", func() {
+			withPls := model.NewFolder(testLib, "TestAllPls/WithPls")
+			withPls.NumPlaylists = 2
+			noPls := model.NewFolder(testLib, "TestAllPls/NoPls")
+			noPls.NumPlaylists = 0
+			missingWithPls := model.NewFolder(testLib, "TestAllPls/Missing")
+			missingWithPls.NumPlaylists = 1
+			missingWithPls.Missing = true
+
+			Expect(repo.Put(ctx, withPls)).To(Succeed())
+			Expect(repo.Put(ctx, noPls)).To(Succeed())
+			Expect(repo.Put(ctx, missingWithPls)).To(Succeed())
+
+			// Force the folder's updated_at to the past so GetTouchedWithPlaylists
+			// (which gates on updated_at > last_scan_at) would NOT return it.
+			_, err := conn.NewQuery("UPDATE folder SET updated_at = {:t} WHERE id = {:id}").
+				Bind(dbx.Params{"t": "2000-01-01 00:00:00", "id": withPls.ID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			var ids []string
+			cursor, err := repo.GetAllWithPlaylists(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			for f, err := range cursor {
+				Expect(err).ToNot(HaveOccurred())
+				ids = append(ids, f.ID)
+			}
+
+			Expect(ids).To(ConsistOf(withPls.ID)) // only the non-missing folder with playlists
 		})
 	})
 })

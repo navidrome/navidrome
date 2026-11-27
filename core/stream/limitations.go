@@ -1,6 +1,8 @@
 package stream
 
 import (
+	"iter"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -48,6 +50,47 @@ func checkLimitations(src *Details, limitations []Limitation) string {
 	return ""
 }
 
+func audioCodecProfiles(clientInfo *ClientInfo, codec string) iter.Seq[CodecProfile] {
+	return func(yield func(CodecProfile) bool) {
+		for _, cp := range clientInfo.CodecProfiles {
+			if strings.EqualFold(cp.Type, CodecProfileTypeAudio) && matchesCodec(codec, []string{cp.Name}) {
+				if !yield(cp) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func hasUpperBoundLimitation(clientInfo *ClientInfo, codec, name string) bool {
+	for cp := range audioCodecProfiles(clientInfo, codec) {
+		if slices.ContainsFunc(cp.Limitations, func(lim Limitation) bool {
+			return strings.EqualFold(lim.Name, name) && len(upperBounds(lim.Comparison, lim.Values)) > 0
+		}) {
+			return true
+		}
+	}
+	return false
+}
+
+// upperBounds returns the values a limitation can lower a number to, none for >=, != or non-numeric limits.
+func upperBounds(comparison string, values []string) []int {
+	switch comparison {
+	case ComparisonLessThanEqual:
+		values = values[:min(len(values), 1)]
+	case ComparisonEquals:
+	default:
+		return nil
+	}
+	var bounds []int
+	for _, s := range values {
+		if v, ok := parseInt(s); ok {
+			bounds = append(bounds, v)
+		}
+	}
+	return bounds
+}
+
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
 // Returns the adjustment result.
 func applyLimitation(sourceBitrate int, lim *Limitation, ts *Details) adjustResult {
@@ -61,7 +104,7 @@ func applyLimitation(sourceBitrate int, lim *Limitation, ts *Details) adjustResu
 		}
 		return applyIntLimitation(lim.Comparison, lim.Values, current, func(v int) { ts.Bitrate = v })
 	case LimitationAudioSamplerate:
-		return applyIntLimitation(lim.Comparison, lim.Values, ts.SampleRate, func(v int) { ts.SampleRate = v })
+		return applySampleRateLimitation(lim, ts)
 	case LimitationAudioBitdepth:
 		if ts.BitDepth > 0 {
 			return applyIntLimitation(lim.Comparison, lim.Values, ts.BitDepth, func(v int) { ts.BitDepth = v })
@@ -70,6 +113,33 @@ func applyLimitation(sourceBitrate int, lim *Limitation, ts *Details) adjustResu
 		// TODO: implement when audio profile data is available
 	}
 	return adjustNone
+}
+
+// applySampleRateLimitation applies a sample rate limitation and keeps the
+// result to a rate the target encoder accepts. Equals values the encoder
+// rejects are ignored, and a lowered rate moves down to the next accepted one.
+// If no accepted rate satisfies the limitation, the profile cannot fit.
+func applySampleRateLimitation(lim *Limitation, ts *Details) adjustResult {
+	values := lim.Values
+	if lim.Comparison == ComparisonEquals && len(values) > 0 {
+		values = slices.DeleteFunc(slices.Clone(values), func(v string) bool {
+			rate, ok := parseInt(v)
+			return ok && !codecAcceptsSampleRate(ts.Codec, rate)
+		})
+		if len(values) == 0 {
+			return adjustCannotFit
+		}
+	}
+	result := applyIntLimitation(lim.Comparison, values, ts.SampleRate, func(v int) { ts.SampleRate = v })
+	if result != adjustAdjusted {
+		return result
+	}
+	rate, ok := codecSampleRateAtOrBelow(ts.Codec, ts.SampleRate)
+	if !ok {
+		return adjustCannotFit
+	}
+	ts.SampleRate = rate
+	return adjustAdjusted
 }
 
 // applyIntLimitation applies a limitation comparison to a value.
@@ -81,14 +151,11 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 
 	switch comparison {
 	case ComparisonLessThanEqual:
-		limit, ok := parseInt(values[0])
-		if !ok {
+		bounds := upperBounds(comparison, values)
+		if len(bounds) == 0 || current <= bounds[0] {
 			return adjustNone
 		}
-		if current <= limit {
-			return adjustNone
-		}
-		setter(limit)
+		setter(bounds[0])
 		return adjustAdjusted
 	case ComparisonGreaterThanEqual:
 		limit, ok := parseInt(values[0])
@@ -101,21 +168,17 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		// Cannot upscale
 		return adjustCannotFit
 	case ComparisonEquals:
-		// Check if current value matches any allowed value
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && current == limit {
-				return adjustNone
-			}
+		bounds := upperBounds(comparison, values)
+		if slices.Contains(bounds, current) {
+			return adjustNone
 		}
 		// Find the closest allowed value below current (don't upscale)
 		var closest int
 		found := false
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && limit < current {
-				if !found || limit > closest {
-					closest = limit
-					found = true
-				}
+		for _, limit := range bounds {
+			if limit < current && (!found || limit > closest) {
+				closest = limit
+				found = true
 			}
 		}
 		if found {

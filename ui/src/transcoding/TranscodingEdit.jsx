@@ -9,7 +9,7 @@ import {
 } from 'react-admin'
 import { Title } from '../common'
 import { TranscodingNote } from './TranscodingNote'
-import { BITRATE_CHOICES } from '../consts'
+import { TRANSCODING_BITRATE_CHOICES } from '../consts'
 
 const TranscodingTitle = ({ record }) => {
   const translate = useTranslate()
@@ -28,7 +28,10 @@ const TranscodingEdit = (props) => {
         <SimpleForm variant={'outlined'}>
           <TextInput source="name" validate={[required()]} />
           <TextInput source="targetFormat" validate={[required()]} />
-          <SelectInput source="defaultBitRate" choices={BITRATE_CHOICES} />
+          <SelectInput
+            source="defaultBitRate"
+            choices={TRANSCODING_BITRATE_CHOICES}
+          />
           <TextInput source="command" fullWidth validate={[required()]} />
         </SimpleForm>
       </Edit>

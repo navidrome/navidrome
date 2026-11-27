@@ -11,8 +11,8 @@ func init() {
 	goose.AddMigrationContext(Up20200404214704, Down20200404214704)
 }
 
-func Up20200404214704(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+func Up20200404214704(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
 create index if not exists media_file_year
 	on media_file (year);
 
@@ -25,6 +25,6 @@ create index if not exists media_file_track_number
 	return err
 }
 
-func Down20200404214704(_ context.Context, tx *sql.Tx) error {
+func Down20200404214704(_ context.Context, _ *sql.Tx) error {
 	return nil
 }

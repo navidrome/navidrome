@@ -81,25 +81,27 @@ const getAvatarUrl = (username, size) =>
   )
 
 const getCoverArtUrl = (record, size, square) => {
+  const suffix = record.imageHash ? '_' + record.imageHash : ''
   const options = {
-    ...(record.updatedAt && { _: record.updatedAt }),
+    // A hash-suffixed url is already pixel-versioned; the buster would defeat immutable caching.
+    ...(!record.imageHash && record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
     ...(square && { square }),
   }
 
   // TODO Move this logic to server
   if (record.album) {
-    return baseUrl(url('getCoverArt', 'mf-' + record.id, options))
+    return baseUrl(url('getCoverArt', 'mf-' + record.id + suffix, options))
   } else if (record.albumArtist) {
-    return baseUrl(url('getCoverArt', 'al-' + record.id, options))
+    return baseUrl(url('getCoverArt', 'al-' + record.id + suffix, options))
   } else if (record.sync !== undefined) {
     // This is a playlist
-    return baseUrl(url('getCoverArt', 'pl-' + record.id, options))
+    return baseUrl(url('getCoverArt', 'pl-' + record.id + suffix, options))
   } else if (record.streamUrl !== undefined) {
     // This is a radio station
-    return baseUrl(url('getCoverArt', 'ra-' + record.id, options))
+    return baseUrl(url('getCoverArt', 'ra-' + record.id + suffix, options))
   } else {
-    return baseUrl(url('getCoverArt', 'ar-' + record.id, options))
+    return baseUrl(url('getCoverArt', 'ar-' + record.id + suffix, options))
   }
 }
 
@@ -127,6 +129,19 @@ const getSimilarSongs2 = (id, count = 100) => {
 
 const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
+}
+
+const getTranscodeDecision = async (songId, browserProfile) => {
+  const { json } = await httpClient(
+    url('getTranscodeDecision', null, { mediaId: songId, mediaType: 'song' }),
+    { method: 'POST', body: JSON.stringify(browserProfile) },
+  )
+  const subsonicResponse = json['subsonic-response']
+  if (subsonicResponse.status !== 'ok') {
+    const err = subsonicResponse.error || {}
+    throw new Error(`getTranscodeDecision error: ${err.code} ${err.message}`)
+  }
+  return subsonicResponse.transcodeDecision
 }
 
 const streamUrl = (id, options) => {
@@ -158,4 +173,5 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getTranscodeDecision,
 }

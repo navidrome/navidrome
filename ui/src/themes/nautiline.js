@@ -598,11 +598,9 @@ const NautilineTheme = {
       },
     },
     NDAlbumGridView: {
-      albumContainer: {
+      link: {
         borderRadius: radii.md,
-        '& img': {
-          borderRadius: radii.md,
-        },
+        overflow: 'hidden',
       },
       albumTitle: {
         fontWeight: 600,
@@ -627,7 +625,6 @@ const NautilineTheme = {
       root: {
         [`@media (max-width: ${breakpoints.xs}px)`]: {
           padding: '0.7em',
-          width: '100%',
           minWidth: 'unset',
         },
       },

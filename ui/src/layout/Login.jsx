@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
 import { useDispatch } from 'react-redux'
+import { useHistory } from 'react-router-dom'
 import Button from '@material-ui/core/Button'
 import Card from '@material-ui/core/Card'
 import CardActions from '@material-ui/core/CardActions'
@@ -11,10 +12,9 @@ import TextField from '@material-ui/core/TextField'
 import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
 import {
   createMuiTheme,
+  useCheckAuth,
   useLogin,
   useNotify,
-  useRefresh,
-  useSetLocale,
   useTranslate,
   useVersion,
 } from 'react-admin'
@@ -24,7 +24,6 @@ import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
-import { retrieveTranslation } from '../i18n'
 import { INSIGHTS_DOC_URL } from '../consts.js'
 
 const useStyles = makeStyles(
@@ -101,8 +100,13 @@ const renderInput = ({
 }) => (
   <TextField
     error={!!(touched && error)}
+    inputProps={{
+      // mobile keyboards: suppress capitalization and correction for login related fields
+      autocapitalize: 'none',
+      autocorrect: 'off',
+      ...inputProps,
+    }}
     helperText={touched && error}
-    {...inputProps}
     {...props}
     fullWidth
   />
@@ -320,6 +324,16 @@ const Login = ({ location }) => {
   const notify = useNotify()
   const login = useLogin()
   const dispatch = useDispatch()
+  const checkAuth = useCheckAuth()
+  const history = useHistory()
+
+  // Signed-in users opening #/login go straight to the app;
+  // replace keeps Back from bouncing.
+  useEffect(() => {
+    checkAuth({}, false)
+      .then(() => history.replace('/'))
+      .catch(() => {})
+  }, [checkAuth, history])
 
   const handleSubmit = useCallback(
     (auth) => {
@@ -402,26 +416,7 @@ Login.propTypes = {
 // the right theme
 const LoginWithTheme = (props) => {
   const theme = useCurrentTheme()
-  const setLocale = useSetLocale()
-  const refresh = useRefresh()
   const version = useVersion()
-
-  useEffect(() => {
-    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
-      retrieveTranslation(config.defaultLanguage)
-        .then(() => {
-          setLocale(config.defaultLanguage).then(() => {
-            localStorage.setItem('locale', config.defaultLanguage)
-          })
-          refresh(true)
-        })
-        .catch((e) => {
-          throw new Error(
-            'Cannot load language "' + config.defaultLanguage + '": ' + e,
-          )
-        })
-    }
-  }, [refresh, setLocale])
 
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>

@@ -1,7 +1,8 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { ArtistLinkField } from './ArtistLinkField'
+import config from '../config'
 import { intersperse } from '../utils/index.js'
 
 // Mock dependencies
@@ -127,6 +128,50 @@ describe('ArtistLinkField', () => {
       const links = screen.getAllByRole('link')
       expect(links).toHaveLength(1)
       expect(links[0]).toHaveTextContent('Duplicate Person')
+    })
+
+    describe('when uiAppendRemixers is disabled', () => {
+      let originalValue
+
+      beforeEach(() => {
+        originalValue = config.uiAppendRemixers
+        config.uiAppendRemixers = false
+      })
+
+      afterEach(() => {
+        config.uiAppendRemixers = originalValue
+      })
+
+      it('does not add remixers from participants', () => {
+        const record = {
+          participants: {
+            artist: [{ id: '1', name: 'Artist 1' }],
+            remixer: [{ id: '2', name: 'Remixer 1' }],
+          },
+        }
+
+        render(<ArtistLinkField record={record} source="artist" />)
+
+        expect(screen.getByText('Artist 1')).toBeInTheDocument()
+        expect(screen.queryByText('Remixer 1')).not.toBeInTheDocument()
+      })
+
+      it('does not add remixers after the display artist string', () => {
+        const record = {
+          artist: 'Main Artist',
+          participants: {
+            artist: [{ id: '1', name: 'Main Artist' }],
+            remixer: [{ id: '2', name: 'Remixer 1' }],
+          },
+        }
+
+        render(<ArtistLinkField record={record} source="artist" />)
+
+        const links = screen.getAllByRole('link')
+        expect(links).toHaveLength(1)
+        expect(links[0]).toHaveAttribute('href', '/artist/1')
+        expect(screen.queryByText(/•/)).not.toBeInTheDocument()
+      })
     })
   })
 

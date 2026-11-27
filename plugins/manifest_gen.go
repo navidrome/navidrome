@@ -45,19 +45,14 @@ func (j *ConfigDefinition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// Experimental features that may change or be removed in future versions
-type Experimental struct {
-	// Threads corresponds to the JSON schema field "threads".
-	Threads *ThreadsFeature `json:"threads,omitempty" yaml:"threads,omitempty" mapstructure:"threads,omitempty"`
-}
-
 // HTTP access permissions for a plugin
 type HTTPPermission struct {
 	// Explanation for why HTTP access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// List of required host patterns for HTTP requests (e.g., 'api.example.com',
-	// '*.musicbrainz.org')
+	// '*.musicbrainz.org'). A named host alone can't reach a private address; also
+	// list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that
 	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }
 
@@ -109,9 +104,6 @@ type Manifest struct {
 	// A brief description of what the plugin does
 	Description *string `json:"description,omitempty" yaml:"description,omitempty" mapstructure:"description,omitempty"`
 
-	// Experimental corresponds to the JSON schema field "experimental".
-	Experimental *Experimental `json:"experimental,omitempty" yaml:"experimental,omitempty" mapstructure:"experimental,omitempty"`
-
 	// The display name of the plugin
 	Name string `json:"name" yaml:"name" mapstructure:"name"`
 
@@ -158,6 +150,12 @@ func (j *Manifest) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// Matcher service permissions for resolving external songs to local library tracks
+type MatcherPermission struct {
+	// Explanation for why matcher access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
 // Permissions required by the plugin
 type Permissions struct {
 	// Artwork corresponds to the JSON schema field "artwork".
@@ -175,8 +173,17 @@ type Permissions struct {
 	// Library corresponds to the JSON schema field "library".
 	Library *LibraryPermission `json:"library,omitempty" yaml:"library,omitempty" mapstructure:"library,omitempty"`
 
+	// Matcher corresponds to the JSON schema field "matcher".
+	Matcher *MatcherPermission `json:"matcher,omitempty" yaml:"matcher,omitempty" mapstructure:"matcher,omitempty"`
+
 	// Scheduler corresponds to the JSON schema field "scheduler".
 	Scheduler *SchedulerPermission `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`
+
+	// ScrobbleRetriever corresponds to the JSON schema field "scrobbleRetriever".
+	ScrobbleRetriever *ScrobbleRetrieverPermission `json:"scrobbleRetriever,omitempty" yaml:"scrobbleRetriever,omitempty" mapstructure:"scrobbleRetriever,omitempty"`
+
+	// Storage corresponds to the JSON schema field "storage".
+	Storage *StoragePermission `json:"storage,omitempty" yaml:"storage,omitempty" mapstructure:"storage,omitempty"`
 
 	// Subsonicapi corresponds to the JSON schema field "subsonicapi".
 	Subsonicapi *SubsonicAPIPermission `json:"subsonicapi,omitempty" yaml:"subsonicapi,omitempty" mapstructure:"subsonicapi,omitempty"`
@@ -197,6 +204,19 @@ type SchedulerPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
+// Scrobble retriever permissions for retrieving scrobbles from users
+type ScrobbleRetrieverPermission struct {
+	// Explanation for why scrobble retriever access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
+// Storage permissions for enabling persistent read-write storage exclusively for
+// the plugin
+type StoragePermission struct {
+	// Explanation for why storage access is needed
+	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
+}
+
 // SubsonicAPI service permissions. Requires 'users' permission to be declared.
 type SubsonicAPIPermission struct {
 	// Explanation for why SubsonicAPI access is needed
@@ -207,6 +227,10 @@ type SubsonicAPIPermission struct {
 type TaskQueuePermission struct {
 	// Maximum total concurrent workers across all queues. Default: 1
 	MaxConcurrency int `json:"maxConcurrency,omitempty" yaml:"maxConcurrency,omitempty" mapstructure:"maxConcurrency,omitempty"`
+
+	// Maximum run time of one task execution, in seconds. Capped by the server option
+	// Plugins.MaxTaskDuration. Default: 30
+	MaxTaskDuration int `json:"maxTaskDuration,omitempty" yaml:"maxTaskDuration,omitempty" mapstructure:"maxTaskDuration,omitempty"`
 
 	// Explanation for why task queue access is needed
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
@@ -229,14 +253,14 @@ func (j *TaskQueuePermission) UnmarshalJSON(value []byte) error {
 	if 1 > plain.MaxConcurrency {
 		return fmt.Errorf("field %s: must be >= %v", "maxConcurrency", 1)
 	}
+	if v, ok := raw["maxTaskDuration"]; !ok || v == nil {
+		plain.MaxTaskDuration = 30.0
+	}
+	if 1 > plain.MaxTaskDuration {
+		return fmt.Errorf("field %s: must be >= %v", "maxTaskDuration", 1)
+	}
 	*j = TaskQueuePermission(plain)
 	return nil
-}
-
-// Enable experimental WebAssembly threads support
-type ThreadsFeature struct {
-	// Explanation for why threads support is needed
-	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 }
 
 // Users service permissions for accessing user information
@@ -251,6 +275,8 @@ type WebSocketPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// List of required host patterns for WebSocket connections (e.g.,
-	// 'api.example.com', '*.musicbrainz.org')
+	// 'api.example.com', '*.musicbrainz.org'). Required: with no entries every
+	// connection is blocked. A named host alone can't reach a private address; also
+	// list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that
 	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }

@@ -1,0 +1,5 @@
+description: "The request body is too large (`payload_too_large`)."
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

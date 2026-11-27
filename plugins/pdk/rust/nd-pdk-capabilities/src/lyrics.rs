@@ -18,20 +18,9 @@ fn is_zero_u64(value: &u64) -> bool { *value == 0 }
 fn is_zero_f32(value: &f32) -> bool { *value == 0.0 }
 #[allow(dead_code)]
 fn is_zero_f64(value: &f64) -> bool { *value == 0.0 }
-/// ArtistRef is a reference to an artist with name and optional MBID.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArtistRef {
-    /// ID is the internal Navidrome artist ID (if known).
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub id: String,
-    /// Name is the artist name.
-    #[serde(default)]
-    pub name: String,
-    /// MBID is the MusicBrainz ID for the artist.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub mbid: String,
-}
+
+#[deprecated(note = "use nd_pdk::types::ArtistRef")]
+pub type ArtistRef = nd_pdk_types::ArtistRef;
 /// GetLyricsRequest contains the track information for lyrics lookup.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,10 +66,10 @@ pub struct TrackInfo {
     pub album_artist: String,
     /// Artists is the list of track artists.
     #[serde(default)]
-    pub artists: Vec<ArtistRef>,
+    pub artists: Vec<nd_pdk_types::ArtistRef>,
     /// AlbumArtists is the list of album artists.
     #[serde(default)]
-    pub album_artists: Vec<ArtistRef>,
+    pub album_artists: Vec<nd_pdk_types::ArtistRef>,
     /// Duration is the track duration in seconds.
     #[serde(default)]
     pub duration: f32,

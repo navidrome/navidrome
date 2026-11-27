@@ -1,10 +1,5 @@
-import {
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
-  useMediaQuery,
-} from '@material-ui/core'
+import { useState } from 'react'
+import { Card, CardContent, Typography, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
@@ -13,13 +8,13 @@ import {
   CollapsibleComment,
   DurationField,
   ImageUploadOverlay,
+  LoveButton,
   SizeField,
   isWritable,
   OverflowTooltip,
-  useImageLoadingState,
 } from '../common'
-import config from '../config'
 import subsonic from '../subsonic'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -74,13 +69,19 @@ const useStyles = makeStyles(
       backgroundColor: 'transparent',
       transition: 'opacity 0.3s ease-in-out',
     },
-    coverLoading: {
-      opacity: 0.5,
-    },
     title: {
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       wordBreak: 'break-word',
+      minWidth: 0,
+    },
+    titleRow: {
+      display: 'flex',
+      alignItems: 'center',
+    },
+    loveButton: {
+      marginLeft: theme.spacing(0.5),
+      flexShrink: 0,
     },
     stats: {
       marginTop: '1em',
@@ -97,37 +98,21 @@ const PlaylistDetails = (props) => {
   const translate = useTranslate()
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
-  const {
-    imageLoading,
-    imageError,
-    isLightboxOpen,
-    handleImageLoad,
-    handleImageError,
-    handleOpenLightbox,
-    handleCloseLightbox,
-  } = useImageLoadingState(record.id)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
 
-  const imageUrl = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
-          <CardMedia
-            key={record.id} // Force re-render when playlist changes
-            component={'img'}
-            src={imageUrl}
-            width="400"
-            height="400"
-            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-            onClick={handleOpenLightbox}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
+          <Artwork
+            record={record}
+            square
+            fit="contain"
+            className={classes.cover}
             title={record.name}
-            style={{
-              cursor: imageError ? 'default' : 'pointer',
-            }}
+            onClick={() => setLightboxOpen(true)}
           />
           {isWritable(record.ownerId) && (
             <ImageUploadOverlay
@@ -139,14 +124,24 @@ const PlaylistDetails = (props) => {
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
-            <OverflowTooltip title={record.name || ''}>
-              <Typography
-                variant={isDesktop ? 'h5' : 'h6'}
-                className={classes.title}
-              >
-                {record.name || translate('ra.page.loading')}
-              </Typography>
-            </OverflowTooltip>
+            <div className={classes.titleRow}>
+              <OverflowTooltip title={record.name || ''}>
+                <Typography
+                  variant={isDesktop ? 'h5' : 'h6'}
+                  className={classes.title}
+                >
+                  {record.name || translate('ra.page.loading')}
+                </Typography>
+              </OverflowTooltip>
+              <LoveButton
+                className={classes.loveButton}
+                record={record}
+                resource={'playlist'}
+                size={isDesktop ? 'default' : 'small'}
+                aria-label="love"
+                color="primary"
+              />
+            </div>
             <Typography component="p" className={classes.stats}>
               {record.songCount ? (
                 <span>
@@ -167,13 +162,13 @@ const PlaylistDetails = (props) => {
           </CardContent>
         </div>
       </div>
-      {isLightboxOpen && !imageError && (
+      {isLightboxOpen && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}
           imageTitle={record.name}
           mainSrc={fullImageUrl}
-          onCloseRequest={handleCloseLightbox}
+          onCloseRequest={() => setLightboxOpen(false)}
         />
       )}
     </Card>

@@ -7,5 +7,7 @@ import (
 var Set = wire.NewSet(
 	NewArtwork,
 	GetImageCache,
-	NewCacheWarmer,
+	NewWorker,
+	GetImageStore,
+	NewUploader,
 )

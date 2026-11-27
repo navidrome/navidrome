@@ -22,9 +22,9 @@ struct MathAddResponse {
     error: Option<String>,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn math_add(input: Json<MathAddRequest>) -> Json<MathAddResponse>;
+#[link(wasm_import_module = "extism:host/user")]
+extern "C" {
+    fn math_add(input: u64) -> u64;
 }
 
 /// Calls the math_add host function.
@@ -39,16 +39,14 @@ extern "ExtismHost" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn add(a: i32, b: i32) -> Result<i32, Error> {
-    let response = unsafe {
-        math_add(Json(MathAddRequest {
-            a: a,
-            b: b,
-        }))?
-    };
+    let response: MathAddResponse = unsafe { nd_pdk_types::hostcall::call(math_add, &MathAddRequest {
+        a: a,
+        b: b,
+    }) }?;
 
-    if let Some(err) = response.0.error {
+    if let Some(err) = response.error {
         return Err(Error::msg(err));
     }
 
-    Ok(response.0.result)
+    Ok(response.result)
 }

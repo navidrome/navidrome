@@ -1,6 +1,9 @@
 package stream
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // normalizeProbeCodec maps ffprobe codec_name values to the simplified internal
 // codec names used throughout Navidrome (matching inferCodecFromSuffix output).
@@ -32,9 +35,10 @@ func isLosslessFormat(format string) bool {
 	return false
 }
 
-// normalizeSourceSampleRate adjusts the source sample rate for codecs that store
-// it differently than PCM. Currently handles DSD (÷8):
+// normalizeSourceSampleRate adjusts a sample rate read from tags for codecs that
+// store it differently than PCM. Currently handles DSD (÷8):
 // DSD64=2822400→352800, DSD128=5644800→705600, etc.
+// ffprobe already reports DSD at this rate, so probe data needs no adjustment.
 // For other codecs, returns the rate unchanged.
 func normalizeSourceSampleRate(sampleRate int, codec string) int {
 	if strings.EqualFold(codec, "dsd") && sampleRate > 0 {
@@ -43,14 +47,33 @@ func normalizeSourceSampleRate(sampleRate int, codec string) int {
 	return sampleRate
 }
 
-// normalizeSourceBitDepth adjusts the source bit depth for codecs that use
-// non-standard bit depths. Currently handles DSD (1-bit → 24-bit PCM, which is
-// what ffmpeg produces). For other codecs, returns the depth unchanged.
-func normalizeSourceBitDepth(bitDepth int, codec string) int {
-	if strings.EqualFold(codec, "dsd") && bitDepth == 1 {
-		return 24
+// dsdMaxPCMSampleRate caps DSD transcoded to lossless PCM. It divides every
+// 44.1kHz-based DSD rate exactly, DSD carries mostly its own shaped noise above
+// it, and many clients cannot play 352.8kHz PCM.
+const dsdMaxPCMSampleRate = 88200
+
+// targetSampleRate returns the sample rate for a transcoded stream before codec
+// and client limits are applied, with DSD capped when capDSD is set.
+func targetSampleRate(srcSampleRate int, srcCodec string, capDSD bool) int {
+	if capDSD && strings.EqualFold(srcCodec, "dsd") {
+		return min(srcSampleRate, dsdMaxPCMSampleRate)
 	}
-	return bitDepth
+	return srcSampleRate
+}
+
+// targetBitDepth returns the bit depth for a transcoded stream: 0 for lossy
+// targets (they have no PCM bit depth), otherwise the source depth, with DSD
+// (1 bit in tags, 8 in ffprobe) adjusted to the 24-bit PCM that ffmpeg produces.
+func targetBitDepth(src *Details, targetIsLossless bool) int {
+	switch {
+	case !targetIsLossless:
+		return 0
+	case strings.EqualFold(src.Codec, "dsd"):
+		return 24
+	case !src.IsLossless:
+		return 16 // the most widely supported depth
+	}
+	return src.BitDepth
 }
 
 // codecFixedOutputSampleRate returns the mandatory output sample rate for codecs
@@ -64,16 +87,52 @@ func codecFixedOutputSampleRate(codec string) int {
 	return 0
 }
 
-// codecMaxSampleRate returns the hard maximum output sample rate for a codec.
-// Returns 0 if the codec has no hard limit.
-func codecMaxSampleRate(codec string) int {
-	switch strings.ToLower(codec) {
-	case "mp3":
-		return 48000
-	case "aac":
-		return 96000
+// codecSampleRates lists, in ascending order, the only sample rates some
+// encoders accept. ffmpeg's libmp3lame and aac encoders exit with an error for
+// any other rate (e.g. 32728Hz from Nintendo 3DS rips).
+var codecSampleRates = map[string][]int{
+	"mp3": {8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000},
+	"aac": {7350, 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000},
+}
+
+// codecSampleRate returns a sample rate the codec's encoder accepts: the
+// lowest supported rate at or above sampleRate, or the codec's highest rate if
+// sampleRate is above it. Codecs with no fixed set, and a zero (unknown) rate,
+// are returned unchanged.
+func codecSampleRate(codec string, sampleRate int) int {
+	rates := codecSampleRates[strings.ToLower(codec)]
+	if len(rates) == 0 || sampleRate <= 0 {
+		return sampleRate
 	}
-	return 0
+	for _, r := range rates {
+		if r >= sampleRate {
+			return r
+		}
+	}
+	return rates[len(rates)-1]
+}
+
+// codecAcceptsSampleRate reports whether the codec's encoder accepts sampleRate.
+// Codecs with no fixed set accept any rate.
+func codecAcceptsSampleRate(codec string, sampleRate int) bool {
+	rates := codecSampleRates[strings.ToLower(codec)]
+	return len(rates) == 0 || slices.Contains(rates, sampleRate)
+}
+
+// codecSampleRateAtOrBelow returns the highest rate the codec's encoder accepts
+// that is not above sampleRate, and false if there is none. Codecs with no
+// fixed set return sampleRate unchanged.
+func codecSampleRateAtOrBelow(codec string, sampleRate int) (int, bool) {
+	rates := codecSampleRates[strings.ToLower(codec)]
+	if len(rates) == 0 {
+		return sampleRate, true
+	}
+	for _, r := range slices.Backward(rates) {
+		if r <= sampleRate {
+			return r, true
+		}
+	}
+	return 0, false
 }
 
 // codecMaxChannels returns the hard maximum number of audio channels a codec

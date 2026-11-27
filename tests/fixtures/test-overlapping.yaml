@@ -1,0 +1,24 @@
+version: '1.0'
+metadata:
+  title: 'Duet'
+  artist: 'Lead and Echo'
+  language: 'eng'
+
+lines:
+  - text: "Lead vocal"
+    start_ms: 1000
+    end_ms: 4000
+    words:
+      - text: "Lead "
+        start_ms: 1000
+        end_ms: 2000
+      - text: "vocal"
+        start_ms: 2000
+        end_ms: 4000
+  - text: "echo"
+    start_ms: 2000
+    end_ms: 3000
+    words:
+      - text: "echo"
+        start_ms: 2000
+        end_ms: 3000

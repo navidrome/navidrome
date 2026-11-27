@@ -20,7 +20,7 @@ var _ = Describe("HashFunc", func() {
 	It("hashes the input and returns the sum", func() {
 		hashFunc := hasher.HashFunc()
 		sum := hashFunc("1", input)
-		Expect(sum > 0).To(BeTrue())
+		Expect(sum).To(BeNumerically(">", 0))
 	})
 
 	It("hashes the input, reseeds and returns a different sum", func() {
