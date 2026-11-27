@@ -159,7 +159,7 @@ var _ = Describe("Items", func() {
 	getItems := func(url string, ctx context.Context) (int, dto.QueryResult) {
 		GinkgoHelper()
 		w := httptest.NewRecorder()
-		invoke(api.getItems, w, httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil).WithContext(ctx))
+		invoke(api.getItems, w, httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil))
 		var res dto.QueryResult
 		if w.Code == http.StatusOK {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -1020,7 +1020,7 @@ var _ = Describe("Items", func() {
 		getItem := func(itemID string, ctx context.Context) (int, dto.BaseItemDto) {
 			GinkgoHelper()
 			w := httptest.NewRecorder()
-			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+itemID, nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+itemID, nil)
 			invoke(api.getItem, w, withChiURLParam(r, "itemId", itemID))
 			var item dto.BaseItemDto
 			if w.Code == http.StatusOK {
@@ -1122,7 +1122,7 @@ var _ = Describe("Items", func() {
 		latest := func(ctx context.Context) []dto.BaseItemDto {
 			GinkgoHelper()
 			w := httptest.NewRecorder()
-			invoke(api.getLatest, w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/Users/u1/Items/Latest", nil).WithContext(ctx))
+			invoke(api.getLatest, w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/Users/u1/Items/Latest", nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var items []dto.BaseItemDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &items)).To(Succeed())

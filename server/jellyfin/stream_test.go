@@ -386,7 +386,7 @@ var _ = Describe("Stream", func() {
 
 		hls := func(query string, ctx context.Context) *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/main.m3u8"+query, nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/main.m3u8"+query, nil)
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamHls, w, r)
 			return w

@@ -46,7 +46,7 @@ var _ = Describe("Browsing", func() {
 	get := func(handler http.HandlerFunc, url string, ctx context.Context) dto.QueryResult {
 		GinkgoHelper()
 		w := httptest.NewRecorder()
-		invoke(handler, w, httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil).WithContext(ctx))
+		invoke(handler, w, httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil))
 		Expect(w.Code).To(Equal(http.StatusOK))
 		var res dto.QueryResult
 		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -231,7 +231,7 @@ var _ = Describe("Browsing", func() {
 		filters := func(ctx context.Context) dto.QueryFiltersLegacy {
 			GinkgoHelper()
 			w := httptest.NewRecorder()
-			invoke(api.getQueryFiltersLegacy, w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/Filters", nil).WithContext(ctx))
+			invoke(api.getQueryFiltersLegacy, w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/Filters", nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryFiltersLegacy
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())

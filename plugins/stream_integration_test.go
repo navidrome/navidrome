@@ -406,21 +406,22 @@ var _ = Describe("Plugin streams under a memory cap", Ordered, func() {
 
 // buildRustTestPlugin skips when the wasm32-wasip1 Rust target is missing; CI does not install it.
 func buildRustTestPlugin(dir string) string {
+	ctx := GinkgoT().Context()
 	rustup, err := exec.LookPath("rustup")
 	if err != nil {
 		Skip("rustup is not installed")
 	}
-	targets, err := exec.CommandContext(GinkgoT().Context(), rustup, "target", "list", "--installed").Output()
+	targets, err := exec.CommandContext(ctx, rustup, "target", "list", "--installed").Output()
 	if err != nil || !strings.Contains(string(targets), "wasm32-wasip1") {
 		Skip("the wasm32-wasip1 Rust target is not installed")
 	}
-	cargoOut, err := exec.CommandContext(GinkgoT().Context(), rustup, "which", "cargo").Output()
+	cargoOut, err := exec.CommandContext(ctx, rustup, "which", "cargo").Output()
 	Expect(err).ToNot(HaveOccurred())
-	rustc, err := exec.CommandContext(GinkgoT().Context(), rustup, "which", "rustc").Output()
+	rustc, err := exec.CommandContext(ctx, rustup, "which", "rustc").Output()
 	Expect(err).ToNot(HaveOccurred())
 
 	cargo := strings.TrimSpace(string(cargoOut))
-	cmd := exec.CommandContext(GinkgoT().Context(), cargo, "build", "--release", "--target", "wasm32-wasip1")
+	cmd := exec.CommandContext(ctx, cargo, "build", "--release", "--target", "wasm32-wasip1")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "CARGO_BUILD_RUSTC="+strings.TrimSpace(string(rustc)))
 	out, err := cmd.CombinedOutput()

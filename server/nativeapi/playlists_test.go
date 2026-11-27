@@ -35,9 +35,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPost, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
-			req = req.WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/playlist/pls-1/image", nil)
 
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, req)
@@ -54,9 +53,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodDelete, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
-			req = req.WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/playlist/pls-1/image", nil)
 
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, req)
