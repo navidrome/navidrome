@@ -143,6 +143,26 @@ var _ = Describe("streamTable", func() {
 		Expect(r2.closes.Load()).To(Equal(int32(1)))
 	})
 
+	DescribeTable("reports why the call ended when a handle is used after it",
+		func(stop func(*callScope, context.CancelFunc), want error) {
+			callCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			s, err := table.newScope(callCtx)
+			Expect(err).ToNot(HaveOccurred())
+			_, backend := reader()
+			h := mustRegister(s, backend)
+			stop(s, cancel)
+			_, err = s.lookup(h, streamRead)
+			Expect(err).To(MatchError(want))
+			_, err = s.detach(h)
+			Expect(err).To(MatchError(want))
+		},
+		Entry("cancelled", func(_ *callScope, cancel context.CancelFunc) { cancel() }, context.Canceled),
+		Entry("cancelled and closed", func(s *callScope, cancel context.CancelFunc) { cancel(); s.close() }, context.Canceled),
+		Entry("ended", func(s *callScope, _ context.CancelFunc) { s.close() }, errCallEnded),
+		Entry("unloaded", func(*callScope, context.CancelFunc) { _ = table.Close() }, errPluginUnloaded),
+	)
+
 	It("closes a stream registered after the scope closed", func() {
 		s := newScope()
 		s.close()
@@ -227,10 +247,10 @@ var _ = Describe("streamTable", func() {
 			Expect(values).To(HaveLen(1))
 			Expect(values[0]).To(BeIdenticalTo(r))
 
-			s.close()
-			Expect(r.closed()).To(BeFalse())
 			_, err = s.lookup(h, streamRead)
 			Expect(err).To(MatchError(errUnknownStream))
+			s.close()
+			Expect(r.closed()).To(BeFalse())
 		})
 
 		It("moves nothing when a handle appears twice", func() {

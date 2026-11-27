@@ -114,9 +114,12 @@ func (s *callScope) insert(b *streamBackend) (uint32, error) {
 
 func (s *callScope) lookup(h uint32, need streamRights) (*streamBackend, error) {
 	s.table.mu.Lock()
+	err := s.checkOpenLocked()
 	b, ok := s.entries[h]
 	s.table.mu.Unlock()
 	switch {
+	case err != nil:
+		return nil, err
 	case !ok:
 		return nil, errUnknownStream
 	case need&streamRead != 0 && b.rights&streamRead == 0:
@@ -130,6 +133,9 @@ func (s *callScope) lookup(h uint32, need streamRights) (*streamBackend, error) 
 func (s *callScope) detach(h uint32) (*streamBackend, error) {
 	s.table.mu.Lock()
 	defer s.table.mu.Unlock()
+	if err := s.checkOpenLocked(); err != nil {
+		return nil, err
+	}
 	b, ok := s.entries[h]
 	if !ok {
 		return nil, errUnknownStream
