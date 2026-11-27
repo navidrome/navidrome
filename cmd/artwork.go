@@ -325,8 +325,8 @@ func runReprocess(ctx context.Context) {
 	// services. A preview must not reach the network, so init never runs here.
 	var imageAgents artwork.ImageAgentCount
 	if needsImageAgents(kinds) {
-		mgr := loadPluginAgents(ctx, false)
-		defer func() { _ = mgr.Stop(ctx) }()
+		mgr, stop := loadPluginAgents(ctx, false)
+		defer stop()
 		imageAgents = artwork.NewImageAgentCount(agents.GetAgents(ds, mgr))
 	}
 
@@ -399,12 +399,12 @@ func externalLookupLine(n int64) string {
 
 // loadPluginAgents loads the plugins named in Agents, so the CLI resolves through the same agents a
 // running server would. A load failure is reported, not fatal: the built-in agents still answer.
-func loadPluginAgents(ctx context.Context, runInit bool) *plugins.Manager {
-	mgr := getPluginManager()
+func loadPluginAgents(ctx context.Context, runInit bool) (mgr *plugins.Manager, stop func()) {
+	mgr = getPluginManager()
 	if err := mgr.LoadPlugins(ctx, configuredAgents(), runInit); err != nil {
 		log.Warn(ctx, "Could not load plugins; plugin-provided agents will be missing", err)
 	}
-	return mgr
+	return mgr, func() { _ = mgr.Stop(ctx) }
 }
 
 // needsImageAgents asks exactly what ExternalLookupsPerItem asks, so the gate cannot disagree with
@@ -1000,8 +1000,8 @@ func runExplain(ctx context.Context, args []string) {
 		// Only artist and album reach an agent, and the load must precede the resolver, which reads
 		// the same manager.
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
-			mgr := loadPluginAgents(ctx, explainLive)
-			defer func() { _ = mgr.Stop(ctx) }()
+			mgr, stop := loadPluginAgents(ctx, explainLive)
+			defer stop()
 			rep.agents = explainAgents(conf.Server().Agents, availableImageAgents(ds, mgr, kind))
 		}
 		switch {
