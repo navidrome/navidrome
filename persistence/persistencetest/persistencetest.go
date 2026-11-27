@@ -57,18 +57,10 @@ func ResetBeforeEachSpec() bool {
 	return ginkgo.BeforeEach(ginkgo.OncePerOrdered, Reset)
 }
 
-// Tables lists the tables a restore rewrites. FTS shadow tables are excluded: their content
+// tables lists the tables a restore rewrites. FTS shadow tables are excluded: their content
 // tables' triggers keep them in sync, and writing them directly corrupts the index.
-func Tables() ([]string, error) {
-	return tables(context.Background(), db.Db())
-}
-
-type querier interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}
-
-func tables(ctx context.Context, q querier) ([]string, error) {
-	rows, err := q.QueryContext(ctx, "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
+func tables(ctx context.Context, conn *sql.Conn) ([]string, error) {
+	rows, err := conn.QueryContext(ctx, "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	if err != nil {
 		return nil, err
 	}
