@@ -49,28 +49,7 @@
         "playNext": "Soita seuraavaksi",
         "info": "Info",
         "showInPlaylist": "Näytä soittolistassa",
-        "instantMix": "Pikasekoitus",
-
-        "playNowShort": "Nyt",
-        "playNextShort": "Seuraava",
-        "addToQueueShort": "Myöhemmin",
-        "addToPlaylistShort": "Soittolista",
-        "batchRate": "Arvioi",
-        "batchRateShort": "Arvioi",
-        "batchRateTitle": "Arvioi %{smart_count} kappale |||| Arvioi %{smart_count} kappaletta",
-        "clearRating": "Poista arvio",
-        "like": "Tykkää",
-        "unlike": "Poista tykkäys"
-        "playNowShort": "Nyt",
-        "playNextShort": "Seuraava",
-        "addToQueueShort": "Myöhemmin",
-        "addToPlaylistShort": "Soittolista",
-        "batchRate": "Arvioi",
-        "batchRateShort": "Arvioi",
-        "batchRateTitle": "Arvioi %{smart_count} kappale |||| Arvioi %{smart_count} kappaletta",
-        "clearRating": "Poista arvio",
-        "like": "Tykkää",
-        "unlike": "Poista tykkäys"
+        "instantMix": "Pikasekoitus"
       }
     },
     "album": {
@@ -613,15 +592,12 @@
     "noSimilarSongsFound": "Samankaltaisia kappaleita ei löytynyt",
     "noTopSongsFound": "Suosituimpia kappaleita ei löytynyt",
     "startingInstantMix": "Ladataan Pikasekoitus...",
-
-    "batchRateSuccess": "Arvio lisätty onnistuneesti"
     "uploadCover": "Lataa kansikuva",
     "removeCover": "Poista kansikuva",
     "coverUploaded": "Kansikuva päivitetty",
     "coverRemoved": "Kansikuva poistettu",
     "coverUploadError": "Virhe ladattaessa kansikuvaa",
-    "coverRemoveError": "Virhe poistettaessa kansikuvaa",
-    "batchRateSuccess": "Arvio lisätty onnistuneesti"
+    "coverRemoveError": "Virhe poistettaessa kansikuvaa"
   },
   "menu": {
     "library": "Kirjasto",

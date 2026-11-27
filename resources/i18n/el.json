@@ -49,28 +49,7 @@
         "playNext": "Επόμενη Αναπαραγωγή",
         "info": "Εμφάνιση Πληροφοριών",
         "showInPlaylist": "Εμφάνιση στη λίστα αναπαραγωγής",
-        "instantMix": "Άμεση Μίξη",
-
-        "playNowShort": "Τώρα",
-        "playNextShort": "Επόμενο",
-        "addToQueueShort": "Αργότερα",
-        "addToPlaylistShort": "Λίστα",
-        "batchRate": "Βαθμολόγηση",
-        "batchRateShort": "Βαθμ.",
-        "batchRateTitle": "Βαθμολόγηση %{smart_count} τραγουδιού |||| Βαθμολόγηση %{smart_count} τραγουδιών",
-        "clearRating": "Διαγραφή βαθμολογίας",
-        "like": "Μου αρέσει",
-        "unlike": "Δεν μου αρέσει"
-        "playNowShort": "Τώρα",
-        "playNextShort": "Επόμενο",
-        "addToQueueShort": "Αργότερα",
-        "addToPlaylistShort": "Λίστα",
-        "batchRate": "Βαθμολόγηση",
-        "batchRateShort": "Βαθμ.",
-        "batchRateTitle": "Βαθμολόγηση %{smart_count} τραγουδιού |||| Βαθμολόγηση %{smart_count} τραγουδιών",
-        "clearRating": "Διαγραφή βαθμολογίας",
-        "like": "Μου αρέσει",
-        "unlike": "Δεν μου αρέσει"
+        "instantMix": "Άμεση Μίξη"
       }
     },
     "album": {
@@ -613,15 +592,12 @@
     "noSimilarSongsFound": "Δεν βρέθηκαν παρόμοια τραγούδια",
     "noTopSongsFound": "Δεν βρέθηκαν κορυφαία τραγούδια",
     "startingInstantMix": "Φόρτωση Άμεσης Μίξης...",
-
-    "batchRateSuccess": "Η βαθμολογία εφαρμόστηκε επιτυχώς"
     "uploadCover": "Μεταφόρτωση εξωφύλλου",
     "removeCover": "Αφαίρεση καλύμματος",
     "coverUploaded": "Το εξώφυλλο ενημερώθηκε",
     "coverRemoved": "Το εξώφυλλο αφαιρέθηκε",
     "coverUploadError": "Σφάλμα κατά τη μεταφόρτωση του εξωφύλλου",
-    "coverRemoveError": "Σφάλμα κατά την αφαίρεση του εξωφύλλου",
-    "batchRateSuccess": "Η βαθμολογία εφαρμόστηκε επιτυχώς"
+    "coverRemoveError": "Σφάλμα κατά την αφαίρεση του εξωφύλλου"
   },
   "menu": {
     "library": "Βιβλιοθήκη",

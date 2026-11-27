@@ -49,28 +49,7 @@
         "playNext": "A continuación",
         "info": "Obter info",
         "showInPlaylist": "Mostrar en Lista de reprodución",
-        "instantMix": "Mestura Súbita",
-
-        "playNowShort": "Agora",
-        "playNextShort": "Seguinte",
-        "addToQueueShort": "Despois",
-        "addToPlaylistShort": "Lista",
-        "batchRate": "Valorar",
-        "batchRateShort": "Valorar",
-        "batchRateTitle": "Valorar %{smart_count} canción |||| Valorar %{smart_count} cancións",
-        "clearRating": "Eliminar valoración",
-        "like": "Gústame",
-        "unlike": "Non me gusta"
-        "playNowShort": "Agora",
-        "playNextShort": "Seguinte",
-        "addToQueueShort": "Despois",
-        "addToPlaylistShort": "Lista",
-        "batchRate": "Valorar",
-        "batchRateShort": "Valorar",
-        "batchRateTitle": "Valorar %{smart_count} canción |||| Valorar %{smart_count} cancións",
-        "clearRating": "Eliminar valoración",
-        "like": "Gústame",
-        "unlike": "Non me gusta"
+        "instantMix": "Mestura Súbita"
       }
     },
     "album": {
@@ -613,15 +592,12 @@
     "noSimilarSongsFound": "Sen cancións parecidas",
     "noTopSongsFound": "Sen cancións destacadas",
     "startingInstantMix": "Cargando Mestura Súbita…",
-
-    "batchRateSuccess": "Valoración aplicada correctamente"
     "uploadCover": "Subir capa",
     "removeCover": "Retirar capa",
     "coverUploaded": "Subiuse a capa",
     "coverRemoved": "Retirouse a capa",
     "coverUploadError": "Erro ao subir a capa",
-    "coverRemoveError": "Erro ao retirar a capa",
-    "batchRateSuccess": "Valoración aplicada correctamente"
+    "coverRemoveError": "Erro ao retirar a capa"
   },
   "menu": {
     "library": "Biblioteca",

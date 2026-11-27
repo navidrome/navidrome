@@ -46,28 +46,7 @@
         "download": "Last ned",
         "playNext": "Avspill neste",
         "info": "Få Info",
-
-        "playNowShort": "Nå",
-        "playNextShort": "Neste",
-        "addToQueueShort": "Senere",
-        "addToPlaylistShort": "Spilleliste",
-        "batchRate": "Vurder",
-        "batchRateShort": "Vurder",
-        "batchRateTitle": "Vurder %{smart_count} sang |||| Vurder %{smart_count} sanger",
-        "clearRating": "Fjern vurdering",
-        "like": "Liker",
-        "unlike": "Fjern liker"
-        "showInPlaylist": "",
-        "playNowShort": "Nå",
-        "playNextShort": "Neste",
-        "addToQueueShort": "Senere",
-        "addToPlaylistShort": "Spilleliste",
-        "batchRate": "Vurder",
-        "batchRateShort": "Vurder",
-        "batchRateTitle": "Vurder %{smart_count} sang |||| Vurder %{smart_count} sanger",
-        "clearRating": "Fjern vurdering",
-        "like": "Liker",
-        "unlike": "Fjern liker"
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -532,8 +511,7 @@
     "remove_all_missing_title": "",
     "remove_all_missing_content": "",
     "noSimilarSongsFound": "",
-    "noTopSongsFound": "",
-    "batchRateSuccess": "Vurdering anvendt"
+    "noTopSongsFound": ""
   },
   "menu": {
     "library": "Bibliotek",

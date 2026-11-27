@@ -49,28 +49,7 @@
         "playNext": "Afspil næste",
         "info": "Hent info",
         "showInPlaylist": "Vis i afspilningsliste",
-        "instantMix": "Instant Mix",
-
-        "playNowShort": "Nu",
-        "playNextShort": "Næste",
-        "addToQueueShort": "Senere",
-        "addToPlaylistShort": "Playlist",
-        "batchRate": "Bedøm",
-        "batchRateShort": "Bedøm",
-        "batchRateTitle": "Bedøm %{smart_count} sang |||| Bedøm %{smart_count} sange",
-        "clearRating": "Fjern bedømmelse",
-        "like": "Synes godt om",
-        "unlike": "Fjern synes godt om"
-        "playNowShort": "Nu",
-        "playNextShort": "Næste",
-        "addToQueueShort": "Senere",
-        "addToPlaylistShort": "Playlist",
-        "batchRate": "Bedøm",
-        "batchRateShort": "Bedøm",
-        "batchRateTitle": "Bedøm %{smart_count} sang |||| Bedøm %{smart_count} sange",
-        "clearRating": "Fjern bedømmelse",
-        "like": "Synes godt om",
-        "unlike": "Fjern synes godt om"
+        "instantMix": "Instant Mix"
       }
     },
     "album": {
@@ -613,15 +592,12 @@
     "noSimilarSongsFound": "Ingen lignende sange fundet",
     "noTopSongsFound": "Ingen topsange fundet",
     "startingInstantMix": "Indlæser Instant Mix...",
-
-    "batchRateSuccess": "Bedømmelse anvendt"
     "uploadCover": "Upload omslag",
     "removeCover": "Fjern omslag",
     "coverUploaded": "Omslagsbillede opdateret",
     "coverRemoved": "Omslagsbillede fjernet",
     "coverUploadError": "Fejl ved upload af omslagsbillede",
-    "coverRemoveError": "Fejl ved fjernelse af omslagsbillede",
-    "batchRateSuccess": "Bedømmelse anvendt"
+    "coverRemoveError": "Fejl ved fjernelse af omslagsbillede"
   },
   "menu": {
     "library": "Bibliotek",

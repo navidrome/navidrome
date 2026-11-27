@@ -49,28 +49,7 @@
         "playNext": "Ludu Poste",
         "info": "Akiri Informon",
         "showInPlaylist": "Montri en Ludlisto",
-        "instantMix": "",
-
-        "playNowShort": "Nun",
-        "playNextShort": "Sekva",
-        "addToQueueShort": "Poste",
-        "addToPlaylistShort": "Listo",
-        "batchRate": "Taksi",
-        "batchRateShort": "Taksi",
-        "batchRateTitle": "Taksi %{smart_count} kanton |||| Taksi %{smart_count} kantojn",
-        "clearRating": "Forigi taksadon",
-        "like": "Ŝati",
-        "unlike": "Malŝati"
-        "playNowShort": "Nun",
-        "playNextShort": "Sekva",
-        "addToQueueShort": "Poste",
-        "addToPlaylistShort": "Listo",
-        "batchRate": "Taksi",
-        "batchRateShort": "Taksi",
-        "batchRateTitle": "Taksi %{smart_count} kanton |||| Taksi %{smart_count} kantojn",
-        "clearRating": "Forigi taksadon",
-        "like": "Ŝati",
-        "unlike": "Malŝati"
+        "instantMix": ""
       }
     },
     "album": {
@@ -613,15 +592,12 @@
     "noSimilarSongsFound": "Neniuj similaj kantoj trovitaj",
     "noTopSongsFound": "Neniuj plej luditaj kantoj trovitaj",
     "startingInstantMix": "",
-
-    "batchRateSuccess": "Taksado sukcese aplikita"
     "uploadCover": "",
     "removeCover": "",
     "coverUploaded": "",
     "coverRemoved": "",
     "coverUploadError": "",
-    "coverRemoveError": "",
-    "batchRateSuccess": "Taksado sukcese aplikita"
+    "coverRemoveError": ""
   },
   "menu": {
     "library": "Biblioteko",
