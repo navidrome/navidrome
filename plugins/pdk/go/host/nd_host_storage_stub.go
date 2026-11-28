@@ -9,6 +9,8 @@
 package host
 
 import (
+	"io"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -31,4 +33,40 @@ func (m *mockStorageService) GetStoragePath() string {
 // GetStoragePath retrieves the persistent storage path, if allowed
 func StorageGetStoragePath() string {
 	return StorageMock.GetStoragePath()
+}
+
+// Open is the mock method for StorageOpen.
+func (m *mockStorageService) Open(path string) (io.ReadCloser, error) {
+	args := m.Called(path)
+	var r0 io.ReadCloser
+	if v := args.Get(0); v != nil {
+		r0 = v.(io.ReadCloser)
+	}
+	return r0, args.Error(1)
+}
+
+// StorageOpen delegates to the mock instance.
+// Open opens a file in the plugin storage for reading.
+//
+// The path is relative to the storage folder and must stay inside it; symlinks leading
+// outside it are refused.
+func StorageOpen(path string) (io.ReadCloser, error) {
+	return StorageMock.Open(path)
+}
+
+// Create is the mock method for StorageCreate.
+func (m *mockStorageService) Create(path string) (io.WriteCloser, error) {
+	args := m.Called(path)
+	var r0 io.WriteCloser
+	if v := args.Get(0); v != nil {
+		r0 = v.(io.WriteCloser)
+	}
+	return r0, args.Error(1)
+}
+
+// StorageCreate delegates to the mock instance.
+// Create creates or truncates a file in the plugin storage for writing, creating missing
+// parent folders. The path follows the same rules as Open.
+func StorageCreate(path string) (io.WriteCloser, error) {
+	return StorageMock.Create(path)
 }

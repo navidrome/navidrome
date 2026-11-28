@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -51,10 +52,93 @@ var _ = Describe("utility functions", Ordered, func() {
 			svc, err := newStorageService("plugin-name")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(svc).ToNot(BeNil())
+			DeferCleanup(svc.Close)
 
 			dataDir := filepath.Join(tmpDir, "plugins", "plugin-name", "storage")
 			Expect(dataDir).To(BeADirectory())
 		})
+	})
+})
+
+var _ = Describe("storageServiceImpl", func() {
+	var (
+		ctx  context.Context
+		svc  *storageServiceImpl
+		root string
+	)
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(GinkgoT().TempDir()) })
+		var err error
+		svc, err = newStorageService("plugin")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(svc.Close)
+		root = getHostStoragePath("plugin")
+	})
+
+	readFile := func(rc io.ReadCloser) string {
+		GinkgoHelper()
+		defer rc.Close()
+		data, err := io.ReadAll(rc)
+		Expect(err).ToNot(HaveOccurred())
+		return string(data)
+	}
+
+	DescribeTable("rejects paths outside the storage folder",
+		func(path string) {
+			_, err := svc.Open(ctx, path)
+			Expect(err).To(MatchError(ContainSubstring("invalid storage path")))
+			_, err = svc.Create(ctx, path)
+			Expect(err).To(MatchError(ContainSubstring("invalid storage path")))
+		},
+		Entry("empty", ""),
+		Entry("parent", "../x"),
+		Entry("parent after a folder", "a/../../x"),
+		Entry("absolute", "/etc/passwd"),
+	)
+
+	It("refuses a symlink that leads outside the storage folder", func() {
+		outside := filepath.Join(filepath.Dir(root), "secret")
+		Expect(os.WriteFile(outside, []byte("secret"), 0600)).To(Succeed())
+		Expect(os.Symlink(outside, filepath.Join(root, "link"))).To(Succeed())
+
+		_, err := svc.Open(ctx, "link")
+		Expect(err).To(HaveOccurred())
+		_, err = svc.Create(ctx, "link")
+		Expect(err).To(HaveOccurred())
+		Expect(os.ReadFile(outside)).To(Equal([]byte("secret")))
+	})
+
+	It("opens a file for reading as a seekable *os.File", func() {
+		Expect(os.WriteFile(filepath.Join(root, "f.txt"), []byte("hello"), 0600)).To(Succeed())
+		rc, err := svc.Open(ctx, "f.txt")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rc).To(BeAssignableToTypeOf(&os.File{}))
+		Expect(readFile(rc)).To(Equal("hello"))
+	})
+
+	It("creates missing parent folders and truncates an existing file", func() {
+		for _, text := range []string{"a longer first version", "second"} {
+			wc, err := svc.Create(ctx, "a/b/c.txt")
+			Expect(err).ToNot(HaveOccurred())
+			_, err = io.WriteString(wc, text)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(wc.Close()).To(Succeed())
+		}
+		Expect(os.ReadFile(filepath.Join(root, "a", "b", "c.txt"))).To(Equal([]byte("second")))
+	})
+
+	It("keeps files opened before Close usable and opens nothing after", func() {
+		Expect(os.WriteFile(filepath.Join(root, "f.txt"), []byte("still here"), 0600)).To(Succeed())
+		rc, err := svc.Open(ctx, "f.txt")
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(svc.Close()).To(Succeed())
+		_, err = svc.Open(ctx, "f.txt")
+		Expect(err).To(MatchError(os.ErrClosed))
+		Expect(readFile(rc)).To(Equal("still here"))
 	})
 })
 
