@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/plugins/host"
@@ -646,5 +648,62 @@ var _ = Describe("isPrivateOrLoopback", func() {
 
 	It("should not treat 172.32.x.x as private", func() {
 		Expect(isPrivateOrLoopback("172.32.0.1")).To(BeFalse())
+	})
+})
+
+var _ = Describe("pendingRequest", func() {
+	var (
+		cancels atomic.Int32
+		body    *trackingReader
+		p       *pendingRequest
+	)
+
+	BeforeEach(func() {
+		cancels.Store(0)
+		body = &trackingReader{Reader: strings.NewReader("")}
+		p = &pendingRequest{cancel: func() { cancels.Add(1) }, body: body}
+	})
+
+	It("cancels the request and closes its body on abort, once", func() {
+		p.abort(errHeaderTimeout)
+		p.abort(errCallEnded)
+		Expect(cancels.Load()).To(Equal(int32(1)))
+		Expect(body.closes.Load()).To(Equal(int32(1)))
+		Expect(p.promote()).To(MatchError(errHeaderTimeout))
+	})
+
+	It("ignores an abort after promotion", func() {
+		Expect(p.promote()).To(Succeed())
+		p.abort(errHeaderTimeout)
+		Expect(p.Close()).To(Succeed())
+		Expect(cancels.Load()).To(BeZero())
+		Expect(body.closed()).To(BeFalse())
+	})
+
+	It("aborts with errCallEnded when the call's scope closes it", func() {
+		Expect(p.Close()).To(Succeed())
+		Expect(p.promote()).To(MatchError(errCallEnded))
+		Expect(body.closed()).To(BeTrue())
+	})
+
+	It("lets exactly one of promote and abort win a race", func() {
+		for range 200 {
+			cancels.Store(0)
+			body = &trackingReader{Reader: strings.NewReader("")}
+			p = &pendingRequest{cancel: func() { cancels.Add(1) }, body: body}
+			var promoteErr error
+			var wg sync.WaitGroup
+			wg.Go(func() { promoteErr = p.promote() })
+			wg.Go(func() { p.abort(errHeaderTimeout) })
+			wg.Wait()
+			if promoteErr == nil {
+				Expect(cancels.Load()).To(BeZero())
+				Expect(body.closed()).To(BeFalse())
+			} else {
+				Expect(promoteErr).To(MatchError(errHeaderTimeout))
+				Expect(cancels.Load()).To(Equal(int32(1)))
+				Expect(body.closed()).To(BeTrue())
+			}
+		}
 	})
 })

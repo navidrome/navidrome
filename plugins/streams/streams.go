@@ -35,6 +35,16 @@ func From(ctx context.Context) Streams {
 	return s
 }
 
+// Hold holds c in the call's streams; with no call in progress, it closes c and fails.
+func Hold(ctx context.Context, c io.Closer) (release func(), err error) {
+	s := From(ctx)
+	if s == nil {
+		_ = c.Close()
+		return nil, errNoCall
+	}
+	return s.Hold(c)
+}
+
 // WithDetached stores base, the call's ctx before Extism wrapped it, for Detached.
 func WithDetached(ctx, base context.Context) context.Context {
 	return context.WithValue(ctx, detachedKey{}, context.WithoutCancel(base))

@@ -9,6 +9,8 @@
 package host
 
 import (
+	"io"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -29,6 +31,26 @@ type HTTPResponse struct {
 	StatusCode int32             `json:"statusCode"`
 	Headers    map[string]string `json:"headers"`
 	Body       []byte            `json:"body"`
+}
+
+// HTTPStreamRequest represents the HTTPStreamRequest data structure.
+// HTTPStreamRequest is an outbound HTTP request whose body, if any, is a stream. The body is consumed:
+// its handle stops working for the plugin once SendStream starts.
+type HTTPStreamRequest struct {
+	Method            string            `json:"method"`
+	URL               string            `json:"url"`
+	Headers           map[string]string `json:"headers"`
+	NoFollowRedirects bool              `json:"noFollowRedirects"`
+	Body              io.ReadCloser     `json:"body"`
+	TimeoutMs         int32             `json:"timeoutMs"`
+}
+
+// HTTPStreamResponse represents the HTTPStreamResponse data structure.
+// HTTPStreamResponse is the response to an HTTPStreamRequest, with its body as a stream.
+type HTTPStreamResponse struct {
+	StatusCode int32             `json:"statusCode"`
+	Headers    map[string]string `json:"headers"`
+	Body       io.ReadCloser     `json:"body"`
 }
 
 // mockHTTPService is the mock implementation for testing.
@@ -61,4 +83,26 @@ func (m *mockHTTPService) Send(request HTTPRequest) (*HTTPResponse, error) {
 // Successful HTTP calls (including 4xx/5xx status codes) return a non-nil response with nil error.
 func HTTPSend(request HTTPRequest) (*HTTPResponse, error) {
 	return HTTPMock.Send(request)
+}
+
+// SendStream is the mock method for HTTPSendStream.
+func (m *mockHTTPService) SendStream(request HTTPStreamRequest) (*HTTPStreamResponse, error) {
+	args := m.Called(request)
+	var r0 *HTTPStreamResponse
+	if v := args.Get(0); v != nil {
+		r0 = v.(*HTTPStreamResponse)
+	}
+	return r0, args.Error(1)
+}
+
+// HTTPSendStream delegates to the mock instance.
+// SendStream executes an HTTP request with streamed request and response bodies.
+//
+// It applies the same host checks as Send, but the response body has no size limit, and
+// TimeoutMs only bounds the wait for the response headers. A request with a body does not
+// follow 307/308 redirects, since the body cannot be sent again.
+// Closing the response body ends the request; the call's end closes it if the plugin
+// still holds it.
+func HTTPSendStream(request HTTPStreamRequest) (*HTTPStreamResponse, error) {
+	return HTTPMock.SendStream(request)
 }

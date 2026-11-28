@@ -101,6 +101,15 @@ var _ = Describe("Detached", func() {
 	})
 })
 
+var _ = Describe("Hold", func() {
+	It("closes the closer and fails outside a plugin call", func() {
+		c := &closeCounter{}
+		_, err := Hold(GinkgoT().Context(), c)
+		Expect(err).To(MatchError("no plugin call in progress"))
+		Expect(c.closes.Load()).To(Equal(int32(1)))
+	})
+})
+
 var _ = Describe("Conv", func() {
 	var (
 		ctx context.Context
