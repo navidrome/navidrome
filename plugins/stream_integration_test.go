@@ -11,34 +11,45 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	extism "github.com/extism/go-sdk"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/plugins/internal/streamtest"
+	"github.com/navidrome/navidrome/plugins/streams"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 type streamsInput struct {
-	Handle uint32 `json:"handle,omitempty"`
-	Dst    uint32 `json:"dst,omitempty"`
-	Size   int64  `json:"size,omitempty"`
-	Chunk  int    `json:"chunk,omitempty"`
-	Text   string `json:"text,omitempty"`
+	Handle    uint32            `json:"handle,omitempty"`
+	Dst       uint32            `json:"dst,omitempty"`
+	Size      int64             `json:"size,omitempty"`
+	Chunk     int               `json:"chunk,omitempty"`
+	Text      string            `json:"text,omitempty"`
+	URL       string            `json:"url,omitempty"`
+	Path      string            `json:"path,omitempty"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	TimeoutMs int32             `json:"timeoutMs,omitempty"`
 }
 
 type streamsOutput struct {
-	Count int64  `json:"count"`
-	SHA   string `json:"sha"`
-	Data  string `json:"data"`
-	Size  int64  `json:"size"`
-	Error string `json:"error"`
+	Count  int64  `json:"count"`
+	SHA    string `json:"sha"`
+	Data   string `json:"data"`
+	Size   int64  `json:"size"`
+	Error  string `json:"error"`
+	Handle uint32 `json:"handle"`
+	Status int32  `json:"status"`
 }
 
 var patternCycle = func() []byte {
@@ -197,9 +208,12 @@ func buildRustTestPlugin(dir string) string {
 type testStreamService struct {
 	created *trackingWriter
 	blocked *io.PipeWriter
+	// detachedHasScope records whether Detached, in the last Open, still carried the host-function ctx.
+	detachedHasScope atomic.Bool
 }
 
-func (s *testStreamService) Open(_ context.Context, text string) (io.ReadCloser, error) {
+func (s *testStreamService) Open(ctx context.Context, text string) (io.ReadCloser, error) {
+	s.detachedHasScope.Store(streams.From(streams.Detached(ctx)) != nil)
 	return io.NopCloser(strings.NewReader(text)), nil
 }
 
@@ -600,6 +614,12 @@ var _ = Describe("Generated stream host functions", func() {
 
 		generatedClientSpecs(call)
 
+		It("gives host functions a detached ctx that is not the host-function ctx", func() {
+			svc.detachedHasScope.Store(true)
+			Expect(call("open_read", "x").Data).To(Equal("x"))
+			Expect(svc.detachedHasScope.Load()).To(BeFalse())
+		})
+
 		It("returns a host writer to the plugin", func() {
 			Expect(call("create_write", "written by plugin").Error).To(BeEmpty())
 			Expect(string(svc.created.bytes())).To(Equal("written by plugin"))
@@ -679,6 +699,284 @@ var _ = Describe("Generated stream host functions", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out.Error).To(BeEmpty())
 			Expect(out.Size).To(Equal(int64(500)))
+		})
+	})
+})
+
+// requestEnds serves handler and reports, on the returned channel, once the ctx of a request it is blocked on ends.
+func requestEnds(handler func(w http.ResponseWriter, r *http.Request, wait func())) (string, chan struct{}) {
+	ended := make(chan struct{})
+	var once sync.Once
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler(w, r, func() {
+			select {
+			case <-r.Context().Done():
+				once.Do(func() { close(ended) })
+			case <-time.After(30 * time.Second):
+			}
+		})
+	}))
+	DeferCleanup(srv.Close)
+	return srv.URL, ended
+}
+
+func flushed(w http.ResponseWriter, text string) {
+	_, _ = io.WriteString(w, text)
+	w.(http.Flusher).Flush()
+}
+
+var _ = Describe("Storage and HTTP stream host functions", Ordered, func() {
+	var (
+		ctx     context.Context
+		p       *plugin
+		storage string
+	)
+
+	BeforeAll(func() {
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(GinkgoT().TempDir()) })
+		p, _ = loadStreamsPlugin("test-streams"+PackageExtension, 0)
+		storage = getHostStoragePath("test-streams")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	call := func(fn string, in streamsInput) streamsOutput {
+		GinkgoHelper()
+		out, err := callPluginFunction[streamsInput, streamsOutput](ctx, p, fn, in)
+		Expect(err).ToNot(HaveOccurred())
+		return out
+	}
+
+	// callReturning calls fn and transfers the handle it returns to the host.
+	callReturning := func(fn string, in streamsInput) (any, streamsOutput) {
+		GinkgoHelper()
+		var got any
+		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, fn, defaultTimeout,
+			func(*callScope) (streamsInput, error) { return in, nil },
+			func(s *callScope, out streamsOutput) error {
+				if out.Error != "" {
+					return errors.New(out.Error)
+				}
+				values, err := s.transfer(out.Handle)
+				if err == nil {
+					got = values[0]
+				}
+				return err
+			})
+		Expect(err).ToNot(HaveOccurred())
+		return got, out
+	}
+
+	store := func(path string, r io.Reader) {
+		GinkgoHelper()
+		f, err := os.Create(filepath.Join(storage, path))
+		Expect(err).ToNot(HaveOccurred())
+		_, err = io.Copy(f, r)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(f.Close()).To(Succeed())
+	}
+
+	Describe("Storage", func() {
+		It("returns a stored file to the host as a seekable *os.File", func() {
+			store("seek.txt", strings.NewReader("skip this:keep this"))
+			got, _ := callReturning("open_return", streamsInput{Path: "seek.txt"})
+			Expect(got).To(BeAssignableToTypeOf(&os.File{}))
+			f := got.(*os.File)
+			defer f.Close()
+			_, err := f.Seek(10, io.SeekStart)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(io.ReadAll(f)).To(Equal([]byte("keep this")))
+		})
+
+		It("creates missing parent folders", func() {
+			Expect(call("create_path", streamsInput{Path: "a/b/c.txt", Text: "nested"}).Error).To(BeEmpty())
+			Expect(os.ReadFile(filepath.Join(storage, "a", "b", "c.txt"))).To(Equal([]byte("nested")))
+		})
+
+		It("gives a created file write rights only", func() {
+			Expect(call("create_read", streamsInput{Path: "w.txt"}).Error).To(Equal("stream is not readable"))
+		})
+
+		DescribeTable("rejects a path outside the storage folder",
+			func(path string) {
+				Expect(call("open_path", streamsInput{Path: path}).Error).To(ContainSubstring("invalid storage path"))
+			},
+			Entry("parent", "../x"),
+			Entry("absolute", "/etc/passwd"),
+			Entry("empty", ""),
+		)
+
+		It("rejects a symlink planted in the storage folder that leads outside it", func() {
+			outside := filepath.Join(GinkgoT().TempDir(), "secret")
+			Expect(os.WriteFile(outside, []byte("secret"), 0600)).To(Succeed())
+			Expect(os.Symlink(outside, filepath.Join(storage, "link"))).To(Succeed())
+			out := call("open_path", streamsInput{Path: "link"})
+			Expect(out.Error).ToNot(BeEmpty())
+			Expect(out.Data).To(BeEmpty())
+		})
+	})
+
+	Describe("HTTP.SendStream", func() {
+		It("downloads a response body into storage with stream_copy", func() {
+			const size = 3 << 20
+			url, _ := requestEnds(func(w http.ResponseWriter, _ *http.Request, _ func()) {
+				_, _ = io.Copy(w, &patternReader{size: size})
+			})
+			out := call("download", streamsInput{URL: url, Path: "download.bin"})
+			Expect(out.Error).To(BeEmpty())
+			Expect(out.Status).To(Equal(int32(http.StatusOK)))
+			Expect(out.Count).To(Equal(int64(size)))
+
+			f, err := os.Open(filepath.Join(storage, "download.bin"))
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+			h := sha256.New()
+			_, err = io.Copy(h, f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(hex.EncodeToString(h.Sum(nil))).To(Equal(patternSHA(size)))
+		})
+
+		It("keeps a returned body working after the call, and closing it ends the request", func() {
+			more := make(chan struct{})
+			url, ended := requestEnds(func(w http.ResponseWriter, _ *http.Request, wait func()) {
+				flushed(w, "hello ")
+				<-more
+				flushed(w, "world")
+				wait()
+			})
+			got, out := callReturning("fetch_return", streamsInput{URL: url})
+			Expect(out.Status).To(Equal(int32(http.StatusOK)))
+			body := got.(io.ReadCloser)
+
+			close(more)
+			buf := make([]byte, len("hello world"))
+			_, err := io.ReadFull(body, buf)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(buf)).To(Equal("hello world"))
+			Consistently(ended).WithTimeout(200 * time.Millisecond).ShouldNot(BeClosed())
+
+			Expect(body.Close()).To(Succeed())
+			Eventually(ended).WithTimeout(5 * time.Second).Should(BeClosed())
+		})
+
+		It("ends the request of a body the plugin leaked when the call ends", func() {
+			url, ended := requestEnds(func(w http.ResponseWriter, _ *http.Request, wait func()) {
+				flushed(w, "x")
+				wait()
+			})
+			Expect(call("fetch_leak", streamsInput{URL: url})).To(HaveField("Count", int64(1)))
+			Eventually(ended).WithTimeout(5 * time.Second).Should(BeClosed())
+		})
+
+		It("cancels the request when the call is cancelled while waiting for headers", func() {
+			entered := make(chan struct{})
+			url, ended := requestEnds(func(_ http.ResponseWriter, _ *http.Request, wait func()) {
+				close(entered)
+				wait()
+			})
+			callCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			done := make(chan error, 1)
+			go func() {
+				_, err := callPluginFunction[streamsInput, streamsOutput](callCtx, p, "fetch", streamsInput{URL: url})
+				done <- err
+			}()
+			Eventually(entered).WithTimeout(10 * time.Second).Should(BeClosed())
+			cancel()
+			var err error
+			Eventually(done).WithTimeout(5 * time.Second).Should(Receive(&err))
+			Expect(err).To(MatchError(context.Canceled))
+			Eventually(ended).WithTimeout(5 * time.Second).Should(BeClosed())
+		})
+
+		It("times out waiting for headers and cancels the request", func() {
+			url, ended := requestEnds(func(_ http.ResponseWriter, _ *http.Request, wait func()) { wait() })
+			out := call("fetch", streamsInput{URL: url, TimeoutMs: 200})
+			Expect(out.Error).To(Equal(errHeaderTimeout.Error()))
+			Eventually(ended).WithTimeout(5 * time.Second).Should(BeClosed())
+		})
+
+		It("does not time out a slow body once the headers arrived", func() {
+			url, _ := requestEnds(func(w http.ResponseWriter, _ *http.Request, _ func()) {
+				flushed(w, "slow ")
+				time.Sleep(400 * time.Millisecond)
+				flushed(w, "body")
+			})
+			out := call("fetch", streamsInput{URL: url, TimeoutMs: 200})
+			Expect(out.Error).To(BeEmpty())
+			Expect(out.Data).To(Equal("slow body"))
+		})
+
+		Describe("with a request body", func() {
+			const size = 1 << 20
+
+			type received struct {
+				sha           string
+				contentLength int64
+			}
+
+			var (
+				url      string
+				uploads  chan received
+				redirect string
+			)
+
+			BeforeAll(func() {
+				store("upload.bin", &patternReader{size: size})
+			})
+
+			BeforeEach(func() {
+				uploads = make(chan received, 1)
+				mux := http.NewServeMux()
+				mux.HandleFunc("/upload", func(_ http.ResponseWriter, r *http.Request) {
+					h := sha256.New()
+					_, _ = io.Copy(h, r.Body)
+					uploads <- received{sha: hex.EncodeToString(h.Sum(nil)), contentLength: r.ContentLength}
+				})
+				mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
+					http.Redirect(w, r, "/upload", http.StatusTemporaryRedirect)
+				})
+				srv := httptest.NewServer(mux)
+				DeferCleanup(srv.Close)
+				url, redirect = srv.URL+"/upload", srv.URL+"/redirect"
+			})
+
+			It("uploads a stored file and consumes its handle", func() {
+				out := call("upload", streamsInput{URL: url, Path: "upload.bin"})
+				Expect(out.Error).To(BeEmpty())
+				Expect(out.Status).To(Equal(int32(http.StatusOK)))
+				Expect(out.Data).To(Equal("unknown stream handle"))
+				var got received
+				Expect(uploads).To(Receive(&got))
+				Expect(got.sha).To(Equal(patternSHA(size)))
+				Expect(got.contentLength).To(Equal(int64(-1)), "unknown length goes chunked")
+			})
+
+			It("sends a declared Content-Length", func() {
+				out := call("upload", streamsInput{URL: url, Path: "upload.bin",
+					Headers: map[string]string{"content-length": strconv.Itoa(size)}})
+				Expect(out.Error).To(BeEmpty())
+				var got received
+				Expect(uploads).To(Receive(&got))
+				Expect(got.contentLength).To(Equal(int64(size)))
+				Expect(got.sha).To(Equal(patternSHA(size)))
+			})
+
+			It("returns a 307 instead of following it", func() {
+				out := call("upload", streamsInput{URL: redirect, Path: "upload.bin"})
+				Expect(out.Error).To(BeEmpty())
+				Expect(out.Status).To(Equal(int32(http.StatusTemporaryRedirect)))
+				Expect(uploads).ToNot(Receive())
+			})
+
+			It("consumes the body when the request fails before it is sent", func() {
+				out := call("upload", streamsInput{URL: "http://not-allowed.invalid/upload", Path: "upload.bin"})
+				Expect(out.Error).To(Equal(`host "not-allowed.invalid" is not allowed`))
+				Expect(out.Data).To(Equal("unknown stream handle"))
+			})
 		})
 	})
 })

@@ -707,3 +707,36 @@ var _ = Describe("pendingRequest", func() {
 		}
 	})
 })
+
+var _ = Describe("httpServiceImpl.SendStream", func() {
+	var (
+		ctx   context.Context
+		table *streamTable
+		svc   *httpServiceImpl
+		body  *trackingReader
+	)
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		table = newStreamTable()
+		svc = newHTTPService("test-plugin", &HTTPPermission{RequiredHosts: []string{"127.0.0.1"}})
+		body = &trackingReader{Reader: strings.NewReader("body")}
+	})
+
+	It("closes the request body and frees its slot when the request fails before it is sent", func() {
+		scope, err := table.newScope(ctx)
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(scope.close)
+
+		_, err = svc.SendStream(withCallScope(ctx, scope), host.HTTPStreamRequest{Method: "PUT", URL: "http://not-allowed.invalid/", Body: body})
+		Expect(err).To(MatchError(`host "not-allowed.invalid" is not allowed`))
+		Expect(body.closed()).To(BeTrue())
+		Expect(table.open).To(BeZero())
+	})
+
+	It("closes the request body outside a plugin call", func() {
+		_, err := svc.SendStream(ctx, host.HTTPStreamRequest{Method: "PUT", URL: "http://127.0.0.1/", Body: body})
+		Expect(err).To(MatchError("no plugin call in progress"))
+		Expect(body.closed()).To(BeTrue())
+	})
+})

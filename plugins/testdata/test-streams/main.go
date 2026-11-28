@@ -12,19 +12,25 @@ import (
 )
 
 type input struct {
-	Handle uint32 `json:"handle"`
-	Dst    uint32 `json:"dst"`
-	Size   int64  `json:"size"`
-	Chunk  int    `json:"chunk"`
-	Text   string `json:"text"`
+	Handle    uint32            `json:"handle"`
+	Dst       uint32            `json:"dst"`
+	Size      int64             `json:"size"`
+	Chunk     int               `json:"chunk"`
+	Text      string            `json:"text"`
+	URL       string            `json:"url"`
+	Path      string            `json:"path"`
+	Headers   map[string]string `json:"headers"`
+	TimeoutMs int32             `json:"timeoutMs"`
 }
 
 type output struct {
-	Count int64  `json:"count"`
-	SHA   string `json:"sha,omitempty"`
-	Data  string `json:"data,omitempty"`
-	Size  int64  `json:"size,omitempty"`
-	Error string `json:"error,omitempty"`
+	Count  int64  `json:"count"`
+	SHA    string `json:"sha,omitempty"`
+	Data   string `json:"data,omitempty"`
+	Size   int64  `json:"size,omitempty"`
+	Error  string `json:"error,omitempty"`
+	Handle uint32 `json:"handle,omitempty"`
+	Status int32  `json:"status,omitempty"`
 }
 
 func run(fn func(in input) output) int32 {
