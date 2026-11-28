@@ -116,6 +116,9 @@ func wrap() int32 {
 		if err != nil {
 			return fail(err)
 		}
+		if resp == nil {
+			return output{Error: "no response"}
+		}
 		data, err := readString(resp.Body)
 		if err != nil {
 			return fail(err)
