@@ -205,9 +205,8 @@ func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) 
 	return nil
 }
 
-// lifecycleCtx returns the ctx that Stop cancels, for host services and callbacks that outlive the plugin call
-// that created them. It falls back to context.Background() when the manager was never started, as in CLI
-// commands (e.g. `navidrome plugin enable`) that load plugins without calling Start.
+// lifecycleCtx returns the ctx Stop cancels, for work that outlives the call that started it.
+// It falls back to context.Background() for a manager never started, as in CLI commands.
 func (m *Manager) lifecycleCtx() context.Context {
 	if m.ctx == nil {
 		return context.Background()
