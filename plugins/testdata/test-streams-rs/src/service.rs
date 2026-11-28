@@ -1,8 +1,10 @@
+//! Exports that call the generated StreamTest host functions.
+
 use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 
-mod streamtest;
+use crate::streamtest;
 
 #[derive(Deserialize)]
 struct Input {
@@ -17,7 +19,7 @@ struct Output {
     error: String,
 }
 
-fn read_all(stream: Option<nd_pdk_types::stream::Stream>) -> Result<String, Error> {
+fn read_string(stream: Option<nd_pdk_types::stream::Stream>) -> Result<String, Error> {
     let mut stream = stream.ok_or_else(|| Error::msg("no stream"))?;
     let mut data = String::new();
     stream.read_to_string(&mut data)?;
@@ -27,7 +29,7 @@ fn read_all(stream: Option<nd_pdk_types::stream::Stream>) -> Result<String, Erro
 #[plugin_fn]
 pub fn open_read(Json(input): Json<Input>) -> FnResult<Json<Output>> {
     let mut out = Output::default();
-    match streamtest::open(&input.text).and_then(read_all) {
+    match streamtest::open(&input.text).and_then(read_string) {
         Ok(data) => out.data = data,
         Err(e) => out.error = e.to_string(),
     }
@@ -64,7 +66,7 @@ pub fn wrap(Json(input): Json<Input>) -> FnResult<Json<Output>> {
     match result {
         Ok(Some(resp)) => {
             out.size = resp.size;
-            match read_all(resp.body) {
+            match read_string(resp.body) {
                 Ok(data) => out.data = data,
                 Err(e) => out.error = e.to_string(),
             }

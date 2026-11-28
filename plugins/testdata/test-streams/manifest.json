@@ -2,5 +2,5 @@
   "name": "Test Streams",
   "author": "Navidrome Test",
   "version": "1.0.0",
-  "description": "Test plugin for stream host functions and call time limits"
+  "description": "Test plugin for stream host functions, generated stream host functions, and call time limits"
 }

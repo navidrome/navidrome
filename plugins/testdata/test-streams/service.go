@@ -1,4 +1,3 @@
-// Test plugin for generated host functions that take and return streams.
 package main
 
 import (
@@ -7,31 +6,8 @@ import (
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 
-	"test-stream-service/host"
+	"test-streams/host"
 )
-
-type input struct {
-	Text string `json:"text"`
-}
-
-type output struct {
-	Data  string `json:"data,omitempty"`
-	Size  int64  `json:"size,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
-func run(fn func(in input) output) int32 {
-	var in input
-	if err := pdk.InputJSON(&in); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	if err := pdk.OutputJSON(fn(in)); err != nil {
-		pdk.SetError(err)
-		return 1
-	}
-	return 0
-}
 
 func fail(err error) output {
 	if err == nil {
@@ -40,7 +16,7 @@ func fail(err error) output {
 	return output{Error: err.Error()}
 }
 
-func readAll(rc io.ReadCloser) (string, error) {
+func readString(rc io.ReadCloser) (string, error) {
 	defer rc.Close()
 	data, err := io.ReadAll(rc)
 	return string(data), err
@@ -53,7 +29,7 @@ func openRead() int32 {
 		if err != nil {
 			return fail(err)
 		}
-		data, err := readAll(rc)
+		data, err := readString(rc)
 		if err != nil {
 			return fail(err)
 		}
@@ -140,7 +116,7 @@ func wrap() int32 {
 		if err != nil {
 			return fail(err)
 		}
-		data, err := readAll(resp.Body)
+		data, err := readString(resp.Body)
 		if err != nil {
 			return fail(err)
 		}
@@ -200,5 +176,3 @@ func drainLoop() int32 {
 		return output{Size: 800}
 	})
 }
-
-func main() {}

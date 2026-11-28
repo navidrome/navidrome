@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -54,17 +53,17 @@ func (s *testStreamService) Block(context.Context) (io.ReadCloser, error) {
 
 func (s *testStreamService) Echo(_ context.Context, text string) (string, error) { return text, nil }
 
-// withStreamTestService registers the test host service for plugins loaded by this spec container.
-func withStreamTestService(svc streamtest.StreamTestService) {
-	saved := hostServices
-	hostServices = append(slices.Clone(saved), hostServiceEntry{
+// streamTestSvc serves the StreamTest host functions, registered for every plugin because test-streams imports them.
+var streamTestSvc streamtest.StreamTestService = &testStreamService{created: &trackingWriter{}}
+
+func init() {
+	hostServices = append(hostServices, hostServiceEntry{
 		name:          "StreamTest",
 		hasPermission: func(*Permissions) bool { return true },
 		create: func(*serviceContext) ([]extism.HostFunction, io.Closer, error) {
-			return streamtest.RegisterStreamTestHostFunctions(svc), nil, nil
+			return streamtest.RegisterStreamTestHostFunctions(streamTestSvc), nil, nil
 		},
 	})
-	DeferCleanup(func() { hostServices = saved })
 }
 
 func loadStreamTestPlugin(svc *testStreamService, pkg string, memPages uint32) *plugin {
@@ -73,7 +72,9 @@ func loadStreamTestPlugin(svc *testStreamService, pkg string, memPages uint32) *
 		extismMaxMemoryPages = memPages
 		DeferCleanup(func() { extismMaxMemoryPages = saved })
 	}
-	withStreamTestService(svc)
+	saved := streamTestSvc
+	streamTestSvc = svc
+	DeferCleanup(func() { streamTestSvc = saved })
 	manager, _ := createTestManagerWithPlugins(nil, pkg)
 	return loadedTestPlugin(manager, strings.TrimSuffix(pkg, PackageExtension))
 }
@@ -111,7 +112,7 @@ var _ = Describe("Generated stream host functions", Ordered, func() {
 
 	BeforeAll(func() {
 		svc = &testStreamService{created: &trackingWriter{}}
-		p = loadStreamTestPlugin(svc, "test-stream-service"+PackageExtension, 0)
+		p = loadStreamTestPlugin(svc, "test-streams"+PackageExtension, 0)
 	})
 
 	BeforeEach(func() {
@@ -173,7 +174,7 @@ var _ = Describe("Generated stream host functions under a memory cap", Ordered, 
 
 	BeforeAll(func() {
 		// 24 MiB; drain_loop would keep 800 x 64 KiB buffers if hand-over leaked them
-		p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, "test-stream-service"+PackageExtension, 384)
+		p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, "test-streams"+PackageExtension, 384)
 	})
 
 	BeforeEach(func() {
@@ -195,7 +196,7 @@ var _ = Describe("Generated stream host functions from Rust", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-stream-service-rs"))
+		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
 		p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 0)
 	})
 
@@ -213,7 +214,7 @@ var _ = Describe("Generated Rust host calls under a memory cap", Ordered, func()
 	)
 
 	BeforeAll(func() {
-		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-stream-service-rs"))
+		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
 		// 16 MiB; 500 leaked 64 KiB responses would not fit
 		p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 256)
 	})

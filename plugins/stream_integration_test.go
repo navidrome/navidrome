@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"os"
@@ -430,7 +431,11 @@ func buildRustTestPlugin(dir string) string {
 	name := filepath.Base(dir)
 	wasm := filepath.Join(dir, "target", "wasm32-wasip1", "release", strings.ReplaceAll(name, "-", "_")+".wasm")
 	pkg := name + PackageExtension
-	Expect(packageFiles(filepath.Join(testdataDir, pkg), filepath.Join(dir, manifestFileName), wasm)).To(Succeed())
+	// Parallel processes build the same plugin, so each writes its own file and renames it into place.
+	tmp := filepath.Join(testdataDir, fmt.Sprintf("%s.build%d.ndp", name, GinkgoParallelProcess()))
+	defer os.Remove(tmp)
+	Expect(packageFiles(tmp, filepath.Join(dir, manifestFileName), wasm)).To(Succeed())
+	Expect(os.Rename(tmp, filepath.Join(testdataDir, pkg))).To(Succeed())
 	return pkg
 }
 

@@ -3,6 +3,9 @@ use nd_pdk::types::stream::Stream;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
+mod service;
+mod streamtest;
+
 #[derive(Deserialize)]
 struct Input {
     handle: u32,
