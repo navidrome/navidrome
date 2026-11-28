@@ -67,7 +67,7 @@ export const SongBulkActions = (props) => {
         />
       </TipButton>
       {config.enableSharing && (
-        <TipButton labelKey={'resources.song.actions.share'}>
+        <TipButton labelKey={'ra.action.share'}>
           <BatchShareButton {...props} className={classes.button} />
         </TipButton>
       )}
