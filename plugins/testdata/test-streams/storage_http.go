@@ -33,8 +33,6 @@ func download() int32 {
 	})
 }
 
-// fetch reads a whole response body.
-//
 //go:wasmexport fetch
 func fetch() int32 {
 	return run(func(in input) output {
@@ -47,8 +45,6 @@ func fetch() int32 {
 	})
 }
 
-// fetch_return returns the response body handle to the host.
-//
 //go:wasmexport fetch_return
 func fetchReturn() int32 {
 	return run(func(in input) output {
@@ -95,8 +91,6 @@ func upload() int32 {
 	})
 }
 
-// open_return returns a stored file's handle to the host.
-//
 //go:wasmexport open_return
 func openReturn() int32 {
 	return run(func(in input) output {
@@ -134,8 +128,6 @@ func createPath() int32 {
 	})
 }
 
-// create_read tries to read a file opened with Storage.Create.
-//
 //go:wasmexport create_read
 func createRead() int32 {
 	return run(func(in input) output {
