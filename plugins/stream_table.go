@@ -165,12 +165,16 @@ func (s *callScope) take(h uint32, need streamRights) (*streamBackend, error) {
 		return nil, err
 	}
 	delete(s.entries, h)
+	s.addHeldLocked(b)
+	b.heldBy = s
+	return b, nil
+}
+
+func (s *callScope) addHeldLocked(b *streamBackend) {
 	if s.held == nil {
 		s.held = map[*streamBackend]struct{}{}
 	}
 	s.held[b] = struct{}{}
-	b.heldBy = s
-	return b, nil
 }
 
 func (s *callScope) releaseHeld(b *streamBackend) {
@@ -280,6 +284,30 @@ func (s *callScope) TakeWriter(h uint32) (io.WriteCloser, error) {
 		return nil, err
 	}
 	return b, nil
+}
+
+func (s *callScope) Hold(c io.Closer) (func(), error) {
+	b := &streamBackend{c: c}
+	if err := s.hold(b); err != nil {
+		_ = c.Close()
+		return nil, err
+	}
+	return func() { s.releaseHeld(b) }, nil
+}
+
+func (s *callScope) hold(b *streamBackend) error {
+	t := s.table
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if err := s.checkOpenLocked(); err != nil {
+		return err
+	}
+	if t.open >= maxOpenStreams {
+		return errTooManyStreams
+	}
+	s.addHeldLocked(b)
+	t.open++
+	return nil
 }
 
 func (s *callScope) Release(h uint32) {

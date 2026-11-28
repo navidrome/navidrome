@@ -17,9 +17,14 @@ type Streams interface {
 	TakeWriter(handle uint32) (io.WriteCloser, error)
 	// Release closes a stream registered in this call whose handle never reached the plugin.
 	Release(handle uint32)
+	// Hold counts c as an open stream and closes it when the call ends, unless release ran first.
+	Hold(c io.Closer) (release func(), err error)
 }
 
-type streamsKey struct{}
+type (
+	streamsKey  struct{}
+	detachedKey struct{}
+)
 
 func WithStreams(ctx context.Context, s Streams) context.Context {
 	return context.WithValue(ctx, streamsKey{}, s)
@@ -28,6 +33,20 @@ func WithStreams(ctx context.Context, s Streams) context.Context {
 func From(ctx context.Context) Streams {
 	s, _ := ctx.Value(streamsKey{}).(Streams)
 	return s
+}
+
+// WithDetached stores base, the call's ctx before Extism wrapped it, for Detached.
+func WithDetached(ctx, base context.Context) context.Context {
+	return context.WithValue(ctx, detachedKey{}, context.WithoutCancel(base))
+}
+
+// Detached returns a ctx for work that outlives the call. It never derives from the host-function ctx,
+// which holds the plugin instance and would keep it alive.
+func Detached(ctx context.Context) context.Context {
+	if d, ok := ctx.Value(detachedKey{}).(context.Context); ok {
+		return d
+	}
+	return context.WithoutCancel(ctx)
 }
 
 // Conv converts the handles of one host function call. After the first error it converts nothing more and

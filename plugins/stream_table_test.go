@@ -408,6 +408,55 @@ var _ = Describe("streamTable", func() {
 			Expect(err).To(MatchError(errUnknownStream))
 		})
 
+		Describe("Hold", func() {
+			It("counts a held closer toward the open-stream limit until released", func() {
+				s := newScope()
+				for range maxOpenStreams - 1 {
+					_, backend := reader()
+					mustRegister(s, backend)
+				}
+				release, err := s.Hold(&trackingReader{Reader: strings.NewReader("")})
+				Expect(err).ToNot(HaveOccurred())
+				_, backend := reader()
+				_, err = s.register(backend)
+				Expect(err).To(MatchError(errTooManyStreams))
+
+				release()
+				_, backend = reader()
+				mustRegister(s, backend)
+			})
+
+			It("closes a held closer with the scope", func() {
+				s := newScope()
+				c := &trackingReader{Reader: strings.NewReader("")}
+				_, err := s.Hold(c)
+				Expect(err).ToNot(HaveOccurred())
+				s.close()
+				Expect(c.closes.Load()).To(Equal(int32(1)))
+				Expect(table.open).To(BeZero())
+			})
+
+			It("does not close a released closer", func() {
+				s := newScope()
+				c := &trackingReader{Reader: strings.NewReader("")}
+				release, err := s.Hold(c)
+				Expect(err).ToNot(HaveOccurred())
+				release()
+				s.close()
+				Expect(c.closed()).To(BeFalse())
+				Expect(table.open).To(BeZero())
+			})
+
+			It("closes the closer at once on a closed scope", func() {
+				s := newScope()
+				s.close()
+				c := &trackingReader{Reader: strings.NewReader("")}
+				_, err := s.Hold(c)
+				Expect(err).To(MatchError(errCallEnded))
+				Expect(c.closed()).To(BeTrue())
+			})
+		})
+
 		It("is found through the call ctx", func() {
 			s := newScope()
 			Expect(callScopeFrom(withCallScope(ctx, s))).To(BeIdenticalTo(s))

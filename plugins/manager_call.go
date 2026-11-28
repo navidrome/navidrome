@@ -9,6 +9,7 @@ import (
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/plugins/streams"
 )
 
 var errFunctionNotFound = errors.New("function not found")
@@ -63,7 +64,7 @@ func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *p
 		stopClose()
 		scope.close()
 	}()
-	ctx = withCallScope(ctx, scope)
+	ctx = streams.WithDetached(withCallScope(ctx, scope), parentCtx)
 
 	input, err := buildInput(scope)
 	if err != nil {
