@@ -63,7 +63,7 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
 	}
-	allScrobblers := p.getActiveScrobblers()
+	allScrobblers := p.getActiveScrobblers() //nolint:contextcheck // may start buffered scrobbler workers, which must outlive this request
 	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, userId) {
 			continue

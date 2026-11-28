@@ -204,35 +204,6 @@ linters:
       - linters:
           - contextcheck
         text: "log->parseArgs` should pass the context parameter"
-      # the password key is set up once per process, by a constructor that has no ctx
-      - linters:
-          - contextcheck
-        text: "NewUserRepository\\$1` should pass the context parameter"
-      # the buffered scrobbler's worker belongs to the play tracker, not to the request that created it
-      - path: ^core/scrobbler/
-        linters:
-          - contextcheck
-        text: "newBufferedScrobblerWithLoader` should pass the context parameter"
-      # a loaded plugin runs on the manager's lifecycle ctx (cancelled by Stop), not its loader's
-      - path: ^plugins/
-        linters:
-          - contextcheck
-        text: "Function `loadPluginWithConfig` should pass the context parameter"
-      # scheduled callbacks run on the manager's lifecycle ctx; the scheduling call's ctx would pin its plugin instance
-      - path: ^plugins/host_scheduler\.go$
-        linters:
-          - contextcheck
-        text: "Function `Schedule(OneTime|Recurring)\\$1` should pass the context parameter"
-      # websocket read loops outlive Connect and are bounded by the service's base ctx
-      - path: ^plugins/host_websocket\.go$
-        linters:
-          - contextcheck
-        text: "Non-inherited new context"
-      # a fresh request ctx keeps the caller's chi route ctx out of the internal Subsonic call
-      - path: ^plugins/host_subsonicapi\.go$
-        linters:
-          - contextcheck
-        text: "Non-inherited new context"
       # a fresh request ctx keeps the caller's chi route ctx out of the internal Subsonic call
       - path: ^plugins/host_subsonicapi\.go$
         linters:

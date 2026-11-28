@@ -73,7 +73,7 @@ func (s *schedulerServiceImpl) ScheduleOneTime(ctx context.Context, delaySeconds
 	}
 
 	capturedID := scheduleID
-	timer := timeAfterFunc(time.Duration(delaySeconds)*time.Second, func() {
+	timer := timeAfterFunc(time.Duration(delaySeconds)*time.Second, func() { //nolint:contextcheck // the scheduling call's ctx would pin its plugin instance
 		s.invokeCallback(s.manager.lifecycleCtx(), capturedID)
 		// Clean up the entry after firing
 		s.mu.Lock()
@@ -98,7 +98,7 @@ func (s *schedulerServiceImpl) ScheduleRecurring(ctx context.Context, cronExpres
 	}
 
 	capturedID := scheduleID
-	callback := func() {
+	callback := func() { //nolint:contextcheck // the scheduling call's ctx would pin its plugin instance
 		s.invokeCallback(s.manager.lifecycleCtx(), capturedID)
 	}
 
