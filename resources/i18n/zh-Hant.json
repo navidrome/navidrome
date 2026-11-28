@@ -83,7 +83,8 @@
         "mood": "情緒",
         "date": "錄製日期",
         "missing": "遺失",
-        "libraryName": "媒體庫"
+        "libraryName": "媒體庫",
+        "played": "已播放"
       },
       "actions": {
         "playAll": "播放全部",
@@ -162,7 +163,8 @@
       "helperTexts": {
         "name": "您的名稱會在下次登入時生效",
         "libraries": "為該使用者選擇指定媒體庫，留空則使用預設媒體庫",
-        "scrobbleFilter": "符合這些智慧播放清單規則的歌曲將不會傳送至 Last.fm、ListenBrainz 或 Scrobbler 插件。語法與行為皆與智慧播放清單的 JSON 格式相同。範例：{\"all\":[{\"lt\":{\"rating\":4}}]}。若留空則會記錄所有播放紀錄。本機播放次數不受影響。"
+        "scrobbleFilter": "符合這些智慧播放清單規則的歌曲將不會傳送至 Last.fm、ListenBrainz 或 Scrobbler 插件。語法與行為皆與智慧播放清單的 JSON 格式相同。範例：{\"all\":[{\"lt\":{\"rating\":4}}]}。若留空則會記錄所有播放紀錄。本機播放次數不受影響。",
+        "librariesEdit": ""
       },
       "notifications": {
         "created": "使用者已建立",
@@ -190,7 +192,30 @@
         "userName": "使用者名稱",
         "lastSeen": "上次上線",
         "reportRealPath": "回報實際路徑",
-        "scrobbleEnabled": "傳送音樂記錄至外部服務"
+        "scrobbleEnabled": "傳送音樂記錄至外部服務",
+        "hasApiKey": "API 金鑰"
+      },
+      "menuName": "播放器與 API 金鑰",
+      "actions": {
+        "generateApiKey": "生成 API 金鑰",
+        "regenerateApiKey": "重新生成",
+        "revokeApiKey": "撤銷",
+        "copyApiKey": "複製"
+      },
+      "message": {
+        "apiKeyActive": "此播放器已有 API 金鑰。請在您的應用程式中將其作為 API 金鑰使用；若應用程式不支援權杖驗證，則可作為密碼使用。",
+        "apiKeyNone": "尚無 API 金鑰。請生成一組金鑰以將應用程式連線至此播放器。",
+        "apiKeyNoneOther": "尚無 API 金鑰。",
+        "apiKeyPending": "請立即複製此金鑰。點擊「儲存」後即會生效，且之後不會再顯示。",
+        "apiKeyRevokePending": "儲存後將會移除此 API 金鑰。",
+        "deleteWithKeyTitle": "刪除播放器",
+        "deleteWithKeyContent": "此播放器設有 API 金鑰。使用此金鑰的應用程式將會停止運作。"
+      },
+      "notifications": {
+        "apiKeyCopied": "API 金鑰已複製到剪貼簿"
+      },
+      "validation": {
+        "apiKeyFormat": "無效的 API 金鑰格式"
       }
     },
     "transcoding": {
@@ -305,11 +330,14 @@
         "totalDuration": "時長",
         "defaultNewUsers": "新使用者預設媒體庫",
         "createdAt": "建立於",
-        "updatedAt": "更新於"
+        "updatedAt": "更新於",
+        "pidAlbum": "專輯分組",
+        "pidTrack": "曲目識別"
       },
       "sections": {
         "basic": "基本資訊",
-        "statistics": "統計"
+        "statistics": "統計",
+        "pid": "永久 ID"
       },
       "actions": {
         "scan": "掃描媒體庫",
@@ -339,7 +367,17 @@
       "messages": {
         "deleteConfirm": "您確定要刪除此媒體庫嗎？這將刪除所有相關資料和使用者存取權限。",
         "scanInProgress": "正在掃描...",
-        "noLibrariesAssigned": "沒有為該使用者指派任何媒體庫"
+        "noLibrariesAssigned": "沒有為該使用者指派任何媒體庫",
+        "pidChangeTitle": "確定要變更永久 ID 嗎？",
+        "pidChangeConfirm": "這將會重新分組此媒體庫中的專輯與曲目，並立即開始完整重新掃描。曲目的星號標記、評分與播放次數將會保留；若舊專輯能對應到新專輯，專輯的星號標記與評分也會一併轉移。"
+      },
+      "pid": {
+        "global": "使用全域設定 (%{value})",
+        "folder": "資料夾（每個資料夾一張專輯）",
+        "custom": "自訂",
+        "spec": "PID 規格",
+        "help": "用於識別項目的標籤與屬性。語法請參閱說明文件：",
+        "docs": "永久 ID"
       }
     },
     "plugin": {
@@ -609,7 +647,10 @@
     "coverRemoved": "已移除封面圖",
     "coverUploadError": "上傳封面圖時發生錯誤",
     "coverRemoveError": "移除封面圖時發生錯誤",
-    "metadataRefreshStarted": "正在背景重新整理中繼資料"
+    "metadataRefreshStarted": "正在背景重新整理中繼資料",
+    "quickConnectApproved": "%{device} 上的 %{app} 已登入",
+    "quickConnectInvalidCode": "驗證碼無效或已過期",
+    "quickConnectError": "無法核准驗證碼"
   },
   "menu": {
     "library": "媒體庫",
@@ -632,7 +673,12 @@
           "album": "專輯增益",
           "track": "曲目增益"
         },
-        "lastfmNotConfigured": "Last.fm API 金鑰未設定"
+        "lastfmNotConfigured": "Last.fm API 金鑰未設定",
+        "dateFormat": "日期格式",
+        "dateFormats": {
+          "language": "跟隨語言設定",
+          "browser": "跟隨瀏覽器設定"
+        }
       }
     },
     "albumList": "專輯",
@@ -645,7 +691,15 @@
       "selectLibraries": "選取媒體庫",
       "none": "無"
     },
-    "onlyFavourites": "僅顯示收藏"
+    "onlyFavourites": "僅顯示收藏",
+    "quickConnect": {
+      "name": "快速連線",
+      "code": "驗證碼",
+      "help": "輸入 Jellyfin 應用程式顯示的驗證碼，以將其登入您的帳號",
+      "confirm": "要將 %{device} 上的 %{app} %{version} 登入您的帳號嗎？",
+      "continue": "繼續",
+      "approve": "核准"
+    }
   },
   "player": {
     "playListsText": "播放佇列",
