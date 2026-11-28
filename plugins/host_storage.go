@@ -64,7 +64,7 @@ func (s *storageServiceImpl) Close() error {
 // storageRelPath accepts only paths that stay inside the storage folder lexically; os.Root guards symlinks.
 func storageRelPath(path string) (string, error) {
 	p := filepath.FromSlash(path)
-	if path == "" || !filepath.IsLocal(p) {
+	if !filepath.IsLocal(p) {
 		return "", fmt.Errorf("invalid storage path %q: must be relative and inside the plugin storage", path)
 	}
 	return p, nil

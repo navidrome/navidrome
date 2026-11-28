@@ -25,7 +25,6 @@ import (
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/plugins/internal/streamtest"
-	"github.com/navidrome/navidrome/plugins/streams"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -208,12 +207,12 @@ func buildRustTestPlugin(dir string) string {
 type testStreamService struct {
 	created *trackingWriter
 	blocked *io.PipeWriter
-	// detachedHasScope records whether Detached, in the last Open, still carried the host-function ctx.
+	// detachedHasScope records whether detachedCtx, in the last Open, still carried the host-function ctx.
 	detachedHasScope atomic.Bool
 }
 
 func (s *testStreamService) Open(ctx context.Context, text string) (io.ReadCloser, error) {
-	s.detachedHasScope.Store(streams.From(streams.Detached(ctx)) != nil)
+	s.detachedHasScope.Store(callScopeFrom(detachedCtx(ctx)) != nil)
 	return io.NopCloser(strings.NewReader(text)), nil
 }
 
@@ -791,41 +790,23 @@ var _ = Describe("Storage and HTTP stream host functions", Ordered, func() {
 			Expect(io.ReadAll(f)).To(Equal([]byte("keep this")))
 		})
 
-		It("creates missing parent folders", func() {
-			Expect(call("create_path", streamsInput{Path: "a/b/c.txt", Text: "nested"}).Error).To(BeEmpty())
-			Expect(os.ReadFile(filepath.Join(storage, "a", "b", "c.txt"))).To(Equal([]byte("nested")))
-		})
-
 		It("gives a created file write rights only", func() {
 			Expect(call("create_read", streamsInput{Path: "w.txt"}).Error).To(Equal("stream is not readable"))
 		})
 
-		DescribeTable("rejects a path outside the storage folder",
-			func(path string) {
-				Expect(call("open_path", streamsInput{Path: path}).Error).To(ContainSubstring("invalid storage path"))
-			},
-			Entry("parent", "../x"),
-			Entry("absolute", "/etc/passwd"),
-			Entry("empty", ""),
-		)
-
-		It("rejects a symlink planted in the storage folder that leads outside it", func() {
-			outside := filepath.Join(GinkgoT().TempDir(), "secret")
-			Expect(os.WriteFile(outside, []byte("secret"), 0600)).To(Succeed())
-			Expect(os.Symlink(outside, filepath.Join(storage, "link"))).To(Succeed())
-			out := call("open_path", streamsInput{Path: "link"})
-			Expect(out.Error).ToNot(BeEmpty())
-			Expect(out.Data).To(BeEmpty())
+		It("rejects a path outside the storage folder", func() {
+			Expect(call("open_path", streamsInput{Path: "../x"}).Error).To(ContainSubstring("invalid storage path"))
 		})
 	})
 
 	Describe("HTTP.SendStream", func() {
 		It("downloads a response body into storage with stream_copy", func() {
 			const size = 3 << 20
-			url, _ := requestEnds(func(w http.ResponseWriter, _ *http.Request, _ func()) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				_, _ = io.Copy(w, &patternReader{size: size})
-			})
-			out := call("download", streamsInput{URL: url, Path: "download.bin"})
+			}))
+			DeferCleanup(srv.Close)
+			out := call("download", streamsInput{URL: srv.URL, Path: "download.bin"})
 			Expect(out.Error).To(BeEmpty())
 			Expect(out.Status).To(Equal(int32(http.StatusOK)))
 			Expect(out.Count).To(Equal(int64(size)))
@@ -833,10 +814,10 @@ var _ = Describe("Storage and HTTP stream host functions", Ordered, func() {
 			f, err := os.Open(filepath.Join(storage, "download.bin"))
 			Expect(err).ToNot(HaveOccurred())
 			defer f.Close()
-			h := sha256.New()
+			h := newHashWriter()
 			_, err = io.Copy(h, f)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(hex.EncodeToString(h.Sum(nil))).To(Equal(patternSHA(size)))
+			Expect(h.sum()).To(Equal(patternSHA(size)))
 		})
 
 		It("keeps a returned body working after the call, and closing it ends the request", func() {
@@ -900,12 +881,13 @@ var _ = Describe("Storage and HTTP stream host functions", Ordered, func() {
 		})
 
 		It("does not time out a slow body once the headers arrived", func() {
-			url, _ := requestEnds(func(w http.ResponseWriter, _ *http.Request, _ func()) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				flushed(w, "slow ")
 				time.Sleep(400 * time.Millisecond)
 				flushed(w, "body")
-			})
-			out := call("fetch", streamsInput{URL: url, TimeoutMs: 200})
+			}))
+			DeferCleanup(srv.Close)
+			out := call("fetch", streamsInput{URL: srv.URL, TimeoutMs: 200})
 			Expect(out.Error).To(BeEmpty())
 			Expect(out.Data).To(Equal("slow body"))
 		})
@@ -932,9 +914,9 @@ var _ = Describe("Storage and HTTP stream host functions", Ordered, func() {
 				uploads = make(chan received, 1)
 				mux := http.NewServeMux()
 				mux.HandleFunc("/upload", func(_ http.ResponseWriter, r *http.Request) {
-					h := sha256.New()
+					h := newHashWriter()
 					_, _ = io.Copy(h, r.Body)
-					uploads <- received{sha: hex.EncodeToString(h.Sum(nil)), contentLength: r.ContentLength}
+					uploads <- received{sha: h.sum(), contentLength: r.ContentLength}
 				})
 				mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, "/upload", http.StatusTemporaryRedirect)

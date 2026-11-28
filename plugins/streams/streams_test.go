@@ -72,44 +72,6 @@ func (f *fakeStreams) Release(h uint32) {
 	}
 }
 
-func (f *fakeStreams) Hold(c io.Closer) (func(), error) {
-	f.next++
-	h := f.next
-	f.registered[h] = c
-	return func() { delete(f.registered, h) }, nil
-}
-
-var _ = Describe("Detached", func() {
-	type key struct{}
-
-	It("keeps the base ctx values but not its cancellation or the host-function ctx values", func() {
-		base, cancel := context.WithCancel(context.WithValue(GinkgoT().Context(), key{}, "base"))
-		hostCtx := context.WithValue(WithDetached(base, base), streamsKey{}, newFakeStreams())
-		cancel()
-
-		d := Detached(hostCtx)
-		Expect(d.Err()).To(Succeed())
-		Expect(d.Value(key{})).To(Equal("base"))
-		Expect(From(d)).To(BeNil())
-	})
-
-	It("detaches from the ctx it is given outside a plugin call", func() {
-		ctx, cancel := context.WithCancel(GinkgoT().Context())
-		d := Detached(ctx)
-		cancel()
-		Expect(d.Err()).To(Succeed())
-	})
-})
-
-var _ = Describe("Hold", func() {
-	It("closes the closer and fails outside a plugin call", func() {
-		c := &closeCounter{}
-		_, err := Hold(GinkgoT().Context(), c)
-		Expect(err).To(MatchError("no plugin call in progress"))
-		Expect(c.closes.Load()).To(Equal(int32(1)))
-	})
-})
-
 var _ = Describe("Conv", func() {
 	var (
 		ctx context.Context

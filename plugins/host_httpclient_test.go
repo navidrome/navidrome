@@ -653,15 +653,18 @@ var _ = Describe("isPrivateOrLoopback", func() {
 
 var _ = Describe("pendingRequest", func() {
 	var (
-		cancels atomic.Int32
+		cancels *atomic.Int32
 		body    *trackingReader
 		p       *pendingRequest
 	)
 
+	newPending := func() (*atomic.Int32, *trackingReader, *pendingRequest) {
+		cancels, body := &atomic.Int32{}, &trackingReader{Reader: strings.NewReader("")}
+		return cancels, body, &pendingRequest{cancel: func() { cancels.Add(1) }, body: body}
+	}
+
 	BeforeEach(func() {
-		cancels.Store(0)
-		body = &trackingReader{Reader: strings.NewReader("")}
-		p = &pendingRequest{cancel: func() { cancels.Add(1) }, body: body}
+		cancels, body, p = newPending()
 	})
 
 	It("cancels the request and closes its body on abort, once", func() {
@@ -688,9 +691,7 @@ var _ = Describe("pendingRequest", func() {
 
 	It("lets exactly one of promote and abort win a race", func() {
 		for range 200 {
-			cancels.Store(0)
-			body = &trackingReader{Reader: strings.NewReader("")}
-			p = &pendingRequest{cancel: func() { cancels.Add(1) }, body: body}
+			cancels, body, p := newPending()
 			var promoteErr error
 			var wg sync.WaitGroup
 			wg.Go(func() { promoteErr = p.promote() })
@@ -728,7 +729,7 @@ var _ = Describe("httpServiceImpl.SendStream", func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(scope.close)
 
-		_, err = svc.SendStream(withCallScope(ctx, scope), host.HTTPStreamRequest{Method: "PUT", URL: "http://not-allowed.invalid/", Body: body})
+		_, err = svc.SendStream(withCallScope(ctx, ctx, scope), host.HTTPStreamRequest{Method: "PUT", URL: "http://not-allowed.invalid/", Body: body})
 		Expect(err).To(MatchError(`host "not-allowed.invalid" is not allowed`))
 		Expect(body.closed()).To(BeTrue())
 		Expect(table.open).To(BeZero())

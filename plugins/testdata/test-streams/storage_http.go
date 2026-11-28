@@ -81,13 +81,12 @@ func upload() int32 {
 		}
 		resp, err := ndhost.HTTPSendStream(ndhost.HTTPStreamRequest{Method: "PUT", URL: in.URL, Headers: in.Headers, Body: body})
 		_, reuseErr := body.Read(make([]byte, 1))
-		if err != nil {
-			out := fail(err)
-			out.Data = errString(reuseErr)
-			return out
+		out := output{Error: errString(err), Data: errString(reuseErr)}
+		if err == nil {
+			_ = resp.Body.Close()
+			out.Status = resp.StatusCode
 		}
-		defer resp.Body.Close()
-		return output{Status: resp.StatusCode, Data: errString(reuseErr)}
+		return out
 	})
 }
 
@@ -111,20 +110,6 @@ func openPath() int32 {
 		}
 		data, err := readString(rc)
 		return output{Data: data, Error: errString(err)}
-	})
-}
-
-//go:wasmexport create_path
-func createPath() int32 {
-	return run(func(in input) output {
-		wc, err := ndhost.StorageCreate(in.Path)
-		if err != nil {
-			return fail(err)
-		}
-		if _, err := io.WriteString(wc, in.Text); err != nil {
-			return fail(err)
-		}
-		return output{Error: errString(wc.Close())}
 	})
 }
 

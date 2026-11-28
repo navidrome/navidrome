@@ -99,16 +99,24 @@ func (s *callScope) insert(b *streamBackend) (uint32, error) {
 	t := s.table
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if err := s.checkOpenLocked(); err != nil {
+	if err := s.admitLocked(); err != nil {
 		return 0, err
-	}
-	if t.open >= maxOpenStreams {
-		return 0, errTooManyStreams
 	}
 	h := t.nextHandleLocked()
 	s.entries[h] = b
-	t.open++
 	return h, nil
+}
+
+// admitLocked takes one of the table's open-stream slots for a new stream of the scope.
+func (s *callScope) admitLocked() error {
+	if err := s.checkOpenLocked(); err != nil {
+		return err
+	}
+	if s.table.open >= maxOpenStreams {
+		return errTooManyStreams
+	}
+	s.table.open++
+	return nil
 }
 
 // nextHandleLocked wraps around after 2^31-1 and skips live handles. At most maxOpenStreams are live, so
@@ -253,13 +261,22 @@ func (s *callScope) close() {
 	close(s.done)
 }
 
-func withCallScope(ctx context.Context, s *callScope) context.Context {
-	return streams.WithStreams(ctx, s)
+type parentCtxKey struct{}
+
+// withCallScope stores s, and parent (the call's ctx before Extism wraps it) for detachedCtx.
+func withCallScope(ctx, parent context.Context, s *callScope) context.Context {
+	return context.WithValue(streams.WithStreams(ctx, s), parentCtxKey{}, parent)
 }
 
 func callScopeFrom(ctx context.Context) *callScope {
 	cs, _ := streams.From(ctx).(*callScope)
 	return cs
+}
+
+// detachedCtx returns a ctx for work that outlives the call, from a ctx built by withCallScope. It never derives
+// from the host-function ctx, which holds the plugin instance and would keep it alive.
+func detachedCtx(ctx context.Context) context.Context {
+	return context.WithoutCancel(ctx.Value(parentCtxKey{}).(context.Context))
 }
 
 func (s *callScope) RegisterReader(rc io.ReadCloser) (uint32, error) {
@@ -286,28 +303,20 @@ func (s *callScope) TakeWriter(h uint32) (io.WriteCloser, error) {
 	return b, nil
 }
 
-func (s *callScope) Hold(c io.Closer) (func(), error) {
+// hold counts c as an open stream and closes it when the call ends, unless release ran first.
+func (s *callScope) hold(c io.Closer) (release func(), err error) {
 	b := &streamBackend{c: c}
-	if err := s.hold(b); err != nil {
+	s.table.mu.Lock()
+	err = s.admitLocked()
+	if err == nil {
+		s.addHeldLocked(b)
+	}
+	s.table.mu.Unlock()
+	if err != nil {
 		_ = c.Close()
 		return nil, err
 	}
 	return func() { s.releaseHeld(b) }, nil
-}
-
-func (s *callScope) hold(b *streamBackend) error {
-	t := s.table
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if err := s.checkOpenLocked(); err != nil {
-		return err
-	}
-	if t.open >= maxOpenStreams {
-		return errTooManyStreams
-	}
-	s.addHeldLocked(b)
-	t.open++
-	return nil
 }
 
 func (s *callScope) Release(h uint32) {
