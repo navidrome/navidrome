@@ -368,8 +368,9 @@ func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
+			ctx := r.Context()
 			status := int32(-1)
-			contextWithStatus := context.WithValue(r.Context(), subsonicErrorPointer, &status)
+			contextWithStatus := context.WithValue(ctx, subsonicErrorPointer, &status)
 
 			start := time.Now()
 			defer func() {
@@ -386,7 +387,7 @@ func recordStats(metrics metrics.Metrics) func(next http.Handler) http.Handler {
 
 				shortPath := strings.Replace(r.URL.Path, ".view", "", 1)
 
-				metrics.RecordRequest(r.Context(), shortPath, r.Method, client, status, elapsed)
+				metrics.RecordRequest(ctx, shortPath, r.Method, client, status, elapsed)
 			}()
 
 			next.ServeHTTP(ww, r.WithContext(contextWithStatus))

@@ -40,7 +40,7 @@ var _ = Describe("Prune", func() {
 	// PutImage refreshes created_at, so fixtures are aged directly.
 	ageArtwork := func(h string, t time.Time) {
 		GinkgoHelper()
-		_, err := db.Db().Exec("UPDATE artwork SET created_at = ? WHERE hash = ?", t, h)
+		_, err := db.Db().ExecContext(ctx, "UPDATE artwork SET created_at = ? WHERE hash = ?", t, h)
 		Expect(err).ToNot(HaveOccurred())
 	}
 

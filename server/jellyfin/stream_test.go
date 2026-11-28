@@ -53,7 +53,7 @@ var _ = Describe("Stream", func() {
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			api.getPlaybackInfo(w, r)
 
@@ -72,7 +72,7 @@ var _ = Describe("Stream", func() {
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			api.getPlaybackInfo(w, r)
 
@@ -81,7 +81,7 @@ var _ = Describe("Stream", func() {
 
 		It("returns 404 when the id doesn't match any media file", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Items/missing/PlaybackInfo", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Items/missing/PlaybackInfo", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			api.getPlaybackInfo(w, r)
 
@@ -90,7 +90,7 @@ var _ = Describe("Stream", func() {
 
 		playbackInfo := func() dto.PlaybackInfoResponse {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Items/"+dto.EncodeID(testID("s1"))+"/PlaybackInfo", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			api.getPlaybackInfo(w, r)
 			var res dto.PlaybackInfoResponse
@@ -158,7 +158,7 @@ var _ = Describe("Stream", func() {
 			api.lyrics = &fakeLyricsService{err: errors.New("boom")}
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s-err"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Items/"+dto.EncodeID(testID("s-err"))+"/PlaybackInfo", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s-err")))
 			api.getPlaybackInfo(w, r)
 
@@ -208,7 +208,7 @@ var _ = Describe("Stream", func() {
 			api.lyrics = &fakeLyricsService{panicVal: "lyrics plugin crash"}
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Items/"+dto.EncodeID(testID("s-panic"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Items/"+dto.EncodeID(testID("s-panic"))+"/PlaybackInfo", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s-panic")))
 			api.getPlaybackInfo(w, r)
 
@@ -227,7 +227,7 @@ var _ = Describe("Stream", func() {
 			)
 			streamer.content = "audio-bytes"
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamAudio, w, r)
 
@@ -242,7 +242,7 @@ var _ = Describe("Stream", func() {
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamAudio, w, r)
 
@@ -253,7 +253,7 @@ var _ = Describe("Stream", func() {
 
 		It("returns 404 when the id doesn't match any media file, without invoking the streamer or decider", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/missing/stream", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/missing/stream", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			invoke(api.streamAudio, w, r)
 
@@ -267,7 +267,7 @@ var _ = Describe("Stream", func() {
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiobitrate=320000", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiobitrate=320000", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamAudio, w, r)
 
@@ -279,7 +279,7 @@ var _ = Describe("Stream", func() {
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiocodec=aac", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?audiocodec=aac", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamAudio, w, r)
 
@@ -292,7 +292,7 @@ var _ = Describe("Stream", func() {
 			)
 			streamer.err = errors.New("boom")
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamAudio, w, r)
 
@@ -307,7 +307,7 @@ var _ = Describe("Stream", func() {
 			)
 			streamer.content = "audio-bytes"
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodHead, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?"+query, nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodHead, "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?"+query, nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamAudio, w, r)
 			return w
@@ -336,7 +336,7 @@ var _ = Describe("Stream", func() {
 				model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
 			)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/universal?"+query, nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/universal?"+query, nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamUniversal, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -386,7 +386,7 @@ var _ = Describe("Stream", func() {
 
 		hls := func(query string, ctx context.Context) *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/main.m3u8"+query, nil).WithContext(ctx)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Audio/"+dto.EncodeID(testID("s1"))+"/main.m3u8"+query, nil)
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamHls, w, r)
 			return w
@@ -453,7 +453,7 @@ var _ = Describe("Stream", func() {
 			)
 			streamer.content = "audio-bytes"
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			api.streamFile(w, r)
 
@@ -469,7 +469,7 @@ var _ = Describe("Stream", func() {
 				model.MediaFile{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			)
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/File", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			api.streamFile(w, r)
 
@@ -480,7 +480,7 @@ var _ = Describe("Stream", func() {
 
 		It("returns 404 when the id doesn't match any media file, without invoking the streamer or decider", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/Items/missing/File", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/missing/File", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			api.streamFile(w, r)
 

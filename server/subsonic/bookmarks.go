@@ -13,10 +13,11 @@ import (
 )
 
 func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
-	user, _ := request.UserFrom(r.Context())
+	ctx := r.Context()
+	user, _ := request.UserFrom(ctx)
 
 	repo := api.ds.MediaFile()
-	bookmarks, err := repo.GetBookmarks(r.Context())
+	bookmarks, err := repo.GetBookmarks(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +26,7 @@ func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
 	response.Bookmarks = &responses.Bookmarks{}
 	response.Bookmarks.Bookmark = slice.Map(bookmarks, func(bmk model.Bookmark) responses.Bookmark {
 		return responses.Bookmark{
-			Entry:    childFromMediaFile(r.Context(), bmk.Item),
+			Entry:    childFromMediaFile(ctx, bmk.Item),
 			Position: bmk.Position,
 			Username: user.UserName,
 			Comment:  bmk.Comment,

@@ -563,7 +563,7 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 		return
 	}
 
-	allScrobblers := p.getActiveScrobblers()
+	allScrobblers := p.getActiveScrobblers() //nolint:contextcheck // may start buffered scrobbler workers, which must outlive this request
 	u, _ := request.UserFrom(ctx)
 	scrobble := Scrobble{MediaFile: *t, TimeStamp: playTime}
 	for name, s := range allScrobblers {

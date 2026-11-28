@@ -20,7 +20,7 @@ var _ = Describe("Inspect", func() {
 
 	It("maps the file with the library-relative path the scanner uses", func() {
 		lib := model.Library{ID: 2, Path: filepath.Dir(fixtures), PIDAlbum: "folder"}
-		out, err := core.Inspect(filepath.Join(fixtures, "test.mp3"), lib, "")
+		out, err := core.Inspect(GinkgoT().Context(), filepath.Join(fixtures, "test.mp3"), lib, "")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.MappedTags.Path).To(Equal("fixtures/test.mp3"))
 		Expect(out.MappedTags.LibraryID).To(Equal(2))
@@ -28,9 +28,9 @@ var _ = Describe("Inspect", func() {
 
 	It("gives the same IDs for relative and absolute paths", func() {
 		lib := model.Library{ID: 2, Path: filepath.Dir(fixtures), PIDAlbum: "folder"}
-		abs, err := core.Inspect(filepath.Join(fixtures, "test.mp3"), lib, "")
+		abs, err := core.Inspect(GinkgoT().Context(), filepath.Join(fixtures, "test.mp3"), lib, "")
 		Expect(err).ToNot(HaveOccurred())
-		rel, err := core.Inspect(filepath.Join("tests", "fixtures", "test.mp3"), lib, "")
+		rel, err := core.Inspect(GinkgoT().Context(), filepath.Join("tests", "fixtures", "test.mp3"), lib, "")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(rel.MappedTags.AlbumID).To(Equal(abs.MappedTags.AlbumID))
 		Expect(rel.MappedTags.PID).To(Equal(abs.MappedTags.PID))
@@ -38,7 +38,7 @@ var _ = Describe("Inspect", func() {
 
 	It("keeps the given path for a file outside the library", func() {
 		filePath := filepath.Join(fixtures, "test.mp3")
-		out, err := core.Inspect(filePath, model.Library{ID: model.DefaultLibraryID}, "")
+		out, err := core.Inspect(GinkgoT().Context(), filePath, model.Library{ID: model.DefaultLibraryID}, "")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.MappedTags.Path).To(Equal(filePath))
 	})

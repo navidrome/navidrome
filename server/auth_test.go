@@ -41,13 +41,13 @@ var _ = Describe("Auth", func() {
 
 		BeforeEach(func() {
 			ds = persistence.New(db.Db())
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 		})
 
 		Describe("createAdmin", func() {
 			var createdAt time.Time
 			BeforeEach(func() {
-				req = httptest.NewRequest(http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
+				req = httptest.NewRequestWithContext(ctx, http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 				createdAt = time.Now()
 				createAdmin(ds)(resp, req)
@@ -84,7 +84,7 @@ var _ = Describe("Auth", func() {
 
 		Describe("createAdmin when a user already exists", func() {
 			It("responds 403", func() {
-				req = httptest.NewRequest(http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"another", "password":"secret"}`))
+				req = httptest.NewRequestWithContext(ctx, http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"another", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 				Expect(ds.User().Put(ctx, &model.User{UserName: "johndoe", NewPassword: "secret"})).To(Succeed())
 
@@ -98,7 +98,7 @@ var _ = Describe("Auth", func() {
 		Describe("createAdmin when the user cannot be stored", func() {
 			It("responds 500 rather than falling through to login", func() {
 				failing := withUserErrors(ds, userErrors{put: errors.New("db is down")})
-				req = httptest.NewRequest(http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
+				req = httptest.NewRequestWithContext(ctx, http.MethodPost, "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
 
 				createAdmin(failing)(resp, req)
@@ -120,7 +120,7 @@ var _ = Describe("Auth", func() {
 			BeforeEach(func() {
 				usr := ds.User()
 				Expect(usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})).To(Succeed())
-				req = httptest.NewRequest(http.MethodGet, "/index.html", nil)
+				req = httptest.NewRequestWithContext(ctx, http.MethodGet, "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
 				conf.Update(func(c *conf.Options) {
@@ -240,7 +240,7 @@ var _ = Describe("Auth", func() {
 
 		Describe("login", func() {
 			BeforeEach(func() {
-				req = httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"username":"janedoe", "password":"abc123"}`))
+				req = httptest.NewRequestWithContext(ctx, http.MethodPost, "/login", strings.NewReader(`{"username":"janedoe", "password":"abc123"}`))
 				resp = httptest.NewRecorder()
 			})
 
@@ -251,7 +251,7 @@ var _ = Describe("Auth", func() {
 
 			It("rejects a request body larger than the limit", func() {
 				body := `{"username":"janedoe", "password":"abc123", "padding":"` + strings.Repeat("x", MaxLoginBodySize) + `"}`
-				req = httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(body))
+				req = httptest.NewRequestWithContext(ctx, http.MethodPost, "/login", strings.NewReader(body))
 				LimitLoginBody(http.HandlerFunc(login(ds))).ServeHTTP(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity))
 			})
@@ -289,7 +289,7 @@ var _ = Describe("Auth", func() {
 				log.SetDefaultLogger(prevLogger)
 				log.SetLevel(prevLevel)
 			})
-			r = httptest.NewRequest(http.MethodGet, "/", nil)
+			r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		})
 
 		warnings := func() []*logrus.Entry {
@@ -326,7 +326,7 @@ var _ = Describe("Auth", func() {
 
 	Describe("tokenFromHeader", func() {
 		It("returns the token when the Authorization header is set correctly", func() {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set(consts.UIAuthorizationHeader, "Bearer testtoken")
 
 			token := tokenFromHeader(req)
@@ -334,14 +334,14 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("returns an empty string when the Authorization header is not set", func() {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 
 			token := tokenFromHeader(req)
 			Expect(token).To(BeEmpty())
 		})
 
 		It("returns an empty string when the Authorization header is not a Bearer token", func() {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set(consts.UIAuthorizationHeader, "Basic testtoken")
 
 			token := tokenFromHeader(req)
@@ -349,7 +349,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("returns an empty string when the Bearer token is too short", func() {
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req.Header.Set(consts.UIAuthorizationHeader, "Bearer")
 
 			token := tokenFromHeader(req)
@@ -407,7 +407,7 @@ var _ = Describe("Auth", func() {
 
 		BeforeEach(func() {
 			ds = persistence.New(db.Db())
-			req = httptest.NewRequest(http.MethodGet, "/", nil)
+			req = httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIP))
 			conf.Update(func(c *conf.Options) {
 				c.ExtAuth.TrustedSources = "192.168.0.0/16"
@@ -458,21 +458,21 @@ var _ = Describe("Auth", func() {
 
 		setTokenEpoch := func(epoch int) {
 			GinkgoHelper()
-			_, err := db.Db().Exec("UPDATE user SET token_epoch = ? WHERE id = ?", epoch, usr.ID)
+			_, err := db.Db().ExecContext(ctx, "UPDATE user SET token_epoch = ? WHERE id = ?", epoch, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			ds = persistence.New(db.Db())
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
 			Expect(ds.User().Put(ctx, usr)).To(Succeed())
 			setTokenEpoch(usr.TokenEpoch)
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {
-			r := httptest.NewRequest(http.MethodGet, "/api/song", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/song", nil)
 			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
 			w := httptest.NewRecorder()
 			handler := JWTVerifier(Authenticator(ds)(http.HandlerFunc(
@@ -520,7 +520,7 @@ var _ = Describe("Auth", func() {
 		BeforeEach(func() {
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
-			auth.Init(persistence.New(db.Db()))
+			auth.Init(ctx, persistence.New(db.Db()))
 		})
 
 		serveWith := func(handler http.HandlerFunc) *httptest.ResponseRecorder {
@@ -528,7 +528,7 @@ var _ = Describe("Auth", func() {
 			tokenStr, err := auth.CreateToken(&usr)
 			Expect(err).ToNot(HaveOccurred())
 
-			r := httptest.NewRequest(http.MethodGet, "/api/song", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/song", nil)
 			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+tokenStr)
 			w := httptest.NewRecorder()
 			JWTVerifier(JWTRefresher(handler)).ServeHTTP(w, r)

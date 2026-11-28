@@ -51,7 +51,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 			ds:      ds,
 			metrics: noopMetricsRecorder{},
 		}
-		DeferCleanup(func() { _ = m.Stop() })
+		DeferCleanup(func() { _ = m.Stop(ctx) })
 		return m
 	}
 

@@ -31,7 +31,7 @@ func (m extismMemory) blockLength(ctx context.Context, offset uint64) uint64 {
 		}
 	}
 	if k.fn == nil {
-		n, err := m.p.Length(offset)
+		n, err := m.p.LengthWithContext(ctx, offset)
 		if err != nil {
 			return 0
 		}

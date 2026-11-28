@@ -98,7 +98,7 @@ func (s *subsonicAPIServiceImpl) executeRequest(ctx context.Context, uri string,
 
 	// Set internal authentication context using the username from the 'u' parameter
 	authCtx := request.WithInternalAuth(httpReq.Context(), username)
-	httpReq = httpReq.WithContext(authCtx)
+	httpReq = httpReq.WithContext(authCtx) //nolint:contextcheck // a fresh request ctx keeps the caller's chi route ctx out of the internal call
 
 	// Use ResponseRecorder to capture the response
 	recorder := httptest.NewRecorder()

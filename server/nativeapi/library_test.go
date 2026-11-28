@@ -34,7 +34,7 @@ var _ = Describe("Library API", func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		nativeRouter := newTestRouter(ds, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
@@ -434,7 +434,7 @@ func createAuthenticatedRequest(method, path string, body *bytes.Buffer, token s
 	if body == nil {
 		body = &bytes.Buffer{}
 	}
-	req := httptest.NewRequest(method, path, body)
+	req := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, body)
 	req.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	return req
@@ -444,7 +444,7 @@ func createUnauthenticatedRequest(method, path string, body *bytes.Buffer) *http
 	if body == nil {
 		body = &bytes.Buffer{}
 	}
-	req := httptest.NewRequest(method, path, body)
+	req := httptest.NewRequestWithContext(GinkgoT().Context(), method, path, body)
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }

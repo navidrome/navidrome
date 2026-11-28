@@ -88,6 +88,6 @@ func trackIDs(pls *model.Playlist) []string {
 // backdate sets a playlist's updated_at, which every Put overwrites, so a spec can tell whether it was written again.
 func backdate(id string, t time.Time) {
 	GinkgoHelper()
-	_, err := db.Db().Exec("UPDATE playlist SET updated_at = ? WHERE id = ?", t, id)
+	_, err := db.Db().ExecContext(GinkgoT().Context(), "UPDATE playlist SET updated_at = ? WHERE id = ?", t, id)
 	Expect(err).ToNot(HaveOccurred())
 }

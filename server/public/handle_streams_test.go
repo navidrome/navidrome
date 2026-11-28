@@ -130,7 +130,7 @@ var _ = Describe("handleStream", func() {
 	})
 
 	makeRequest := func(token string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest(http.MethodGet, "/public/s/token?%3Aid="+token, nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/public/s/token?%3Aid="+token, nil)
 		w := httptest.NewRecorder()
 		pub.handleStream(w, r)
 		return w
@@ -220,7 +220,7 @@ var _ = Describe("handleStream", func() {
 
 		claims := auth.Claims{ID: "mf-123", Format: "mp3", BitRate: 192, ShareID: "share123"}
 		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
-		r := httptest.NewRequest(http.MethodHead, "/public/s/token?%3Aid="+token, nil)
+		r := httptest.NewRequestWithContext(ctx, http.MethodHead, "/public/s/token?%3Aid="+token, nil)
 		w := httptest.NewRecorder()
 		pub.handleStream(w, r)
 

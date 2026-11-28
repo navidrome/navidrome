@@ -29,6 +29,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
@@ -100,16 +101,13 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 			c.DevArtworkThrottleBacklogTimeout = time.Minute
 		})
 
-		goldenDB.Restore()
-		ds = persistence.New(db.Db())
-		auth.Init(ds)
-
 		// Re-scanning already-populated data deadlocks the parallel album-refresh phase at the
-		// harness's MaxOpenConns=1, so wipe the golden content and import this library fresh.
-		wipeScannedContent()
-		artLib := model.Library{Name: "Artwork Library", Path: musicDir}
-		Expect(ds.Library().Put(ctx, &artLib)).To(Succeed())
-		Expect(ds.User().SetUserLibraries(ctx, adminUser.ID, []int{artLib.ID})).To(Succeed())
+		// harness's MaxOpenConns=1, so start from before the golden scan and import this library fresh.
+		goldenDB.RestoreUnscanned(ctx)
+		ds = persistence.New(db.Db())
+		auth.Init(ctx, ds)
+		persistencetest.SetLibraries(ctx, ds, musicDir)
+		Expect(ds.User().SetUserLibraries(ctx, regularUser.ID, nil)).To(Succeed())
 
 		s := scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
@@ -117,7 +115,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// Focus the worker on the entities under test.
-		_, err = db.Db().Exec("DELETE FROM artwork_queue")
+		_, err = db.Db().ExecContext(ctx, "DELETE FROM artwork_queue")
 		Expect(err).ToNot(HaveOccurred())
 
 		artfulID = albumIDByName("Artful Album")
@@ -231,7 +229,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Body.Bytes()).To(Equal(readArtworkFixture("cover.jpg")))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("public, max-age=31536000, immutable"))
@@ -243,7 +241,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		w := httptest.NewRecorder()
-		pubRouter.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/img/"+token, nil))
+		pubRouter.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/img/"+token, nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 })
@@ -259,20 +257,6 @@ func buildArtworkRouter(art artwork.Artwork) *subsonic.Router {
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil), core.NewShare(ds),
 		playback.PlaybackServer(nil), metrics.NewNoopInstance(), lyrics.NewLyrics(ds, nil), decider, nil,
 	)
-}
-
-// wipeScannedContent clears all scanned content so the next scan is a clean import. FKs are
-// disabled for the bulk delete, mirroring harness.Restore.
-func wipeScannedContent() {
-	GinkgoHelper()
-	_, err := db.Db().Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	for _, t := range []string{"media_file", "album", "artist", "folder", "item_artwork", "artwork_queue", "artwork", "library"} {
-		_, err = db.Db().Exec(`DELETE FROM "` + t + `"`)
-		Expect(err).ToNot(HaveOccurred(), "wiping %s", t)
-	}
-	_, err = db.Db().Exec("PRAGMA foreign_keys = ON")
-	Expect(err).ToNot(HaveOccurred())
 }
 
 func albumIDByName(name string) string {

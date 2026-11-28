@@ -35,7 +35,10 @@ func TestFFmpeg(t *testing.T) {
 }
 
 var _ = Describe("ffmpeg", func() {
+	var ctx context.Context
+
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		_, _ = ffmpegCmd()
 		ffmpegPath = "ffmpeg"
 		ffmpegErr = nil
@@ -575,7 +578,7 @@ var _ = Describe("ffmpeg", func() {
 			if runtime.GOOS == "windows" {
 				Skip("uses /bin/sh")
 			}
-			_, err := exec.Command("/bin/sh", "-c", "echo '/music/foo.flac: Invalid data found' >&2; exit 1").Output()
+			_, err := exec.CommandContext(ctx, "/bin/sh", "-c", "echo '/music/foo.flac: Invalid data found' >&2; exit 1").Output()
 			Expect(err).To(HaveOccurred())
 			Expect(probeClientReason(err, "/music/foo.flac")).To(Equal("the file: Invalid data found"))
 		})
@@ -591,7 +594,7 @@ var _ = Describe("ffmpeg", func() {
 			if runtime.GOOS == "windows" {
 				Skip("uses /bin/sh")
 			}
-			_, err := exec.Command("/bin/sh", "-c", "echo 'boom detail' >&2; exit 1").Output()
+			_, err := exec.CommandContext(ctx, "/bin/sh", "-c", "echo 'boom detail' >&2; exit 1").Output()
 			Expect(err).To(HaveOccurred())
 			Expect(probeDetail(err)).To(Equal("boom detail"))
 		})

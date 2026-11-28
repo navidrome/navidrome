@@ -1273,9 +1273,9 @@ var _ = Describe("MediaRepository", func() {
 			tx, err := conn.BeginTx(adminCtx, nil)
 			Expect(err).ToNot(HaveOccurred())
 			// The schema, and so the loaded stats, are shared by every connection to the in-memory DB
-			DeferCleanup(func() {
+			DeferCleanup(func(ctx context.Context) {
 				Expect(tx.Rollback()).To(Succeed())
-				_, err := conn.Exec("ANALYZE sqlite_schema")
+				_, err := conn.ExecContext(ctx, "ANALYZE sqlite_schema")
 				Expect(err).ToNot(HaveOccurred())
 			})
 			for _, stmt := range []string{
@@ -1284,7 +1284,7 @@ var _ = Describe("MediaRepository", func() {
 				"INSERT INTO sqlite_stat1 VALUES ('media_file', 'media_file_title', '40000 2'), ('media_file', 'media_file_mbz_release_track_id', '40000 1'), ('media_file', 'media_file_created_at', '40000 1')",
 				"ANALYZE sqlite_schema",
 			} {
-				_, err := tx.Exec(stmt)
+				_, err := tx.ExecContext(adminCtx, stmt)
 				Expect(err).ToNot(HaveOccurred(), stmt)
 			}
 

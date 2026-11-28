@@ -24,14 +24,14 @@ var _ = Describe("AuthenticateByName", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		Expect(ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
 	It("issues a token for valid credentials", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"alice","Pw":"secret"}`))
 		api.authenticateByName(w, r)
 
@@ -55,7 +55,7 @@ var _ = Describe("AuthenticateByName", func() {
 	Describe("SessionInfo", func() {
 		login := func(authHeader string) map[string]any {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName",
 				strings.NewReader(`{"Username":"alice","Pw":"secret"}`))
 			r.Header.Set("Authorization", authHeader)
 			api.authenticateByName(w, r)
@@ -102,7 +102,7 @@ var _ = Describe("AuthenticateByName", func() {
 
 	It("records the login time, like the web UI login does", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"alice","Pw":"secret"}`))
 		api.authenticateByName(w, r)
 
@@ -116,7 +116,7 @@ var _ = Describe("AuthenticateByName", func() {
 		Expect(ds.User().Put(ctx, &model.User{ID: testID("admin1"), UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"root","Pw":"secret"}`))
 		api.authenticateByName(w, r)
 
@@ -129,7 +129,7 @@ var _ = Describe("AuthenticateByName", func() {
 
 	It("rejects invalid credentials with 401", func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"alice","Pw":"wrong"}`))
 		api.authenticateByName(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -139,7 +139,7 @@ var _ = Describe("AuthenticateByName", func() {
 		Expect(ds.User().Put(ctx, &model.User{ID: testID("e"), UserName: "empty", NewPassword: ""})).To(Succeed())
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName",
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName",
 			strings.NewReader(`{"Username":"empty","Pw":""}`))
 		api.authenticateByName(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -147,11 +147,16 @@ var _ = Describe("AuthenticateByName", func() {
 })
 
 var _ = Describe("AuthenticateByName body limit", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("rejects a request body larger than the limit", func() {
 		api := &Router{ds: struct{ model.DataStore }{}}
 		w := httptest.NewRecorder()
 		body := `{"Username":"alice","Pw":"secret","Padding":"` + strings.Repeat("x", server.MaxLoginBodySize) + `"}`
-		r := httptest.NewRequest(http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(body))
+		r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/AuthenticateByName", strings.NewReader(body))
 		server.LimitLoginBody(http.HandlerFunc(api.authenticateByName)).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 	})

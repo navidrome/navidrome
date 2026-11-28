@@ -22,7 +22,7 @@ func upChangeImageFilesListSeparator(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare("update album set image_files = ? where id = ?")
+	stmt, err := tx.PrepareContext(ctx, "update album set image_files = ? where id = ?")
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func upChangeImageFilesListSeparator(ctx context.Context, tx *sql.Tx) error {
 		if files == imageFiles.String {
 			continue
 		}
-		_, err = stmt.Exec(files, id)
+		_, err = stmt.ExecContext(ctx, files, id)
 		if err != nil {
 			log.Error("Error updating album's image file list", "files", files, "id", id, err)
 		}

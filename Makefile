@@ -77,22 +77,19 @@ test-i18n: ##@Development Validate all translations files
 	./.github/workflows/validate-translations.sh 
 .PHONY: test-i18n
 
-install-golangci-lint: ##@Development Install golangci-lint if not present
-	@INSTALL=false; \
-	if PATH=./bin:$$PATH which golangci-lint > /dev/null 2>&1; then \
-		CURRENT_VERSION=$$(PATH=./bin:$$PATH golangci-lint version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
-		REQUIRED_VERSION=$$(echo "$(GOLANGCI_LINT_VERSION)" | sed 's/^v//'); \
-		if [ "$$CURRENT_VERSION" != "$$REQUIRED_VERSION" ]; then \
-			echo "Found golangci-lint $$CURRENT_VERSION, but $$REQUIRED_VERSION is required. Reinstalling..."; \
-			rm -f ./bin/golangci-lint; \
-			INSTALL=true; \
-		fi; \
-	else \
-		INSTALL=true; \
+# GOTOOLCHAIN pins the repo's Go: a golangci-lint built with an older Go refuses to lint this module
+install-golangci-lint: ##@Development Build golangci-lint with the linters in tools/ (see .custom-gcl.yml) into ./bin
+	@if ! grep -q '^version: $(GOLANGCI_LINT_VERSION)$$' .custom-gcl.yml; then \
+		echo "The version in .custom-gcl.yml must be $(GOLANGCI_LINT_VERSION) (GOLANGCI_LINT_VERSION)"; exit 1; \
 	fi; \
-	if [ "$$INSTALL" = "true" ]; then \
-		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s $(GOLANGCI_LINT_VERSION); \
+	GO_VERSION=$$(go env GOVERSION); \
+	STAMP="$$GO_VERSION $$(find .custom-gcl.yml tools -type f | LC_ALL=C sort | xargs cksum | cksum)"; \
+	if [ -L bin/golangci-lint ] || [ ! -x bin/golangci-lint ] || [ "$$(cat bin/.golangci-lint.stamp 2>/dev/null)" != "$$STAMP" ]; then \
+		echo "Building golangci-lint $(GOLANGCI_LINT_VERSION) with the linters in tools/..."; \
+		TMP=$$(mktemp -d); \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$$TMP" $(GOLANGCI_LINT_VERSION) && \
+		rm -f bin/golangci-lint && GOTOOLCHAIN=$$GO_VERSION "$$TMP/golangci-lint" custom && echo "$$STAMP" > bin/.golangci-lint.stamp; \
+		STATUS=$$?; rm -rf "$$TMP"; exit $$STATUS; \
 	fi
 .PHONY: install-golangci-lint
 

@@ -70,7 +70,7 @@ var _ = Describe("Album Lists", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})

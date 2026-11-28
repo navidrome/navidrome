@@ -52,7 +52,7 @@ var _ = Describe("Annotations", func() {
 		return storedAnnotation(alice.ID, testID(label))
 	}
 	songReq := func(method, target, body string, params ...string) *http.Request {
-		r := httptest.NewRequest(method, target, strings.NewReader(body)).WithContext(ctxUser())
+		r := httptest.NewRequestWithContext(ctx, method, target, strings.NewReader(body)).WithContext(ctxUser())
 		return withChiURLParam(r, append([]string{"itemId", dto.EncodeID(testID("s1"))}, params...)...)
 	}
 
@@ -60,7 +60,7 @@ var _ = Describe("Annotations", func() {
 		It("stars a song and returns IsFavorite=true", func() {
 			songWith(model.Annotations{})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -73,7 +73,7 @@ var _ = Describe("Annotations", func() {
 		It("stars an album and returns IsFavorite=true", func() {
 			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -87,7 +87,7 @@ var _ = Describe("Annotations", func() {
 			putArtists(ctx, ds, model.Artist{ID: testID("ar1"), Name: "Artist"})
 			w := httptest.NewRecorder()
 			// alice only has access to library 1, but artists aren't gated per-library.
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/ar1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/ar1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("ar1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -100,7 +100,7 @@ var _ = Describe("Annotations", func() {
 		It("stars a visible playlist", func() {
 			Expect(ds.Playlist().Put(ctxUser(), &model.Playlist{ID: testID("p1"), Name: "Mix", OwnerID: alice.ID})).To(Succeed())
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("p1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -110,7 +110,7 @@ var _ = Describe("Annotations", func() {
 		It("unstars a song and returns IsFavorite=false", func() {
 			songWith(model.Annotations{Starred: true})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodDelete, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.unmarkFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -123,7 +123,7 @@ var _ = Describe("Annotations", func() {
 		It("returns 404 and does not star an album in a library the user can't access", func() {
 			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -133,7 +133,7 @@ var _ = Describe("Annotations", func() {
 		It("returns 404 and does not star a song in a library the user can't access", func() {
 			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: testID("s1"), Title: "Song", LibraryID: 2})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -142,7 +142,7 @@ var _ = Describe("Annotations", func() {
 
 		It("returns 404 when the id doesn't match any entity", func() {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/missing", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/missing", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("missing")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -153,7 +153,7 @@ var _ = Describe("Annotations", func() {
 				return failingAlbumRepo{AlbumRepository: r, err: errors.New("db down")}
 			}})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("x1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
@@ -162,7 +162,7 @@ var _ = Describe("Annotations", func() {
 		It("emits a refreshResource event when starring a song", func() {
 			songWith(model.Annotations{})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.markFavorite, w, r)
 			Expect(broker.Events).To(HaveLen(1))
@@ -172,7 +172,7 @@ var _ = Describe("Annotations", func() {
 		It("emits a refreshResource event when starring an album", func() {
 			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(broker.Events).To(HaveLen(1))
@@ -182,7 +182,7 @@ var _ = Describe("Annotations", func() {
 		It("does not emit an event when the item is not accessible", func() {
 			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.markFavorite, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -194,7 +194,7 @@ var _ = Describe("Annotations", func() {
 		It("maps a Jellyfin 0-10 rating to Navidrome's 0-5 scale", func() {
 			songWith(model.Annotations{})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -208,7 +208,7 @@ var _ = Describe("Annotations", func() {
 		It("rates an album", func() {
 			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 1})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -218,7 +218,7 @@ var _ = Describe("Annotations", func() {
 		It("rates a visible playlist", func() {
 			Expect(ds.Playlist().Put(ctxUser(), &model.Playlist{ID: testID("p1"), Name: "Mix", OwnerID: alice.ID})).To(Succeed())
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("p1"))+"/Rating?Rating=8", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("p1"))+"/Rating?Rating=8", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("p1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -228,7 +228,7 @@ var _ = Describe("Annotations", func() {
 		It("removes a rating", func() {
 			songWith(model.Annotations{Rating: 4})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodDelete, "/Users/u1/Items/s1/Rating", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/Users/u1/Items/s1/Rating", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.removeRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -241,7 +241,7 @@ var _ = Describe("Annotations", func() {
 		It("returns 404 and does not rate an album in a library the user can't access", func() {
 			persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("a1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -251,7 +251,7 @@ var _ = Describe("Annotations", func() {
 		It("rounds an odd rating to the nearest star instead of truncating", func() {
 			songWith(model.Annotations{})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=9", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=9", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -261,7 +261,7 @@ var _ = Describe("Annotations", func() {
 		It("stores the minimum star for Rating=1 instead of clearing the rating", func() {
 			songWith(model.Annotations{Rating: 4})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=1", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -271,7 +271,7 @@ var _ = Describe("Annotations", func() {
 		It("accepts a fractional rating (UserItemDataDto.Rating is a double)", func() {
 			songWith(model.Annotations{})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=7.5", nil).WithContext(ctxUser())
+			r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/Users/u1/Items/s1/Rating?Rating=7.5", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.setRating, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -525,7 +525,7 @@ var _ = Describe("Annotations", func() {
 			It("returns 404 and writes nothing for an album in a library the user can't access", func() {
 				persistencetest.PutAlbums(ctx, ds, model.Album{ID: testID("a1"), Name: "One", LibraryID: 2})
 				w := httptest.NewRecorder()
-				r := httptest.NewRequest(http.MethodPost, "/UserItems/a1/UserData", strings.NewReader(`{"Rating":10,"IsFavorite":true}`)).WithContext(ctxUser())
+				r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/UserItems/a1/UserData", strings.NewReader(`{"Rating":10,"IsFavorite":true}`)).WithContext(ctxUser())
 				invoke(api.updateUserItemData, w, withChiURLParam(r, "itemId", dto.EncodeID(testID("a1"))))
 				Expect(w.Code).To(Equal(http.StatusNotFound))
 				Expect(stored("a1").Rating).To(Equal(0))
@@ -564,7 +564,7 @@ var _ events.Broker = (*fakeEventBroker)(nil)
 // annotate stores a user's annotations on an item, as starring, rating and playback would.
 func annotate(userID, itemType, itemID string, ann model.Annotations) {
 	GinkgoHelper()
-	_, err := db.Db().Exec(`INSERT INTO annotation (user_id, item_id, item_type, play_count, play_date, rating, starred)
+	_, err := db.Db().ExecContext(GinkgoT().Context(), `INSERT INTO annotation (user_id, item_id, item_type, play_count, play_date, rating, starred)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`, userID, itemID, itemType, ann.PlayCount, ann.PlayDate, ann.Rating, ann.Starred)
 	Expect(err).ToNot(HaveOccurred())
 }
@@ -574,7 +574,7 @@ func storedAnnotation(userID, itemID string) model.Annotations {
 	GinkgoHelper()
 	var ann model.Annotations
 	var playDate sql.NullTime
-	err := db.Db().QueryRow("SELECT play_count, play_date, rating, starred FROM annotation WHERE user_id = ? AND item_id = ?",
+	err := db.Db().QueryRowContext(GinkgoT().Context(), "SELECT play_count, play_date, rating, starred FROM annotation WHERE user_id = ? AND item_id = ?",
 		userID, itemID).Scan(&ann.PlayCount, &playDate, &ann.Rating, &ann.Starred)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ann

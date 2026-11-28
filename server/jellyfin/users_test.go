@@ -38,7 +38,7 @@ var _ = Describe("Users", func() {
 		It("returns one view per accessible library", func() {
 			libs := model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Podcasts"}}
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), libs))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequestWithContext(ctx, http.MethodGet, "/UserViews", nil), libs))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -60,7 +60,7 @@ var _ = Describe("Users", func() {
 			created := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
 			libs := model.Libraries{{ID: 1, Name: "Music", Path: "/music", TotalAlbums: 42, CreatedAt: created}}
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), libs))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequestWithContext(ctx, http.MethodGet, "/UserViews", nil), libs))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 
@@ -77,7 +77,7 @@ var _ = Describe("Users", func() {
 		It("returns a single view for a user with one library", func() {
 			libs := model.Libraries{{ID: 1, Name: "Music"}}
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), libs))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequestWithContext(ctx, http.MethodGet, "/UserViews", nil), libs))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -87,7 +87,7 @@ var _ = Describe("Users", func() {
 
 		It("returns no views for a user with no library access", func() {
 			w := httptest.NewRecorder()
-			api.getUserViews(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/UserViews", nil), nil))
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequestWithContext(ctx, http.MethodGet, "/UserViews", nil), nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.QueryResult
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
@@ -98,7 +98,7 @@ var _ = Describe("Users", func() {
 
 	It("returns the current user", func() {
 		w := httptest.NewRecorder()
-		api.getCurrentUser(w, authedWithLibraries(httptest.NewRequest(http.MethodGet, "/Users/Me", nil), nil))
+		api.getCurrentUser(w, authedWithLibraries(httptest.NewRequestWithContext(ctx, http.MethodGet, "/Users/Me", nil), nil))
 		var u dto.UserDto
 		Expect(json.Unmarshal(w.Body.Bytes(), &u)).To(Succeed())
 		Expect(u.Name).To(Equal("alice"))
@@ -110,7 +110,7 @@ var _ = Describe("Users", func() {
 	Describe("getPublicUsers", func() {
 		publicUsers := func() []dto.UserDto {
 			w := httptest.NewRecorder()
-			api.getPublicUsers(w, httptest.NewRequest(http.MethodGet, "/Users/Public", nil))
+			api.getPublicUsers(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/Users/Public", nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var users []dto.UserDto
 			Expect(json.Unmarshal(w.Body.Bytes(), &users)).To(Succeed())
@@ -165,7 +165,7 @@ func putLibraries(ctx context.Context, ds model.DataStore, libs model.Libraries)
 		if lib.ID != model.DefaultLibraryID {
 			Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
 		}
-		_, err := db.Db().Exec("UPDATE library SET name = ?, path = ?, total_albums = ?, created_at = ? WHERE id = ?",
+		_, err := db.Db().ExecContext(ctx, "UPDATE library SET name = ?, path = ?, total_albums = ?, created_at = ? WHERE id = ?",
 			lib.Name, lib.Path, lib.TotalAlbums, lib.CreatedAt, lib.ID)
 		Expect(err).ToNot(HaveOccurred())
 	}

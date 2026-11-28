@@ -55,7 +55,7 @@ var _ = Describe("Decider", func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
 		ff = tests.NewMockFFmpeg("")
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, ff)
 	})
 

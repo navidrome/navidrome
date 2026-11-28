@@ -1,6 +1,7 @@
 package imghttp_test
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -46,6 +47,11 @@ func unvalidated() *artwork.Image {
 }
 
 var _ = Describe("WriteImageHeaders", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	type testCase struct {
 		img           *artwork.Image
 		requestedHash string
@@ -59,7 +65,7 @@ var _ = Describe("WriteImageHeaders", func() {
 	DescribeTable("applies the artwork caching contract",
 		func(c testCase) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/img", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/img", nil)
 			if c.ifNoneMatch != "" {
 				r.Header.Set("If-None-Match", c.ifNoneMatch)
 			}

@@ -2,6 +2,7 @@ package lastfm
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 )
 
 var _ = Describe("auth_router", func() {
+	var ctx context.Context
 	var (
 		ds         model.DataStore
 		httpClient *tests.FakeHttpClient
@@ -32,12 +34,13 @@ var _ = Describe("auth_router", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ctx := GinkgoT().Context()
 		ds = persistence.New(db.Db())
 		for _, id := range []string{victimID, attackerID} {
 			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: id})).To(Succeed())
 		}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 
 		httpClient = &tests.FakeHttpClient{}
 		router = &Router{
@@ -64,7 +67,7 @@ var _ = Describe("auth_router", func() {
 
 	Describe("getLinkStatus", func() {
 		It("includes a signed linkToken for the authenticated user", func() {
-			req := httptest.NewRequest(http.MethodGet, "/link", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link", nil)
 			ctx := request.WithUser(req.Context(), model.User{ID: victimID})
 			req = req.WithContext(ctx)
 			rec := httptest.NewRecorder()
@@ -92,7 +95,7 @@ var _ = Describe("auth_router", func() {
 			linkToken, err := createLinkToken(victimID)
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest(http.MethodGet, "/link/callback?uid="+linkToken+"&token=LASTFM_TOKEN", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link/callback?uid="+linkToken+"&token=LASTFM_TOKEN", nil)
 			rec := httptest.NewRecorder()
 			router.callback(rec, req)
 
@@ -101,7 +104,7 @@ var _ = Describe("auth_router", func() {
 		})
 
 		It("rejects a raw (unsigned) uid value", func() {
-			req := httptest.NewRequest(http.MethodGet, "/link/callback?uid="+victimID+"&token=LASTFM_TOKEN", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link/callback?uid="+victimID+"&token=LASTFM_TOKEN", nil)
 			rec := httptest.NewRecorder()
 			router.callback(rec, req)
 
@@ -118,7 +121,7 @@ var _ = Describe("auth_router", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest(http.MethodGet, "/link/callback?uid="+expiredToken+"&token=LASTFM_TOKEN", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link/callback?uid="+expiredToken+"&token=LASTFM_TOKEN", nil)
 			rec := httptest.NewRecorder()
 			router.callback(rec, req)
 
@@ -131,7 +134,7 @@ var _ = Describe("auth_router", func() {
 			sessionJWT, err := auth.CreateToken(&model.User{ID: attackerID, UserName: "attacker"})
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest(http.MethodGet, "/link/callback?uid="+sessionJWT+"&token=LASTFM_TOKEN", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link/callback?uid="+sessionJWT+"&token=LASTFM_TOKEN", nil)
 			rec := httptest.NewRecorder()
 			router.callback(rec, req)
 
@@ -149,7 +152,7 @@ var _ = Describe("auth_router", func() {
 			attackerToken, err := createLinkToken(attackerID)
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest(http.MethodGet, "/link/callback?uid="+attackerToken+"&token=LASTFM_TOKEN&user="+victimID, nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link/callback?uid="+attackerToken+"&token=LASTFM_TOKEN&user="+victimID, nil)
 			rec := httptest.NewRecorder()
 			router.callback(rec, req)
 
@@ -159,7 +162,7 @@ var _ = Describe("auth_router", func() {
 		})
 
 		It("returns 400 when uid is missing", func() {
-			req := httptest.NewRequest(http.MethodGet, "/link/callback?token=LASTFM_TOKEN", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link/callback?token=LASTFM_TOKEN", nil)
 			rec := httptest.NewRecorder()
 			router.callback(rec, req)
 
@@ -170,7 +173,7 @@ var _ = Describe("auth_router", func() {
 			linkToken, err := createLinkToken(victimID)
 			Expect(err).ToNot(HaveOccurred())
 
-			req := httptest.NewRequest(http.MethodGet, "/link/callback?uid="+linkToken, nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/link/callback?uid="+linkToken, nil)
 			rec := httptest.NewRecorder()
 			router.callback(rec, req)
 

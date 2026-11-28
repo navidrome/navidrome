@@ -165,7 +165,17 @@ func hostingPlatform() string {
 	return strings.TrimSpace(os.Getenv("ND_PLATFORM"))
 }
 
-var staticData = sync.OnceValue(func() insights.Data {
+var (
+	staticDataOnce sync.Once
+	staticDataVal  insights.Data
+)
+
+func staticData(ctx context.Context) insights.Data {
+	staticDataOnce.Do(func() { staticDataVal = buildStaticData(ctx) })
+	return staticDataVal
+}
+
+func buildStaticData(ctx context.Context) insights.Data {
 	// Basic info
 	data := insights.Data{
 		InsightsID: insightsID,
@@ -184,7 +194,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Type = runtime.GOOS
 	data.OS.Arch = runtime.GOARCH
 	data.OS.NumCPU = runtime.NumCPU()
-	data.OS.Version, data.OS.Distro = getOSVersion()
+	data.OS.Version, data.OS.Distro = getOSVersion(ctx)
 
 	// FS info
 	data.FS.Music = getFSInfo(conf.Server().MusicFolder)
@@ -239,10 +249,10 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.HasCustomTags = len(conf.Server().Tags) > 0
 
 	return data
-})
+}
 
 func (c *insightsCollector) collect(ctx context.Context) []byte {
-	data := staticData()
+	data := staticData(ctx)
 	data.Uptime = time.Since(consts.ServerStart).Milliseconds() / 1000
 
 	// Library info

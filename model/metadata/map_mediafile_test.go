@@ -2,6 +2,7 @@ package metadata_test
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"sort"
 
@@ -30,7 +31,7 @@ var _ = Describe("ToMediaFile", func() {
 	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile(model.Library{ID: 1}, "folderID")
+		return md.ToMediaFile(GinkgoT().Context(), model.Library{ID: 1}, "folderID")
 	}
 
 	Describe("Persistent IDs", func() {
@@ -38,13 +39,30 @@ var _ = Describe("ToMediaFile", func() {
 			props.Tags = model.RawTags{"ALBUM": {"Kind of Blue"}, "TITLE": {"So What"}}
 			md = metadata.New("Jazz/Loose/01.mp3", props)
 
-			byTags := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "album", PIDTrack: "albumid,title"}, "folderID")
-			byFolder := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "folder", PIDTrack: "albumid,title"}, "folderID")
+			byTags := md.ToMediaFile(GinkgoT().Context(), model.Library{ID: 1, PIDAlbum: "album", PIDTrack: "albumid,title"}, "folderID")
+			byFolder := md.ToMediaFile(GinkgoT().Context(), model.Library{ID: 1, PIDAlbum: "folder", PIDTrack: "albumid,title"}, "folderID")
 
 			Expect(byFolder.AlbumID).ToNot(Equal(byTags.AlbumID))
 			Expect(byFolder.AlbumID).To(Equal(md.AlbumID(byFolder, "folder")))
 			Expect(byFolder.PID).ToNot(Equal(byTags.PID))
 		})
+
+		// TagLib sends the M4A/WMA year as DATE and as the raw atom, which is a release date alias
+		DescribeTable("gives the same album ID to tracks of one album in different formats",
+			func(formatYearTag string) {
+				albumTags := model.RawTags{"ALBUM": {"Hello"}, "ALBUMARTIST": {"Adele"}, "DATE": {"2022"}}
+				mp3 := toMediaFile(albumTags)
+
+				otherTags := maps.Clone(albumTags)
+				otherTags[formatYearTag] = []string{"2022"}
+				other := toMediaFile(otherTags)
+
+				Expect(other.AlbumID).To(Equal(mp3.AlbumID))
+				Expect(other.ReleaseDate).To(Equal("2022"))
+			},
+			Entry("M4A", "©day"),
+			Entry("WMA", "WM/Year"),
+		)
 	})
 
 	Describe("Dates", func() {

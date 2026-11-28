@@ -188,7 +188,7 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 
 	sqlDB := db.Db()
 
-	ur := NewUserRepository(conn)
+	ur := NewUserRepository(conn) //nolint:contextcheck // the password key is set up once per process, by a constructor with no ctx
 	if err := ur.Put(ctx, &user); err != nil {
 		b.Fatal(err)
 	}
@@ -196,18 +196,18 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 		b.Fatal(err)
 	}
 
-	tx, err := sqlDB.Begin()
+	tx, err := sqlDB.BeginTx(ctx, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	// Create artists
-	artistStmt, err := tx.Prepare("INSERT INTO artist (id, name) VALUES (?, ?)")
+	artistStmt, err := tx.PrepareContext(ctx, "INSERT INTO artist (id, name) VALUES (?, ?)")
 	if err != nil {
 		b.Fatal(err)
 	}
 	for i := range benchNumArtists {
-		if _, err := artistStmt.Exec(fmt.Sprintf("artist-%04d", i), fmt.Sprintf("Artist %04d", i)); err != nil {
+		if _, err := artistStmt.ExecContext(ctx, fmt.Sprintf("artist-%04d", i), fmt.Sprintf("Artist %04d", i)); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -215,12 +215,12 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 
 	// Ensure folder exists
 	folderID := "bench-folder"
-	if _, err := tx.Exec("INSERT OR IGNORE INTO folder (id, library_id, path, name, parent_id) VALUES (?, 1, '.', '.', '')", folderID); err != nil {
+	if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO folder (id, library_id, path, name, parent_id) VALUES (?, 1, '.', '.', '')", folderID); err != nil {
 		b.Fatal(err)
 	}
 
 	// Create media files with participants JSON, cycling through artists
-	mfStmt, err := tx.Prepare(`INSERT INTO media_file (id, path, title, album, artist, artist_id, album_id,
+	mfStmt, err := tx.PrepareContext(ctx, `INSERT INTO media_file (id, path, title, album, artist, artist_id, album_id,
 		duration, year, size, suffix, tags, participants, lyrics, library_id, folder_id, pid, codec)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
@@ -228,7 +228,7 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 	}
 
 	// Populate media_file_artists join table
-	mfaStmt, err := tx.Prepare("INSERT INTO media_file_artists (media_file_id, artist_id, role, sub_role) VALUES (?, ?, ?, ?)")
+	mfaStmt, err := tx.PrepareContext(ctx, "INSERT INTO media_file_artists (media_file_id, artist_id, role, sub_role) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 			b.Fatal(err)
 		}
 
-		if _, err := mfStmt.Exec(
+		if _, err := mfStmt.ExecContext(ctx,
 			trackID,
 			fmt.Sprintf("music/%s.mp3", trackID),
 			fmt.Sprintf("Track %05d", i),
@@ -276,7 +276,7 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 		for a := range benchArtistsPerTrack {
 			artistIdx := (i + a) % benchNumArtists
 			artistID := fmt.Sprintf("artist-%04d", artistIdx)
-			if _, err := mfaStmt.Exec(trackID, artistID, "artist", ""); err != nil {
+			if _, err := mfaStmt.ExecContext(ctx, trackID, artistID, "artist", ""); err != nil {
 				b.Fatal(err)
 			}
 		}

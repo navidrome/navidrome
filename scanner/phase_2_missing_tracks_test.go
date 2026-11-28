@@ -41,7 +41,7 @@ var _ = Describe("phaseMissingTracks", func() {
 	albumStarred := func(albumID string) bool {
 		GinkgoHelper()
 		var n int
-		Expect(db.Db().QueryRow("SELECT count(*) FROM annotation WHERE item_type = 'album' AND item_id = ? AND starred",
+		Expect(db.Db().QueryRowContext(ctx, "SELECT count(*) FROM annotation WHERE item_type = 'album' AND item_id = ? AND starred",
 			albumID).Scan(&n)).To(Succeed())
 		return n > 0
 	}
@@ -59,7 +59,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		ds = persistence.New(db.Db())
 		Expect(ds.User().Put(ctx, &admin)).To(Succeed())
 		persistencetest.SetLibraries(ctx, ds, conf.Server().MusicFolder, "/lib2", "/lib3")
-		_, err := db.Db().Exec("UPDATE library SET last_scan_started_at = ? WHERE id = 1", time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC))
+		_, err := db.Db().ExecContext(ctx, "UPDATE library SET last_scan_started_at = ? WHERE id = 1", time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC))
 		Expect(err).ToNot(HaveOccurred())
 		state = &scanState{
 			libraries:         model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},

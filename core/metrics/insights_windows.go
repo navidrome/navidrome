@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"os/exec"
 	"regexp"
 
@@ -10,8 +11,8 @@ import (
 // Ex: Microsoft Windows [Version 10.0.26100.1742]
 var winVerRegex = regexp.MustCompile(`Microsoft Windows \[.+\s([\d\.]+)\]`)
 
-func getOSVersion() (version string, _ string) {
-	cmd := exec.Command("cmd", "/c", "ver")
+func getOSVersion(ctx context.Context) (version string, _ string) {
+	cmd := exec.CommandContext(ctx, "cmd", "/c", "ver")
 
 	output, err := cmd.Output()
 	if err != nil {

@@ -21,6 +21,11 @@ export default {
         color: '#fff',
       },
     },
+    RaPaginationActions: {
+      currentPageButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+      },
+    },
     NDLogin: {
       systemNameLink: {
         color: '#0085ff',

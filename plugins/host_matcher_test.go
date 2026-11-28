@@ -379,8 +379,8 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		}
 		Expect(manager.Start(GinkgoT().Context())).To(Succeed())
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
+		DeferCleanup(func(ctx SpecContext) {
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
@@ -417,7 +417,7 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		call := func(in tIn) tOut {
 			inputBytes, err := json.Marshal(in)
 			Expect(err).ToNot(HaveOccurred())
-			_, outputBytes, err := instance.Call("nd_test_matcher", inputBytes)
+			_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_matcher", inputBytes)
 			Expect(err).ToNot(HaveOccurred())
 			var out tOut
 			Expect(json.Unmarshal(outputBytes, &out)).To(Succeed())

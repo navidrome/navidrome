@@ -362,8 +362,8 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
+		DeferCleanup(func(ctx SpecContext) {
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
@@ -410,7 +410,7 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 			defer instance.Close(ctx)
 
 			inputBytes, _ := json.Marshal(input)
-			_, outputBytes, err := instance.Call("nd_test_cache", inputBytes)
+			_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_cache", inputBytes)
 			if err != nil {
 				return nil, err
 			}

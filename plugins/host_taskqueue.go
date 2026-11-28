@@ -98,7 +98,7 @@ func newTaskQueueService(ctx context.Context, pluginName string, manager *Manage
 	db.SetMaxOpenConns(3)
 	db.SetMaxIdleConns(1)
 
-	if err := createTaskQueueSchema(db); err != nil {
+	if err := createTaskQueueSchema(ctx, db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("creating taskqueue schema: %w", err)
 	}
@@ -124,8 +124,8 @@ func newTaskQueueService(ctx context.Context, pluginName string, manager *Manage
 
 // createTaskQueueSchema applies schema migrations to the taskqueue database.
 // New migrations must be appended at the end of the slice.
-func createTaskQueueSchema(db *sql.DB) error {
-	return migrateDB(db, []string{
+func createTaskQueueSchema(ctx context.Context, db *sql.DB) error {
+	return migrateDB(ctx, db, []string{
 		`CREATE TABLE IF NOT EXISTS queues (
 			name TEXT PRIMARY KEY,
 			concurrency INTEGER NOT NULL DEFAULT 1,
@@ -422,7 +422,7 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 	if qs.limiter != nil {
 		if err := qs.limiter.Wait(s.ctx); err != nil {
 			// Context cancelled during wait — revert task to pending for recovery
-			s.revertTaskToPending(taskID)
+			s.revertTaskToPending(s.ctx, taskID)
 			return false
 		}
 	}
@@ -433,7 +433,7 @@ func (s *taskQueueServiceImpl) processTask(queueName string, qs *queueState) boo
 
 	// If context was cancelled (shutdown), revert task to pending for recovery
 	if s.ctx.Err() != nil {
-		s.revertTaskToPending(taskID)
+		s.revertTaskToPending(s.ctx, taskID)
 		return false
 	}
 
@@ -491,11 +491,12 @@ func (s *taskQueueServiceImpl) handleTaskFailure(queueName, taskID string, attem
 
 // revertTaskToPending puts a running task back to pending status and decrements the attempt
 // counter (used during shutdown to ensure the interrupted attempt doesn't count).
-func (s *taskQueueServiceImpl) revertTaskToPending(taskID string) {
+func (s *taskQueueServiceImpl) revertTaskToPending(ctx context.Context, taskID string) {
 	now := time.Now().UnixMilli()
-	_, err := s.db.Exec(`UPDATE tasks SET status = ?, attempt = MAX(attempt - 1, 0), updated_at = ? WHERE id = ? AND status = ?`, taskStatusPending, now, taskID, taskStatusRunning)
+	// Runs once ctx is cancelled (shutdown), so the update must not inherit the cancellation.
+	_, err := s.db.ExecContext(context.WithoutCancel(ctx), `UPDATE tasks SET status = ?, attempt = MAX(attempt - 1, 0), updated_at = ? WHERE id = ? AND status = ?`, taskStatusPending, now, taskID, taskStatusRunning)
 	if err != nil {
-		log.Error("Failed to revert task to pending", "plugin", s.pluginName, "taskID", taskID, err)
+		log.Error(ctx, "Failed to revert task to pending", "plugin", s.pluginName, "taskID", taskID, err)
 	}
 }
 
@@ -599,7 +600,7 @@ func (s *taskQueueServiceImpl) Close() error {
 	// Mark running tasks as pending for recovery on next startup
 	if s.db != nil {
 		now := time.Now().UnixMilli()
-		if _, err := s.db.Exec(`UPDATE tasks SET status = ?, updated_at = ? WHERE status = ?`, taskStatusPending, now, taskStatusRunning); err != nil {
+		if _, err := s.db.ExecContext(context.WithoutCancel(s.ctx), `UPDATE tasks SET status = ?, updated_at = ? WHERE status = ?`, taskStatusPending, now, taskStatusRunning); err != nil {
 			log.Error("Failed to reset running tasks on shutdown", "plugin", s.pluginName, err)
 		}
 		log.Debug("Closing plugin taskqueue", "plugin", s.pluginName)

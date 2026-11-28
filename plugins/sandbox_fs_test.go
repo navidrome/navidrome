@@ -49,7 +49,7 @@ func startSandboxManager(tmpDir, libraryDir string, grant func(*model.Plugin)) *
 		subsonicRouter: http.NotFoundHandler(),
 	}
 	Expect(manager.Start(GinkgoT().Context())).To(Succeed())
-	DeferCleanup(func() { _ = manager.Stop() })
+	DeferCleanup(func(ctx SpecContext) { _ = manager.Stop(ctx) })
 	return manager
 }
 
@@ -68,7 +68,7 @@ func callSandbox(manager *Manager, input sandboxInput) sandboxOutput {
 
 	inputBytes, err := json.Marshal(input)
 	Expect(err).ToNot(HaveOccurred())
-	_, outputBytes, err := instance.Call("nd_test_library", inputBytes)
+	_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_library", inputBytes)
 	Expect(err).ToNot(HaveOccurred())
 
 	var output sandboxOutput

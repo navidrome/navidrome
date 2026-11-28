@@ -222,7 +222,7 @@ var _ = Describe("Maintenance", func() {
 			It("skips the album without updating it", func() {
 				persistencetest.PutAlbums(ctx, ds, model.Album{ID: "album1", Name: "Empty Album", SongCount: 1})
 				lastUpdate := time.Now().Add(-time.Hour).Truncate(time.Second)
-				_, err := db.Db().Exec("UPDATE album SET updated_at = ? WHERE id = ?", lastUpdate, "album1")
+				_, err := db.Db().ExecContext(ctx, "UPDATE album SET updated_at = ? WHERE id = ?", lastUpdate, "album1")
 				Expect(err).ToNot(HaveOccurred())
 
 				Expect(service.(*maintenanceService).refreshAlbums(ctx, []string{"album1"})).To(Succeed())

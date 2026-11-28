@@ -39,7 +39,7 @@ create unique index if not exists playlist_tracks_pos
 		if err != nil {
 			return err
 		}
-		err = Up20200516140647UpdatePlaylistTracks(tx, id, tracks)
+		err = Up20200516140647UpdatePlaylistTracks(ctx, tx, id, tracks)
 		if err != nil {
 			return err
 		}
@@ -81,14 +81,14 @@ where id <> ''
 	return err
 }
 
-func Up20200516140647UpdatePlaylistTracks(tx *sql.Tx, id string, tracks string) error {
+func Up20200516140647UpdatePlaylistTracks(ctx context.Context, tx *sql.Tx, id string, tracks string) error {
 	trackList := strings.Split(tracks, ",")
-	stmt, err := tx.Prepare("insert into playlist_tracks (playlist_id, media_file_id, id) values (?, ?, ?)")
+	stmt, err := tx.PrepareContext(ctx, "insert into playlist_tracks (playlist_id, media_file_id, id) values (?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	for i, trackId := range trackList {
-		_, err := stmt.Exec(id, trackId, i+1)
+		_, err := stmt.ExecContext(ctx, id, trackId, i+1)
 		if err != nil {
 			log.Error("Error adding track to playlist", "playlistId", id, "trackId", trackId, err)
 		}

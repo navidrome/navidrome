@@ -113,9 +113,9 @@ var _ = Describe("Discovery", func() {
 
 		BeforeEach(func() {
 			var err error
-			server, err = net.ListenPacket("udp4", "127.0.0.1:0")
+			server, err = (&net.ListenConfig{}).ListenPacket(ctx, "udp4", "127.0.0.1:0")
 			Expect(err).ToNot(HaveOccurred())
-			client, err = net.ListenPacket("udp4", "127.0.0.1:0")
+			client, err = (&net.ListenConfig{}).ListenPacket(ctx, "udp4", "127.0.0.1:0")
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(client.Close)
 

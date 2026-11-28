@@ -31,7 +31,7 @@ var _ = Describe("Manager", Ordered, func() {
 	Describe("unloadPlugin", func() {
 		It("removes a loaded plugin", func() {
 			// Plugin is already loaded from Start
-			err := testManager.unloadPlugin("test-metadata-agent")
+			err := testManager.unloadPlugin(ctx, "test-metadata-agent")
 			Expect(err).ToNot(HaveOccurred())
 
 			names := testManager.PluginNames(string(CapabilityMetadataAgent))
@@ -39,7 +39,7 @@ var _ = Describe("Manager", Ordered, func() {
 		})
 
 		It("returns error when plugin not found", func() {
-			err := testManager.unloadPlugin("nonexistent")
+			err := testManager.unloadPlugin(ctx, "nonexistent")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not found"))
 		})

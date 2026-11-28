@@ -62,7 +62,7 @@ var _ = Describe("Metadata API", func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		provider = &fakeProvider{}
 		router = newRouter(ds)
 

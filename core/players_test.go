@@ -24,7 +24,7 @@ var _ = Describe("Players", func() {
 		GinkgoHelper()
 		Expect(ds.Player().Put(ctx, p)).To(Succeed())
 		if p.HasAPIKey {
-			_, err := db.Db().Exec("UPDATE player SET api_key_hash = 'hash' WHERE id = ?", p.ID)
+			_, err := db.Db().ExecContext(ctx, "UPDATE player SET api_key_hash = 'hash' WHERE id = ?", p.ID)
 			Expect(err).ToNot(HaveOccurred())
 		}
 	}

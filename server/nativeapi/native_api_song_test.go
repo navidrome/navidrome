@@ -63,7 +63,7 @@ var _ = Describe("Song Endpoints", func() {
 		})
 
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		// Create test user
 		testUser = model.User{
@@ -124,10 +124,10 @@ var _ = Describe("Song Endpoints", func() {
 	createUnauthenticatedRequest := func(method, path string, body []byte) *http.Request {
 		var req *http.Request
 		if body != nil {
-			req = httptest.NewRequest(method, path, bytes.NewReader(body))
+			req = httptest.NewRequestWithContext(ctx, method, path, bytes.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 		} else {
-			req = httptest.NewRequest(method, path, nil)
+			req = httptest.NewRequestWithContext(ctx, method, path, nil)
 		}
 		return req
 	}

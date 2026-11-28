@@ -139,7 +139,7 @@ func (s *webSocketServiceImpl) Connect(ctx context.Context, urlStr string, heade
 	// Connections are closed by Close() when the plugin is unloaded, which ends
 	// the readLoop; the base context is a backstop that also ends it on server
 	// shutdown (it is never cancelled in one-shot CLI runs).
-	go s.readLoop(s.baseCtx, connectionID, wsConn)
+	go s.readLoop(s.baseCtx, connectionID, wsConn) //nolint:contextcheck // the read loop outlives Connect
 
 	log.Debug(ctx, "WebSocket connected", "plugin", s.pluginName, "connectionID", connectionID, "url", urlStr)
 	return connectionID, nil

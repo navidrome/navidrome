@@ -76,8 +76,8 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 	err = manager.Start(GinkgoT().Context())
 	Expect(err).ToNot(HaveOccurred())
 
-	DeferCleanup(func() {
-		_ = manager.Stop()
+	DeferCleanup(func(ctx SpecContext) {
+		_ = manager.Stop(ctx)
 		_ = os.RemoveAll(tmpDir)
 	})
 
@@ -97,7 +97,7 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 		if err != nil {
 			return nil, err
 		}
-		_, outputBytes, err := instance.Call("nd_test_config", inputBytes)
+		_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_config", inputBytes)
 		if err != nil {
 			return nil, err
 		}

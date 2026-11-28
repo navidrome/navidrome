@@ -76,8 +76,8 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		err = manager.Start(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(func() {
-			_ = manager.Stop()
+		DeferCleanup(func(ctx SpecContext) {
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
@@ -103,9 +103,13 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	})
 
 	Describe("SubsonicAPI Call", func() {
-		var plugin *plugin
+		var (
+			plugin *plugin
+			ctx    context.Context
+		)
 
 		BeforeEach(func() {
+			ctx = GinkgoT().Context()
 			manager.mu.RLock()
 			plugin = manager.plugins["test-subsonicapi-plugin"]
 			manager.mu.RUnlock()
@@ -113,11 +117,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("successfully calls the ping endpoint", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, output, err := instance.Call("call_subsonic_api", []byte("/ping?u=testuser"))
+			exit, output, err := instance.CallWithContext(ctx, "call_subsonic_api", []byte("/ping?u=testuser"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -132,11 +136,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("adds required parameters (c, f, v) to the request", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			_, _, err = instance.Call("call_subsonic_api", []byte("/getAlbumList?u=testuser&type=newest"))
+			_, _, err = instance.CallWithContext(ctx, "call_subsonic_api", []byte("/getAlbumList?u=testuser&type=newest"))
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify the parameters were added
@@ -149,11 +153,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("returns error when username is missing", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, _, err := instance.Call("call_subsonic_api", []byte("/ping"))
+			exit, _, err := instance.CallWithContext(ctx, "call_subsonic_api", []byte("/ping"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err.Error()).To(ContainSubstring("missing required parameter"))
@@ -161,9 +165,13 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 	})
 
 	Describe("SubsonicAPI CallRaw", func() {
-		var plugin *plugin
+		var (
+			plugin *plugin
+			ctx    context.Context
+		)
 
 		BeforeEach(func() {
+			ctx = GinkgoT().Context()
 			manager.mu.RLock()
 			plugin = manager.plugins["test-subsonicapi-plugin"]
 			manager.mu.RUnlock()
@@ -171,11 +179,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("successfully calls getCoverArt and returns binary data", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, output, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			exit, output, err := instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -189,11 +197,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("does NOT set f=json parameter for raw calls", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			_, _, err = instance.Call("call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
+			_, _, err = instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt?u=testuser&id=al-1"))
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(router.lastRequest).ToNot(BeNil())
@@ -204,11 +212,11 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		})
 
 		It("returns error when username is missing", func() {
-			instance, err := plugin.instance(GinkgoT().Context())
+			instance, err := plugin.instance(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			defer instance.Close(GinkgoT().Context())
+			defer instance.Close(ctx)
 
-			exit, _, err := instance.Call("call_subsonic_api_raw", []byte("/getCoverArt"))
+			exit, _, err := instance.CallWithContext(ctx, "call_subsonic_api_raw", []byte("/getCoverArt"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 			Expect(err.Error()).To(ContainSubstring("missing required parameter"))

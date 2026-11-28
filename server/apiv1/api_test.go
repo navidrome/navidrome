@@ -1,6 +1,7 @@
 package apiv1
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,9 +16,11 @@ import (
 )
 
 var _ = Describe("Router", func() {
+	var ctx context.Context
 	var router *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		router = New(persistence.New(db.Db()))
 	})
 
@@ -56,14 +59,14 @@ var _ = Describe("Router", func() {
 	})
 
 	It("returns a 404 problem for unknown paths", func() {
-		w := serve(router, httptest.NewRequest(http.MethodGet, "/api/v1/nope", nil))
+		w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/nope", nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Header().Get("Content-Type")).To(Equal(problemContentType))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeNotFound))
 	})
 
 	It("returns a 405 problem listing the allowed methods for a wrong method on a known path", func() {
-		w := serve(router, httptest.NewRequest(http.MethodPost, "/api/v1/server", nil))
+		w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/server", nil))
 		Expect(w.Code).To(Equal(http.StatusMethodNotAllowed))
 		Expect(w.Header().Get("Allow")).To(Equal("GET, HEAD"))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeMethodNotAllowed))
@@ -71,7 +74,7 @@ var _ = Describe("Router", func() {
 
 	DescribeTable("answers HEAD wherever GET is routed",
 		func(path, contentType string) {
-			w := serve(router, httptest.NewRequest(http.MethodHead, path, nil))
+			w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodHead, path, nil))
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Header().Get("Content-Type")).To(Equal(contentType))
 		},
@@ -81,14 +84,14 @@ var _ = Describe("Router", func() {
 	)
 
 	It("revalidates HEAD requests with If-None-Match", func() {
-		etag := serve(router, httptest.NewRequest(http.MethodHead, "/api/v1/openapi.json", nil)).Header().Get("ETag")
-		req := httptest.NewRequest(http.MethodHead, "/api/v1/openapi.json", nil)
+		etag := serve(router, httptest.NewRequestWithContext(ctx, http.MethodHead, "/api/v1/openapi.json", nil)).Header().Get("ETag")
+		req := httptest.NewRequestWithContext(ctx, http.MethodHead, "/api/v1/openapi.json", nil)
 		req.Header.Set("If-None-Match", etag)
 		Expect(serve(router, req).Code).To(Equal(http.StatusNotModified))
 	})
 
 	It("returns a 404 problem for HEAD on unknown paths", func() {
-		w := serve(router, httptest.NewRequest(http.MethodHead, "/api/v1/nope", nil))
+		w := serve(router, httptest.NewRequestWithContext(ctx, http.MethodHead, "/api/v1/nope", nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Header().Get("Allow")).To(BeEmpty())
 	})
@@ -99,7 +102,7 @@ var _ = Describe("Router", func() {
 
 	It("turns a handler panic into a 500 problem", func() {
 		w := httptest.NewRecorder()
-		panicking("kaboom").ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/boom", nil))
+		panicking("kaboom").ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/boom", nil))
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		p := decodeProblem(w)
 		Expect(p.Code).To(Equal(ProblemCodeInternal))
@@ -119,7 +122,7 @@ var _ = Describe("Router", func() {
 
 	It("re-panics http.ErrAbortHandler so the server can drop the connection", func() {
 		Expect(func() {
-			panicking(http.ErrAbortHandler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/abort", nil))
+			panicking(http.ErrAbortHandler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(ctx, http.MethodGet, "/abort", nil))
 		}).To(PanicWith(http.ErrAbortHandler))
 	})
 })

@@ -44,7 +44,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with no parameters
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -71,7 +71,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with fullScan parameter
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?fullScan=true", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?fullScan=true", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -100,7 +100,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with single target parameter
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Rock", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=1:Music/Rock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -132,7 +132,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with multiple target parameters
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Reggae&target=2:Classical/Bach", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=1:Music/Reggae&target=2:Classical/Bach", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -164,7 +164,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with target and fullScan parameters
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:Music/Jazz&fullScan=true", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=1:Music/Jazz&fullScan=true", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -193,7 +193,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with invalid target format (missing colon)
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1MusicRock", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=1MusicRock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -216,7 +216,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with invalid library ID
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=0:Music/Rock", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=0:Music/Rock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -242,7 +242,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with library ID that doesn't exist
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=999:Music/Rock", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=999:Music/Rock", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -265,7 +265,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with single library and empty path
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=1:", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -292,7 +292,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request with single library and empty path
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?target=1:", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?target=1:", nil)
 			r = r.WithContext(userCtx)
 
 			// Call endpoint
@@ -332,7 +332,7 @@ var _ = Describe("LibraryScanning", func() {
 				IsAdmin: true,
 			})
 
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan", nil)
 			r = r.WithContext(userCtx)
 
 			response, err := api.StartScan(r)
@@ -362,7 +362,7 @@ var _ = Describe("LibraryScanning", func() {
 				IsAdmin: true,
 			})
 
-			r := httptest.NewRequest(http.MethodGet, "/rest/startScan?fullScan=true", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/startScan?fullScan=true", nil)
 			r = r.WithContext(userCtx)
 
 			response, err := api.StartScan(r)
@@ -385,7 +385,7 @@ var _ = Describe("LibraryScanning", func() {
 			})
 
 			// Create request
-			r := httptest.NewRequest(http.MethodGet, "/rest/getScanStatus", nil)
+			r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/rest/getScanStatus", nil)
 			r = r.WithContext(ctx)
 
 			// Call endpoint

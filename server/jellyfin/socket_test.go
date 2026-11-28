@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,9 +18,12 @@ import (
 )
 
 var _ = Describe("handleSocket", func() {
+	var ctx context.Context
+
 	var api *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		api = &Router{}
 	})
 
@@ -30,7 +34,7 @@ var _ = Describe("handleSocket", func() {
 		defer srv.Close()
 
 		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 		Expect(err).ToNot(HaveOccurred())
 		defer conn.Close()
 
@@ -46,7 +50,7 @@ var _ = Describe("handleSocket", func() {
 		defer srv.Close()
 
 		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 		Expect(err).ToNot(HaveOccurred())
 		defer conn.Close()
 
@@ -68,7 +72,7 @@ var _ = Describe("handleSocket", func() {
 		defer srv.Close()
 
 		wsURL := "ws" + strings.TrimPrefix(srv.URL, "http")
-		conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+		conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(conn.SetReadDeadline(time.Now().Add(2 * time.Second))).To(Succeed())
@@ -87,7 +91,7 @@ var _ = Describe("handleSocket", func() {
 
 		BeforeEach(func() {
 			ds = persistence.New(db.Db())
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 			Expect(ds.User().Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 
 			t, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
@@ -102,7 +106,7 @@ var _ = Describe("handleSocket", func() {
 			defer srv.Close()
 
 			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/socket?api_key=" + token
-			conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 			Expect(err).ToNot(HaveOccurred())
 			defer conn.Close()
 
@@ -117,7 +121,7 @@ var _ = Describe("handleSocket", func() {
 			defer srv.Close()
 
 			wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/socket"
-			_, resp, err := websocket.DefaultDialer.Dial(wsURL, nil)
+			_, resp, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
 		})

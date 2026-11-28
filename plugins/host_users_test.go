@@ -469,7 +469,7 @@ func callTestUsersPlugin(ctx context.Context, manager *Manager, input testUsersI
 	if err != nil {
 		return nil, err
 	}
-	_, outputBytes, err := instance.Call("nd_test_users", inputBytes)
+	_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_users", inputBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -516,11 +516,12 @@ func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUser
 		ds:             dataStore,
 		subsonicRouter: http.NotFoundHandler(),
 	}
-	err = manager.Start(GinkgoT().Context())
+	ctx := GinkgoT().Context()
+	err = manager.Start(ctx)
 	Expect(err).ToNot(HaveOccurred())
 
 	cleanup := func() {
-		_ = manager.Stop()
+		_ = manager.Stop(ctx)
 		_ = os.RemoveAll(setup.tmpDir)
 		cleanupConfig()
 	}

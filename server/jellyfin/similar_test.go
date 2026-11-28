@@ -139,7 +139,7 @@ var _ = Describe("getInstantMix", func() {
 		api := &Router{ds: ds, provider: &blockingProvider{release: release}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 		api.getInstantMix(w, r)
@@ -163,7 +163,7 @@ var _ = Describe("getInstantMix", func() {
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs[1:]}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix?limit="+strconv.Itoa(want), nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("s1"))+"/InstantMix?limit="+strconv.Itoa(want), nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 		api.getInstantMix(w, r)
@@ -183,7 +183,7 @@ var _ = Describe("getInstantMix", func() {
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Items/"+dto.EncodeID(testID("g1"))+"/InstantMix", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Items/"+dto.EncodeID(testID("g1"))+"/InstantMix", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("g1")))
 		api.getInstantMix(w, r)
@@ -211,7 +211,7 @@ var _ = Describe("getSimilarAlbums", func() {
 		}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
 		api.getSimilarAlbums(w, r)
@@ -230,7 +230,7 @@ var _ = Describe("getSimilarAlbums", func() {
 		}}
 
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
+		r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/Albums/"+dto.EncodeID(testID("al-1"))+"/Similar?limit=10", nil).
 			WithContext(request.WithUser(ctx, model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}}))
 		r = withChiURLParam(r, "itemId", dto.EncodeID(testID("al-1")))
 		api.getSimilarAlbums(w, r)

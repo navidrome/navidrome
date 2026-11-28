@@ -522,7 +522,7 @@ var _ = Describe("Lyrics", func() {
 				decoys = append(decoys, putRickAstleySong(ctx, ds, fmt.Sprintf("missing/%02d.mp3", i), ""))
 			}
 			withSidecar := putRickAstleySong(ctx, ds, "tests/fixtures/test.mp3", "")
-			_, err := db.Db().Exec("UPDATE media_file SET updated_at = ? WHERE id = ?", time.Now().Add(-time.Hour), withSidecar)
+			_, err := db.Db().ExecContext(ctx, "UPDATE media_file SET updated_at = ? WHERE id = ?", time.Now().Add(-time.Hour), withSidecar)
 			Expect(err).ToNot(HaveOccurred())
 
 			list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")

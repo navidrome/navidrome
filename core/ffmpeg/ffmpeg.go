@@ -53,7 +53,7 @@ type FFmpeg interface {
 	CmdPath() (string, error)
 	IsAvailable() bool
 	IsProbeAvailable() bool
-	Version() string
+	Version(ctx context.Context) string
 }
 
 func New() FFmpeg {
@@ -97,7 +97,7 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
-	if !animWebP.has(cmdPath, "libwebp_anim") {
+	if !animWebP.has(ctx, cmdPath, "libwebp_anim") {
 		return nil, ErrAnimatedWebPUnsupported
 	}
 
@@ -320,12 +320,12 @@ func (e *ffmpeg) IsProbeAvailable() bool {
 
 // Version executes ffmpeg -version and extracts the version from the output.
 // Sample output: ffmpeg version 6.0 Copyright (c) 2000-2023 the FFmpeg developers
-func (e *ffmpeg) Version() string {
+func (e *ffmpeg) Version(ctx context.Context) string {
 	cmd, err := ffmpegCmd()
 	if err != nil {
 		return "N/A"
 	}
-	out, err := exec.Command(cmd, "-version").CombinedOutput() // #nosec
+	out, err := exec.CommandContext(ctx, cmd, "-version").CombinedOutput() // #nosec
 	if err != nil {
 		return "N/A"
 	}
@@ -634,7 +634,7 @@ type encoderProbe struct {
 	state encoderProbeState
 }
 
-func (p *encoderProbe) has(cmdPath, encoder string) bool {
+func (p *encoderProbe) has(ctx context.Context, cmdPath, encoder string) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -646,7 +646,8 @@ func (p *encoderProbe) has(cmdPath, encoder string) bool {
 	case encoderProbeUnknown:
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Detached so a cancelled request does not abort a probe that later callers would rerun.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing/fstest"
@@ -31,9 +32,10 @@ import (
 
 // DB is a golden e2e database: scanned once in BeforeSuite, restored per test via Restore.
 type DB struct {
-	FilePath     string
-	SnapshotPath string
-	Library      model.Library
+	FilePath              string
+	SnapshotPath          string
+	UnscannedSnapshotPath string
+	Library               model.Library
 }
 
 // CreateFS registers files under the "fake:" storage scheme the suites use as MusicFolder.
@@ -45,19 +47,20 @@ func CreateFS(files fstest.MapFS) storagetest.FakeFS {
 }
 
 // SetupDB boots the golden database: a temp SQLite file, the given users (password "password",
-// all with access to the seeded "Music Library"), a full scan of the registered fake FS, and a
-// snapshot for per-test restore. Callers must set MusicFolder and register the FS
-// first; each user's Libraries field is populated in place.
+// all with access to the seeded "Music Library"), a full scan of the registered fake FS, and
+// snapshots from before and after the scan for per-test restore. Callers must set MusicFolder and
+// register the FS first; each user's Libraries field is populated in place.
 func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	tmpDir := ginkgo.GinkgoT().TempDir()
 	h := &DB{FilePath: filepath.Join(tmpDir, "test-e2e.db")}
 	h.SnapshotPath = h.FilePath + ".snapshot"
+	h.UnscannedSnapshotPath = h.FilePath + ".unscanned"
 	conf.Update(func(c *conf.Options) { c.DbPath = h.FilePath + "?_journal_mode=WAL" })
 	db.Db().SetMaxOpenConns(1)
 	db.Init(ctx)
 
 	ds := persistence.New(db.Db())
-	auth.Init(ds)
+	auth.Init(ctx, ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
 	Expect(ds.Library().Put(ctx, &h.Library)).To(Succeed())
@@ -72,33 +75,33 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 		u.Libraries = loaded.Libraries
 	}
 
+	Expect(persistencetest.Snapshot(ctx, h.UnscannedSnapshotPath)).To(Succeed())
+
 	s := scanner.New(ctx, ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
-	Expect(persistencetest.Snapshot(h.SnapshotPath)).To(Succeed())
+	Expect(persistencetest.Snapshot(ctx, h.SnapshotPath)).To(Succeed())
 	return h
 }
 
-// TruncateDB empties every resettable table, leaving the migrated schema in place — for suites
-// whose specs each build their own library, so the schema is not re-migrated per spec.
-func TruncateDB(tables []string) {
-	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
-	Expect(err).ToNot(HaveOccurred())
-	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
-
-	for _, table := range tables {
-		// Table names come from sqlite_master, not user input.
-		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
-		Expect(err).ToNot(HaveOccurred())
-	}
+// Restore reloads every table from the golden snapshot — much faster than a rescan.
+func (h *DB) Restore(ctx context.Context) {
+	Expect(persistencetest.RestoreFrom(ctx, h.SnapshotPath)).To(Succeed())
 }
 
-// Restore reloads every table from the golden snapshot — much faster than a rescan.
-func (h *DB) Restore() {
-	Expect(persistencetest.RestoreFrom(h.SnapshotPath)).To(Succeed())
+// RestoreUnscanned reloads the seeded users and library from before the golden scan, for specs
+// that scan a library of their own.
+func (h *DB) RestoreUnscanned(ctx context.Context) {
+	Expect(persistencetest.RestoreFrom(ctx, h.UnscannedSnapshotPath)).To(Succeed())
+}
+
+// Resnapshot replaces the golden snapshot with the current database, for suites that seed more
+// data on top of the scan.
+func (h *DB) Resnapshot(ctx context.Context) {
+	Expect(os.Remove(h.SnapshotPath)).To(Succeed())
+	Expect(persistencetest.Snapshot(ctx, h.SnapshotPath)).To(Succeed())
 }
 
 // SpyStreamer captures the Request passed to NewStream and returns a minimal fake stream.
@@ -145,10 +148,10 @@ func (NoopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io
 	return nil, errors.New("noop ffmpeg: convert animated image not supported")
 }
 
-func (NoopFFmpeg) CmdPath() (string, error) { return "", nil }
-func (NoopFFmpeg) IsAvailable() bool        { return false }
-func (NoopFFmpeg) IsProbeAvailable() bool   { return true }
-func (NoopFFmpeg) Version() string          { return "noop" }
+func (NoopFFmpeg) CmdPath() (string, error)       { return "", nil }
+func (NoopFFmpeg) IsAvailable() bool              { return false }
+func (NoopFFmpeg) IsProbeAvailable() bool         { return true }
+func (NoopFFmpeg) Version(context.Context) string { return "noop" }
 
 var (
 	_ stream.MediaStreamer = &SpyStreamer{}

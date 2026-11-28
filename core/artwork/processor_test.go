@@ -58,7 +58,7 @@ var _ = Describe("processor.acquire", func() {
 	// poisonBlurHash overwrites a stored image's blurhash, so a later re-decode would show.
 	poisonBlurHash := func(hash string) {
 		GinkgoHelper()
-		_, err := db.Db().Exec("UPDATE artwork SET blur_hash = 'SENTINEL' WHERE hash = ?", hash)
+		_, err := db.Db().ExecContext(ctx, "UPDATE artwork SET blur_hash = 'SENTINEL' WHERE hash = ?", hash)
 		Expect(err).ToNot(HaveOccurred())
 	}
 

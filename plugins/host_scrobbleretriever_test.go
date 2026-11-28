@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -26,6 +27,7 @@ type scrobblePage struct {
 
 var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 	var (
+		ctx       context.Context
 		manager   *Manager
 		tmpDir    string
 		dataStore model.DataStore
@@ -128,7 +130,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		DeferCleanup(func() {
-			_ = manager.Stop()
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
@@ -136,6 +138,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 	var instance *extism.Plugin
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		manager.mu.RLock()
 		plugin := manager.plugins["test-scrobble-retriever"]
 		manager.mu.RUnlock()
@@ -152,25 +155,25 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 	Describe("not authorized", func() {
 		It("rejects first timestamp", func() {
-			exit, _, err := instance.Call("call_get_first_timestamp", []byte("baduser"))
+			exit, _, err := instance.CallWithContext(ctx, "call_get_first_timestamp", []byte("baduser"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 		})
 
 		It("rejects last timestamp", func() {
-			exit, _, err := instance.Call("call_get_last_timestamp", []byte("baduser"))
+			exit, _, err := instance.CallWithContext(ctx, "call_get_last_timestamp", []byte("baduser"))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 		})
 
 		It("rejects scrobbles", func() {
-			exit, _, err := instance.Call("call_get_scrobbles", []byte(`{"username":"baduser"}`))
+			exit, _, err := instance.CallWithContext(ctx, "call_get_scrobbles", []byte(`{"username":"baduser"}`))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 		})
 
 		It("rejects scrobbles", func() {
-			exit, _, err := instance.Call("call_get_scrobbles_count", []byte(`{"username":"baduser"}`))
+			exit, _, err := instance.CallWithContext(ctx, "call_get_scrobbles_count", []byte(`{"username":"baduser"}`))
 			Expect(err).To(HaveOccurred())
 			Expect(exit).To(Equal(uint32(1)))
 		})
@@ -178,7 +181,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 	Describe("no items", func() {
 		It("calls get first timestamp", func() {
-			exit, output, err := instance.Call("call_get_first_timestamp", []byte("testuser"))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_first_timestamp", []byte("testuser"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -186,7 +189,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		It("calls get last timestamp", func() {
-			exit, output, err := instance.Call("call_get_last_timestamp", []byte("testuser"))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_last_timestamp", []byte("testuser"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -194,7 +197,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		It("calls scrobbles", func() {
-			exit, output, err := instance.Call("call_get_scrobbles", []byte(`{"username":"testuser"}`))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_scrobbles", []byte(`{"username":"testuser"}`))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -202,7 +205,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		It("calls get scrobble count", func() {
-			exit, output, err := instance.Call("call_get_scrobbles_count", []byte(`{"username":"testuser"}`))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_scrobbles_count", []byte(`{"username":"testuser"}`))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 			Expect(output).To(Equal([]byte("0")))
@@ -226,7 +229,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		It("calls get first timestamp", func() {
-			exit, output, err := instance.Call("call_get_first_timestamp", []byte("adminuser"))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_first_timestamp", []byte("adminuser"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -234,7 +237,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		It("calls get last timestamp", func() {
-			exit, output, err := instance.Call("call_get_last_timestamp", []byte("adminuser"))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_last_timestamp", []byte("adminuser"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -242,7 +245,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		})
 
 		DescribeTable("getScrobbles", func(params string, scrobbles []host.ScrobbleRef, next *host.ScrobbleOptions) {
-			exit, output, err := instance.Call("call_get_scrobbles", []byte(params))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_scrobbles", []byte(params))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -264,7 +267,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		)
 
 		DescribeTable("GetScrobblesCount", func(params string, count int) {
-			exit, output, err := instance.Call("call_get_scrobbles_count", []byte(params))
+			exit, output, err := instance.CallWithContext(ctx, "call_get_scrobbles_count", []byte(params))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 
@@ -318,7 +321,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			exit, output, err := instance.Call("call_get_scrobbles", payload)
+			exit, output, err := instance.CallWithContext(ctx, "call_get_scrobbles", payload)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exit).To(Equal(uint32(0)))
 

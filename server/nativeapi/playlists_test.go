@@ -35,9 +35,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequest(http.MethodPost, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
-			req = req.WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/playlist/pls-1/image", nil)
 
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, req)
@@ -54,9 +53,8 @@ var _ = Describe("Playlist Image Endpoints", func() {
 			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
-			req := httptest.NewRequest(http.MethodDelete, "/playlist/pls-1/image", nil)
 			ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "user-1", IsAdmin: isAdmin})
-			req = req.WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, http.MethodDelete, "/playlist/pls-1/image", nil)
 
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, req)
@@ -86,7 +84,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		testUser = model.User{
 			ID:          "user-1",
@@ -117,7 +115,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	}
 
 	createAuthenticatedRequestWithBody := func(method, path string, body io.Reader) *http.Request {
-		req := httptest.NewRequest(method, path, body)
+		req := httptest.NewRequestWithContext(ctx, method, path, body)
 		if body != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
@@ -327,7 +325,7 @@ var _ = Describe("handleExportPlaylist", func() {
 			playlist: &model.Playlist{ID: "pls-1", Name: name},
 		}))
 		w := httptest.NewRecorder()
-		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/playlist/pls-1", nil))
+		r.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/playlist/pls-1", nil))
 		return w
 	}
 
@@ -362,7 +360,7 @@ var _ = Describe("createPlaylistFromM3U", func() {
 		return pl, nil
 	}
 	upload := func(svc *mockPlaylistsService, body io.Reader) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(http.MethodPost, "/playlist", body)
+		req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPost, "/playlist", body)
 		req.Header.Set("Content-Type", "audio/x-mpegurl")
 		w := httptest.NewRecorder()
 		createPlaylistFromM3U(svc).ServeHTTP(w, req)
@@ -395,7 +393,7 @@ var _ = Describe("createPlaylistFromM3U", func() {
 var _ = Describe("reorderItem", func() {
 	It("rejects a body over the size limit with 413", func() {
 		body := `{"insert_before":"` + strings.Repeat("1", maxSmallJSONBody) + `"}`
-		req := httptest.NewRequest(http.MethodPut, "/playlist/pls-1/tracks/1?:id=1", strings.NewReader(body))
+		req := httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodPut, "/playlist/pls-1/tracks/1?:id=1", strings.NewReader(body))
 		w := httptest.NewRecorder()
 		reorderItem(&mockPlaylistsService{})(w, req)
 		Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
