@@ -19,6 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	extism "github.com/extism/go-sdk"
+	"github.com/navidrome/navidrome/plugins/internal/streamtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -156,255 +158,6 @@ func (r *enteredReader) Read(p []byte) (int, error) {
 	return r.PipeReader.Read(p)
 }
 
-var _ = Describe("Plugin streams", Ordered, func() {
-	var (
-		ctx context.Context
-		p   *plugin
-	)
-
-	BeforeAll(func() {
-		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
-		p = loadedTestPlugin(manager, "test-streams")
-	})
-
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
-	})
-
-	Describe("reading and writing", func() {
-		call := func(fn string, prepare func(*callScope) (streamsInput, error)) streamsOutput {
-			out, err := callStreams(ctx, p, fn, defaultTimeout, prepare)
-			Expect(err).ToNot(HaveOccurred())
-			return out
-		}
-
-		It("reads a host stream in small chunks", func() {
-			text := "the quick brown fox jumps over the lazy dog"
-			out := call("read_all", readInput(io.NopCloser(strings.NewReader(text)), 7))
-			Expect(out.Error).To(BeEmpty())
-			Expect(out.Data).To(Equal(text))
-			Expect(out.Count).To(Equal(int64(len(text))))
-		})
-
-		It("reads a stream larger than one buffer", func() {
-			data := make([]byte, 256<<10)
-			_, _ = rand.Read(data)
-			sum := sha256.Sum256(data)
-			out := call("read_all", readInput(io.NopCloser(bytes.NewReader(data)), 64<<10))
-			Expect(out.Error).To(BeEmpty())
-			Expect(out.Count).To(Equal(int64(len(data))))
-			Expect(out.SHA).To(Equal(hex.EncodeToString(sum[:])))
-		})
-
-		It("writes to a host stream and closes it", func() {
-			w := newHashWriter()
-			const size = 512 << 10
-			out := call("write_pattern", writeInput(w, size, 100_000))
-			Expect(out.Error).To(BeEmpty())
-			Expect(out.Count).To(Equal(int64(size)))
-			Expect(w.sum()).To(Equal(patternSHA(size)))
-			Expect(w.closes.Load()).To(Equal(int32(1)))
-		})
-
-		It("copies between host streams", func() {
-			w := &trackingWriter{}
-			out := call("copy", copyInput(io.NopCloser(strings.NewReader("copied inside the host")), w))
-			Expect(out.Error).To(BeEmpty())
-			Expect(out.Count).To(Equal(int64(22)))
-			Expect(string(w.bytes())).To(Equal("copied inside the host"))
-		})
-
-		It("reports a short write as the count and the writer's error", func() {
-			out := call("write_pattern", writeInput(&errWriter{accept: 10, err: errors.New("disk full")}, 1000, 100))
-			Expect(out.Count).To(Equal(int64(10)))
-			Expect(out.Error).To(Equal("disk full"))
-		})
-
-		It("delivers the data before the error that came with it", func() {
-			r := io.NopCloser(&dataErrReader{data: []byte("abc"), err: io.ErrUnexpectedEOF})
-			out := call("read_all", readInput(r, 16))
-			Expect(out.Data).To(Equal("abc"))
-			Expect(out.Error).To(Equal(io.ErrUnexpectedEOF.Error()))
-		})
-
-		It("refuses to read a write-only stream", func() {
-			out := call("read_all", writeInput(&trackingWriter{}, 0, 8))
-			Expect(out.Error).To(Equal("stream is not readable"))
-		})
-
-		It("forgets a handle once the plugin closed it", func() {
-			out := call("close_twice", readInput(io.NopCloser(strings.NewReader("x")), 1))
-			Expect(out.Error).To(Equal("|unknown stream handle"))
-		})
-
-		It("fails cleanly when a stream function runs outside a plugin call", func() {
-			instance, err := p.instance(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			DeferCleanup(func() { instance.Close(ctx) })
-
-			exit, raw, err := instance.CallWithContext(ctx, "read_all", []byte(`{"handle":1,"chunk":8}`))
-			Expect(err).ToNot(HaveOccurred())
-			Expect(exit).To(Equal(uint32(0)))
-			var out streamsOutput
-			Expect(json.Unmarshal(raw, &out)).To(Succeed())
-			Expect(out.Error).To(Equal("stream operation failed"))
-		})
-	})
-
-	Describe("lifecycle", func() {
-		It("closes a handle the plugin never closed", func() {
-			r := &trackingReader{Reader: strings.NewReader("xyz")}
-			out, err := callStreams(ctx, p, "leak", defaultTimeout, readInput(r, 1))
-			Expect(err).ToNot(HaveOccurred())
-			Expect(out.Count).To(Equal(int64(1)))
-			Expect(r.closed()).To(BeTrue())
-		})
-
-		type callResult struct {
-			out streamsOutput
-			err error
-		}
-
-		// startCall runs the export fn in the background; every wait on it below is bounded.
-		startCall := func(fn string, callCtx context.Context, timeout time.Duration, prepare func(*callScope) (streamsInput, error)) chan callResult {
-			results := make(chan callResult, 1)
-			go func() {
-				out, err := callStreams(callCtx, p, fn, timeout, prepare)
-				results <- callResult{out: out, err: err}
-			}()
-			return results
-		}
-
-		newEnteredPipe := func() (*enteredReader, *io.PipeWriter) {
-			pr, pw := io.Pipe()
-			DeferCleanup(func() {
-				_ = pw.Close()
-				_ = pr.Close()
-			})
-			return &enteredReader{PipeReader: pr, entered: make(chan struct{})}, pw
-		}
-
-		expectUnblocked := func(r *enteredReader, pw *io.PipeWriter, results chan callResult, stop func(), wantErr error) {
-			Eventually(r.entered).WithTimeout(10 * time.Second).Should(BeClosed())
-			stop()
-			var res callResult
-			Eventually(results).WithTimeout(5 * time.Second).Should(Receive(&res))
-			Expect(res.err).To(MatchError(wantErr))
-			_, err := pw.Write([]byte("x"))
-			Expect(err).To(MatchError(io.ErrClosedPipe))
-		}
-
-		It("does not let one call use another call's handle", func() {
-			r, pw := newEnteredPipe()
-			handles := make(chan uint32, 1)
-			results := startCall("read_all", ctx, defaultTimeout, func(s *callScope) (streamsInput, error) {
-				h, err := s.register(newReadStream(r))
-				handles <- h
-				return streamsInput{Handle: h, Chunk: 16}, err
-			})
-			var h uint32
-			Eventually(handles).WithTimeout(10 * time.Second).Should(Receive(&h))
-			Eventually(r.entered).WithTimeout(10 * time.Second).Should(BeClosed())
-
-			otherResults := startCall("read_all", ctx, defaultTimeout,
-				func(*callScope) (streamsInput, error) { return streamsInput{Handle: h, Chunk: 16}, nil })
-			var other callResult
-			Eventually(otherResults).WithTimeout(10 * time.Second).Should(Receive(&other))
-			Expect(other.err).ToNot(HaveOccurred())
-			Expect(other.out.Error).To(Equal("unknown stream handle"))
-
-			_, err := pw.Write([]byte("mine"))
-			Expect(err).ToNot(HaveOccurred())
-			Expect(pw.Close()).To(Succeed())
-			var res callResult
-			Eventually(results).WithTimeout(10 * time.Second).Should(Receive(&res))
-			Expect(res.err).ToNot(HaveOccurred())
-			Expect(res.out.Data).To(Equal("mine"))
-		})
-
-		It("unblocks a read when the call is cancelled", func() {
-			r, pw := newEnteredPipe()
-			callCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			results := startCall("read_all", callCtx, defaultTimeout, readInput(r, 16))
-			expectUnblocked(r, pw, results, cancel, context.Canceled)
-		})
-
-		It("unblocks a read when the time limit passes", func() {
-			r, pw := newEnteredPipe()
-			results := startCall("read_all", ctx, 2*time.Second, readInput(r, 16))
-			expectUnblocked(r, pw, results, func() {}, context.DeadlineExceeded)
-		})
-
-		It("reports a cancel even when the plugin returns cleanly", func() {
-			callCtx := &errOnlyCtx{Context: ctx}
-			r := io.NopCloser(stopAtEOF{Reader: strings.NewReader("cut off"), ctx: callCtx})
-			_, err := callStreams(callCtx, p, "read_all", defaultTimeout, readInput(r, 16))
-			Expect(err).To(MatchError(context.Canceled))
-		})
-
-		It("unblocks a stream_copy when the call is cancelled", func() {
-			r, pw := newEnteredPipe()
-			callCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			results := startCall("copy", callCtx, defaultTimeout, copyInput(r, &trackingWriter{}))
-			expectUnblocked(r, pw, results, cancel, context.Canceled)
-		})
-	})
-})
-
-var _ = Describe("Plugin streams under a memory cap", Ordered, func() {
-	// Each memory (the plugin's and Extism's block memory) is capped below the bytes moved, so any per-chunk
-	// allocation that is not freed runs out of memory.
-	const (
-		memoryPages  = 1024 // 64 MiB
-		transferSize = 96 << 20
-	)
-
-	var (
-		ctx     context.Context
-		p       *plugin
-		wantSHA string
-	)
-
-	BeforeAll(func() {
-		extismMaxMemoryPages = memoryPages
-		DeferCleanup(func() { extismMaxMemoryPages = 0 })
-		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
-		p = loadedTestPlugin(manager, "test-streams")
-		wantSHA = patternSHA(transferSize)
-	})
-
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
-	})
-
-	It("reads more than the cap through stream_read", func() {
-		out, err := callStreams(ctx, p, "read_all", 2*time.Minute,
-			readInput(io.NopCloser(&patternReader{size: transferSize}), 64<<10))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(BeEmpty())
-		Expect(out.Count).To(Equal(int64(transferSize)))
-		Expect(out.SHA).To(Equal(wantSHA))
-	})
-
-	It("writes more than the cap through stream_write", func() {
-		w := newHashWriter()
-		out, err := callStreams(ctx, p, "write_pattern", 2*time.Minute, writeInput(w, transferSize, 64<<10))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(BeEmpty())
-		Expect(w.sum()).To(Equal(wantSHA))
-	})
-
-	It("fails a write cleanly when the stream buffer cannot be allocated", func() {
-		w := &trackingWriter{}
-		out, err := callStreams(ctx, p, "write_when_out_of_memory", defaultTimeout, writeInput(w, 0, 0))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(Equal("stream buffer allocation failed"))
-		Expect(w.bytes()).To(BeEmpty())
-	})
-})
-
 // buildRustTestPlugin skips when the wasm32-wasip1 Rust target is missing; CI does not install it.
 func buildRustTestPlugin(dir string) string {
 	ctx := GinkgoT().Context()
@@ -439,62 +192,533 @@ func buildRustTestPlugin(dir string) string {
 	return pkg
 }
 
-var _ = Describe("Rust plugin streams", Ordered, func() {
-	var (
-		ctx context.Context
-		p   *plugin
-	)
+type testStreamService struct {
+	created *trackingWriter
+	blocked *io.PipeWriter
+}
 
-	BeforeAll(func() {
-		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
-		extismMaxMemoryPages = 1024 // 64 MiB, so the out-of-memory spec can fill it
-		DeferCleanup(func() { extismMaxMemoryPages = 0 })
-		manager, _ := createTestManagerWithPlugins(nil, pkg)
-		p = loadedTestPlugin(manager, "test-streams-rs")
+func (s *testStreamService) Open(_ context.Context, text string) (io.ReadCloser, error) {
+	return io.NopCloser(strings.NewReader(text)), nil
+}
+
+func (s *testStreamService) Create(context.Context, string) (io.WriteCloser, error) {
+	return s.created, nil
+}
+
+func (s *testStreamService) Drain(_ context.Context, in io.ReadCloser) (string, error) {
+	if in == nil {
+		return "<nil>", nil
+	}
+	defer in.Close()
+	data, err := io.ReadAll(in)
+	return string(data), err
+}
+
+func (s *testStreamService) Wrap(_ context.Context, wrap streamtest.WrapRequest) (*streamtest.WrapResponse, error) {
+	defer wrap.Body.Close()
+	data, err := io.ReadAll(wrap.Body)
+	if err != nil {
+		return nil, err
+	}
+	out := wrap.Prefix + string(data)
+	return &streamtest.WrapResponse{Size: int64(len(out)), Body: io.NopCloser(strings.NewReader(out))}, nil
+}
+
+func (s *testStreamService) Block(context.Context) (io.ReadCloser, error) {
+	pr, pw := io.Pipe()
+	s.blocked = pw
+	return pr, nil
+}
+
+func (s *testStreamService) Echo(_ context.Context, text string) (string, error) { return text, nil }
+
+// streamTestSvc serves the StreamTest host functions, registered for every plugin because test-streams imports them.
+var streamTestSvc streamtest.StreamTestService = &testStreamService{created: &trackingWriter{}}
+
+func init() {
+	hostServices = append(hostServices, hostServiceEntry{
+		name:          "StreamTest",
+		hasPermission: func(*Permissions) bool { return true },
+		create: func(*serviceContext) ([]extism.HostFunction, io.Closer, error) {
+			return streamtest.RegisterStreamTestHostFunctions(streamTestSvc), nil, nil
+		},
+	})
+}
+
+func loadStreamTestPlugin(svc *testStreamService, pkg string, memPages uint32) *plugin {
+	if memPages > 0 {
+		saved := extismMaxMemoryPages
+		extismMaxMemoryPages = memPages
+		DeferCleanup(func() { extismMaxMemoryPages = saved })
+	}
+	saved := streamTestSvc
+	streamTestSvc = svc
+	DeferCleanup(func() { streamTestSvc = saved })
+	manager, _ := createTestManagerWithPlugins(nil, pkg)
+	return loadedTestPlugin(manager, strings.TrimSuffix(pkg, PackageExtension))
+}
+
+func callText(ctx context.Context, p *plugin, fn, text string) serviceOutput {
+	GinkgoHelper()
+	out, err := callPluginFunction[map[string]string, serviceOutput](ctx, p, fn, map[string]string{"text": text})
+	Expect(err).ToNot(HaveOccurred())
+	return out
+}
+
+// generatedClientSpecs are the specs the Go and the Rust generated clients share.
+func generatedClientSpecs(call func(fn, text string) serviceOutput) {
+	It("returns a host reader to the plugin", func() {
+		Expect(call("open_read", "hello")).To(Equal(serviceOutput{Data: "hello"}))
 	})
 
-	BeforeEach(func() {
-		ctx = GinkgoT().Context()
+	It("converts stream fields of request and response structs", func() {
+		Expect(call("wrap", "abc")).To(Equal(serviceOutput{Data: "p:abc", Size: 5}))
+	})
+}
+
+type serviceOutput struct {
+	Data  string `json:"data"`
+	Size  int64  `json:"size"`
+	Error string `json:"error"`
+}
+
+var _ = Describe("Plugin streams", func() {
+	Describe("in Go", Ordered, func() {
+		var (
+			ctx context.Context
+			p   *plugin
+		)
+
+		BeforeAll(func() {
+			manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+			p = loadedTestPlugin(manager, "test-streams")
+		})
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+		})
+
+		Describe("reading and writing", func() {
+			call := func(fn string, prepare func(*callScope) (streamsInput, error)) streamsOutput {
+				out, err := callStreams(ctx, p, fn, defaultTimeout, prepare)
+				Expect(err).ToNot(HaveOccurred())
+				return out
+			}
+
+			It("reads a host stream in small chunks", func() {
+				text := "the quick brown fox jumps over the lazy dog"
+				out := call("read_all", readInput(io.NopCloser(strings.NewReader(text)), 7))
+				Expect(out.Error).To(BeEmpty())
+				Expect(out.Data).To(Equal(text))
+				Expect(out.Count).To(Equal(int64(len(text))))
+			})
+
+			It("reads a stream larger than one buffer", func() {
+				data := make([]byte, 256<<10)
+				_, _ = rand.Read(data)
+				sum := sha256.Sum256(data)
+				out := call("read_all", readInput(io.NopCloser(bytes.NewReader(data)), 64<<10))
+				Expect(out.Error).To(BeEmpty())
+				Expect(out.Count).To(Equal(int64(len(data))))
+				Expect(out.SHA).To(Equal(hex.EncodeToString(sum[:])))
+			})
+
+			It("writes to a host stream and closes it", func() {
+				w := newHashWriter()
+				const size = 512 << 10
+				out := call("write_pattern", writeInput(w, size, 100_000))
+				Expect(out.Error).To(BeEmpty())
+				Expect(out.Count).To(Equal(int64(size)))
+				Expect(w.sum()).To(Equal(patternSHA(size)))
+				Expect(w.closes.Load()).To(Equal(int32(1)))
+			})
+
+			It("copies between host streams", func() {
+				w := &trackingWriter{}
+				out := call("copy", copyInput(io.NopCloser(strings.NewReader("copied inside the host")), w))
+				Expect(out.Error).To(BeEmpty())
+				Expect(out.Count).To(Equal(int64(22)))
+				Expect(string(w.bytes())).To(Equal("copied inside the host"))
+			})
+
+			It("reports a short write as the count and the writer's error", func() {
+				out := call("write_pattern", writeInput(&errWriter{accept: 10, err: errors.New("disk full")}, 1000, 100))
+				Expect(out.Count).To(Equal(int64(10)))
+				Expect(out.Error).To(Equal("disk full"))
+			})
+
+			It("delivers the data before the error that came with it", func() {
+				r := io.NopCloser(&dataErrReader{data: []byte("abc"), err: io.ErrUnexpectedEOF})
+				out := call("read_all", readInput(r, 16))
+				Expect(out.Data).To(Equal("abc"))
+				Expect(out.Error).To(Equal(io.ErrUnexpectedEOF.Error()))
+			})
+
+			It("refuses to read a write-only stream", func() {
+				out := call("read_all", writeInput(&trackingWriter{}, 0, 8))
+				Expect(out.Error).To(Equal("stream is not readable"))
+			})
+
+			It("forgets a handle once the plugin closed it", func() {
+				out := call("close_twice", readInput(io.NopCloser(strings.NewReader("x")), 1))
+				Expect(out.Error).To(Equal("|unknown stream handle"))
+			})
+
+			It("fails cleanly when a stream function runs outside a plugin call", func() {
+				instance, err := p.instance(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() { instance.Close(ctx) })
+
+				exit, raw, err := instance.CallWithContext(ctx, "read_all", []byte(`{"handle":1,"chunk":8}`))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(exit).To(Equal(uint32(0)))
+				var out streamsOutput
+				Expect(json.Unmarshal(raw, &out)).To(Succeed())
+				Expect(out.Error).To(Equal("stream operation failed"))
+			})
+		})
+
+		Describe("lifecycle", func() {
+			It("closes a handle the plugin never closed", func() {
+				r := &trackingReader{Reader: strings.NewReader("xyz")}
+				out, err := callStreams(ctx, p, "leak", defaultTimeout, readInput(r, 1))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(out.Count).To(Equal(int64(1)))
+				Expect(r.closed()).To(BeTrue())
+			})
+
+			type callResult struct {
+				out streamsOutput
+				err error
+			}
+
+			// startCall runs the export fn in the background; every wait on it below is bounded.
+			startCall := func(fn string, callCtx context.Context, timeout time.Duration, prepare func(*callScope) (streamsInput, error)) chan callResult {
+				results := make(chan callResult, 1)
+				go func() {
+					out, err := callStreams(callCtx, p, fn, timeout, prepare)
+					results <- callResult{out: out, err: err}
+				}()
+				return results
+			}
+
+			newEnteredPipe := func() (*enteredReader, *io.PipeWriter) {
+				pr, pw := io.Pipe()
+				DeferCleanup(func() {
+					_ = pw.Close()
+					_ = pr.Close()
+				})
+				return &enteredReader{PipeReader: pr, entered: make(chan struct{})}, pw
+			}
+
+			expectUnblocked := func(r *enteredReader, pw *io.PipeWriter, results chan callResult, stop func(), wantErr error) {
+				Eventually(r.entered).WithTimeout(10 * time.Second).Should(BeClosed())
+				stop()
+				var res callResult
+				Eventually(results).WithTimeout(5 * time.Second).Should(Receive(&res))
+				Expect(res.err).To(MatchError(wantErr))
+				_, err := pw.Write([]byte("x"))
+				Expect(err).To(MatchError(io.ErrClosedPipe))
+			}
+
+			It("does not let one call use another call's handle", func() {
+				r, pw := newEnteredPipe()
+				handles := make(chan uint32, 1)
+				results := startCall("read_all", ctx, defaultTimeout, func(s *callScope) (streamsInput, error) {
+					h, err := s.register(newReadStream(r))
+					handles <- h
+					return streamsInput{Handle: h, Chunk: 16}, err
+				})
+				var h uint32
+				Eventually(handles).WithTimeout(10 * time.Second).Should(Receive(&h))
+				Eventually(r.entered).WithTimeout(10 * time.Second).Should(BeClosed())
+
+				otherResults := startCall("read_all", ctx, defaultTimeout,
+					func(*callScope) (streamsInput, error) { return streamsInput{Handle: h, Chunk: 16}, nil })
+				var other callResult
+				Eventually(otherResults).WithTimeout(10 * time.Second).Should(Receive(&other))
+				Expect(other.err).ToNot(HaveOccurred())
+				Expect(other.out.Error).To(Equal("unknown stream handle"))
+
+				_, err := pw.Write([]byte("mine"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pw.Close()).To(Succeed())
+				var res callResult
+				Eventually(results).WithTimeout(10 * time.Second).Should(Receive(&res))
+				Expect(res.err).ToNot(HaveOccurred())
+				Expect(res.out.Data).To(Equal("mine"))
+			})
+
+			It("unblocks a read when the call is cancelled", func() {
+				r, pw := newEnteredPipe()
+				callCtx, cancel := context.WithCancel(ctx)
+				defer cancel()
+				results := startCall("read_all", callCtx, defaultTimeout, readInput(r, 16))
+				expectUnblocked(r, pw, results, cancel, context.Canceled)
+			})
+
+			It("unblocks a read when the time limit passes", func() {
+				r, pw := newEnteredPipe()
+				results := startCall("read_all", ctx, 2*time.Second, readInput(r, 16))
+				expectUnblocked(r, pw, results, func() {}, context.DeadlineExceeded)
+			})
+
+			It("reports a cancel even when the plugin returns cleanly", func() {
+				callCtx := &errOnlyCtx{Context: ctx}
+				r := io.NopCloser(stopAtEOF{Reader: strings.NewReader("cut off"), ctx: callCtx})
+				_, err := callStreams(callCtx, p, "read_all", defaultTimeout, readInput(r, 16))
+				Expect(err).To(MatchError(context.Canceled))
+			})
+
+			It("unblocks a stream_copy when the call is cancelled", func() {
+				r, pw := newEnteredPipe()
+				callCtx, cancel := context.WithCancel(ctx)
+				defer cancel()
+				results := startCall("copy", callCtx, defaultTimeout, copyInput(r, &trackingWriter{}))
+				expectUnblocked(r, pw, results, cancel, context.Canceled)
+			})
+		})
 	})
 
-	It("reads a host stream with std::io::Read", func() {
-		out, err := callStreams(ctx, p, "read_all", defaultTimeout,
-			readInput(io.NopCloser(strings.NewReader("streamed to rust")), 0))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(BeEmpty())
-		Expect(out.Data).To(Equal("streamed to rust"))
+	Describe("under a memory cap", Ordered, func() {
+		// Each memory (the plugin's and Extism's block memory) is capped below the bytes moved, so any per-chunk
+		// allocation that is not freed runs out of memory.
+		const (
+			memoryPages  = 1024 // 64 MiB
+			transferSize = 96 << 20
+		)
+
+		var (
+			ctx     context.Context
+			p       *plugin
+			wantSHA string
+		)
+
+		BeforeAll(func() {
+			extismMaxMemoryPages = memoryPages
+			DeferCleanup(func() { extismMaxMemoryPages = 0 })
+			manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+			p = loadedTestPlugin(manager, "test-streams")
+			wantSHA = patternSHA(transferSize)
+		})
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+		})
+
+		It("reads more than the cap through stream_read", func() {
+			out, err := callStreams(ctx, p, "read_all", 2*time.Minute,
+				readInput(io.NopCloser(&patternReader{size: transferSize}), 64<<10))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(out.Count).To(Equal(int64(transferSize)))
+			Expect(out.SHA).To(Equal(wantSHA))
+		})
+
+		It("writes more than the cap through stream_write", func() {
+			w := newHashWriter()
+			out, err := callStreams(ctx, p, "write_pattern", 2*time.Minute, writeInput(w, transferSize, 64<<10))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(w.sum()).To(Equal(wantSHA))
+		})
+
+		It("fails a write cleanly when the stream buffer cannot be allocated", func() {
+			w := &trackingWriter{}
+			out, err := callStreams(ctx, p, "write_when_out_of_memory", defaultTimeout, writeInput(w, 0, 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(Equal("stream buffer allocation failed"))
+			Expect(w.bytes()).To(BeEmpty())
+		})
 	})
 
-	It("reads into a slice that starts at an odd address", func() {
-		out, err := callStreams(ctx, p, "read_unaligned", defaultTimeout,
-			readInput(io.NopCloser(strings.NewReader("misaligned bytes here")), 0))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(BeEmpty())
-		Expect(out.Data).To(Equal("misaligned bytes here"))
+	Describe("in Rust", Ordered, func() {
+		var (
+			ctx context.Context
+			p   *plugin
+		)
+
+		BeforeAll(func() {
+			pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
+			extismMaxMemoryPages = 1024 // 64 MiB, so the out-of-memory spec can fill it
+			DeferCleanup(func() { extismMaxMemoryPages = 0 })
+			manager, _ := createTestManagerWithPlugins(nil, pkg)
+			p = loadedTestPlugin(manager, "test-streams-rs")
+		})
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+		})
+
+		It("reads a host stream with std::io::Read", func() {
+			out, err := callStreams(ctx, p, "read_all", defaultTimeout,
+				readInput(io.NopCloser(strings.NewReader("streamed to rust")), 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(out.Data).To(Equal("streamed to rust"))
+		})
+
+		It("reads into a slice that starts at an odd address", func() {
+			out, err := callStreams(ctx, p, "read_unaligned", defaultTimeout,
+				readInput(io.NopCloser(strings.NewReader("misaligned bytes here")), 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(out.Data).To(Equal("misaligned bytes here"))
+		})
+
+		It("writes from a slice that starts at an odd address", func() {
+			w := &trackingWriter{}
+			out, err := callStreams(ctx, p, "write_unaligned", defaultTimeout, writeInput(w, 0, 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(string(w.bytes())).To(Equal("unaligned write, 8+ bytes"))
+		})
+
+		It("fails a write cleanly when the stream buffer cannot be allocated", func() {
+			w := &trackingWriter{}
+			out, err := callStreams(ctx, p, "write_when_out_of_memory", defaultTimeout, writeInput(w, 0, 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(Equal("stream buffer allocation failed"))
+			Expect(w.bytes()).To(BeEmpty())
+		})
+
+		It("writes a host stream with std::io::Write and closes it", func() {
+			w := &trackingWriter{}
+			out, err := callStreams(ctx, p, "write_greeting", defaultTimeout, writeInput(w, 0, 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(string(w.bytes())).To(Equal("hello from rust"))
+			Expect(w.closed()).To(BeTrue())
+		})
+	})
+})
+
+var _ = Describe("Generated stream host functions", func() {
+	Describe("in Go", Ordered, func() {
+		var (
+			ctx context.Context
+			p   *plugin
+			svc *testStreamService
+		)
+
+		BeforeAll(func() {
+			svc = &testStreamService{created: &trackingWriter{}}
+			p = loadStreamTestPlugin(svc, "test-streams"+PackageExtension, 0)
+		})
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+		})
+
+		call := func(fn, text string) serviceOutput { return callText(ctx, p, fn, text) }
+
+		generatedClientSpecs(call)
+
+		It("returns a host writer to the plugin", func() {
+			Expect(call("create_write", "written by plugin").Error).To(BeEmpty())
+			Expect(string(svc.created.bytes())).To(Equal("written by plugin"))
+			Expect(svc.created.closed()).To(BeTrue())
+		})
+
+		It("hands a plugin's stream to the service and invalidates its handle", func() {
+			out := call("drain_own", "abc")
+			Expect(out.Data).To(Equal("abc"))
+			Expect(out.Error).To(Equal("unknown stream handle"))
+		})
+
+		It("rejects a reader the plugin made itself", func() {
+			Expect(call("drain_plugin_reader", "x").Error).To(Equal("only streams from Navidrome can be passed to a host function"))
+		})
+
+		It("passes no stream as nil", func() {
+			Expect(call("drain_nil", "").Data).To(Equal("<nil>"))
+		})
+
+		// Runs after "returns a host writer" (Ordered): its scope closes the shared svc.created writer.
+		It("checks the stream direction", func() {
+			Expect(call("drain_writer", "").Error).To(Equal("stream is not readable"))
+		})
+
+		It("treats a JSON null handle as no stream", func() {
+			Expect(call("drain_null_raw", "").Data).To(MatchJSON(`{"result":"<nil>"}`))
+		})
+
+		It("closes a handed-over stream when the call times out, unblocking the service", func() {
+			done := make(chan error, 1)
+			go func() {
+				_, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_blocked", 250*time.Millisecond, map[string]string{})
+				done <- err
+			}()
+			var err error
+			Eventually(done).WithTimeout(5 * time.Second).Should(Receive(&err))
+			Expect(err).To(Or(Not(HaveOccurred()), MatchError(context.DeadlineExceeded)))
+			_, werr := svc.blocked.Write([]byte("x"))
+			Expect(werr).To(MatchError(io.ErrClosedPipe))
+		})
 	})
 
-	It("writes from a slice that starts at an odd address", func() {
-		w := &trackingWriter{}
-		out, err := callStreams(ctx, p, "write_unaligned", defaultTimeout, writeInput(w, 0, 0))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(BeEmpty())
-		Expect(string(w.bytes())).To(Equal("unaligned write, 8+ bytes"))
+	Describe("under a memory cap", Ordered, func() {
+		var (
+			ctx context.Context
+			p   *plugin
+		)
+
+		BeforeAll(func() {
+			// 24 MiB; drain_loop would keep 800 x 64 KiB buffers if hand-over leaked them
+			p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, "test-streams"+PackageExtension, 384)
+		})
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+		})
+
+		It("frees a stream's buffer when the plugin hands it over", func() {
+			out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_loop", time.Minute, map[string]string{"text": "abc"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(out.Size).To(Equal(int64(800)))
+		})
 	})
 
-	It("fails a write cleanly when the stream buffer cannot be allocated", func() {
-		w := &trackingWriter{}
-		out, err := callStreams(ctx, p, "write_when_out_of_memory", defaultTimeout, writeInput(w, 0, 0))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(Equal("stream buffer allocation failed"))
-		Expect(w.bytes()).To(BeEmpty())
+	Describe("in Rust", Ordered, func() {
+		var (
+			ctx context.Context
+			p   *plugin
+		)
+
+		BeforeAll(func() {
+			pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
+			p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 0)
+		})
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+		})
+
+		generatedClientSpecs(func(fn, text string) serviceOutput { return callText(ctx, p, fn, text) })
 	})
 
-	It("writes a host stream with std::io::Write and closes it", func() {
-		w := &trackingWriter{}
-		out, err := callStreams(ctx, p, "write_greeting", defaultTimeout, writeInput(w, 0, 0))
-		Expect(err).ToNot(HaveOccurred())
-		Expect(out.Error).To(BeEmpty())
-		Expect(string(w.bytes())).To(Equal("hello from rust"))
-		Expect(w.closed()).To(BeTrue())
+	Describe("in Rust under a memory cap", Ordered, func() {
+		var (
+			ctx context.Context
+			p   *plugin
+		)
+
+		BeforeAll(func() {
+			pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
+			// 16 MiB; 500 leaked 64 KiB responses would not fit
+			p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 256)
+		})
+
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+		})
+
+		It("frees every host response", func() {
+			out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "echo_loop", time.Minute, map[string]string{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out.Error).To(BeEmpty())
+			Expect(out.Size).To(Equal(int64(500)))
+		})
 	})
 })
