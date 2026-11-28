@@ -1,4 +1,4 @@
-// Test plugin for stream host functions and call time limits.
+// Test plugin for stream host functions, the generated StreamTest host functions, and call time limits.
 package main
 
 import (
@@ -16,12 +16,14 @@ type input struct {
 	Dst    uint32 `json:"dst"`
 	Size   int64  `json:"size"`
 	Chunk  int    `json:"chunk"`
+	Text   string `json:"text"`
 }
 
 type output struct {
 	Count int64  `json:"count"`
 	SHA   string `json:"sha,omitempty"`
 	Data  string `json:"data,omitempty"`
+	Size  int64  `json:"size,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 

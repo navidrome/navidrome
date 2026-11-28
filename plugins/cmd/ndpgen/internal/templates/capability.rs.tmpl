@@ -143,16 +143,16 @@ macro_rules! register_{{snakeCase .Package}} {
         ) -> extism_pdk::FnResult<{{if .HasOutput}}extism_pdk::Json<{{rustMethodType .Output.Type}}>{{else}}(){{end}}> {
             let plugin = <$plugin_type>::default();
             {{- if and .HasInput .HasOutput}}
-            let result = $crate::{{snakeCase $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
+            let result = $crate::{{rustModName $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
             Ok(extism_pdk::Json(result))
             {{- else if .HasInput}}
-            $crate::{{snakeCase $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
+            $crate::{{rustModName $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
             Ok(())
             {{- else if .HasOutput}}
-            let result = $crate::{{snakeCase $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin)?;
+            let result = $crate::{{rustModName $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin)?;
             Ok(extism_pdk::Json(result))
             {{- else}}
-            $crate::{{snakeCase $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin)?;
+            $crate::{{rustModName $.Package}}::{{agentName $.Capability}}::{{rustMethodName .Name}}(&plugin)?;
             Ok(())
             {{- end}}
         }
@@ -190,16 +190,16 @@ macro_rules! {{registerMacroName .Name}} {
         ) -> extism_pdk::FnResult<{{if .HasOutput}}extism_pdk::Json<{{rustMethodType .Output.Type}}>{{else}}(){{end}}> {
             let plugin = <$plugin_type>::default();
             {{- if and .HasInput .HasOutput}}
-            let result = $crate::{{snakeCase $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
+            let result = $crate::{{rustModName $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
             Ok(extism_pdk::Json(result))
             {{- else if .HasInput}}
-            $crate::{{snakeCase $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
+            $crate::{{rustModName $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin, req.into_inner())?;
             Ok(())
             {{- else if .HasOutput}}
-            let result = $crate::{{snakeCase $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin)?;
+            let result = $crate::{{rustModName $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin)?;
             Ok(extism_pdk::Json(result))
             {{- else}}
-            $crate::{{snakeCase $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin)?;
+            $crate::{{rustModName $.Package}}::{{providerInterface .}}::{{rustMethodName .Name}}(&plugin)?;
             Ok(())
             {{- end}}
         }

@@ -12,12 +12,18 @@ import (
 {{- if .Service.HasErrors}}
 	"errors"
 {{- end}}
+{{- if .Service.HasStreams}}
+	"io"
+{{- end}}
 {{- if .Service.ImportsSharedTypes}}
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/types"
 {{- end}}
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+{{- if .Service.HasStreams}}
+	"github.com/navidrome/navidrome/plugins/pdk/go/stream"
+{{- end}}
 )
 
 {{- /* Generate deprecated shared-type aliases */ -}}
@@ -42,6 +48,57 @@ type {{.Name}} struct {
 {{- end}}
 }
 {{- end}}
+{{- range .Service.StreamStructs}}
+
+// wire{{.Name}} is the wire form of {{.Name}}: streams travel as handles.
+type wire{{.Name}} struct {
+{{- range .Fields}}
+	{{.Name}} {{wireType .Type}} `json:"{{.JSONTag}}"`
+{{- end}}
+}
+
+func {{lowerFirst .Name}}FromWire(w wire{{.Name}}) {{.Name}} {
+	return {{.Name}}{
+{{- range .Fields}}
+		{{.Name}}: {{fieldFromWire .}},
+{{- end}}
+	}
+}
+
+func {{lowerFirst .Name}}PtrFromWire(w *wire{{.Name}}) *{{.Name}} {
+	if w == nil {
+		return nil
+	}
+	v := {{lowerFirst .Name}}FromWire(*w)
+	return &v
+}
+
+func {{lowerFirst .Name}}ToWire(v {{.Name}}) (wire{{.Name}}, error) {
+	var w wire{{.Name}}
+	var err error
+{{- range .Fields}}
+{{- if .StreamKind}}
+	if w.{{.Name}}, err = stream.HandleOf(v.{{.Name}}); err != nil {
+		return w, err
+	}
+{{- else}}
+	w.{{.Name}} = v.{{.Name}}
+{{- end}}
+{{- end}}
+	return w, nil
+}
+
+func {{lowerFirst .Name}}PtrToWire(v *{{.Name}}) (*wire{{.Name}}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	w, err := {{lowerFirst .Name}}ToWire(*v)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+{{- end}}
 
 {{- /* Generate wasmimport declarations for each method */ -}}
 {{range .Service.Methods}}
@@ -58,7 +115,7 @@ func {{exportName .}}(uint64) uint64
 
 type {{requestType .}} struct {
 {{- range .Params}}
-	{{title .Name}} {{.Type}} `json:"{{.JSONName}}"`
+	{{title .Name}} {{wireType .Type}} `json:"{{.JSONName}}"`
 {{- end}}
 }
 {{- end}}
@@ -66,7 +123,7 @@ type {{requestType .}} struct {
 
 type {{responseType .}} struct {
 {{- range .Returns}}
-	{{title .Name}} {{.Type}} `json:"{{.JSONName}},omitempty"`
+	{{title .Name}} {{wireType .Type}} `json:"{{.JSONName}},omitempty"`
 {{- end}}
 {{- if .HasError}}
 	Error string `json:"error,omitempty"`
@@ -83,13 +140,26 @@ type {{responseType .}} struct {
 {{formatDoc .Doc}}
 {{- end}}
 func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{.ReturnSignature}} {
+{{- $m := .}}
 {{- if .HasParams}}
 	// Marshal request to JSON
 	req := {{requestType .}}{
 {{- range .Params}}
+{{- if not (isStreamParam .)}}
 		{{title .Name}}: {{.Name}},
 {{- end}}
+{{- end}}
 	}
+{{- if hasStreamParams .}}
+	var err error
+{{- range .Params}}
+{{- if isStreamParam .}}
+	if req.{{title .Name}}, err = {{clientParamToWire .}}; err != nil {
+		return {{if $m.HasReturns}}{{$m.ZeroValues}}, {{end}}err
+	}
+{{- end}}
+{{- end}}
+{{- end}}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return {{if .HasReturns}}{{.ZeroValues}}{{end}}{{if and .HasReturns .HasError}}, {{end}}{{if .HasError}}err{{end}}
@@ -137,7 +207,7 @@ func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{
 	}
 {{- end}}
 
-	return {{range $i, $r := .Returns}}{{if $i}}, {{end}}response.{{title $r.Name}}{{end}}{{if and .HasReturns .HasError}}, {{end}}{{if .HasError}}nil{{end}}
+	return {{range $i, $r := .Returns}}{{if $i}}, {{end}}{{clientReturnExpr $r}}{{end}}{{if and .HasReturns .HasError}}, {{end}}{{if .HasError}}nil{{end}}
 {{- end}}
 }
 {{- end}}

@@ -7,11 +7,55 @@ import (
 	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
+{{- if .Service.HasStreams}}
+	"github.com/navidrome/navidrome/plugins/streams"
+{{- end}}
 {{- if .Service.ImportsSharedTypes}}
 
 	"github.com/navidrome/navidrome/plugins/types"
 {{- end}}
 )
+{{- range .Service.StreamStructs}}
+
+// wire{{.Name}} is the wire form of {{.Name}}: streams travel as handles.
+type wire{{.Name}} struct {
+{{- range .Fields}}
+	{{.Name}} {{wireType .Type}} `json:"{{.JSONTag}}{{if and .OmitEmpty (not .StreamKind)}},omitempty{{end}}"`
+{{- end}}
+}
+
+func {{lowerFirst .Name}}FromWire(w wire{{.Name}}, conv *streams.Conv) {{.Name}} {
+	return {{.Name}}{
+{{- range .Fields}}
+		{{.Name}}: {{fieldFromWire .}},
+{{- end}}
+	}
+}
+
+func {{lowerFirst .Name}}PtrFromWire(w *wire{{.Name}}, conv *streams.Conv) *{{.Name}} {
+	if w == nil {
+		return nil
+	}
+	v := {{lowerFirst .Name}}FromWire(*w, conv)
+	return &v
+}
+
+func {{lowerFirst .Name}}ToWire(v {{.Name}}, conv *streams.Conv) wire{{.Name}} {
+	return wire{{.Name}}{
+{{- range .Fields}}
+		{{.Name}}: {{fieldToWire .}},
+{{- end}}
+	}
+}
+
+func {{lowerFirst .Name}}PtrToWire(v *{{.Name}}, conv *streams.Conv) *wire{{.Name}} {
+	if v == nil {
+		return nil
+	}
+	w := {{lowerFirst .Name}}ToWire(*v, conv)
+	return &w
+}
+{{- end}}
 
 {{- /* Generate request/response types for all methods */ -}}
 {{range .Service.Methods}}
@@ -20,7 +64,7 @@ import (
 // {{requestType .}} is the request type for {{$.Service.Name}}.{{.Name}}.
 type {{requestType .}} struct {
 {{- range .Params}}
-	{{title .Name}} {{.Type}} `json:"{{.JSONName}}"`
+	{{title .Name}} {{wireType .Type}} `json:"{{.JSONName}}"`
 {{- end}}
 }
 {{- end}}
@@ -28,7 +72,7 @@ type {{requestType .}} struct {
 // {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
 {{- range .Returns}}
-	{{title .Name}} {{.Type}} `json:"{{.JSONName}},omitempty"`
+	{{title .Name}} {{wireType .Type}} `json:"{{.JSONName}},omitempty"`
 {{- end}}
 {{- if .HasError}}
 	Error string `json:"error,omitempty"`
@@ -51,6 +95,11 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 	return extism.NewHostFunctionWithStack(
 		"{{exportName .}}",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+{{- if hasStreams .}}
+			conv := streams.NewConv(ctx)
+{{- if .HasParams}}
+{{end}}
+{{- end}}
 {{- if .HasParams}}
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
@@ -63,29 +112,54 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
 				return
 			}
+{{- range .Params}}
+{{- if isStreamParam .}}
+			{{hostArg .}} := {{hostParamExpr .}}
+{{- end}}
+{{- end}}
+{{- if hasStreamParams .}}
+			if err := conv.Err(); err != nil {
+				{{$.Service.Name | lower}}WriteError(p, stack, err)
+				return
+			}
+{{- end}}
 {{- end}}
 
 			// Call the service method
 {{- if .HasReturns}}
 {{- if .HasError}}
-			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}}, svcErr := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
+			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}}, svcErr := service.{{.Name}}(ctx{{range .Params}}, {{hostArg .}}{{end}})
+{{- if hasStreams .}}
+			if svcErr != nil {
+				conv.Fail(svcErr)
+			}
+{{- else}}
 			if svcErr != nil {
 				{{$.Service.Name | lower}}WriteError(p, stack, svcErr)
 				return
 			}
+{{- end}}
 {{- else}}
-			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}} := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
+			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}} := service.{{.Name}}(ctx{{range .Params}}, {{hostArg .}}{{end}})
 {{- end}}
 
 			// Write JSON response to plugin memory
 			resp := {{responseType .}}{
 {{- range .Returns}}
-				{{title .Name}}: {{lower .Name}},
+				{{title .Name}}: {{hostReturnExpr .}},
 {{- end}}
 			}
+{{- if hasStreams .}}
+			if err := conv.Err(); err != nil {
+				{{$.Service.Name | lower}}WriteError(p, stack, err)
+				return
+			}
+			{{$.Service.Name | lower}}WriteStreamResponse(p, stack, resp, conv)
+{{- else}}
 			{{$.Service.Name | lower}}WriteResponse(p, stack, resp)
+{{- end}}
 {{- else if .HasError}}
-			if svcErr := service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}}); svcErr != nil {
+			if svcErr := service.{{.Name}}(ctx{{range .Params}}, {{hostArg .}}{{end}}); svcErr != nil {
 				{{$.Service.Name | lower}}WriteError(p, stack, svcErr)
 				return
 			}
@@ -94,7 +168,7 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 			resp := {{responseType .}}{}
 			{{$.Service.Name | lower}}WriteResponse(p, stack, resp)
 {{- else}}
-			service.{{.Name}}(ctx{{range .Params}}, req.{{title .Name}}{{end}})
+			service.{{.Name}}(ctx{{range .Params}}, {{hostArg .}}{{end}})
 
 			// Write JSON response to plugin memory
 			resp := {{responseType .}}{}
@@ -121,6 +195,22 @@ func {{.Service.Name | lower}}WriteResponse(p *extism.CurrentPlugin, stack []uin
 	}
 	stack[0] = respPtr
 }
+
+{{- if .Service.HasStreams}}
+
+// {{.Service.Name | lower}}WriteStreamResponse writes a response with stream handles, and releases the streams
+// when it cannot: the plugin would never get the handles.
+func {{.Service.Name | lower}}WriteStreamResponse(p *extism.CurrentPlugin, stack []uint64, resp any, conv *streams.Conv) {
+	respBytes, err := json.Marshal(resp)
+	if err == nil {
+		stack[0], err = p.WriteBytes(respBytes)
+	}
+	if err != nil {
+		conv.Release()
+		{{.Service.Name | lower}}WriteError(p, stack, err)
+	}
+}
+{{- end}}
 
 // {{.Service.Name | lower}}WriteError writes an error response to plugin memory.
 func {{.Service.Name | lower}}WriteError(p *extism.CurrentPlugin, stack []uint64, err error) {

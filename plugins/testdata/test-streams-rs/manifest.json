@@ -2,5 +2,5 @@
   "name": "Test Streams Rust",
   "author": "Navidrome Test",
   "version": "1.0.0",
-  "description": "Test plugin for the Rust PDK Stream type"
+  "description": "Test plugin for the Rust PDK Stream type and generated Rust stream host functions"
 }

@@ -15,11 +15,76 @@ var templatesFS embed.FS
 // hostFuncMap returns the template functions for host code generation.
 func hostFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
-		"lower":        strings.ToLower,
-		"title":        strings.Title,
-		"exportName":   func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":  func(m Method) string { return m.RequestTypeName(svc.Name) },
-		"responseType": func(m Method) string { return m.ResponseTypeName(svc.Name) },
+		"lower":           strings.ToLower,
+		"title":           strings.Title,
+		"exportName":      func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":     func(m Method) string { return m.RequestTypeName(svc.Name) },
+		"responseType":    func(m Method) string { return m.ResponseTypeName(svc.Name) },
+		"lowerFirst":      lowerFirst,
+		"hasStreams":      func(m Method) bool { return m.HasStreams(svc) },
+		"hasStreamParams": func(m Method) bool { return m.HasStreamParams(svc) },
+		"isStreamParam":   func(p Param) bool { return p.IsStream(svc) },
+		"wireType":        func(goType string) string { return wireType(goType, svc) },
+		"fieldFromWire":   func(f FieldDef) string { return wireConv(f.Type, svc, "w."+f.Name, false, true) },
+		"fieldToWire":     func(f FieldDef) string { return wireConv(f.Type, svc, "v."+f.Name, true, true) },
+		"hostArg": func(p Param) string {
+			if p.IsStream(svc) {
+				return "arg" + strings.Title(p.Name)
+			}
+			return "req." + strings.Title(p.Name)
+		},
+		"hostParamExpr": func(p Param) string {
+			return wireConv(p.Type, svc, "req."+strings.Title(p.Name), false, true)
+		},
+		"hostReturnExpr": func(p Param) string { return wireConv(p.Type, svc, strings.ToLower(p.Name), true, true) },
+	}
+}
+
+// wireType is the type a parameter, result, or struct field has in the generated wire structs.
+func wireType(goType string, svc Service) string {
+	if streamKind(goType) != "" {
+		return "uint32"
+	}
+	if isStreamStruct(goType, svc) {
+		name, isPtr := strings.CutPrefix(goType, "*")
+		if isPtr {
+			return "*wire" + name
+		}
+		return "wire" + name
+	}
+	return goType
+}
+
+// wireConv converts expr to or from its wire form. Stream structs go through their generated converters, and
+// streams through the call's Conv on the host side or the stream package in the client.
+func wireConv(goType string, svc Service, expr string, toWire, host bool) string {
+	dir := "FromWire"
+	if toWire {
+		dir = "ToWire"
+	}
+	if isStreamStruct(goType, svc) {
+		name, isPtr := strings.CutPrefix(goType, "*")
+		fn := lowerFirst(name)
+		if isPtr {
+			fn += "Ptr"
+		}
+		if host {
+			expr += ", conv"
+		}
+		return fn + dir + "(" + expr + ")"
+	}
+	kind := streamKind(goType)
+	switch {
+	case kind == "":
+		return expr
+	case host && toWire:
+		return "conv." + kind + "Handle(" + expr + ")"
+	case host:
+		return "conv." + kind + "(" + expr + ")"
+	case toWire:
+		return "stream.HandleOf(" + expr + ")"
+	default:
+		return "stream." + kind + "(" + expr + ")"
 	}
 }
 
@@ -27,13 +92,22 @@ func hostFuncMap(svc Service) template.FuncMap {
 // Uses private (lowercase) type names for request/response structs.
 func clientFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
-		"lower":          strings.ToLower,
-		"title":          strings.Title,
-		"exportName":     func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":    func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
-		"responseType":   func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
-		"formatDoc":      formatDoc,
-		"mockReturnBody": mockReturnBody,
+		"lower":             strings.ToLower,
+		"title":             strings.Title,
+		"exportName":        func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":       func(m Method) string { return m.ClientRequestTypeName(svc.Name) },
+		"responseType":      func(m Method) string { return m.ClientResponseTypeName(svc.Name) },
+		"formatDoc":         formatDoc,
+		"mockReturnBody":    mockReturnBody,
+		"lowerFirst":        lowerFirst,
+		"hasStreamParams":   func(m Method) bool { return m.HasStreamParams(svc) },
+		"isStreamParam":     func(p Param) bool { return p.IsStream(svc) },
+		"wireType":          func(goType string) string { return wireType(goType, svc) },
+		"fieldFromWire":     func(f FieldDef) string { return wireConv(f.Type, svc, "w."+f.Name, false, false) },
+		"clientParamToWire": func(p Param) string { return wireConv(p.Type, svc, p.Name, true, false) },
+		"clientReturnExpr": func(p Param) string {
+			return wireConv(p.Type, svc, "response."+strings.Title(p.Name), false, false)
+		},
 	}
 }
 
@@ -66,7 +140,8 @@ func mockReturnBody(m Method) string {
 // type, rather than a malformed test expectation.
 func isNilableType(typ string) bool {
 	return strings.HasPrefix(typ, "*") || strings.HasPrefix(typ, "[]") ||
-		strings.HasPrefix(typ, "map[") || typ == "any" || typ == "interface{}"
+		strings.HasPrefix(typ, "map[") || typ == "any" || typ == "interface{}" ||
+		streamKind(typ) != ""
 }
 
 // mockAccessor returns the testify mock accessor call for a given type and index.
@@ -446,8 +521,8 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustTypeAlias":       rustTypeAlias,
 		"rustConstType":       rustConstType,
 		"rustConstName":       rustConstName,
-		"rustFieldName":       func(name string) string { return ToSnakeCase(name) },
-		"rustMethodName":      func(name string) string { return ToSnakeCase(name) },
+		"rustFieldName":       rustSnakeIdent,
+		"rustMethodName":      rustSnakeIdent,
 		"fieldRustType":       func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
 		"rustOutputType":      func(goType string) string { return rustTraitType(goType, shared) },
 		"rustMethodType":      func(goType string) string { return rustMethodType(goType, cap.Name, shared) },
@@ -465,8 +540,9 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustSharedNote": func(target string) string {
 			return "nd_pdk::types::" + strings.TrimPrefix(target, sharedTypesPrefix)
 		},
-		"snakeCase": ToSnakeCase,
-		"indent":    indentSpaces,
+		"snakeCase":   ToSnakeCase,
+		"rustModName": rustSnakeIdent,
+		"indent":      indentSpaces,
 	}
 }
 
@@ -529,7 +605,7 @@ func rustMethodType(goType, pkg string, shared map[string]string) string {
 	if t, ok := shared[goType]; ok {
 		return "$crate::types::" + strings.TrimPrefix(t, "nd_pdk_types::")
 	}
-	return "$crate::" + ToSnakeCase(pkg) + "::" + goType
+	return "$crate::" + rustSnakeIdent(pkg) + "::" + goType
 }
 
 // rustTraitType returns the Rust type for a capability trait method signature.
@@ -724,7 +800,7 @@ func GenerateCapabilityRustLib(capabilities []Capability) ([]byte, error) {
 
 	// Module declarations
 	for _, cap := range capabilities {
-		moduleName := ToSnakeCase(cap.Name)
+		moduleName := rustSnakeIdent(cap.Name)
 		buf.WriteString(fmt.Sprintf("pub mod %s;\n", moduleName))
 	}
 
@@ -969,7 +1045,7 @@ func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
 	}
 	tmpl, err := template.New("types_rs").Funcs(template.FuncMap{
 		"rustDocComment":      RustDocComment,
-		"rustFieldName":       func(n string) string { return ToSnakeCase(n) },
+		"rustFieldName":       rustSnakeIdent,
 		"fieldRustType":       func(f FieldDef) string { return f.RustType(known) },
 		"skipSerializingFunc": skipSerializingFunc,
 		"indent":              indentSpaces,

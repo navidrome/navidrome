@@ -3,6 +3,7 @@ package internal
 import (
 	"go/format"
 	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -323,6 +324,31 @@ var _ = Describe("Generator", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(code)).NotTo(ContainSubstring(`"github.com/navidrome/navidrome/plugins/types"`))
 		})
+
+		It("converts stream params, results, and struct fields to handles", func() {
+			svc := parseTestdataService("stream_service.go.txt")
+
+			code, err := GenerateHost(svc, "testpkg")
+			Expect(err).NotTo(HaveOccurred())
+			actual, err := format.Source(code)
+			Expect(err).NotTo(HaveOccurred(), "generated code is not valid Go:\n%s", code)
+
+			expectedSrc, err := os.ReadFile(filepath.Join("..", "testdata", "stream_host_expected.go.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			expected, err := format.Source(expectedSrc)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(string(actual)).To(Equal(string(expected)))
+		})
+
+		It("does not reference streams for services without them", func() {
+			svc := parseTestdataService("users_service.go.txt")
+
+			code, err := GenerateHost(svc, "testpkg")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(code)).NotTo(ContainSubstring("plugins/streams"))
+			Expect(string(code)).NotTo(ContainSubstring("conv"))
+		})
 	})
 
 	Describe("toJSONName", func() {
@@ -467,6 +493,19 @@ var _ = Describe("Generator", func() {
 			Expect(ToSnakeCase("NewScheduleID")).To(Equal("new_schedule_id"))
 			Expect(ToSnakeCase("XMLParser")).To(Equal("xml_parser"))
 			Expect(ToSnakeCase("GetHTTPResponse")).To(Equal("get_http_response"))
+		})
+	})
+
+	Describe("Rust names", func() {
+		It("escapes Rust keywords as raw identifiers", func() {
+			Expect(Param{Name: "in"}.RustName()).To(Equal("r#in"))
+			Expect(FieldDef{Name: "Type"}.RustName()).To(Equal("r#type"))
+			Expect(Param{Name: "input"}.RustName()).To(Equal("input"))
+		})
+
+		It("escapes keyword capability packages in macro paths but not in macro names", func() {
+			Expect(rustMethodType("Input", "Type", nil)).To(Equal("$crate::r#type::Input"))
+			Expect(registerMacroName("Type", "GetInfo")).To(Equal("register_type_info"))
 		})
 	})
 
@@ -625,6 +664,14 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring("github.com/navidrome/navidrome/plugins/pdk/go/pdk"))
 		})
 
+		It("does not import io or the stream package for services without streams", func() {
+			svc := parseTestdataService("users_service.go.txt")
+
+			code, err := GenerateClientGo(svc, "ndhost")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(code)).NotTo(ContainSubstring("plugins/pdk/go/stream"))
+			Expect(string(code)).NotTo(ContainSubstring(`"io"`))
+		})
 	})
 
 	Describe("GenerateClientGoStub", func() {
@@ -754,6 +801,25 @@ var _ = Describe("Generator", func() {
 
 			// Check error returns use args.Error(N)
 			Expect(codeStr).To(ContainSubstring("args.Error("))
+		})
+
+		It("keeps author-facing stream types and guards nil stream returns", func() {
+			svc := parseTestdataService("stream_service.go.txt")
+
+			code, err := GenerateClientGoStub(svc, "ndhost")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = format.Source(code)
+			Expect(err).NotTo(HaveOccurred(), "generated code is not valid Go:\n%s", code)
+
+			codeStr := string(code)
+			Expect(codeStr).To(MatchRegexp(`import \([^)]*"io"`))
+			Expect(codeStr).NotTo(ContainSubstring("plugins/pdk/go/stream"))
+			Expect(codeStr).NotTo(ContainSubstring("wireUpload"))
+			Expect(codeStr).To(ContainSubstring("Body io.ReadCloser"))
+			Expect(codeStr).To(ContainSubstring("func (m *mockBlobService) Open(name string) (io.ReadCloser, error) {\n" +
+				"\targs := m.Called(name)\n" +
+				"\tvar r0 io.ReadCloser\n" +
+				"\tif v := args.Get(0); v != nil {"))
 		})
 	})
 
@@ -1576,6 +1642,21 @@ var _ = Describe("Rust Generation", func() {
 			Expect(codeStr).To(ContainSubstring("Ok(None)"))
 		})
 
+		It("escapes a method name that is a Rust keyword", func() {
+			svc := Service{
+				Name:       "Matcher",
+				Permission: "matcher",
+				Interface:  "MatcherService",
+				Methods: []Method{
+					{Name: "Match", HasError: true, Params: []Param{{Name: "name", Type: "string", JSONName: "name"}}},
+				},
+			}
+
+			code, err := GenerateClientRust(svc)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(code)).To(ContainSubstring("pub fn r#match(name: &str)"))
+		})
+
 		It("should generate tuple for non-option multi-return", func() {
 			svc := Service{
 				Name:       "Test",
@@ -1713,6 +1794,23 @@ var _ = Describe("Rust Generation", func() {
 		})
 	})
 
+	Describe("stream types", func() {
+		It("uses nil as the zero value of stream types", func() {
+			Expect(zeroValue("io.ReadCloser")).To(Equal("nil"))
+			Expect(zeroValue("io.WriteCloser")).To(Equal("nil"))
+		})
+
+		It("treats stream types as nilable", func() {
+			Expect(isNilableType("io.ReadCloser")).To(BeTrue())
+			Expect(isNilableType("io.WriteCloser")).To(BeTrue())
+		})
+
+		It("maps stream types to an optional Rust Stream", func() {
+			Expect(toRustType("io.ReadCloser", nil, nil)).To(Equal("Option<nd_pdk_types::stream::Stream>"))
+			Expect(toRustType("io.WriteCloser", nil, nil)).To(Equal("Option<nd_pdk_types::stream::Stream>"))
+		})
+	})
+
 	Describe("nil-safe mock accessors", func() {
 		Describe("GenerateClientGoStub", func() {
 			It("guards pointer, slice and map returns so Return(nil, ...) does not panic", func() {
@@ -1834,4 +1932,16 @@ var _ = Describe("Rust Generation", func() {
 
 func writeFile(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0600)
+}
+
+func parseTestdataService(name string) Service {
+	GinkgoHelper()
+	src, err := os.ReadFile(filepath.Join("..", "testdata", name))
+	Expect(err).NotTo(HaveOccurred())
+	dir := GinkgoT().TempDir()
+	Expect(writeFile(filepath.Join(dir, "service.go"), string(src))).To(Succeed())
+	services, err := ParseDirectory(dir)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(services).To(HaveLen(1))
+	return services[0]
 }

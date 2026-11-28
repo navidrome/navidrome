@@ -97,11 +97,15 @@ func (s *Stream) Write(p []byte) (int, error) {
 	return written, nil
 }
 
-func (s *Stream) Close() error {
+func (s *Stream) releaseBuffer() {
 	if s.buf != nil {
 		s.buf.Free()
 		s.buf = nil
 	}
+}
+
+func (s *Stream) Close() error {
+	s.releaseBuffer()
 	if streamClose(int64(s.handle)) < 0 {
 		return lastError()
 	}

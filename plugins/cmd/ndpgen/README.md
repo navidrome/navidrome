@@ -83,7 +83,7 @@ import "context"
 type SubsonicAPIService interface {
     // Call executes a Subsonic API request and returns the response.
     //nd:hostfunc
-    Call(ctx context.Context, uri string) (response string, err error)
+    Call(ctx context.Context, uri string) (responseJSON string, err error)
 }
 ```
 
@@ -157,14 +157,40 @@ When using `-rust`, Rust client files are generated in a `rust/` subdirectory.
 
 ndpgen supports these Go types in method signatures:
 
-| Type                          | JSON Representation                      |
-|-------------------------------|------------------------------------------|
-| `string`, `int`, `bool`, etc. | Native JSON types                        |
-| `[]T` (slices)                | JSON arrays                              |
-| `map[K]V` (maps)              | JSON objects                             |
-| `*T` (pointers)               | Nullable fields                          |
-| `interface{}` / `any`         | Converts to `any`                        |
-| Custom structs                | JSON objects (must be JSON-serializable) |
+| Type                              | JSON Representation                      |
+|-----------------------------------|------------------------------------------|
+| `string`, `int`, `bool`, etc.     | Native JSON types                        |
+| `[]T` (slices)                    | JSON arrays                              |
+| `map[K]V` (maps)                  | JSON objects                             |
+| `*T` (pointers)                   | Nullable fields                          |
+| `interface{}` / `any`             | Converts to `any`                        |
+| Custom structs                    | JSON objects (must be JSON-serializable) |
+| `io.ReadCloser`, `io.WriteCloser` | Stream handle (JSON number, `0` = none)  |
+
+Parameter and result names used by the generated code (`ctx`, `p`, `stack`, `service`, `req`, `reqBytes`,
+`reqMem`, `resp`, `response`, `responsePtr`, `responseMem`, `responseBytes`, `err`, `svcErr`, `conv`, `stream`)
+are rejected (other than the `context.Context` parameter and the `error` result).
+
+### Streams
+
+`io.ReadCloser` and `io.WriteCloser` are supported in host services only. They can be:
+
+- parameters or results of a host function
+- fields of a struct that is itself a parameter or result (value or pointer)
+
+They travel as handles. A stream passed to a host function is consumed: the plugin can no longer use it. The
+service gets a wrapper, not the original value (type assertions such as `*os.File` or `io.Seeker` fail), and
+must finish with it before returning: it is closed when the plugin call ends. So a service must not return a
+stream it was given, or anything built on one. A returned stream belongs to the plugin's current call.
+
+A host function that takes or returns a stream must return an `error`.
+
+Not supported: streams in capabilities, in shared types, in slices or maps, or in structs nested inside other
+structs. Any other `io` type (such as `io.Reader` or `io.ReadWriteCloser`), a local type defined from one, and
+an embedded `io` field are rejected. A struct with stream fields cannot have embedded fields.
+
+In the Go client a stream stays `io.ReadCloser`/`io.WriteCloser`. In the Rust client it is
+`Option<nd_pdk_types::stream::Stream>`.
 
 ### Multiple Return Values
 

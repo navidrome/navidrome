@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -8,6 +9,23 @@ import (
 // sharedTypesPrefix is the package selector a capability or host-service source
 // uses to reference the shared types package (e.g. types.Track).
 const sharedTypesPrefix = "types."
+
+// streamKind returns "Reader" or "Writer" for the stream types, "" for anything else.
+func streamKind(goType string) string {
+	switch goType {
+	case "io.ReadCloser":
+		return "Reader"
+	case "io.WriteCloser":
+		return "Writer"
+	}
+	return ""
+}
+
+// isStreamStruct reports whether goType is a service struct with stream fields, by value or pointer.
+func isStreamStruct(goType string, svc Service) bool {
+	name := strings.TrimPrefix(goType, "*")
+	return slices.ContainsFunc(svc.Structs, func(st StructDef) bool { return st.Name == name && st.HasStreams() })
+}
 
 // Service represents a parsed host service interface.
 type Service struct {
@@ -233,9 +251,10 @@ func (e Export) IsPointerOutput() bool {
 
 // StructDef represents a Go struct type definition.
 type StructDef struct {
-	Name   string     // Go struct name (e.g., "Library")
-	Fields []FieldDef // Struct fields
-	Doc    string     // Documentation comment
+	Name     string     // Go struct name (e.g., "Library")
+	Fields   []FieldDef // Struct fields
+	Doc      string     // Documentation comment
+	Embedded []string   // Types of embedded fields, which are not generated
 }
 
 // FieldDef represents a field within a struct.
@@ -245,6 +264,32 @@ type FieldDef struct {
 	JSONTag   string // JSON tag value (e.g., "totalSongs,omitempty")
 	OmitEmpty bool   // Whether the field has omitempty tag
 	Doc       string // Field documentation
+}
+
+// HasStreams reports whether the struct has stream fields.
+func (s StructDef) HasStreams() bool {
+	return slices.ContainsFunc(s.Fields, func(f FieldDef) bool { return f.StreamKind() != "" })
+}
+
+// StreamKind returns "Reader" or "Writer" if the field is a stream, "" otherwise.
+func (f FieldDef) StreamKind() string {
+	return streamKind(f.Type)
+}
+
+// StreamStructs returns the service structs that have stream fields.
+func (s Service) StreamStructs() []StructDef {
+	var out []StructDef
+	for _, st := range s.Structs {
+		if st.HasStreams() {
+			out = append(out, st)
+		}
+	}
+	return out
+}
+
+// HasStreams reports whether any method of the service takes or returns streams.
+func (s Service) HasStreams() bool {
+	return slices.ContainsFunc(s.Methods, func(m Method) bool { return m.HasStreams(s) })
 }
 
 // OutputFileName returns the generated file name for this service.
@@ -288,6 +333,16 @@ type Method struct {
 	Returns    []Param // Return values (excluding error)
 	HasError   bool    // Whether the method returns an error
 	Doc        string  // Documentation comment for the method
+}
+
+// HasStreams reports whether the method takes or returns streams, directly or via a stream struct.
+func (m Method) HasStreams(svc Service) bool {
+	return m.HasStreamParams(svc) || slices.ContainsFunc(m.Returns, func(p Param) bool { return p.IsStream(svc) })
+}
+
+// HasStreamParams reports whether any parameter is a stream or a stream struct.
+func (m Method) HasStreamParams(svc Service) bool {
+	return slices.ContainsFunc(m.Params, func(p Param) bool { return p.IsStream(svc) })
 }
 
 // FunctionName returns the Extism host function export name.
@@ -416,15 +471,7 @@ func zeroValue(typ string) string {
 		typ == "uint", typ == "uint8", typ == "uint16", typ == "uint32", typ == "uint64",
 		typ == "float32", typ == "float64":
 		return "0"
-	case typ == "[]byte":
-		return "nil"
-	case strings.HasPrefix(typ, "[]"):
-		return "nil"
-	case strings.HasPrefix(typ, "map["):
-		return "nil"
-	case strings.HasPrefix(typ, "*"):
-		return "nil"
-	case typ == "any", typ == "interface{}":
+	case isNilableType(typ):
 		return "nil"
 	default:
 		// For custom struct types, return empty struct
@@ -437,6 +484,16 @@ type Param struct {
 	Name     string // Parameter name
 	Type     string // Go type (e.g., "string", "int32", "[]byte")
 	JSONName string // JSON field name (camelCase)
+}
+
+// StreamKind returns "Reader" or "Writer" if the parameter is a stream, "" otherwise.
+func (p Param) StreamKind() string {
+	return streamKind(p.Type)
+}
+
+// IsStream reports whether the parameter is a stream or a stream struct.
+func (p Param) IsStream(svc Service) bool {
+	return p.StreamKind() != "" || isStreamStruct(p.Type, svc)
 }
 
 // IsByteSlice returns true if the parameter type is []byte.
@@ -599,7 +656,7 @@ func RustDefaultValue(goType string) string {
 // RustFunctionName returns the Rust function name for a method (snake_case).
 // Uses just the method name without service prefix since the module provides namespacing.
 func (m Method) RustFunctionName(_ string) string {
-	return ToSnakeCase(m.Name)
+	return rustSnakeIdent(m.Name)
 }
 
 // RustDocComment returns a properly formatted Rust doc comment.
@@ -657,7 +714,7 @@ func (p Param) RustParamTypeWithShared(knownStructs map[string]bool, shared map[
 
 // RustName returns the snake_case Rust name for this parameter.
 func (p Param) RustName() string {
-	return ToSnakeCase(p.Name)
+	return rustSnakeIdent(p.Name)
 }
 
 // NeedsToOwned returns true if the parameter needs .to_owned() when used.
@@ -672,7 +729,30 @@ func (f FieldDef) RustType(knownStructs map[string]bool) string {
 
 // RustName returns the snake_case Rust name for this field.
 func (f FieldDef) RustName() string {
-	return ToSnakeCase(f.Name)
+	return rustSnakeIdent(f.Name)
+}
+
+// self, Self, super and crate cannot be raw identifiers, so they are left out.
+var rustKeywords = map[string]bool{
+	"abstract": true, "as": true, "async": true, "await": true, "become": true, "box": true, "break": true,
+	"const": true, "continue": true, "do": true, "dyn": true, "else": true, "enum": true, "extern": true,
+	"false": true, "final": true, "fn": true, "for": true, "gen": true, "if": true, "impl": true, "in": true,
+	"let": true, "loop": true, "macro": true, "match": true, "mod": true, "move": true, "mut": true,
+	"override": true, "priv": true, "pub": true, "ref": true, "return": true, "static": true, "struct": true,
+	"trait": true, "true": true, "try": true, "type": true, "typeof": true, "unsafe": true, "unsized": true,
+	"use": true, "virtual": true, "where": true, "while": true, "yield": true,
+}
+
+func rustIdent(name string) string {
+	if rustKeywords[name] {
+		return "r#" + name
+	}
+	return name
+}
+
+// rustSnakeIdent converts a Go name to a snake_case Rust identifier.
+func rustSnakeIdent(name string) string {
+	return rustIdent(ToSnakeCase(name))
 }
 
 // NeedsDefault returns true if the field needs #[serde(default)] attribute.
@@ -708,23 +788,7 @@ func toRustType(goType string, knownStructs map[string]bool, shared map[string]s
 	}
 	// Handle map types
 	if strings.HasPrefix(goType, "map[") {
-		// Extract key and value types from map[K]V
-		rest := goType[4:] // Remove "map["
-		depth := 1
-		keyEnd := 0
-		for i, r := range rest {
-			if r == '[' {
-				depth++
-			} else if r == ']' {
-				depth--
-				if depth == 0 {
-					keyEnd = i
-					break
-				}
-			}
-		}
-		keyType := rest[:keyEnd]
-		valueType := rest[keyEnd+1:]
+		keyType, valueType := splitMapType(goType)
 		return "std::collections::HashMap<" + toRustType(keyType, knownStructs, shared) + ", " + toRustType(valueType, knownStructs, shared) + ">"
 	}
 
@@ -748,6 +812,9 @@ func toRustType(goType string, knownStructs map[string]bool, shared map[string]s
 	case "interface{}", "any":
 		return "serde_json::Value"
 	default:
+		if streamKind(goType) != "" {
+			return "Option<nd_pdk_types::stream::Stream>"
+		}
 		// Qualified reference to the shared types crate (e.g. types.Track ->
 		// nd_pdk_types::Track).
 		if rest, ok := strings.CutPrefix(goType, sharedTypesPrefix); ok {

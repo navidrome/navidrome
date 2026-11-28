@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"cmp"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -25,6 +27,22 @@ var (
 	exportPattern = regexp.MustCompile(`//nd:export\s+(.*)`)
 	// key=value pairs
 	keyValuePattern = regexp.MustCompile(`(\w+)=(\S+)`)
+)
+
+// reservedParamNames are identifiers the generated host and client code declares
+// in the same scope as a host function's parameters and named results.
+var reservedParamNames = []string{
+	"ctx", "p", "stack", "service", "req", "reqBytes", "reqMem", "resp", "response",
+	"responsePtr", "responseMem", "responseBytes", "err", "svcErr", "conv", "stream",
+}
+
+var (
+	errStreamPosition     = errors.New("streams are only supported as direct parameters, results, or fields of a parameter or result struct")
+	errStreamInCapability = errors.New("streams are not supported in capabilities")
+	errStreamInShared     = errors.New("streams are not supported in shared types")
+	errStreamNeedsError   = errors.New("host functions with streams must return an error")
+	errStreamEmbedded     = errors.New("streams cannot be embedded fields")
+	errStreamStructEmbeds = errors.New("structs with streams cannot have embedded fields")
 )
 
 // parsedGoFile pairs a source path with its already-parsed AST.
@@ -275,6 +293,9 @@ func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDe
 					capability.Structs = append(capability.Structs, s)
 				}
 			}
+			if err := validateCapabilityStreams(capability, aliasMap, structMap); err != nil {
+				return nil, fmt.Errorf("capability %s: %w", capability.Interface, err)
+			}
 
 			// Attach referenced type aliases (skip those already in SharedAliases)
 			for _, typeName := range sortedTypeNames {
@@ -371,12 +392,23 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 		}
 		used[canonical] = true
 		for _, f := range def.Fields {
+			if len(streamUses(f.Type, nil, nil)) > 0 {
+				return nil, nil, fmt.Errorf("shared type %s field %s: %w", canonical, f.Name, errStreamInShared)
+			}
 			clear(fieldRefs)
 			collectReferencedTypes(f.Type, fieldRefs)
 			for t := range fieldRefs {
 				if c, ok := nestedSharedCanonical(t, shared); ok {
 					queue = append(queue, c)
 				}
+			}
+		}
+		for _, e := range def.Embedded {
+			if len(streamUses(e, nil, nil)) > 0 {
+				return nil, nil, fmt.Errorf("shared type %s embeds %s: %w", canonical, e, errStreamInShared)
+			}
+			if c, ok := nestedSharedCanonical(strings.TrimPrefix(e, "*"), shared); ok {
+				queue = append(queue, c)
 			}
 		}
 	}
@@ -560,6 +592,10 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 				}
 			}
 
+			// Recursively collect all struct dependencies so types referenced only
+			// transitively (e.g. a field type of a referenced struct) are attached.
+			collectAllStructDependencies(referencedTypes, pkgStructMap)
+
 			// Resolve shared-type aliases against the registry. Host-service schemas
 			// are not generated (the -schemas pass is capability-only), so the resolved
 			// shared shapes are not needed here.
@@ -569,15 +605,14 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 			}
 			service.SharedAliases = sharedAliases
 
-			// Recursively collect all struct dependencies so types referenced only
-			// transitively (e.g. a field type of a referenced struct) are attached.
-			collectAllStructDependencies(referencedTypes, pkgStructMap)
-
 			// Attach referenced structs to the service (sorted for stable output)
 			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {
 				if s, exists := pkgStructMap[typeName]; exists {
 					service.Structs = append(service.Structs, s)
 				}
+			}
+			if err := validateServiceStreams(service, pkgAliasMap, pkgStructMap); err != nil {
+				return nil, fmt.Errorf("host service %s: %w", service.Interface, err)
 			}
 
 			if len(service.Methods) > 0 {
@@ -587,6 +622,153 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 	}
 
 	return services, nil
+}
+
+// validateServiceStreams checks that streams appear only as direct parameters or
+// results, or as fields of a struct that is itself a direct parameter or result.
+func validateServiceStreams(svc Service, aliases map[string]TypeAlias, structs map[string]StructDef) error {
+	// The wire form copies only named fields, so the fields of an embedded type would be lost.
+	for _, st := range svc.StreamStructs() {
+		if len(st.Embedded) > 0 {
+			return fmt.Errorf("struct %s embeds %s: %w", st.Name, st.Embedded[0], errStreamStructEmbeds)
+		}
+	}
+	for _, m := range svc.Methods {
+		for _, p := range slices.Concat(m.Params, m.Returns) {
+			for _, u := range streamUses(p.Type, aliases, structs) {
+				var err error
+				at := u.Holder
+				switch {
+				case u.Embedded != (fieldRef{}):
+					return fmt.Errorf("struct %s embeds %s: %w", u.Embedded.Struct, u.Embedded.Field, errStreamEmbedded)
+				case streamKind(u.Type) == "":
+					err = fmt.Errorf("streams must be io.ReadCloser or io.WriteCloser, got %s", u.Type)
+				case !u.Direct:
+					err, at = errStreamPosition, u.TopField
+				default:
+					continue
+				}
+				if at != (fieldRef{}) {
+					return fmt.Errorf("struct %s field %s: %w", at.Struct, at.Field, err)
+				}
+				return fmt.Errorf("method %s: %w", m.Name, err)
+			}
+		}
+		if m.HasStreams(svc) && !m.HasError {
+			return fmt.Errorf("method %s: %w", m.Name, errStreamNeedsError)
+		}
+	}
+	return nil
+}
+
+// validateCapabilityStreams rejects io types anywhere in a capability's exports.
+func validateCapabilityStreams(c Capability, aliases map[string]TypeAlias, structs map[string]StructDef) error {
+	for _, e := range c.Methods {
+		for _, t := range []string{e.Input.Type, e.Output.Type} {
+			for _, u := range streamUses(t, aliases, structs) {
+				switch {
+				case u.Embedded != (fieldRef{}):
+					return fmt.Errorf("struct %s embeds %s: %w", u.Embedded.Struct, u.Embedded.Field, errStreamInCapability)
+				case u.Holder != (fieldRef{}):
+					return fmt.Errorf("struct %s field %s: %w", u.Holder.Struct, u.Holder.Field, errStreamInCapability)
+				}
+				return fmt.Errorf("export %s: %w", e.Name, errStreamInCapability)
+			}
+		}
+	}
+	return nil
+}
+
+// fieldRef names a struct field, or an embedded type of the struct.
+type fieldRef struct{ Struct, Field string }
+
+// streamUse is an io type reached from a parameter, result, or field type.
+type streamUse struct {
+	Type     string   // the io type, or the local alias or defined type that resolves to one
+	Direct   bool     // the walked type itself, or a field of the walked struct (by value or pointer)
+	Holder   fieldRef // innermost struct field holding it
+	TopField fieldRef // field of the walked struct the path goes through
+	Embedded fieldRef // first embedded field on the path
+}
+
+// streamUses returns every io type goType reaches through pointers, containers, local aliases, defined types,
+// and struct fields, embedded ones included.
+func streamUses(goType string, aliases map[string]TypeAlias, structs map[string]StructDef) []streamUse {
+	type visit struct {
+		name          string
+		fieldsDirect  bool
+		top, embedded fieldRef
+	}
+	var uses []streamUse
+	seen := map[visit]bool{}
+	// A struct is walked again when reached in a new position, so a recursive field is still checked as nested.
+	var walk func(t string, u streamUse, leafDirect, fieldsDirect bool, alias string)
+	walk = func(t string, u streamUse, leafDirect, fieldsDirect bool, alias string) {
+		a, isAlias := aliases[t]
+		st, isStruct := structs[t]
+		switch {
+		case strings.HasPrefix(t, "*"):
+			// Stream structs are converted through at most one pointer.
+			walk(t[1:], u, false, fieldsDirect && !strings.HasPrefix(t[1:], "*"), alias)
+		case strings.HasPrefix(t, "map["):
+			key, value := splitMapType(t)
+			walk(key, u, false, false, alias)
+			walk(value, u, false, false, alias)
+		case strings.HasPrefix(t, "["):
+			if _, elem, ok := strings.Cut(t, "]"); ok {
+				walk(elem, u, false, false, alias)
+			}
+		case strings.HasPrefix(t, "io."):
+			u.Type, u.Direct = cmp.Or(alias, t), leafDirect && alias == ""
+			uses = append(uses, u)
+		case isAlias || isStruct:
+			v := visit{t, fieldsDirect, u.TopField, u.Embedded}
+			if seen[v] {
+				return
+			}
+			seen[v] = true
+			if isAlias {
+				walk(a.Type, u, false, false, cmp.Or(alias, t))
+				return
+			}
+			for _, f := range st.Fields {
+				fu := u
+				fu.Holder = fieldRef{t, f.Name}
+				if fieldsDirect {
+					fu.TopField = fu.Holder
+				}
+				walk(f.Type, fu, fieldsDirect, false, "")
+			}
+			for _, e := range st.Embedded {
+				eu := u
+				eu.Holder = fieldRef{t, e}
+				if eu.Embedded == (fieldRef{}) {
+					eu.Embedded = eu.Holder
+				}
+				walk(e, eu, false, false, "")
+			}
+		}
+	}
+	walk(goType, streamUse{}, true, true, "")
+	return uses
+}
+
+// splitMapType returns the key and value types of a map[K]V type string.
+func splitMapType(goType string) (key, value string) {
+	rest := goType[len("map["):]
+	depth := 1
+	for i, r := range rest {
+		switch r {
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 {
+				return rest[:i], rest[i+1:]
+			}
+		}
+	}
+	return rest, ""
 }
 
 // parseStructs extracts all struct type definitions from a parsed Go file.
@@ -619,7 +801,8 @@ func parseStructs(f *ast.File) []StructDef {
 			// Parse struct fields
 			for _, field := range structType.Fields.List {
 				if len(field.Names) == 0 {
-					continue // Embedded field
+					s.Embedded = append(s.Embedded, typeToString(field.Type))
+					continue
 				}
 
 				fieldDef := parseStructField(field)
@@ -811,22 +994,7 @@ func collectReferencedTypes(goType string, refs map[string]bool) {
 	}
 	// Handle map
 	if strings.HasPrefix(goType, "map[") {
-		rest := goType[4:] // Remove "map["
-		depth := 1
-		keyEnd := 0
-		for i, r := range rest {
-			if r == '[' {
-				depth++
-			} else if r == ']' {
-				depth--
-				if depth == 0 {
-					keyEnd = i
-					break
-				}
-			}
-		}
-		keyType := rest[:keyEnd]
-		valueType := rest[keyEnd+1:]
+		keyType, valueType := splitMapType(goType)
 		collectReferencedTypes(keyType, refs)
 		collectReferencedTypes(valueType, refs)
 		return
@@ -996,6 +1164,18 @@ func parseMethod(name string, funcType *ast.FuncType, annotation map[string]stri
 					m.Returns = append(m.Returns, NewParam(name.Name, typeName))
 				}
 			}
+		}
+	}
+
+	for _, p := range m.Params {
+		if slices.Contains(reservedParamNames, p.Name) {
+			return Method{}, fmt.Errorf("parameter name %q is reserved by generated code", p.Name)
+		}
+	}
+	// The host wrapper binds results under their lowercased names.
+	for _, r := range m.Returns {
+		if slices.Contains(reservedParamNames, r.Name) || slices.Contains(reservedParamNames, strings.ToLower(r.Name)) {
+			return Method{}, fmt.Errorf("parameter name %q is reserved by generated code", r.Name)
 		}
 	}
 

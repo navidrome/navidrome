@@ -32,7 +32,7 @@ import "context"
 type SubsonicAPIService interface {
 	// Call executes a Subsonic API request.
 	//nd:hostfunc
-	Call(ctx context.Context, uri string) (response string, err error)
+	Call(ctx context.Context, uri string) (responseJSON string, err error)
 }
 `
 			err := os.WriteFile(filepath.Join(tmpDir, "service.go"), []byte(src), 0600)
@@ -55,7 +55,7 @@ type SubsonicAPIService interface {
 			Expect(m.Params[0].Name).To(Equal("uri"))
 			Expect(m.Params[0].Type).To(Equal("string"))
 			Expect(m.Returns).To(HaveLen(1))
-			Expect(m.Returns[0].Name).To(Equal("response"))
+			Expect(m.Returns[0].Name).To(Equal("responseJSON"))
 			Expect(m.Returns[0].Type).To(Equal("string"))
 		})
 
@@ -341,6 +341,281 @@ type MatcherService interface {
 			// Track alias is in a sibling file — must be resolved package-wide
 			Expect(byName).To(HaveKey("Track"))
 			Expect(byName["Track"].Target).To(Equal("types.Track"))
+		})
+	})
+
+	Describe("stream types", func() {
+		parseService := func(src string) ([]Service, error) {
+			Expect(os.WriteFile(filepath.Join(tmpDir, "blob.go"), []byte(src), 0600)).To(Succeed())
+			return ParseDirectory(tmpDir)
+		}
+
+		const header = `package host
+
+import (
+	"context"
+	"io"
+)
+`
+		const upload = `
+type Upload struct {
+	Name string
+	Body io.ReadCloser
+}
+`
+		blobService := func(extraTypes, method string) string {
+			return extraTypes + `
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	` + method + `
+}
+`
+		}
+
+		It("accepts streams as direct params, results, and fields of param/result structs", func() {
+			services, err := parseService(header + upload + `
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Put(ctx context.Context, upload Upload, dst io.WriteCloser) (*Upload, error)
+	//nd:hostfunc
+	Open(ctx context.Context, name string) (io.ReadCloser, error)
+}
+`)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(services).To(HaveLen(1))
+			svc := services[0]
+			Expect(svc.HasStreams()).To(BeTrue())
+			Expect(svc.StreamStructs()).To(HaveLen(1))
+			Expect(svc.StreamStructs()[0].Name).To(Equal("Upload"))
+
+			put, open := svc.Methods[0], svc.Methods[1]
+			Expect(put.Name).To(Equal("Put"))
+			Expect(open.Name).To(Equal("Open"))
+
+			Expect(put.Params[0].IsStream(svc)).To(BeTrue())
+			Expect(put.Params[0].StreamKind()).To(BeEmpty())
+			Expect(put.Params[1].StreamKind()).To(Equal("Writer"))
+			Expect(put.Params[1].IsStream(svc)).To(BeTrue())
+			Expect(put.Returns[0].Type).To(Equal("*Upload"))
+			Expect(put.Returns[0].IsStream(svc)).To(BeTrue())
+
+			Expect(open.Returns[0].StreamKind()).To(Equal("Reader"))
+			Expect(open.Params[0].IsStream(svc)).To(BeFalse())
+
+			Expect(put.HasStreamParams(svc)).To(BeTrue())
+			Expect(put.HasStreams(svc)).To(BeTrue())
+			Expect(open.HasStreamParams(svc)).To(BeFalse())
+			Expect(open.HasStreams(svc)).To(BeTrue())
+		})
+
+		It("reports no streams for a service without stream types", func() {
+			services, err := parseService(header + blobService(`
+type Item struct {
+	Name string
+}
+`, `Get(ctx context.Context, name string) (*Item, error)`))
+			Expect(err).NotTo(HaveOccurred())
+			svc := services[0]
+			Expect(svc.HasStreams()).To(BeFalse())
+			Expect(svc.StreamStructs()).To(BeEmpty())
+			Expect(svc.Structs[0].HasStreams()).To(BeFalse())
+			Expect(svc.Methods[0].HasStreams(svc)).To(BeFalse())
+		})
+
+		DescribeTable("rejects io types other than io.ReadCloser and io.WriteCloser",
+			func(src, want string) {
+				_, err := parseService(header + src)
+				Expect(err).To(MatchError(ContainSubstring("streams must be io.ReadCloser or io.WriteCloser, got " + want)))
+				Expect(err).To(MatchError(ContainSubstring("parsing blob.go")))
+			},
+			Entry("as a param", blobService("", `Read(ctx context.Context, r io.Reader) error`), "io.Reader"),
+			Entry("as a struct field", blobService(`
+type Sink struct {
+	Out io.Writer
+}
+`, `Write(ctx context.Context, sink Sink) error`), "io.Writer"),
+			Entry("io.ReadWriteCloser param", blobService("", `Pipe(ctx context.Context, rw io.ReadWriteCloser) error`), "io.ReadWriteCloser"),
+			Entry("io.Closer struct field", blobService(`
+type Handle struct {
+	C io.Closer
+}
+`, `Release(ctx context.Context, h Handle) error`), "io.Closer"),
+			Entry("io.ReadSeekCloser result", blobService("", `Open(ctx context.Context, name string) (io.ReadSeekCloser, error)`), "io.ReadSeekCloser"),
+			Entry("defined type of a stream", blobService(`
+type Body io.ReadCloser
+`, `Open(ctx context.Context, name string) (Body, error)`), "Body"),
+			Entry("alias of a stream in a struct field", blobService(`
+type Body = io.ReadCloser
+
+type Upload struct {
+	B Body
+}
+`, `Put(ctx context.Context, upload Upload) error`), "Body"),
+			Entry("alias chain to a stream", blobService(`
+type A = B
+
+type B io.ReadCloser
+`, `Open(ctx context.Context, name string) (A, error)`), "A"),
+		)
+
+		It("rejects an embedded io field in a param struct", func() {
+			_, err := parseService(header + blobService(`
+type Upload struct {
+	Name string
+	io.ReadCloser
+}
+`, `Put(ctx context.Context, upload Upload) error`))
+			Expect(err).To(MatchError(ContainSubstring("struct Upload embeds io.ReadCloser: streams cannot be embedded fields")))
+		})
+
+		DescribeTable("rejects embedded fields in a struct with streams, which the wire form would drop",
+			func(embed, method string) {
+				_, err := parseService(header + blobService(`
+type Meta struct {
+	Size int64
+}
+
+type Upload struct {
+	`+embed+`
+	Body io.ReadCloser
+}
+`, method))
+				Expect(err).To(MatchError(ContainSubstring("struct Upload embeds " + embed + ": structs with streams cannot have embedded fields")))
+			},
+			Entry("param", "Meta", `Put(ctx context.Context, upload Upload) error`),
+			Entry("result through a pointer", "*Meta", `Get(ctx context.Context, name string) (*Upload, error)`),
+		)
+
+		DescribeTable("rejects streams in slices, maps, and nested structs",
+			func(src string) {
+				_, err := parseService(header + src)
+				Expect(err).To(MatchError(ContainSubstring("streams are only supported as direct parameters, results, or fields of a parameter or result struct")))
+			},
+			Entry("slice param", blobService("", `Put(ctx context.Context, items []io.ReadCloser) error`)),
+			Entry("map field", blobService(`
+type Multi struct {
+	Parts map[string]io.ReadCloser
+}
+`, `Put(ctx context.Context, multi Multi) error`)),
+			Entry("nested struct", blobService(upload+`
+type Outer struct {
+	In Upload
+}
+`, `Put(ctx context.Context, outer Outer) error`)),
+			Entry("slice of stream structs", blobService(upload, `List(ctx context.Context) ([]Upload, error)`)),
+			Entry("double pointer to a stream struct", blobService(upload, `Put(ctx context.Context, upload **Upload) error`)),
+		)
+
+		DescribeTable("stops at recursive defined types",
+			func(decl string) {
+				_, err := parseService(header + blobService(decl, `Put(ctx context.Context, c Chain) error`))
+				Expect(err).NotTo(HaveOccurred())
+			},
+			Entry("slice", "type Chain []Chain\n"),
+			Entry("map", "type Chain map[string]Chain\n"),
+		)
+
+		It("rejects a stream method without an error result", func() {
+			_, err := parseService(header + blobService("", `Drain(ctx context.Context, in io.ReadCloser) string`))
+			Expect(err).To(MatchError(ContainSubstring("host functions with streams must return an error")))
+		})
+
+		DescribeTable("rejects parameter and result names reserved by generated code",
+			func(src, name string) {
+				_, err := parseService(header + src)
+				Expect(err).To(MatchError(ContainSubstring(`parameter name "` + name + `" is reserved by generated code`)))
+			},
+			Entry("stream struct param", blobService(upload, `Put(ctx context.Context, req Upload) error`), "req"),
+			Entry("named stream result", blobService("", `Open(ctx context.Context, name string) (conv io.ReadCloser, err error)`), "conv"),
+			Entry("plain method", blobService("", `Get(ctx context.Context, service string) (response string, err error)`), "service"),
+			Entry("stream param shadowing the stream package", blobService("", `Save(ctx context.Context, name string, stream io.ReadCloser) error`), "stream"),
+			Entry("result bound under its lowercased name", blobService("", `Open(ctx context.Context, name string) (Conv io.ReadCloser, err error)`), "Conv"),
+		)
+
+		Describe("shared types", func() {
+			var shared map[string]StructDef
+
+			BeforeEach(func() {
+				sharedDir := filepath.Join(tmpDir, "types")
+				Expect(os.Mkdir(sharedDir, 0700)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(sharedDir, "blob.go"), []byte(`package types
+
+import "io"
+
+type Blob struct {
+	Body io.ReadCloser
+}
+
+type EmbedsStream struct {
+	io.ReadCloser
+}
+
+type EmbedsBlob struct {
+	Blob
+}
+
+type EmbedsBlobPtr struct {
+	*Blob
+}
+`), 0600)).To(Succeed())
+				var err error
+				shared, err = LoadSharedTypes(sharedDir)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			DescribeTable("rejects stream fields in shared types used by a host service",
+				func(src string) {
+					Expect(os.WriteFile(filepath.Join(tmpDir, "blob.go"), []byte(`package host
+
+import (
+	"context"
+
+	"github.com/navidrome/navidrome/plugins/types"
+)
+`+src), 0600)).To(Succeed())
+
+					_, err := ParseDirectoryWithShared(tmpDir, shared)
+					Expect(err).To(MatchError(ContainSubstring("streams are not supported in shared types")))
+				},
+				Entry("as a direct param", blobService("", `Put(ctx context.Context, blob types.Blob) error`)),
+				Entry("embedding a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsStream) error`)),
+				Entry("embedding a shared struct with a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsBlob) error`)),
+				Entry("embedding a pointer to a shared struct with a stream", blobService("", `Put(ctx context.Context, blob types.EmbedsBlobPtr) error`)),
+				Entry("through a local struct field", blobService(`
+type Wrapper struct {
+	B types.Blob
+}
+`, `Put(ctx context.Context, w Wrapper) error`)),
+				Entry("through a shared alias in a local struct field", blobService(`
+type Blob = types.Blob
+
+type Wrapper struct {
+	B Blob
+}
+`, `Put(ctx context.Context, w Wrapper) error`)),
+			)
+
+			It("rejects stream fields in shared types a capability reaches through a local struct", func() {
+				Expect(os.WriteFile(filepath.Join(tmpDir, "upload.go"), []byte(`package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+//nd:capability name=upload
+type Uploader interface {
+	//nd:export name=nd_upload
+	Upload(UploadInput) error
+}
+
+type UploadInput struct {
+	Blob types.Blob `+"`json:\"blob\"`"+`
+}
+`), 0600)).To(Succeed())
+
+				_, err := ParseCapabilitiesWithShared(tmpDir, shared)
+				Expect(err).To(MatchError(ContainSubstring("streams are not supported in shared types")))
+			})
 		})
 	})
 
@@ -692,6 +967,52 @@ type Scrobbler interface {
 			}
 			Expect(typeByName).To(HaveKey("ScrobblerError"))
 			Expect(typeByName["ScrobblerError"].IsAlias).To(BeFalse())
+		})
+
+		It("rejects stream types in capability exports", func() {
+			src := `package capabilities
+
+import "io"
+
+//nd:capability name=upload
+type Uploader interface {
+	//nd:export name=nd_upload
+	Upload(UploadInput) (UploadOutput, error)
+}
+
+type UploadInput struct {
+	Body io.ReadCloser ` + "`json:\"body\"`" + `
+}
+
+type UploadOutput struct {
+	OK bool ` + "`json:\"ok\"`" + `
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "upload.go"), []byte(src), 0600)).To(Succeed())
+
+			_, err := ParseCapabilities(tmpDir)
+			Expect(err).To(MatchError(ContainSubstring("streams are not supported in capabilities")))
+		})
+
+		It("rejects other io types in capability exports", func() {
+			src := `package capabilities
+
+import "io"
+
+//nd:capability name=upload
+type Uploader interface {
+	//nd:export name=nd_upload
+	Upload(UploadInput) error
+}
+
+type UploadInput struct {
+	Body io.ReadSeekCloser ` + "`json:\"body\"`" + `
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "upload.go"), []byte(src), 0600)).To(Succeed())
+
+			_, err := ParseCapabilities(tmpDir)
+			Expect(err).To(MatchError(ContainSubstring("struct UploadInput field Body: streams are not supported in capabilities")))
 		})
 	})
 
