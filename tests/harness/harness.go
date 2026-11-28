@@ -60,7 +60,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	db.Init(ctx)
 
 	ds := persistence.New(db.Db())
-	auth.Init(ds)
+	auth.Init(ctx, ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
 	Expect(ds.Library().Put(ctx, &h.Library)).To(Succeed())

@@ -28,7 +28,7 @@ var _ = Describe("Missing Files Endpoint", func() {
 
 		ctx := GinkgoT().Context()
 		ds := persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		user := model.User{ID: "user-1", UserName: "user", NewPassword: "pass"}
 		putUsers(ctx, ds, &user)

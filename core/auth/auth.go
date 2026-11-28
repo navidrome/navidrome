@@ -37,10 +37,9 @@ const (
 
 // Init creates the JWTAuth objects from the secrets stored in the DB.
 // Missing or undecryptable secrets are regenerated and stored.
-func Init(ds model.DataStore) {
+func Init(ctx context.Context, ds model.DataStore) {
 	once.Do(func() {
-		ctx := context.TODO()
-		log.Info("Setting Session Timeout", "value", conf.Server().SessionTimeout)
+		log.Info(ctx, "Setting Session Timeout", "value", conf.Server().SessionTimeout)
 
 		TokenAuth = jwtauth.New("HS256", []byte(loadOrCreateSecret(ctx, ds, consts.JWTSecretKey)), nil)
 		PublicTokenAuth = jwtauth.New("HS256", []byte(loadOrCreateSecret(ctx, ds, consts.JWTPublicSecretKey)), nil)

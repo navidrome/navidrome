@@ -10,6 +10,7 @@ linters:
     - bidichk
     - bodyclose
     - containedctx
+    - contextcheck
     - copyloopvar
     - ctxvariant
     - depguard
@@ -199,6 +200,10 @@ linters:
       - path: _test\.go
         linters:
           - containedctx
+      # log calls take ctx as their first `any` argument, which contextcheck cannot follow
+      - linters:
+          - contextcheck
+        text: "log->parseArgs` should pass the context parameter"
       # a fresh request ctx keeps the caller's chi route ctx out of the internal Subsonic call
       - path: ^plugins/host_subsonicapi\.go$
         linters:

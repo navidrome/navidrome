@@ -41,7 +41,7 @@ var _ = Describe("Auth", func() {
 
 		BeforeEach(func() {
 			ds = persistence.New(db.Db())
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 		})
 
 		Describe("createAdmin", func() {
@@ -465,7 +465,7 @@ var _ = Describe("Auth", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			ds = persistence.New(db.Db())
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
 			Expect(ds.User().Put(ctx, usr)).To(Succeed())
 			setTokenEpoch(usr.TokenEpoch)
@@ -520,7 +520,7 @@ var _ = Describe("Auth", func() {
 		BeforeEach(func() {
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
-			auth.Init(persistence.New(db.Db()))
+			auth.Init(ctx, persistence.New(db.Db()))
 		})
 
 		serveWith := func(handler http.HandlerFunc) *httptest.ResponseRecorder {

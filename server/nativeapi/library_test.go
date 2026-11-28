@@ -34,7 +34,7 @@ var _ = Describe("Library API", func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		nativeRouter := newTestRouter(ds, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 

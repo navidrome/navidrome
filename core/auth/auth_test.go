@@ -40,7 +40,7 @@ var _ = BeforeSuite(func() {
 var _ = Describe("Auth", func() {
 
 	BeforeEach(func() {
-		auth.Init(persistence.New(db.Db()))
+		auth.Init(GinkgoT().Context(), persistence.New(db.Db()))
 	})
 
 	Describe("Validate", func() {

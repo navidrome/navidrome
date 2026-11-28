@@ -257,7 +257,7 @@ var _ = Describe("Plugin unload", func() {
 	It("closes the plugin's stream table", func() {
 		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
 		p := loadedTestPlugin(manager, "test-streams")
-		Expect(manager.unloadPlugin("test-streams")).To(Succeed())
+		Expect(manager.unloadPlugin(ctx, "test-streams")).To(Succeed())
 		_, err := p.streams.newScope(ctx)
 		Expect(err).To(MatchError(errPluginUnloaded))
 	})

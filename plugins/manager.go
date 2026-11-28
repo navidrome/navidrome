@@ -205,8 +205,19 @@ func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) 
 	return nil
 }
 
+// lifecycleCtx returns the ctx Stop cancels, for work that outlives the call that started it.
+// It falls back to context.Background() for a manager never started, as in CLI commands.
+func (m *Manager) lifecycleCtx() context.Context {
+	if m.ctx == nil {
+		return context.Background()
+	}
+	return m.ctx
+}
+
 // Stop shuts down the plugin manager and releases all resources.
-func (m *Manager) Stop() error {
+func (m *Manager) Stop(ctx context.Context) error {
+	ctx = context.WithoutCancel(ctx)
+
 	// Mark as stopped first to prevent new operations
 	m.stopped.Store(true)
 
@@ -229,11 +240,11 @@ func (m *Manager) Stop() error {
 	for name, plugin := range m.plugins {
 		err := plugin.Close()
 		if err != nil {
-			log.Error("Error during plugin cleanup", "plugin", name, err)
+			log.Error(ctx, "Error during plugin cleanup", "plugin", name, err)
 		}
 		if plugin.compiled != nil {
-			if err := plugin.compiled.Close(context.Background()); err != nil {
-				log.Error("Error closing plugin", "plugin", name, err)
+			if err := plugin.compiled.Close(ctx); err != nil {
+				log.Error(ctx, "Error closing plugin", "plugin", name, err)
 			}
 		}
 	}
@@ -241,8 +252,8 @@ func (m *Manager) Stop() error {
 
 	// Close compilation cache
 	if m.cache != nil {
-		if err := m.cache.Close(context.Background()); err != nil {
-			log.Error("Error closing wazero cache", err)
+		if err := m.cache.Close(ctx); err != nil {
+			log.Error(ctx, "Error closing wazero cache", err)
 		}
 		m.cache = nil
 	}
@@ -355,7 +366,7 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 	plugin.UpdatedAt = time.Now()
 	if err := repo.Put(adminCtx, plugin); err != nil {
 		// Unload since we couldn't update DB
-		_ = m.unloadPlugin(id)
+		_ = m.unloadPlugin(ctx, id)
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 
@@ -384,7 +395,7 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	}
 
 	// Unload the plugin
-	if err := m.unloadPlugin(id); err != nil {
+	if err := m.unloadPlugin(ctx, id); err != nil {
 		log.Debug(ctx, "Plugin was not loaded", "plugin", id)
 	}
 
@@ -509,7 +520,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 
 	if shouldDisable {
 		// Disable the plugin since permission is no longer satisfied
-		if err := m.unloadPlugin(id); err != nil {
+		if err := m.unloadPlugin(ctx, id); err != nil {
 			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
 		}
 		plugin.Enabled = false
@@ -527,7 +538,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 
 	// Reload if enabled
 	if wasEnabled {
-		if err := m.unloadPlugin(id); err != nil {
+		if err := m.unloadPlugin(ctx, id); err != nil {
 			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
 		}
 		if err := m.loadPluginWithConfig(plugin); err != nil {
@@ -545,7 +556,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 
 // unloadPlugin removes a plugin from the manager and closes its resources.
 // Returns an error if the plugin is not found.
-func (m *Manager) unloadPlugin(name string) error {
+func (m *Manager) unloadPlugin(ctx context.Context, name string) error {
 	m.mu.Lock()
 	plugin, ok := m.plugins[name]
 	if !ok {
@@ -558,22 +569,22 @@ func (m *Manager) unloadPlugin(name string) error {
 	// Run cleanup functions
 	err := plugin.Close()
 	if err != nil {
-		log.Error("Error during plugin cleanup", "plugin", name, err)
+		log.Error(ctx, "Error during plugin cleanup", "plugin", name, err)
 	}
 
 	// Close the compiled plugin outside the lock with a grace period
 	// to allow in-flight requests to complete
 	if plugin.compiled != nil {
 		// Use a brief timeout for cleanup
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		closeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		if err := plugin.compiled.Close(ctx); err != nil {
-			log.Error("Error closing plugin during unload", "plugin", name, err)
+		if err := plugin.compiled.Close(closeCtx); err != nil {
+			log.Error(ctx, "Error closing plugin during unload", "plugin", name, err)
 		}
 	}
 
 	runtime.GC()
-	log.Info(m.ctx, "Unloaded plugin", "plugin", name)
+	log.Info(ctx, "Unloaded plugin", "plugin", name)
 	return nil
 }
 
@@ -606,7 +617,7 @@ func (m *Manager) UnloadDisabledPlugins(ctx context.Context) {
 		m.mu.RUnlock()
 
 		if loaded {
-			if err := m.unloadPlugin(p.ID); err != nil {
+			if err := m.unloadPlugin(ctx, p.ID); err != nil {
 				log.Warn(ctx, "Failed to unload disabled plugin", "plugin", p.ID, err)
 			} else {
 				unloaded = append(unloaded, p.ID)

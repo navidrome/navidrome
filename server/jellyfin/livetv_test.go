@@ -46,7 +46,7 @@ var _ = Describe("Live TV radio", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		persistencetest.SetLibraries(ctx, ds, "/music1")
 		usr := model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"}
 		Expect(ds.User().Put(ctx, &usr)).To(Succeed())

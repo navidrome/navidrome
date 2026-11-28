@@ -31,7 +31,7 @@ var _ = Describe("Config API", func() {
 			c.DevUIShowConfig = true
 		}) // Enable config endpoint for tests
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		nativeRouter := newTestRouter(ds, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 

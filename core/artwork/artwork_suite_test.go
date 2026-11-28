@@ -158,7 +158,7 @@ func putArtistAlbums(ctx context.Context, ds model.DataStore, ar model.Artist, a
 func putRadio(ctx context.Context, ds model.DataStore, rd model.Radio) {
 	GinkgoHelper()
 	Expect(ds.Radio().Put(asAdmin(ctx), &rd)).To(Succeed())
-	unqueue(model.KindRadioArtwork, rd.ID)
+	unqueue(ctx, model.KindRadioArtwork, rd.ID)
 }
 
 // putPlaylist stores a testAdmin playlist with one track per album, without the cover rebuild its
@@ -172,12 +172,12 @@ func putPlaylist(ctx context.Context, ds model.DataStore, pls model.Playlist, al
 		pls.Tracks = append(pls.Tracks, model.PlaylistTrack{MediaFileID: mf.ID, MediaFile: mf})
 	}
 	Expect(ds.Playlist().Put(asAdmin(ctx), &pls)).To(Succeed())
-	unqueue(model.KindPlaylistArtwork, pls.ID)
+	unqueue(ctx, model.KindPlaylistArtwork, pls.ID)
 }
 
-func unqueue(kind model.Kind, id string) {
+func unqueue(ctx context.Context, kind model.Kind, id string) {
 	GinkgoHelper()
-	_, err := db.Db().ExecContext(GinkgoT().Context(), "DELETE FROM artwork_queue WHERE item_kind = ? AND item_id = ?", kind.Prefix(), id)
+	_, err := db.Db().ExecContext(ctx, "DELETE FROM artwork_queue WHERE item_kind = ? AND item_id = ?", kind.Prefix(), id)
 	Expect(err).ToNot(HaveOccurred())
 }
 

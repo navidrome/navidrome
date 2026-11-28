@@ -31,7 +31,7 @@ var _ = Describe("ToMediaFile", func() {
 	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile(model.Library{ID: 1}, "folderID")
+		return md.ToMediaFile(GinkgoT().Context(), model.Library{ID: 1}, "folderID")
 	}
 
 	Describe("Persistent IDs", func() {
@@ -39,8 +39,8 @@ var _ = Describe("ToMediaFile", func() {
 			props.Tags = model.RawTags{"ALBUM": {"Kind of Blue"}, "TITLE": {"So What"}}
 			md = metadata.New("Jazz/Loose/01.mp3", props)
 
-			byTags := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "album", PIDTrack: "albumid,title"}, "folderID")
-			byFolder := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "folder", PIDTrack: "albumid,title"}, "folderID")
+			byTags := md.ToMediaFile(GinkgoT().Context(), model.Library{ID: 1, PIDAlbum: "album", PIDTrack: "albumid,title"}, "folderID")
+			byFolder := md.ToMediaFile(GinkgoT().Context(), model.Library{ID: 1, PIDAlbum: "folder", PIDTrack: "albumid,title"}, "folderID")
 
 			Expect(byFolder.AlbumID).ToNot(Equal(byTags.AlbumID))
 			Expect(byFolder.AlbumID).To(Equal(md.AlbumID(byFolder, "folder")))

@@ -65,7 +65,7 @@ var _ = Describe("Browsing", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		api = &Router{ds: ds}
 	})
 

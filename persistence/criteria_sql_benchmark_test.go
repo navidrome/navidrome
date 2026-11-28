@@ -188,7 +188,7 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 
 	sqlDB := db.Db()
 
-	ur := NewUserRepository(conn)
+	ur := NewUserRepository(conn) //nolint:contextcheck // the password key is set up once per process, by a constructor with no ctx
 	if err := ur.Put(ctx, &user); err != nil {
 		b.Fatal(err)
 	}

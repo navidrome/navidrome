@@ -45,7 +45,7 @@ var _ = Describe("QuickConnect", func() {
 		ctx = GinkgoT().Context()
 		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		for _, u := range []model.User{alice, bob, admin} {
 			Expect(ds.User().Put(GinkgoT().Context(), &u)).To(Succeed())
 		}

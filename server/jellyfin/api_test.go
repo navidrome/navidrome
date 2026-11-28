@@ -55,7 +55,7 @@ var _ = Describe("Router", func() {
 	})
 
 	It("registers a player on a general authenticated request, not just playback reports", func() {
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		Expect(ds.User().Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		token, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 		Expect(err).ToNot(HaveOccurred())
@@ -100,7 +100,7 @@ var _ = Describe("Router", func() {
 			c.AuthWindowLength = time.Minute
 			c.Jellyfin.QuickConnect = true
 		})
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		usr := model.User{ID: testID("alice"), UserName: "alice"}
 		Expect(ds.User().Put(ctx, &usr)).To(Succeed())
 		token, err := auth.CreateAPIToken(&usr, auth.AudienceJellyfin)

@@ -15,7 +15,7 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFile {
+func (md Metadata) ToMediaFile(ctx context.Context, lib model.Library, folderID string) model.MediaFile {
 	mf := model.MediaFile{
 		LibraryID: lib.ID,
 		FolderID:  folderID,
@@ -42,7 +42,7 @@ func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFi
 			mf.BPM = new(int(r))
 		}
 	}
-	mf.Lyrics = md.mapLyrics()
+	mf.Lyrics = md.mapLyrics(ctx)
 	mf.ExplicitStatus = md.mapExplicitStatusTag()
 	md.mapMovementNumbers(mf.Tags)
 
@@ -159,12 +159,12 @@ func (md Metadata) mapMovementNumbers(tags model.Tags) {
 	}
 }
 
-func (md Metadata) mapLyrics() string {
+func (md Metadata) mapLyrics(ctx context.Context) string {
 	rawLyrics := md.Pairs(model.TagLyrics)
 
 	lyricList := make(model.LyricList, 0, len(rawLyrics))
 
-	ctx := log.NewContext(context.Background(), "file", md.filePath)
+	ctx = log.NewContext(ctx, "file", md.filePath)
 	for _, raw := range rawLyrics {
 		lang := raw.Key()
 		text := raw.Value()
@@ -183,7 +183,7 @@ func (md Metadata) mapLyrics() string {
 
 	res, err := json.Marshal(lyricList)
 	if err != nil {
-		log.Warn("Unexpected error occurred when serializing lyrics", "file", md.filePath, err)
+		log.Warn(ctx, "Unexpected error occurred when serializing lyrics", err)
 		return ""
 	}
 	return string(res)

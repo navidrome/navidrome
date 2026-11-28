@@ -27,7 +27,7 @@ var _ = Describe("Plugin Watcher", func() {
 			manager, tmpDir = createTestManager(nil)
 
 			// Remove the auto-loaded plugin so tests can control loading
-			_ = manager.unloadPlugin("test-metadata-agent")
+			_ = manager.unloadPlugin(ctx, "test-metadata-agent")
 			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
 			// Also remove from DB so tests start with a clean slate
 			_ = manager.ds.Plugin().Delete(ctx, "test-metadata-agent")
@@ -48,14 +48,14 @@ var _ = Describe("Plugin Watcher", func() {
 
 			AfterEach(func() {
 				// Clean up: unload plugin if loaded, remove copied file, delete from DB
-				_ = manager.unloadPlugin("test-metadata-agent")
+				_ = manager.unloadPlugin(ctx, "test-metadata-agent")
 				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
 				_ = manager.ds.Plugin().Delete(ctx, "test-metadata-agent")
 			})
 
 			It("adds plugin to DB when file exists", func() {
 				copyTestPlugin()
-				manager.processPluginEvent("test-metadata-agent")
+				manager.processPluginEvent(GinkgoT().Context(), "test-metadata-agent")
 
 				// Plugin should be in DB but not loaded (starts disabled)
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
@@ -72,7 +72,7 @@ var _ = Describe("Plugin Watcher", func() {
 				copyTestPlugin()
 
 				// First add and enable the plugin
-				manager.processPluginEvent("test-metadata-agent")
+				manager.processPluginEvent(GinkgoT().Context(), "test-metadata-agent")
 				err := manager.EnablePlugin(ctx, "test-metadata-agent")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
@@ -87,7 +87,7 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Simulate modification - the plugin should be disabled and unloaded
-				manager.processPluginEvent("test-metadata-agent")
+				manager.processPluginEvent(GinkgoT().Context(), "test-metadata-agent")
 
 				// Should be unloaded
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
@@ -102,13 +102,13 @@ var _ = Describe("Plugin Watcher", func() {
 				copyTestPlugin()
 
 				// First add and enable the plugin
-				manager.processPluginEvent("test-metadata-agent")
+				manager.processPluginEvent(GinkgoT().Context(), "test-metadata-agent")
 				err := manager.EnablePlugin(ctx, "test-metadata-agent")
 				Expect(err).ToNot(HaveOccurred())
 
 				// Remove the file - plugin should be unloaded and removed from DB
 				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
-				manager.processPluginEvent("test-metadata-agent")
+				manager.processPluginEvent(GinkgoT().Context(), "test-metadata-agent")
 
 				// Should be unloaded
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
@@ -127,7 +127,7 @@ var _ = Describe("Plugin Watcher", func() {
 			})
 
 			It("starts file watcher when AutoReload is enabled", func() {
-				_ = manager.Stop()
+				_ = manager.Stop(ctx)
 
 				conf.Update(func(c *conf.Options) { c.Plugins.AutoReload = true })
 

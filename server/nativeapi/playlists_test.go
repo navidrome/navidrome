@@ -84,7 +84,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 		})
 
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		testUser = model.User{
 			ID:          "user-1",

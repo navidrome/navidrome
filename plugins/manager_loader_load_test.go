@@ -52,7 +52,7 @@ var _ = Describe("loadPluginWithConfig", func() {
 	Describe("host service creation failures", func() {
 		It("reports the Task service creation error instead of a missing host function", func() {
 			Expect(manager.Start(GinkgoT().Context())).To(Succeed())
-			DeferCleanup(func() { _ = manager.Stop() })
+			DeferCleanup(func(ctx SpecContext) { _ = manager.Stop(ctx) })
 
 			// Block the taskqueue data dir by creating a file where the directory should be
 			Expect(os.WriteFile(filepath.Join(dataDir, "plugins"), nil, 0600)).To(Succeed())
@@ -67,7 +67,7 @@ var _ = Describe("loadPluginWithConfig", func() {
 		It("enables a taskqueue plugin on a manager that was never started", func() {
 			// CLI commands (navidrome plugin enable) use the manager without calling Start
 			Expect(manager.EnablePlugin(GinkgoT().Context(), "test-taskqueue")).To(Succeed())
-			DeferCleanup(func() { _ = manager.unloadPlugin("test-taskqueue") })
+			DeferCleanup(func(ctx SpecContext) { _ = manager.unloadPlugin(ctx, "test-taskqueue") })
 		})
 	})
 })

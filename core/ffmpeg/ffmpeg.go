@@ -97,7 +97,7 @@ func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, max
 	if err != nil {
 		return nil, err
 	}
-	if !animWebP.has(cmdPath, "libwebp_anim") {
+	if !animWebP.has(ctx, cmdPath, "libwebp_anim") {
 		return nil, ErrAnimatedWebPUnsupported
 	}
 
@@ -634,7 +634,7 @@ type encoderProbe struct {
 	state encoderProbeState
 }
 
-func (p *encoderProbe) has(cmdPath, encoder string) bool {
+func (p *encoderProbe) has(ctx context.Context, cmdPath, encoder string) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -646,7 +646,8 @@ func (p *encoderProbe) has(cmdPath, encoder string) bool {
 	case encoderProbeUnknown:
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Detached so a cancelled request does not abort a probe that later callers would rerun.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, cmdPath, "-hide_banner", "-encoders").Output() // #nosec
 	if err != nil {

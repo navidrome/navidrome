@@ -105,7 +105,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		// harness's MaxOpenConns=1, so start from before the golden scan and import this library fresh.
 		goldenDB.RestoreUnscanned(ctx)
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		persistencetest.SetLibraries(ctx, ds, musicDir)
 		Expect(ds.User().SetUserLibraries(ctx, regularUser.ID, nil)).To(Succeed())
 

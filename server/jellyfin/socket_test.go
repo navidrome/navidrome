@@ -91,7 +91,7 @@ var _ = Describe("handleSocket", func() {
 
 		BeforeEach(func() {
 			ds = persistence.New(db.Db())
-			auth.Init(ds)
+			auth.Init(ctx, ds)
 			Expect(ds.User().Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 
 			t, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})

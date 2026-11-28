@@ -38,7 +38,7 @@ var _ = Describe("Plugin API", func() {
 		})
 		ds = persistence.New(db.Db())
 		mockManager = &tests.MockPluginManager{}
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		nativeRouter := newTestRouter(ds, nil, mockManager, nil)
 		router = server.JWTVerifier(nativeRouter)
 

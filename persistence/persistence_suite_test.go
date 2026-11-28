@@ -190,7 +190,7 @@ func restrictedFixture(name string) (context.Context, model.Library, model.User)
 	Expect(ur.SetUserLibraries(adminCtx, user.ID, []int{1})).To(Succeed())
 
 	DeferCleanup(func() {
-		_ = NewUserRepository(db).Delete(adminCtx, user.ID)
+		_ = NewUserRepository(db).Delete(adminCtx, user.ID) //nolint:contextcheck // the password key is set up once per process, by a constructor with no ctx
 		_ = NewLibraryRepository(db).(*libraryRepository).delete(adminCtx, squirrel.Eq{"id": lib.ID})
 	})
 	return adminCtx, lib, user

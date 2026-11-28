@@ -40,7 +40,7 @@ var _ = Describe("auth_router", func() {
 		for _, id := range []string{victimID, attackerID} {
 			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: id})).To(Succeed())
 		}
-		auth.Init(ds)
+		auth.Init(GinkgoT().Context(), ds)
 
 		httpClient = &tests.FakeHttpClient{}
 		router = &Router{

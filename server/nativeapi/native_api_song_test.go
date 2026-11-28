@@ -63,7 +63,7 @@ var _ = Describe("Song Endpoints", func() {
 		})
 
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 
 		// Create test user
 		testUser = model.User{

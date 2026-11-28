@@ -177,8 +177,8 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	err = manager.Start(GinkgoT().Context())
 	Expect(err).ToNot(HaveOccurred())
 
-	DeferCleanup(func() {
-		_ = manager.Stop()
+	DeferCleanup(func(ctx SpecContext) {
+		_ = manager.Stop(ctx)
 		_ = os.RemoveAll(tmpDir)
 	})
 
@@ -201,9 +201,9 @@ var _ = SynchronizedBeforeSuite(func(ctx SpecContext) {
 	Expect(err).ToNot(HaveOccurred())
 })
 
-var _ = AfterSuite(func() {
+var _ = AfterSuite(func(ctx SpecContext) {
 	if testManager != nil {
-		_ = testManager.Stop()
+		_ = testManager.Stop(ctx)
 	}
 	if tmpPluginsDir != "" {
 		_ = os.RemoveAll(tmpPluginsDir)

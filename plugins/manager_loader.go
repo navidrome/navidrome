@@ -28,18 +28,6 @@ type serviceContext struct {
 	libraries   libraryAccess
 }
 
-// baseCtx returns the manager's lifecycle context, for host services that
-// outlive the plugin call that created them. It falls back to
-// context.Background() when the manager was never started, which is the case
-// for CLI commands (e.g. `navidrome plugin enable`) that load plugins without
-// calling Start.
-func (c *serviceContext) baseCtx() context.Context {
-	if c.manager.ctx == nil {
-		return context.Background()
-	}
-	return c.manager.ctx
-}
-
 // hostServiceEntry defines a host service for table-driven registration.
 type hostServiceEntry struct {
 	name          string
@@ -79,7 +67,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Websocket != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Websocket
-			service := newWebSocketService(ctx.baseCtx(), ctx.pluginName, ctx.manager, perm)
+			service := newWebSocketService(ctx.manager.lifecycleCtx(), ctx.pluginName, ctx.manager, perm)
 			return host.RegisterWebSocketHostFunctions(service), service, nil
 		},
 	},
@@ -113,7 +101,7 @@ var hostServices = []hostServiceEntry{
 		hasPermission: func(p *Permissions) bool { return p != nil && p.Kvstore != nil },
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Kvstore
-			service, err := newKVStoreService(ctx.baseCtx(), ctx.pluginName, perm)
+			service, err := newKVStoreService(ctx.manager.lifecycleCtx(), ctx.pluginName, perm)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -159,7 +147,7 @@ var hostServices = []hostServiceEntry{
 			if perm.MaxConcurrency > 0 {
 				maxConcurrency = int32(perm.MaxConcurrency)
 			}
-			service, err := newTaskQueueService(ctx.baseCtx(), ctx.pluginName, ctx.manager, maxConcurrency)
+			service, err := newTaskQueueService(ctx.manager.lifecycleCtx(), ctx.pluginName, ctx.manager, maxConcurrency)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -290,8 +278,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 // loadPluginWithConfig loads a plugin with configuration from DB.
 // The p.Path should point to an .ndp package file.
 func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
-	// NewContext falls back to context.Background() when m.ctx is nil (unstarted manager)
-	ctx := log.NewContext(m.ctx, "plugin", p.ID)
+	ctx := log.NewContext(m.lifecycleCtx(), "plugin", p.ID)
 
 	if m.stopped.Load() {
 		return errors.New("manager is stopped")

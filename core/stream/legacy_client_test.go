@@ -153,7 +153,7 @@ var _ = Describe("ResolveRequest", func() {
 		ctx = GinkgoT().Context()
 		ds := persistence.New(db.Db())
 		ff := tests.NewMockFFmpeg("")
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, ff)
 	})
 
@@ -455,7 +455,7 @@ var _ = Describe("ResolveClientRequest", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		ds := persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		svc = NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))
 	})
 

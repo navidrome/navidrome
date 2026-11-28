@@ -33,7 +33,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 			c.SessionTimeout = time.Hour
 		})
 		ds = persistence.New(db.Db())
-		auth.Init(ds)
+		auth.Init(ctx, ds)
 		router = server.JWTVerifier(newTestRouter(ds, nil, nil, nil))
 	})
 

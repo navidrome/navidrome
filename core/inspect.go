@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/core/storage"
@@ -15,7 +16,7 @@ type InspectOutput struct {
 	MappedTags *model.MediaFile `json:"mappedTags,omitempty"`
 }
 
-func Inspect(filePath string, lib model.Library, folderId string) (*InspectOutput, error) {
+func Inspect(ctx context.Context, filePath string, lib model.Library, folderId string) (*InspectOutput, error) {
 	path, file := filepath.Split(filePath)
 
 	s, err := storage.For(path)
@@ -35,7 +36,7 @@ func Inspect(filePath string, lib model.Library, folderId string) (*InspectOutpu
 
 	tag, ok := tags[file]
 	if !ok {
-		log.Error("Could not get tags for path", "path", filePath)
+		log.Error(ctx, "Could not get tags for path", "path", filePath)
 		return nil, model.ErrNotFound
 	}
 
@@ -43,7 +44,7 @@ func Inspect(filePath string, lib model.Library, folderId string) (*InspectOutpu
 	result := &InspectOutput{
 		File:       filePath,
 		RawTags:    tags[file].Tags,
-		MappedTags: new(md.ToMediaFile(lib, folderId)),
+		MappedTags: new(md.ToMediaFile(ctx, lib, folderId)),
 	}
 
 	return result, nil

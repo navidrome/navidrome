@@ -331,7 +331,7 @@ func setupTestDB() {
 	goldenDB.Restore(ctx)
 
 	ds = persistence.New(db.Db())
-	auth.Init(ds)
+	auth.Init(ctx, ds)
 
 	streamerSpy = &harness.SpyStreamer{}
 	artworkSpy = &spyArtwork{}

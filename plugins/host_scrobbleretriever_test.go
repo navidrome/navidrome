@@ -130,7 +130,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		DeferCleanup(func() {
-			_ = manager.Stop()
+			_ = manager.Stop(ctx)
 			_ = os.RemoveAll(tmpDir)
 		})
 	})
