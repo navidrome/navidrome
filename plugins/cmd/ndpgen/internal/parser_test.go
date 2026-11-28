@@ -470,6 +470,24 @@ type Upload struct {
 			Expect(err).To(MatchError(ContainSubstring("struct Upload embeds io.ReadCloser: streams cannot be embedded fields")))
 		})
 
+		DescribeTable("rejects embedded fields in a struct with streams, which the wire form would drop",
+			func(embed, method string) {
+				_, err := parseService(header + blobService(`
+type Meta struct {
+	Size int64
+}
+
+type Upload struct {
+	`+embed+`
+	Body io.ReadCloser
+}
+`, method))
+				Expect(err).To(MatchError(ContainSubstring("struct Upload embeds " + embed + ": structs with streams cannot have embedded fields")))
+			},
+			Entry("param", "Meta", `Put(ctx context.Context, upload Upload) error`),
+			Entry("result through a pointer", "*Meta", `Get(ctx context.Context, name string) (*Upload, error)`),
+		)
+
 		DescribeTable("rejects streams in slices, maps, and nested structs",
 			func(src string) {
 				_, err := parseService(header + src)

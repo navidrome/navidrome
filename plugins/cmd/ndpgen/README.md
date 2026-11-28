@@ -187,7 +187,7 @@ A host function that takes or returns a stream must return an `error`.
 
 Not supported: streams in capabilities, in shared types, in slices or maps, or in structs nested inside other
 structs. Any other `io` type (such as `io.Reader` or `io.ReadWriteCloser`), a local type defined from one, and
-an embedded `io` field are rejected.
+an embedded `io` field are rejected. A struct with stream fields cannot have embedded fields.
 
 In the Go client a stream stays `io.ReadCloser`/`io.WriteCloser`. In the Rust client it is
 `Option<nd_pdk_types::stream::Stream>`.

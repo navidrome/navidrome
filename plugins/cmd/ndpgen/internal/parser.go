@@ -42,6 +42,7 @@ var (
 	errStreamInShared     = errors.New("streams are not supported in shared types")
 	errStreamNeedsError   = errors.New("host functions with streams must return an error")
 	errStreamEmbedded     = errors.New("streams cannot be embedded fields")
+	errStreamStructEmbeds = errors.New("structs with streams cannot have embedded fields")
 )
 
 // parsedGoFile pairs a source path with its already-parsed AST.
@@ -626,6 +627,12 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 // validateServiceStreams checks that streams appear only as direct parameters or
 // results, or as fields of a struct that is itself a direct parameter or result.
 func validateServiceStreams(svc Service, aliases map[string]TypeAlias, structs map[string]StructDef) error {
+	// The wire form copies only named fields, so the fields of an embedded type would be lost.
+	for _, st := range svc.StreamStructs() {
+		if len(st.Embedded) > 0 {
+			return fmt.Errorf("struct %s embeds %s: %w", st.Name, st.Embedded[0], errStreamStructEmbeds)
+		}
+	}
 	for _, m := range svc.Methods {
 		for _, p := range slices.Concat(m.Params, m.Returns) {
 			for _, u := range streamUses(p.Type, aliases, structs) {
