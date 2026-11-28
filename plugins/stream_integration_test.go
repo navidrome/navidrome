@@ -30,12 +30,14 @@ type streamsInput struct {
 	Dst    uint32 `json:"dst,omitempty"`
 	Size   int64  `json:"size,omitempty"`
 	Chunk  int    `json:"chunk,omitempty"`
+	Text   string `json:"text,omitempty"`
 }
 
 type streamsOutput struct {
 	Count int64  `json:"count"`
 	SHA   string `json:"sha"`
 	Data  string `json:"data"`
+	Size  int64  `json:"size"`
 	Error string `json:"error"`
 }
 
@@ -233,7 +235,7 @@ func (s *testStreamService) Block(context.Context) (io.ReadCloser, error) {
 func (s *testStreamService) Echo(_ context.Context, text string) (string, error) { return text, nil }
 
 // streamTestSvc serves the StreamTest host functions, registered for every plugin because test-streams imports them.
-var streamTestSvc streamtest.StreamTestService = &testStreamService{created: &trackingWriter{}}
+var streamTestSvc = &testStreamService{created: &trackingWriter{}}
 
 func init() {
 	hostServices = append(hostServices, hostServiceEntry{
@@ -245,41 +247,32 @@ func init() {
 	})
 }
 
-func loadStreamTestPlugin(svc *testStreamService, pkg string, memPages uint32) *plugin {
-	if memPages > 0 {
-		saved := extismMaxMemoryPages
-		extismMaxMemoryPages = memPages
-		DeferCleanup(func() { extismMaxMemoryPages = saved })
-	}
-	saved := streamTestSvc
-	streamTestSvc = svc
-	DeferCleanup(func() { streamTestSvc = saved })
+// loadStreamsPlugin loads pkg with its own StreamTest service, capped at memPages Extism pages (0 for no cap).
+func loadStreamsPlugin(pkg string, memPages uint32) (*plugin, *testStreamService) {
+	svc := &testStreamService{created: &trackingWriter{}}
+	savedPages, savedSvc := extismMaxMemoryPages, streamTestSvc
+	extismMaxMemoryPages, streamTestSvc = memPages, svc
+	DeferCleanup(func() { extismMaxMemoryPages, streamTestSvc = savedPages, savedSvc })
 	manager, _ := createTestManagerWithPlugins(nil, pkg)
-	return loadedTestPlugin(manager, strings.TrimSuffix(pkg, PackageExtension))
+	return loadedTestPlugin(manager, strings.TrimSuffix(pkg, PackageExtension)), svc
 }
 
-func callText(ctx context.Context, p *plugin, fn, text string) serviceOutput {
+func callText(ctx context.Context, p *plugin, fn, text string) streamsOutput {
 	GinkgoHelper()
-	out, err := callPluginFunction[map[string]string, serviceOutput](ctx, p, fn, map[string]string{"text": text})
+	out, err := callPluginFunction[streamsInput, streamsOutput](ctx, p, fn, streamsInput{Text: text})
 	Expect(err).ToNot(HaveOccurred())
 	return out
 }
 
 // generatedClientSpecs are the specs the Go and the Rust generated clients share.
-func generatedClientSpecs(call func(fn, text string) serviceOutput) {
+func generatedClientSpecs(call func(fn, text string) streamsOutput) {
 	It("returns a host reader to the plugin", func() {
-		Expect(call("open_read", "hello")).To(Equal(serviceOutput{Data: "hello"}))
+		Expect(call("open_read", "hello")).To(Equal(streamsOutput{Data: "hello"}))
 	})
 
 	It("converts stream fields of request and response structs", func() {
-		Expect(call("wrap", "abc")).To(Equal(serviceOutput{Data: "p:abc", Size: 5}))
+		Expect(call("wrap", "abc")).To(Equal(streamsOutput{Data: "p:abc", Size: 5}))
 	})
-}
-
-type serviceOutput struct {
-	Data  string `json:"data"`
-	Size  int64  `json:"size"`
-	Error string `json:"error"`
 }
 
 var _ = Describe("Plugin streams", func() {
@@ -495,10 +488,7 @@ var _ = Describe("Plugin streams", func() {
 		)
 
 		BeforeAll(func() {
-			extismMaxMemoryPages = memoryPages
-			DeferCleanup(func() { extismMaxMemoryPages = 0 })
-			manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
-			p = loadedTestPlugin(manager, "test-streams")
+			p, _ = loadStreamsPlugin("test-streams"+PackageExtension, memoryPages)
 			wantSHA = patternSHA(transferSize)
 		})
 
@@ -540,10 +530,7 @@ var _ = Describe("Plugin streams", func() {
 
 		BeforeAll(func() {
 			pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
-			extismMaxMemoryPages = 1024 // 64 MiB, so the out-of-memory spec can fill it
-			DeferCleanup(func() { extismMaxMemoryPages = 0 })
-			manager, _ := createTestManagerWithPlugins(nil, pkg)
-			p = loadedTestPlugin(manager, "test-streams-rs")
+			p, _ = loadStreamsPlugin(pkg, 1024) // 64 MiB, so the out-of-memory spec can fill it
 		})
 
 		BeforeEach(func() {
@@ -602,15 +589,14 @@ var _ = Describe("Generated stream host functions", func() {
 		)
 
 		BeforeAll(func() {
-			svc = &testStreamService{created: &trackingWriter{}}
-			p = loadStreamTestPlugin(svc, "test-streams"+PackageExtension, 0)
+			p, svc = loadStreamsPlugin("test-streams"+PackageExtension, 0)
 		})
 
 		BeforeEach(func() {
 			ctx = GinkgoT().Context()
 		})
 
-		call := func(fn, text string) serviceOutput { return callText(ctx, p, fn, text) }
+		call := func(fn, text string) streamsOutput { return callText(ctx, p, fn, text) }
 
 		generatedClientSpecs(call)
 
@@ -646,7 +632,7 @@ var _ = Describe("Generated stream host functions", func() {
 		It("closes a handed-over stream when the call times out, unblocking the service", func() {
 			done := make(chan error, 1)
 			go func() {
-				_, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_blocked", 250*time.Millisecond, map[string]string{})
+				_, err := callPluginFunctionWithTimeout[streamsInput, streamsOutput](ctx, p, "drain_blocked", 250*time.Millisecond, streamsInput{})
 				done <- err
 			}()
 			var err error
@@ -657,23 +643,11 @@ var _ = Describe("Generated stream host functions", func() {
 		})
 	})
 
-	Describe("under a memory cap", Ordered, func() {
-		var (
-			ctx context.Context
-			p   *plugin
-		)
-
-		BeforeAll(func() {
-			// 24 MiB; drain_loop would keep 800 x 64 KiB buffers if hand-over leaked them
-			p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, "test-streams"+PackageExtension, 384)
-		})
-
-		BeforeEach(func() {
-			ctx = GinkgoT().Context()
-		})
-
+	Describe("under a memory cap", func() {
 		It("frees a stream's buffer when the plugin hands it over", func() {
-			out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_loop", time.Minute, map[string]string{"text": "abc"})
+			// 24 MiB; drain_loop would keep 800 x 64 KiB buffers if hand-over leaked them
+			p, _ := loadStreamsPlugin("test-streams"+PackageExtension, 384)
+			out, err := callPluginFunctionWithTimeout[streamsInput, streamsOutput](GinkgoT().Context(), p, "drain_loop", time.Minute, streamsInput{Text: "abc"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out.Error).To(BeEmpty())
 			Expect(out.Size).To(Equal(int64(800)))
@@ -687,35 +661,21 @@ var _ = Describe("Generated stream host functions", func() {
 		)
 
 		BeforeAll(func() {
-			pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
-			p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 0)
+			p, _ = loadStreamsPlugin(buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs")), 0)
 		})
 
 		BeforeEach(func() {
 			ctx = GinkgoT().Context()
 		})
 
-		generatedClientSpecs(func(fn, text string) serviceOutput { return callText(ctx, p, fn, text) })
+		generatedClientSpecs(func(fn, text string) streamsOutput { return callText(ctx, p, fn, text) })
 	})
 
-	Describe("in Rust under a memory cap", Ordered, func() {
-		var (
-			ctx context.Context
-			p   *plugin
-		)
-
-		BeforeAll(func() {
-			pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs"))
-			// 16 MiB; 500 leaked 64 KiB responses would not fit
-			p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 256)
-		})
-
-		BeforeEach(func() {
-			ctx = GinkgoT().Context()
-		})
-
+	Describe("in Rust under a memory cap", func() {
 		It("frees every host response", func() {
-			out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "echo_loop", time.Minute, map[string]string{})
+			// 16 MiB; 500 leaked 64 KiB responses would not fit
+			p, _ := loadStreamsPlugin(buildRustTestPlugin(filepath.Join(testdataDir, "test-streams-rs")), 256)
+			out, err := callPluginFunctionWithTimeout[streamsInput, streamsOutput](GinkgoT().Context(), p, "echo_loop", time.Minute, streamsInput{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(out.Error).To(BeEmpty())
 			Expect(out.Size).To(Equal(int64(500)))
