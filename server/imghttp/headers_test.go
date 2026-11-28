@@ -1,14 +1,21 @@
 package imghttp_test
 
 import (
+	"bytes"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"testing/fstest"
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/server/imghttp"
+	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -124,34 +131,113 @@ type failingReader struct{}
 
 func (failingReader) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
 
+type failingFile struct {
+	failingReader
+	info fs.FileInfo
+}
+
+func (f failingFile) Stat() (fs.FileInfo, error) { return f.info, nil }
+
+func (failingFile) Close() error { return nil }
+
 var _ = Describe("WriteImage", func() {
-	It("sends the body with a Content-Length", func() {
-		w := httptest.NewRecorder()
+	var w *httptest.ResponseRecorder
 
-		n, err := imghttp.WriteImage(w, found())
-
-		Expect(err).ToNot(HaveOccurred())
-		Expect(n).To(Equal(int64(3)))
-		Expect(w.Header().Get("Content-Length")).To(Equal("3"))
-		Expect(w.Body.String()).To(Equal("IMG"))
+	BeforeEach(func() {
+		w = httptest.NewRecorder()
 	})
 
-	It("writes nothing and withdraws the caching headers when the image cannot be read", func() {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/img", nil)
-		img := found()
-		img.ReadCloser = io.NopCloser(failingReader{})
-		Expect(imghttp.WriteImageHeaders(w, r, img, testHash)).To(BeFalse())
+	write := func(r io.Reader) {
+		n, err := imghttp.WriteImage(w, &artwork.Image{ReadCloser: io.NopCloser(r)})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(Equal(int64(w.Body.Len())))
+	}
 
-		n, err := imghttp.WriteImage(w, img)
-
-		Expect(err).To(MatchError(io.ErrUnexpectedEOF))
-		Expect(n).To(BeZero())
-		Expect(w.Body.Len()).To(BeZero())
+	expectWithdrawn := func() {
 		h := w.Header()
 		Expect(h.Get("Content-Length")).To(BeEmpty())
 		Expect(h.Get("ETag")).To(BeEmpty())
 		Expect(h.Get("Last-Modified")).To(BeEmpty())
 		Expect(h.Get("Cache-Control")).To(Equal("no-store"))
+		Expect(w.Body.Len()).To(BeZero())
+	}
+
+	It("streams a file of any size with its size as Content-Length", func() {
+		data := bytes.Repeat([]byte{0xCD}, 5<<20)
+		path := filepath.Join(GinkgoT().TempDir(), "disc1.png")
+		Expect(os.WriteFile(path, data, 0600)).To(Succeed())
+		f, err := os.Open(path)
+		Expect(err).ToNot(HaveOccurred())
+
+		n, err := imghttp.WriteImage(w, &artwork.Image{ReadCloser: f})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(n).To(Equal(int64(len(data))))
+		Expect(w.Header().Get("Content-Length")).To(Equal(strconv.Itoa(len(data))))
+		Expect(w.Body.Bytes()).To(Equal(data))
+	})
+
+	It("streams an embedded fs file with its size as Content-Length", func() {
+		f, err := fstest.MapFS{"placeholder.webp": {Data: []byte("PH")}}.Open("placeholder.webp")
+		Expect(err).ToNot(HaveOccurred())
+
+		_, err = imghttp.WriteImage(w, &artwork.Image{ReadCloser: f})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(w.Header().Get("Content-Length")).To(Equal("2"))
+		Expect(w.Body.String()).To(Equal("PH"))
+	})
+
+	It("streams a cache hit with the section size as Content-Length", func() {
+		sr := io.NewSectionReader(strings.NewReader("CACHED"), 0, 6)
+		stream := &cache.CachedStream{Reader: sr, Seeker: sr, Cached: true}
+
+		_, err := imghttp.WriteImage(w, &artwork.Image{ReadCloser: stream})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(w.Header().Get("Content-Length")).To(Equal("6"))
+		Expect(w.Body.String()).To(Equal("CACHED"))
+	})
+
+	It("buffers a small image of unknown size to send its Content-Length", func() {
+		write(strings.NewReader("IMG"))
+
+		Expect(w.Header().Get("Content-Length")).To(Equal("3"))
+		Expect(w.Body.String()).To(Equal("IMG"))
+	})
+
+	It("streams a large image of unknown size without Content-Length", func() {
+		data := bytes.Repeat([]byte{0xAB}, 5<<20)
+
+		write(bytes.NewReader(data))
+
+		Expect(w.Header().Get("Content-Length")).To(BeEmpty())
+		Expect(w.Body.Bytes()).To(Equal(data))
+	})
+
+	It("writes nothing and withdraws the caching headers when an unknown-size image cannot be read", func() {
+		img := found()
+		img.ReadCloser = io.NopCloser(failingReader{})
+		Expect(imghttp.WriteImageHeaders(w, httptest.NewRequest(http.MethodGet, "/img", nil), img, testHash)).To(BeFalse())
+
+		n, err := imghttp.WriteImage(w, img)
+
+		Expect(err).To(MatchError(io.ErrUnexpectedEOF))
+		Expect(n).To(BeZero())
+		expectWithdrawn()
+	})
+
+	It("writes nothing and withdraws the caching headers when a known-size image cannot be read", func() {
+		info, err := fs.Stat(fstest.MapFS{"cover.jpg": {Data: []byte("0123456789")}}, "cover.jpg")
+		Expect(err).ToNot(HaveOccurred())
+		img := found()
+		img.ReadCloser = failingFile{info: info}
+		Expect(imghttp.WriteImageHeaders(w, httptest.NewRequest(http.MethodGet, "/img", nil), img, testHash)).To(BeFalse())
+
+		n, err := imghttp.WriteImage(w, img)
+
+		Expect(err).To(MatchError(io.ErrUnexpectedEOF))
+		Expect(n).To(BeZero())
+		expectWithdrawn()
 	})
 })
