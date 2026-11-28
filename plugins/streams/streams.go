@@ -7,7 +7,8 @@ import (
 	"io"
 )
 
-var errNoCall = errors.New("no plugin call in progress")
+// ErrNoCall is returned when a host function that uses streams runs outside a plugin call.
+var ErrNoCall = errors.New("no plugin call in progress")
 
 // Streams is the stream table of the plugin call a host function runs in.
 type Streams interface {
@@ -42,7 +43,7 @@ type Conv struct {
 func NewConv(ctx context.Context) *Conv {
 	s := From(ctx)
 	if s == nil {
-		return &Conv{err: errNoCall}
+		return &Conv{err: ErrNoCall}
 	}
 	return &Conv{s: s}
 }

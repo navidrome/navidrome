@@ -2,5 +2,14 @@
   "name": "Test Streams",
   "author": "Navidrome Test",
   "version": "1.0.0",
-  "description": "Test plugin for stream host functions, generated stream host functions, and call time limits"
+  "description": "Test plugin for stream host functions, generated stream host functions, and call time limits",
+  "permissions": {
+    "storage": {
+      "reason": "Storage.Open and Storage.Create tests"
+    },
+    "http": {
+      "reason": "HTTP.SendStream tests against a local server",
+      "requiredHosts": ["127.0.0.1"]
+    }
+  }
 }

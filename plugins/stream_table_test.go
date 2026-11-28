@@ -408,10 +408,70 @@ var _ = Describe("streamTable", func() {
 			Expect(err).To(MatchError(errUnknownStream))
 		})
 
+		Describe("hold", func() {
+			It("counts a held closer toward the open-stream limit until released", func() {
+				s := newScope()
+				for range maxOpenStreams - 1 {
+					_, backend := reader()
+					mustRegister(s, backend)
+				}
+				release, err := s.hold(&trackingReader{Reader: strings.NewReader("")})
+				Expect(err).ToNot(HaveOccurred())
+				_, backend := reader()
+				_, err = s.register(backend)
+				Expect(err).To(MatchError(errTooManyStreams))
+
+				release()
+				_, backend = reader()
+				mustRegister(s, backend)
+			})
+
+			It("closes a held closer with the scope", func() {
+				s := newScope()
+				c := &trackingReader{Reader: strings.NewReader("")}
+				_, err := s.hold(c)
+				Expect(err).ToNot(HaveOccurred())
+				s.close()
+				Expect(c.closes.Load()).To(Equal(int32(1)))
+				Expect(table.open).To(BeZero())
+			})
+
+			It("does not close a released closer", func() {
+				s := newScope()
+				c := &trackingReader{Reader: strings.NewReader("")}
+				release, err := s.hold(c)
+				Expect(err).ToNot(HaveOccurred())
+				release()
+				s.close()
+				Expect(c.closed()).To(BeFalse())
+				Expect(table.open).To(BeZero())
+			})
+
+			It("closes the closer at once on a closed scope", func() {
+				s := newScope()
+				s.close()
+				c := &trackingReader{Reader: strings.NewReader("")}
+				_, err := s.hold(c)
+				Expect(err).To(MatchError(errCallEnded))
+				Expect(c.closed()).To(BeTrue())
+			})
+		})
+
 		It("is found through the call ctx", func() {
 			s := newScope()
-			Expect(callScopeFrom(withCallScope(ctx, s))).To(BeIdenticalTo(s))
-			Expect(streams.From(withCallScope(ctx, s))).To(BeIdenticalTo(s))
+			Expect(callScopeFrom(withCallScope(ctx, ctx, s))).To(BeIdenticalTo(s))
+			Expect(streams.From(withCallScope(ctx, ctx, s))).To(BeIdenticalTo(s))
+		})
+
+		It("gives a detached ctx with the parent's values but not its cancellation or the call scope", func() {
+			type key struct{}
+			parent, cancel := context.WithCancel(context.WithValue(ctx, key{}, "parent"))
+			d := detachedCtx(withCallScope(parent, parent, newScope()))
+			cancel()
+
+			Expect(d.Err()).To(Succeed())
+			Expect(d.Value(key{})).To(Equal("parent"))
+			Expect(callScopeFrom(d)).To(BeNil())
 		})
 	})
 })

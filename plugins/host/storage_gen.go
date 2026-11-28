@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
+	"github.com/navidrome/navidrome/plugins/streams"
 )
 
 // StorageGetStoragePathResponse is the response type for Storage.GetStoragePath.
@@ -14,11 +15,35 @@ type StorageGetStoragePathResponse struct {
 	Result string `json:"result,omitempty"`
 }
 
+// StorageOpenRequest is the request type for Storage.Open.
+type StorageOpenRequest struct {
+	Path string `json:"path"`
+}
+
+// StorageOpenResponse is the response type for Storage.Open.
+type StorageOpenResponse struct {
+	Result uint32 `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// StorageCreateRequest is the request type for Storage.Create.
+type StorageCreateRequest struct {
+	Path string `json:"path"`
+}
+
+// StorageCreateResponse is the response type for Storage.Create.
+type StorageCreateResponse struct {
+	Result uint32 `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
 // RegisterStorageHostFunctions registers Storage service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterStorageHostFunctions(service StorageService) []extism.HostFunction {
 	return []extism.HostFunction{
 		newStorageGetStoragePathHostFunction(service),
+		newStorageOpenHostFunction(service),
+		newStorageCreateHostFunction(service),
 	}
 }
 
@@ -41,6 +66,84 @@ func newStorageGetStoragePathHostFunction(service StorageService) extism.HostFun
 	)
 }
 
+func newStorageOpenHostFunction(service StorageService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"storage_open",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				storageWriteError(p, stack, err)
+				return
+			}
+			var req StorageOpenRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				storageWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.Open(ctx, req.Path)
+			if svcErr != nil {
+				conv.Fail(svcErr)
+			}
+
+			// Write JSON response to plugin memory
+			resp := StorageOpenResponse{
+				Result: conv.ReaderHandle(result),
+			}
+			if err := conv.Err(); err != nil {
+				storageWriteError(p, stack, err)
+				return
+			}
+			storageWriteStreamResponse(p, stack, resp, conv)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
+func newStorageCreateHostFunction(service StorageService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"storage_create",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				storageWriteError(p, stack, err)
+				return
+			}
+			var req StorageCreateRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				storageWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.Create(ctx, req.Path)
+			if svcErr != nil {
+				conv.Fail(svcErr)
+			}
+
+			// Write JSON response to plugin memory
+			resp := StorageCreateResponse{
+				Result: conv.WriterHandle(result),
+			}
+			if err := conv.Err(); err != nil {
+				storageWriteError(p, stack, err)
+				return
+			}
+			storageWriteStreamResponse(p, stack, resp, conv)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
 // storageWriteResponse writes a JSON response to plugin memory.
 func storageWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
 	respBytes, err := json.Marshal(resp)
@@ -54,6 +157,19 @@ func storageWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
 		return
 	}
 	stack[0] = respPtr
+}
+
+// storageWriteStreamResponse writes a response with stream handles, and releases the streams
+// when it cannot: the plugin would never get the handles.
+func storageWriteStreamResponse(p *extism.CurrentPlugin, stack []uint64, resp any, conv *streams.Conv) {
+	respBytes, err := json.Marshal(resp)
+	if err == nil {
+		stack[0], err = p.WriteBytes(respBytes)
+	}
+	if err != nil {
+		conv.Release()
+		storageWriteError(p, stack, err)
+	}
 }
 
 // storageWriteError writes an error response to plugin memory.

@@ -58,6 +58,34 @@ pub struct HTTPResponse {
     pub body: Vec<u8>,
 }
 
+/// HTTPStreamRequest is an outbound HTTP request whose body, if any, is a stream. The body is consumed:
+/// its handle stops working for the plugin once SendStream starts.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HTTPStreamRequest {
+    pub method: String,
+    pub url: String,
+    #[serde(default)]
+    pub headers: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    pub no_follow_redirects: bool,
+    #[serde(rename = "body", default, with = "nd_pdk_types::stream::optional")]
+    pub body: Option<nd_pdk_types::stream::Stream>,
+    #[serde(default)]
+    pub timeout_ms: i32,
+}
+
+/// HTTPStreamResponse is the response to an HTTPStreamRequest, with its body as a stream.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HTTPStreamResponse {
+    pub status_code: i32,
+    #[serde(default)]
+    pub headers: std::collections::HashMap<String, String>,
+    #[serde(rename = "body", default, with = "nd_pdk_types::stream::optional")]
+    pub body: Option<nd_pdk_types::stream::Stream>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct HTTPSendRequest {
@@ -73,9 +101,25 @@ struct HTTPSendResponse {
     error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HTTPSendStreamRequest {
+    request: HTTPStreamRequest,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HTTPSendStreamResponse {
+    #[serde(default)]
+    result: Option<HTTPStreamResponse>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
 #[link(wasm_import_module = "extism:host/user")]
 extern "C" {
     fn http_send(input: u64) -> u64;
+    fn http_sendstream(input: u64) -> u64;
 }
 
 /// Send executes an HTTP request and returns the response.
@@ -97,6 +141,34 @@ extern "C" {
 /// Returns an error if the host function call fails.
 pub fn send(request: HTTPRequest) -> Result<Option<HTTPResponse>, Error> {
     let response: HTTPSendResponse = unsafe { nd_pdk_types::hostcall::call(http_send, &HTTPSendRequest {
+        request: request,
+    }) }?;
+
+    if let Some(err) = response.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.result)
+}
+
+/// SendStream executes an HTTP request with streamed request and response bodies.
+/// 
+/// It applies the same host checks as Send, but the response body has no size limit, and
+/// TimeoutMs only bounds the wait for the response headers. A request with a body does not
+/// follow 307/308 redirects, since the body cannot be sent again.
+/// Closing the response body ends the request; the call's end closes it if the plugin
+/// still holds it.
+///
+/// # Arguments
+/// * `request` - HTTPStreamRequest parameter.
+///
+/// # Returns
+/// The result value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn send_stream(request: HTTPStreamRequest) -> Result<Option<HTTPStreamResponse>, Error> {
+    let response: HTTPSendStreamResponse = unsafe { nd_pdk_types::hostcall::call(http_sendstream, &HTTPSendStreamRequest {
         request: request,
     }) }?;
 

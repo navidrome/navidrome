@@ -13,9 +13,41 @@ struct StorageGetStoragePathResponse {
     result: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StorageOpenRequest {
+    path: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StorageOpenResponse {
+    #[serde(rename = "result", default, with = "nd_pdk_types::stream::optional")]
+    result: Option<nd_pdk_types::stream::Stream>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StorageCreateRequest {
+    path: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StorageCreateResponse {
+    #[serde(rename = "result", default, with = "nd_pdk_types::stream::optional")]
+    result: Option<nd_pdk_types::stream::Stream>,
+    #[serde(default)]
+    error: Option<String>,
+}
+
 #[link(wasm_import_module = "extism:host/user")]
 extern "C" {
     fn storage_getstoragepath(input: u64) -> u64;
+    fn storage_open(input: u64) -> u64;
+    fn storage_create(input: u64) -> u64;
 }
 
 /// GetStoragePath retrieves the persistent storage path, if allowed
@@ -27,6 +59,54 @@ extern "C" {
 /// Returns an error if the host function call fails.
 pub fn get_storage_path() -> Result<String, Error> {
     let response: StorageGetStoragePathResponse = unsafe { nd_pdk_types::hostcall::call(storage_getstoragepath, &serde_json::json!({})) }?;
+
+    Ok(response.result)
+}
+
+/// Open opens a file in the plugin storage for reading.
+/// 
+/// The path is relative to the storage folder and must stay inside it; symlinks leading
+/// outside it are refused.
+///
+/// # Arguments
+/// * `path` - String parameter.
+///
+/// # Returns
+/// The result value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn open(path: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
+    let response: StorageOpenResponse = unsafe { nd_pdk_types::hostcall::call(storage_open, &StorageOpenRequest {
+        path: path.to_owned(),
+    }) }?;
+
+    if let Some(err) = response.error {
+        return Err(Error::msg(err));
+    }
+
+    Ok(response.result)
+}
+
+/// Create creates or truncates a file in the plugin storage for writing, creating missing
+/// parent folders. The path follows the same rules as Open.
+///
+/// # Arguments
+/// * `path` - String parameter.
+///
+/// # Returns
+/// The result value.
+///
+/// # Errors
+/// Returns an error if the host function call fails.
+pub fn create(path: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
+    let response: StorageCreateResponse = unsafe { nd_pdk_types::hostcall::call(storage_create, &StorageCreateRequest {
+        path: path.to_owned(),
+    }) }?;
+
+    if let Some(err) = response.error {
+        return Err(Error::msg(err));
+    }
 
     Ok(response.result)
 }

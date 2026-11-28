@@ -10,8 +10,10 @@ package host
 import (
 	"encoding/json"
 	"errors"
+	"io"
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/stream"
 )
 
 // HTTPRequest represents the HTTPRequest data structure.
@@ -33,10 +35,134 @@ type HTTPResponse struct {
 	Body       []byte            `json:"body"`
 }
 
+// HTTPStreamRequest represents the HTTPStreamRequest data structure.
+// HTTPStreamRequest is an outbound HTTP request whose body, if any, is a stream. The body is consumed:
+// its handle stops working for the plugin once SendStream starts.
+type HTTPStreamRequest struct {
+	Method            string            `json:"method"`
+	URL               string            `json:"url"`
+	Headers           map[string]string `json:"headers"`
+	NoFollowRedirects bool              `json:"noFollowRedirects"`
+	Body              io.ReadCloser     `json:"body"`
+	TimeoutMs         int32             `json:"timeoutMs"`
+}
+
+// HTTPStreamResponse represents the HTTPStreamResponse data structure.
+// HTTPStreamResponse is the response to an HTTPStreamRequest, with its body as a stream.
+type HTTPStreamResponse struct {
+	StatusCode int32             `json:"statusCode"`
+	Headers    map[string]string `json:"headers"`
+	Body       io.ReadCloser     `json:"body"`
+}
+
+// wireHTTPStreamRequest is the wire form of HTTPStreamRequest: streams travel as handles.
+type wireHTTPStreamRequest struct {
+	Method            string            `json:"method"`
+	URL               string            `json:"url"`
+	Headers           map[string]string `json:"headers"`
+	NoFollowRedirects bool              `json:"noFollowRedirects"`
+	Body              uint32            `json:"body"`
+	TimeoutMs         int32             `json:"timeoutMs"`
+}
+
+func hTTPStreamRequestFromWire(w wireHTTPStreamRequest) HTTPStreamRequest {
+	return HTTPStreamRequest{
+		Method:            w.Method,
+		URL:               w.URL,
+		Headers:           w.Headers,
+		NoFollowRedirects: w.NoFollowRedirects,
+		Body:              stream.Reader(w.Body),
+		TimeoutMs:         w.TimeoutMs,
+	}
+}
+
+func hTTPStreamRequestPtrFromWire(w *wireHTTPStreamRequest) *HTTPStreamRequest {
+	if w == nil {
+		return nil
+	}
+	v := hTTPStreamRequestFromWire(*w)
+	return &v
+}
+
+func hTTPStreamRequestToWire(v HTTPStreamRequest) (wireHTTPStreamRequest, error) {
+	var w wireHTTPStreamRequest
+	var err error
+	w.Method = v.Method
+	w.URL = v.URL
+	w.Headers = v.Headers
+	w.NoFollowRedirects = v.NoFollowRedirects
+	if w.Body, err = stream.HandleOf(v.Body); err != nil {
+		return w, err
+	}
+	w.TimeoutMs = v.TimeoutMs
+	return w, nil
+}
+
+func hTTPStreamRequestPtrToWire(v *HTTPStreamRequest) (*wireHTTPStreamRequest, error) {
+	if v == nil {
+		return nil, nil
+	}
+	w, err := hTTPStreamRequestToWire(*v)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
+// wireHTTPStreamResponse is the wire form of HTTPStreamResponse: streams travel as handles.
+type wireHTTPStreamResponse struct {
+	StatusCode int32             `json:"statusCode"`
+	Headers    map[string]string `json:"headers"`
+	Body       uint32            `json:"body"`
+}
+
+func hTTPStreamResponseFromWire(w wireHTTPStreamResponse) HTTPStreamResponse {
+	return HTTPStreamResponse{
+		StatusCode: w.StatusCode,
+		Headers:    w.Headers,
+		Body:       stream.Reader(w.Body),
+	}
+}
+
+func hTTPStreamResponsePtrFromWire(w *wireHTTPStreamResponse) *HTTPStreamResponse {
+	if w == nil {
+		return nil
+	}
+	v := hTTPStreamResponseFromWire(*w)
+	return &v
+}
+
+func hTTPStreamResponseToWire(v HTTPStreamResponse) (wireHTTPStreamResponse, error) {
+	var w wireHTTPStreamResponse
+	var err error
+	w.StatusCode = v.StatusCode
+	w.Headers = v.Headers
+	if w.Body, err = stream.HandleOf(v.Body); err != nil {
+		return w, err
+	}
+	return w, nil
+}
+
+func hTTPStreamResponsePtrToWire(v *HTTPStreamResponse) (*wireHTTPStreamResponse, error) {
+	if v == nil {
+		return nil, nil
+	}
+	w, err := hTTPStreamResponseToWire(*v)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
 // http_send is the host function provided by Navidrome.
 //
 //go:wasmimport extism:host/user http_send
 func http_send(uint64) uint64
+
+// http_sendstream is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user http_sendstream
+func http_sendstream(uint64) uint64
 
 type hTTPSendRequest struct {
 	Request HTTPRequest `json:"request"`
@@ -45,6 +171,15 @@ type hTTPSendRequest struct {
 type hTTPSendResponse struct {
 	Result *HTTPResponse `json:"result,omitempty"`
 	Error  string        `json:"error,omitempty"`
+}
+
+type hTTPSendStreamRequest struct {
+	Request wireHTTPStreamRequest `json:"request"`
+}
+
+type hTTPSendStreamResponse struct {
+	Result *wireHTTPStreamResponse `json:"result,omitempty"`
+	Error  string                  `json:"error,omitempty"`
 }
 
 // HTTPSend calls the http_send host function.
@@ -88,4 +223,48 @@ func HTTPSend(request HTTPRequest) (*HTTPResponse, error) {
 	}
 
 	return response.Result, nil
+}
+
+// HTTPSendStream calls the http_sendstream host function.
+// SendStream executes an HTTP request with streamed request and response bodies.
+//
+// It applies the same host checks as Send, but the response body has no size limit, and
+// TimeoutMs only bounds the wait for the response headers. A request with a body does not
+// follow 307/308 redirects, since the body cannot be sent again.
+// Closing the response body ends the request; the call's end closes it if the plugin
+// still holds it.
+func HTTPSendStream(request HTTPStreamRequest) (*HTTPStreamResponse, error) {
+	// Marshal request to JSON
+	req := hTTPSendStreamRequest{}
+	var err error
+	if req.Request, err = hTTPStreamRequestToWire(request); err != nil {
+		return nil, err
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := http_sendstream(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
+
+	// Parse the response
+	var response hTTPSendStreamResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
+	return hTTPStreamResponsePtrFromWire(response.Result), nil
 }

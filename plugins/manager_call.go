@@ -63,7 +63,7 @@ func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *p
 		stopClose()
 		scope.close()
 	}()
-	ctx = withCallScope(ctx, scope)
+	ctx = withCallScope(ctx, parentCtx, scope)
 
 	input, err := buildInput(scope)
 	if err != nil {

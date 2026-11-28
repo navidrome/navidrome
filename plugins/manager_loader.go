@@ -162,7 +162,7 @@ var hostServices = []hostServiceEntry{
 			if err != nil {
 				return nil, nil, err
 			}
-			return host.RegisterStorageHostFunctions(service), nil, nil
+			return host.RegisterStorageHostFunctions(service), service, nil
 		},
 	},
 	{

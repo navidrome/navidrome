@@ -7,7 +7,95 @@ import (
 	"encoding/json"
 
 	extism "github.com/extism/go-sdk"
+	"github.com/navidrome/navidrome/plugins/streams"
 )
+
+// wireHTTPStreamRequest is the wire form of HTTPStreamRequest: streams travel as handles.
+type wireHTTPStreamRequest struct {
+	Method            string            `json:"method"`
+	URL               string            `json:"url"`
+	Headers           map[string]string `json:"headers,omitempty"`
+	NoFollowRedirects bool              `json:"noFollowRedirects,omitempty"`
+	Body              uint32            `json:"body"`
+	TimeoutMs         int32             `json:"timeoutMs,omitempty"`
+}
+
+func hTTPStreamRequestFromWire(w wireHTTPStreamRequest, conv *streams.Conv) HTTPStreamRequest {
+	return HTTPStreamRequest{
+		Method:            w.Method,
+		URL:               w.URL,
+		Headers:           w.Headers,
+		NoFollowRedirects: w.NoFollowRedirects,
+		Body:              conv.Reader(w.Body),
+		TimeoutMs:         w.TimeoutMs,
+	}
+}
+
+func hTTPStreamRequestPtrFromWire(w *wireHTTPStreamRequest, conv *streams.Conv) *HTTPStreamRequest {
+	if w == nil {
+		return nil
+	}
+	v := hTTPStreamRequestFromWire(*w, conv)
+	return &v
+}
+
+func hTTPStreamRequestToWire(v HTTPStreamRequest, conv *streams.Conv) wireHTTPStreamRequest {
+	return wireHTTPStreamRequest{
+		Method:            v.Method,
+		URL:               v.URL,
+		Headers:           v.Headers,
+		NoFollowRedirects: v.NoFollowRedirects,
+		Body:              conv.ReaderHandle(v.Body),
+		TimeoutMs:         v.TimeoutMs,
+	}
+}
+
+func hTTPStreamRequestPtrToWire(v *HTTPStreamRequest, conv *streams.Conv) *wireHTTPStreamRequest {
+	if v == nil {
+		return nil
+	}
+	w := hTTPStreamRequestToWire(*v, conv)
+	return &w
+}
+
+// wireHTTPStreamResponse is the wire form of HTTPStreamResponse: streams travel as handles.
+type wireHTTPStreamResponse struct {
+	StatusCode int32             `json:"statusCode"`
+	Headers    map[string]string `json:"headers,omitempty"`
+	Body       uint32            `json:"body"`
+}
+
+func hTTPStreamResponseFromWire(w wireHTTPStreamResponse, conv *streams.Conv) HTTPStreamResponse {
+	return HTTPStreamResponse{
+		StatusCode: w.StatusCode,
+		Headers:    w.Headers,
+		Body:       conv.Reader(w.Body),
+	}
+}
+
+func hTTPStreamResponsePtrFromWire(w *wireHTTPStreamResponse, conv *streams.Conv) *HTTPStreamResponse {
+	if w == nil {
+		return nil
+	}
+	v := hTTPStreamResponseFromWire(*w, conv)
+	return &v
+}
+
+func hTTPStreamResponseToWire(v HTTPStreamResponse, conv *streams.Conv) wireHTTPStreamResponse {
+	return wireHTTPStreamResponse{
+		StatusCode: v.StatusCode,
+		Headers:    v.Headers,
+		Body:       conv.ReaderHandle(v.Body),
+	}
+}
+
+func hTTPStreamResponsePtrToWire(v *HTTPStreamResponse, conv *streams.Conv) *wireHTTPStreamResponse {
+	if v == nil {
+		return nil
+	}
+	w := hTTPStreamResponseToWire(*v, conv)
+	return &w
+}
 
 // HTTPSendRequest is the request type for HTTP.Send.
 type HTTPSendRequest struct {
@@ -20,11 +108,23 @@ type HTTPSendResponse struct {
 	Error  string        `json:"error,omitempty"`
 }
 
+// HTTPSendStreamRequest is the request type for HTTP.SendStream.
+type HTTPSendStreamRequest struct {
+	Request wireHTTPStreamRequest `json:"request"`
+}
+
+// HTTPSendStreamResponse is the response type for HTTP.SendStream.
+type HTTPSendStreamResponse struct {
+	Result *wireHTTPStreamResponse `json:"result,omitempty"`
+	Error  string                  `json:"error,omitempty"`
+}
+
 // RegisterHTTPHostFunctions registers HTTP service host functions.
 // The returned host functions should be added to the plugin's configuration.
 func RegisterHTTPHostFunctions(service HTTPService) []extism.HostFunction {
 	return []extism.HostFunction{
 		newHTTPSendHostFunction(service),
+		newHTTPSendStreamHostFunction(service),
 	}
 }
 
@@ -62,6 +162,50 @@ func newHTTPSendHostFunction(service HTTPService) extism.HostFunction {
 	)
 }
 
+func newHTTPSendStreamHostFunction(service HTTPService) extism.HostFunction {
+	return extism.NewHostFunctionWithStack(
+		"http_sendstream",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
+			// Read JSON request from plugin memory
+			reqBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				httpWriteError(p, stack, err)
+				return
+			}
+			var req HTTPSendStreamRequest
+			if err := json.Unmarshal(reqBytes, &req); err != nil {
+				httpWriteError(p, stack, err)
+				return
+			}
+			argRequest := hTTPStreamRequestFromWire(req.Request, conv)
+			if err := conv.Err(); err != nil {
+				httpWriteError(p, stack, err)
+				return
+			}
+
+			// Call the service method
+			result, svcErr := service.SendStream(ctx, argRequest)
+			if svcErr != nil {
+				conv.Fail(svcErr)
+			}
+
+			// Write JSON response to plugin memory
+			resp := HTTPSendStreamResponse{
+				Result: hTTPStreamResponsePtrToWire(result, conv),
+			}
+			if err := conv.Err(); err != nil {
+				httpWriteError(p, stack, err)
+				return
+			}
+			httpWriteStreamResponse(p, stack, resp, conv)
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+}
+
 // httpWriteResponse writes a JSON response to plugin memory.
 func httpWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
 	respBytes, err := json.Marshal(resp)
@@ -75,6 +219,19 @@ func httpWriteResponse(p *extism.CurrentPlugin, stack []uint64, resp any) {
 		return
 	}
 	stack[0] = respPtr
+}
+
+// httpWriteStreamResponse writes a response with stream handles, and releases the streams
+// when it cannot: the plugin would never get the handles.
+func httpWriteStreamResponse(p *extism.CurrentPlugin, stack []uint64, resp any, conv *streams.Conv) {
+	respBytes, err := json.Marshal(resp)
+	if err == nil {
+		stack[0], err = p.WriteBytes(respBytes)
+	}
+	if err != nil {
+		conv.Release()
+		httpWriteError(p, stack, err)
+	}
 }
 
 // httpWriteError writes an error response to plugin memory.

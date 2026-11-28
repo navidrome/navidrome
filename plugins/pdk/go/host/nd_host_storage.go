@@ -9,8 +9,11 @@ package host
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/navidrome/navidrome/plugins/pdk/go/stream"
 )
 
 // storage_getstoragepath is the host function provided by Navidrome.
@@ -18,8 +21,36 @@ import (
 //go:wasmimport extism:host/user storage_getstoragepath
 func storage_getstoragepath(uint64) uint64
 
+// storage_open is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user storage_open
+func storage_open(uint64) uint64
+
+// storage_create is the host function provided by Navidrome.
+//
+//go:wasmimport extism:host/user storage_create
+func storage_create(uint64) uint64
+
 type storageGetStoragePathResponse struct {
 	Result string `json:"result,omitempty"`
+}
+
+type storageOpenRequest struct {
+	Path string `json:"path"`
+}
+
+type storageOpenResponse struct {
+	Result uint32 `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+type storageCreateRequest struct {
+	Path string `json:"path"`
+}
+
+type storageCreateResponse struct {
+	Result uint32 `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 // StorageGetStoragePath calls the storage_getstoragepath host function.
@@ -44,4 +75,80 @@ func StorageGetStoragePath() string {
 	}
 
 	return response.Result
+}
+
+// StorageOpen calls the storage_open host function.
+// Open opens a file in the plugin storage for reading.
+//
+// The path is relative to the storage folder and must stay inside it; symlinks leading
+// outside it are refused.
+func StorageOpen(path string) (io.ReadCloser, error) {
+	// Marshal request to JSON
+	req := storageOpenRequest{
+		Path: path,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := storage_open(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
+
+	// Parse the response
+	var response storageOpenResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
+	return stream.Reader(response.Result), nil
+}
+
+// StorageCreate calls the storage_create host function.
+// Create creates or truncates a file in the plugin storage for writing, creating missing
+// parent folders. The path follows the same rules as Open.
+func StorageCreate(path string) (io.WriteCloser, error) {
+	// Marshal request to JSON
+	req := storageCreateRequest{
+		Path: path,
+	}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	reqMem := pdk.AllocateBytes(reqBytes)
+	defer reqMem.Free()
+
+	// Call the host function
+	responsePtr := storage_create(reqMem.Offset())
+
+	// Read the response from memory
+	responseMem := pdk.FindMemory(responsePtr)
+	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
+
+	// Parse the response
+	var response storageCreateResponse
+	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		return nil, err
+	}
+
+	// Convert Error field to Go error
+	if response.Error != "" {
+		return nil, errors.New(response.Error)
+	}
+
+	return stream.Writer(response.Result), nil
 }

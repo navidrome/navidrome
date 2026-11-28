@@ -423,11 +423,19 @@ Make HTTP requests to external services, with timeouts, redirect control, and pr
 
 **Host functions:**
 
-| Function    | Parameters                                               | Returns                          |
-|-------------|----------------------------------------------------------|----------------------------------|
-| `http_send` | `method, url, headers, body, timeoutMs, noFollowRedirects` | `statusCode, headers, body`    |
+| Function          | Parameters                                                 | Returns                                    |
+|-------------------|------------------------------------------------------------|--------------------------------------------|
+| `http_send`       | `method, url, headers, body, timeoutMs, noFollowRedirects` | `statusCode, headers, body`                |
+| `http_sendstream` | same, with `body` as a [stream](#streams) (optional)       | `statusCode, headers, body` (as a stream)  |
 
 **Limits:** Requests time out after 10 seconds by default (override per request with `timeoutMs`). Redirects are followed up to 5 times, re-checking the allowed hosts on every hop. Response bodies are capped at 10MB.
+
+**Streaming:** `http_sendstream` makes the same checks as `http_send`, but its bodies are [streams](#streams), so large downloads and uploads keep memory flat:
+
+- The response body has no size cap. `timeoutMs` covers only the wait for the response headers, including sending the request body; reading the body has no time limit of its own.
+- Closing the response body ends the request. If the plugin does not close or return it, it is closed when the call ends.
+- The request body is handed over: the plugin cannot use its handle again, and Navidrome closes it, also when the request fails or is cancelled. Pass a `Content-Length` header if the server needs one; otherwise the body is sent chunked.
+- A request with a body does not follow `307`/`308` redirects, since the body cannot be sent twice. The plugin gets the redirect response.
 
 **Usage:**
 
@@ -440,6 +448,25 @@ resp, err := host.HTTPSend(host.HTTPRequest{
 if resp.StatusCode == 200 {
     // Process resp.Body
 }
+```
+
+Download a large file to [storage](#storage) without loading it into plugin memory:
+
+```go
+resp, err := host.HTTPSendStream(host.HTTPStreamRequest{Method: "GET", URL: episodeURL})
+if err != nil {
+    return err
+}
+defer resp.Body.Close()
+file, err := host.StorageCreate("episodes/42.mp3")
+if err != nil {
+    return err
+}
+if _, err := stream.Copy(file.(*stream.Stream), resp.Body.(*stream.Stream)); err != nil {
+    file.Close()
+    return err
+}
+return file.Close()
 ```
 
 ### Scheduler
@@ -607,9 +634,11 @@ A private read-write directory, mounted into the sandbox at `/storage` and backe
 
 **Host functions:**
 
-| Function                 | Parameters | Description                        |
-|--------------------------|------------|------------------------------------|
-| `storage_getstoragepath` | –          | Get the guest path of the mount    |
+| Function                 | Parameters | Description                                                     |
+|--------------------------|------------|-----------------------------------------------------------------|
+| `storage_getstoragepath` | –          | Get the guest path of the mount                                 |
+| `storage_open`           | `path`     | Open a file for reading, as a [stream](#streams)                |
+| `storage_create`         | `path`     | Create or truncate a file for writing, as a [stream](#streams)  |
 
 **Usage:**
 
@@ -632,6 +661,8 @@ entries, err := os.ReadDir(storageDir)
 ```
 
 > **Security:** Plugins cannot create symlinks inside the mount, and `..` or absolute paths are rejected. Symlinks that already exist in the directory are still followed, so anything linked in from elsewhere remains reachable.
+
+`StorageOpen` and `StorageCreate` give the file as a stream instead, to pass to another host function (for example as an `HTTPSendStream` body) or to return to Navidrome. Their path is relative to the storage folder (`"episodes/42.mp3"`, not `"/storage/episodes/42.mp3"`) and must stay inside it; unlike the mount, they also refuse symlinks that lead outside it. `StorageCreate` creates missing parent folders, and its stream is write-only.
 
 > **Note:** There is no size limit, unlike [KVStore](#kvstore). The directory is not deleted when a plugin is uninstalled.
 

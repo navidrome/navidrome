@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/plugins/host"
@@ -646,5 +648,96 @@ var _ = Describe("isPrivateOrLoopback", func() {
 
 	It("should not treat 172.32.x.x as private", func() {
 		Expect(isPrivateOrLoopback("172.32.0.1")).To(BeFalse())
+	})
+})
+
+var _ = Describe("pendingRequest", func() {
+	var (
+		cancels *atomic.Int32
+		body    *trackingReader
+		p       *pendingRequest
+	)
+
+	newPending := func() (*atomic.Int32, *trackingReader, *pendingRequest) {
+		cancels, body := &atomic.Int32{}, &trackingReader{Reader: strings.NewReader("")}
+		return cancels, body, &pendingRequest{cancel: func() { cancels.Add(1) }, body: body}
+	}
+
+	BeforeEach(func() {
+		cancels, body, p = newPending()
+	})
+
+	It("cancels the request and closes its body on abort, once", func() {
+		p.abort(errHeaderTimeout)
+		p.abort(errCallEnded)
+		Expect(cancels.Load()).To(Equal(int32(1)))
+		Expect(body.closes.Load()).To(Equal(int32(1)))
+		Expect(p.promote()).To(MatchError(errHeaderTimeout))
+	})
+
+	It("ignores an abort after promotion", func() {
+		Expect(p.promote()).To(Succeed())
+		p.abort(errHeaderTimeout)
+		Expect(p.Close()).To(Succeed())
+		Expect(cancels.Load()).To(BeZero())
+		Expect(body.closed()).To(BeFalse())
+	})
+
+	It("aborts with errCallEnded when the call's scope closes it", func() {
+		Expect(p.Close()).To(Succeed())
+		Expect(p.promote()).To(MatchError(errCallEnded))
+		Expect(body.closed()).To(BeTrue())
+	})
+
+	It("lets exactly one of promote and abort win a race", func() {
+		for range 200 {
+			cancels, body, p := newPending()
+			var promoteErr error
+			var wg sync.WaitGroup
+			wg.Go(func() { promoteErr = p.promote() })
+			wg.Go(func() { p.abort(errHeaderTimeout) })
+			wg.Wait()
+			if promoteErr == nil {
+				Expect(cancels.Load()).To(BeZero())
+				Expect(body.closed()).To(BeFalse())
+			} else {
+				Expect(promoteErr).To(MatchError(errHeaderTimeout))
+				Expect(cancels.Load()).To(Equal(int32(1)))
+				Expect(body.closed()).To(BeTrue())
+			}
+		}
+	})
+})
+
+var _ = Describe("httpServiceImpl.SendStream", func() {
+	var (
+		ctx   context.Context
+		table *streamTable
+		svc   *httpServiceImpl
+		body  *trackingReader
+	)
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		table = newStreamTable()
+		svc = newHTTPService("test-plugin", &HTTPPermission{RequiredHosts: []string{"127.0.0.1"}})
+		body = &trackingReader{Reader: strings.NewReader("body")}
+	})
+
+	It("closes the request body and frees its slot when the request fails before it is sent", func() {
+		scope, err := table.newScope(ctx)
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(scope.close)
+
+		_, err = svc.SendStream(withCallScope(ctx, ctx, scope), host.HTTPStreamRequest{Method: "PUT", URL: "http://not-allowed.invalid/", Body: body})
+		Expect(err).To(MatchError(`host "not-allowed.invalid" is not allowed`))
+		Expect(body.closed()).To(BeTrue())
+		Expect(table.open).To(BeZero())
+	})
+
+	It("closes the request body outside a plugin call", func() {
+		_, err := svc.SendStream(ctx, host.HTTPStreamRequest{Method: "PUT", URL: "http://127.0.0.1/", Body: body})
+		Expect(err).To(MatchError("no plugin call in progress"))
+		Expect(body.closed()).To(BeTrue())
 	})
 })
